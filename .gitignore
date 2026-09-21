@@ -1,0 +1,32 @@
+# Java / Maven
+be/target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# Node / Vite
+fe/node_modules/
+fe/dist/
+fe/.vite/
+
+# Env - khong commit file .env that, chi giu .env.example
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

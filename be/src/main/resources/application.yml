@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: be
+
+server:
+  port: 8080
+
+# Kien truc da co so du lieu (muc 6 de cuong).
+# POSTGRES_PORT/MYSQL_PORT co the override qua bien moi truong neu DB local cua
+# ai do dang bi chiem cong mac dinh (vd trung voi Docker cua du an khac).
+app:
+  datasource:
+    postgres:
+      url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/gastroai
+      username: gastroai
+      password: gastroai
+      driver-class-name: org.postgresql.Driver
+    mysql:
+      url: jdbc:mysql://localhost:${MYSQL_PORT:3306}/gastroai_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      username: gastroai
+      password: gastroai
+      driver-class-name: com.mysql.cj.jdbc.Driver
+  jwt:
+    # CANH BAO: chi la default cho dev local, KHONG dung secret nay khi deploy that.
+    secret: ${JWT_SECRET:dev-only-secret-key-change-me-please-32-chars-min}
+    expiration-minutes: 60
