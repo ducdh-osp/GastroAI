@@ -38,6 +38,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/staff/login",
+                                "/api/v1/cms/auth/**",
+                                "/api/test/restore",
                                 "/error")
                         .permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
