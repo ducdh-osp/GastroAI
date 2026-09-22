@@ -31,3 +31,10 @@ app:
   mail:
     from: ${MAIL_FROM:no-reply@gastroai.vn}
     verification-base-url: ${VERIFICATION_BASE_URL:http://localhost:5173/verify-email}
+    reset-password-base-url: ${RESET_PASSWORD_BASE_URL:http://localhost:5173/reset-password}
+  security:
+    login:
+      max-failed-attempts: ${LOGIN_MAX_FAILED_ATTEMPTS:5}
+      lock-duration-minutes: ${LOGIN_LOCK_DURATION_MINUTES:10}
+      history-retention-days: ${LOGIN_HISTORY_RETENTION_DAYS:90}
+    trusted-proxies: ${TRUSTED_PROXIES:}

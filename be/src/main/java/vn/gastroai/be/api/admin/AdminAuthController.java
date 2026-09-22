@@ -12,10 +12,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.api.auth.ChangePasswordRequest;
-import vn.gastroai.be.api.auth.LoginRequest;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminAccountRepository;
 
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth/admin")
@@ -26,21 +24,6 @@ public class AdminAuthController {
     public AdminAuthController(AdminAccountRepository repository, PasswordEncoder passwordEncoder) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
-    }
-
-    @PostMapping("/login")
-    public Map<String, String> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
-        var admin = repository.findByEmail(request.email().trim().toLowerCase())
-                .orElseThrow(() -> new BadCredentialsException("Thong tin dang nhap khong dung"));
-        if (!admin.isActive() || !passwordEncoder.matches(request.password(), admin.getPasswordHash())) {
-            throw new BadCredentialsException("Thong tin dang nhap khong dung");
-        }
-
-        HttpSession session = servletRequest.getSession(true);
-        servletRequest.changeSessionId();
-        session.setAttribute("ADMIN_ID", admin.getId());
-        session.setAttribute("ADMIN_EMAIL", admin.getEmail());
-        return Map.of("message", "Dang nhap admin thanh cong", "email", admin.getEmail(), "role", "ADMIN");
     }
 
     @PostMapping("/logout")
