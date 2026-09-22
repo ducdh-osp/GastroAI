@@ -10,7 +10,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import vn.gastroai.be.infrastructure.security.AdminSessionFilter;
 import vn.gastroai.be.infrastructure.security.JwtAuthenticationFilter;
 
 import java.util.List;
@@ -37,16 +36,12 @@ public class SecurityConfig {
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/login",
-                                "/api/v1/auth/staff/login",
                                 "/api/v1/cms/auth/**",
                                 "/api/test/restore",
                                 "/error")
                         .permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/doctor/**").hasAnyRole("DOCTOR", "ADMIN")
-                        .requestMatchers("/api/v1/patient/**").hasAnyRole("PATIENT", "ADMIN")
+                        .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
                         .anyRequest().authenticated())
-                .addFilterBefore(new AdminSessionFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

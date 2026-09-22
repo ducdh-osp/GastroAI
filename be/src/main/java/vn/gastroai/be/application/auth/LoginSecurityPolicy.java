@@ -2,6 +2,7 @@ package vn.gastroai.be.application.auth;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import java.time.Duration;
 
 @Component
@@ -17,7 +18,16 @@ public class LoginSecurityPolicy {
         this.lockDuration = Duration.ofMinutes(lockMinutes);
         this.historyRetentionDays = historyRetentionDays;
     }
-    public int maxFailedAttempts() { return maxFailedAttempts; }
-    public Duration lockDuration() { return lockDuration; }
-    public int historyRetentionDays() { return historyRetentionDays; }
+
+    public int maxFailedAttempts() {
+        return maxFailedAttempts;
+    }
+
+    public Duration lockDuration() {
+        return lockDuration;
+    }
+
+    public int historyRetentionDays() {
+        return historyRetentionDays;
+    }
 }
