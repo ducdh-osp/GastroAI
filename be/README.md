@@ -62,17 +62,19 @@ Cần cài sẵn PostgreSQL + MySQL (không dùng Docker). Sau đó tạo user +
 sudo -u postgres psql -c "CREATE USER gastroai WITH PASSWORD 'gastroai';"
 sudo -u postgres psql -c "CREATE DATABASE gastroai OWNER gastroai;"
 
-sudo mysql -e "CREATE USER 'gastroai'@'localhost' IDENTIFIED BY 'gastroai'; CREATE DATABASE gastroai_admin; GRANT ALL ON gastroai_admin.* TO 'gastroai'@'localhost'; FLUSH PRIVILEGES;"
+sudo mysql -e "CREATE USER 'gastroai'@'%' IDENTIFIED BY 'gastroai'; CREATE DATABASE gastroai_admin; GRANT ALL ON gastroai_admin.* TO 'gastroai'@'%'; FLUSH PRIVILEGES;"
 ```
 
 **Windows** (Command Prompt / PowerShell — không có `sudo`, sẽ hỏi mật khẩu user `root`/`postgres` đặt lúc cài):
 ```
-mysql -u root -p -e "CREATE USER 'gastroai'@'localhost' IDENTIFIED BY 'gastroai'; CREATE DATABASE gastroai_admin; GRANT ALL ON gastroai_admin.* TO 'gastroai'@'localhost'; FLUSH PRIVILEGES;"
+mysql -u root -p -e "CREATE USER 'gastroai'@'%' IDENTIFIED BY 'gastroai'; CREATE DATABASE gastroai_admin; GRANT ALL ON gastroai_admin.* TO 'gastroai'@'%'; FLUSH PRIVILEGES;"
 
 psql -U postgres -c "CREATE USER gastroai WITH PASSWORD 'gastroai';"
 psql -U postgres -c "CREATE DATABASE gastroai OWNER gastroai;"
 ```
 Nếu báo `'mysql'`/`'psql' is not recognized` thì do chưa có trong PATH — dùng đường dẫn đầy đủ, ví dụ `"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"` / `"C:\Program Files\PostgreSQL\16\bin\psql.exe"`. Ngại dòng lệnh thì mở **MySQL Workbench** / **pgAdmin** (thường cài kèm sẵn) → mở Query tab → dán câu SQL bên trong dấu `"..."` rồi chạy.
+
+> Dùng `'gastroai'@'%'` (mọi host) thay vì `'gastroai'@'localhost'` — MySQL coi `localhost` và `127.0.0.1` là 2 host khác nhau khi cấp quyền, mà JDBC (app Java) thường connect qua `127.0.0.1` nên dùng đúng `'localhost'` hay bị `Access denied` dù gõ đúng mật khẩu. Nếu đã lỡ tạo user kiểu `'gastroai'@'localhost'` và vẫn bị lỗi này, chạy `DROP USER IF EXISTS 'gastroai'@'localhost';` rồi tạo lại theo lệnh trên.
 
 Nếu máy đã có Postgres/MySQL chạy port khác 5432/3306 (vd trùng port với service khác đang chạy), đổi port lúc kết nối cho khớp, rồi dùng `POSTGRES_PORT`/`MYSQL_PORT` khi chạy app (xem dưới).
 
