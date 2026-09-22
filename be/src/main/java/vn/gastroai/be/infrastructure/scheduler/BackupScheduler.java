@@ -8,11 +8,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class BackupScheduler {
 
     private static final DateTimeFormatter BACKUP_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+    private static final Logger logger = LoggerFactory.getLogger(BackupScheduler.class);
 
     private final BackupProperties backupProperties;
 
@@ -24,23 +27,23 @@ public class BackupScheduler {
     public void backupAll() {
         ensureBackupDirExists();
 
-        System.out.println("Starting database backup...");
+        logger.info("Starting database backup...");
 
         try {
             backupPostgres();
         } catch (Exception e) {
-            System.err.println("PostgreSQL backup failed:");
+            logger.error("PostgreSQL backup failed:", e);
             e.printStackTrace();
         }
 
         try {
             backupMysql();
         } catch (Exception e) {
-            System.err.println("MySQL backup failed:");
+            logger.error("MySQL backup failed:", e);
             e.printStackTrace();
         }
 
-        System.out.println("Database backup process completed.");
+        logger.info("Database backup process completed.");
     }
 
     private Path getBackupDir() {
@@ -70,11 +73,15 @@ public class BackupScheduler {
                 "-h",
                 "localhost",
                 "-p",
-                "5432",
+                postgres.port() + "",
                 "-U",
                 postgres.username(),
                 "-d",
                 postgres.database());
+        processBuilder.environment().put(
+        "PGPASSWORD",
+        postgres.password()
+        );
 
         runBackupProcess(
                 processBuilder,
@@ -95,12 +102,14 @@ public class BackupScheduler {
                 "-h",
                 "localhost",
                 "-P",
-                "3306",
+                mysql.port() + "",
                 "-u",
                 mysql.username(),
                 "--no-tablespaces",
                 mysql.database());
-
+        processBuilder.environment().put(
+        "MYSQL_PWD",
+        mysql.password());
         runBackupProcess(
                 processBuilder,
                 outputFile,
@@ -147,10 +156,10 @@ public class BackupScheduler {
                                 + exitCode);
             }
 
-            System.out.println(
-                    databaseName
-                            + " backup completed: "
-                            + outputFile.toAbsolutePath());
+            logger.info(
+                    "{} backup completed: {}",
+                    databaseName,
+                    outputFile.toAbsolutePath());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -174,9 +183,9 @@ public class BackupScheduler {
         try {
             Files.deleteIfExists(outputFile);
         } catch (Exception e) {
-            System.err.println(
-                    "Cannot delete failed backup file: "
-                            + outputFile);
+            logger.error(
+            "Cannot delete failed backup file: {}",
+            outputFile, e);
         }
     }
 }

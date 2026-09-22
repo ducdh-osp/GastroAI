@@ -45,8 +45,12 @@ app:
       username: gastroai
       password: gastroai
       database: gastroai
-
+      port: ${POSTGRES_PORT:5432}
     mysql:
       username: gastroai
       password: gastroai
       database: gastroai_admin
+      port: ${MYSQL_PORT:3306}
+logging:
+  file:
+    name: ./logs/gastroai.log 

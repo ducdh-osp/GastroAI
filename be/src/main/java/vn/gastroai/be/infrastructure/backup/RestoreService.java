@@ -1,15 +1,19 @@
 package vn.gastroai.be.infrastructure.backup;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import vn.gastroai.be.config.BackupProperties;
 
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Service
 public class RestoreService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(RestoreService.class);
 
     private final BackupProperties backupProperties;
 
@@ -21,25 +25,23 @@ public class RestoreService {
         try {
             restorePostgres();
         } catch (Exception e) {
-            System.err.println("PostgreSQL restore failed:");
-            e.printStackTrace();
+            log.error("PostgreSQL restore failed", e);
         }
 
         try {
             restoreMysql();
         } catch (Exception e) {
-            System.err.println("MySQL restore failed:");
-            e.printStackTrace();
+            log.error("MySQL restore failed", e);
         }
 
-        System.out.println("Database restore process completed.");
+        log.info("Database restore process completed.");
     }
 
     private void restorePostgres() {
         Path backupFile = findLatestBackup("postgres_");
 
         if (backupFile == null) {
-            System.out.println("No PostgreSQL backup found. Skip restore.");
+            log.info("No PostgreSQL backup found. Skip restore.");
             return;
         }
 
@@ -50,7 +52,7 @@ public class RestoreService {
                 "-h",
                 "localhost",
                 "-p",
-                "5432",
+                String.valueOf(postgres.port()),
                 "-U",
                 postgres.username(),
                 "-d",
@@ -66,14 +68,18 @@ public class RestoreService {
                 postgres.password()
         );
 
-        runProcess(processBuilder, "PostgreSQL", backupFile);
+        runProcess(
+                processBuilder,
+                "PostgreSQL",
+                backupFile
+        );
     }
 
     private void restoreMysql() {
         Path backupFile = findLatestBackup("mysql_");
 
         if (backupFile == null) {
-            System.out.println("No MySQL backup found. Skip restore.");
+            log.info("No MySQL backup found. Skip restore.");
             return;
         }
 
@@ -84,7 +90,7 @@ public class RestoreService {
                 "-h",
                 "localhost",
                 "-P",
-                "3306",
+                String.valueOf(mysql.port()),
                 "-u",
                 mysql.username(),
                 mysql.database()
@@ -101,13 +107,16 @@ public class RestoreService {
                     StandardCharsets.UTF_8
             );
 
-            processBuilder.redirectError(ProcessBuilder.Redirect.PIPE);
+            processBuilder.redirectError(
+                    ProcessBuilder.Redirect.PIPE
+            );
 
             Process process = processBuilder.start();
 
             process.getOutputStream().write(
                     sql.getBytes(StandardCharsets.UTF_8)
             );
+
             process.getOutputStream().close();
 
             int exitCode = process.waitFor();
@@ -123,9 +132,9 @@ public class RestoreService {
                 );
             }
 
-            System.out.println(
-                    "MySQL restore completed from: "
-                            + backupFile.toAbsolutePath()
+            log.info(
+                    "MySQL restore completed from: {}",
+                    backupFile.toAbsolutePath()
             );
 
         } catch (InterruptedException e) {
@@ -148,6 +157,7 @@ public class RestoreService {
         try (var files = Files.list(
                 Path.of(backupProperties.directory())
         )) {
+
             return files
                     .filter(Files::isRegularFile)
                     .filter(path ->
@@ -200,10 +210,10 @@ public class RestoreService {
                 );
             }
 
-            System.out.println(
-                    databaseName
-                            + " restore completed from: "
-                            + backupFile.toAbsolutePath()
+            log.info(
+                    "{} restore completed from: {}",
+                    databaseName,
+                    backupFile.toAbsolutePath()
             );
 
         } catch (InterruptedException e) {

@@ -9,11 +9,12 @@ public record BackupProperties(
         DatabaseBackupProperties mysql
 ) {
 
-    public record DatabaseBackupProperties(
+   public record DatabaseBackupProperties(
             String container,
             String username,
             String password,
-            String database
+            String database,
+            int port
     ) {
     }
 }

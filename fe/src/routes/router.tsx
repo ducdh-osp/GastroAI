@@ -8,6 +8,7 @@ import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
 import { ProtectedRoute } from './ProtectedRoute'
+import { CmsAuthProvider } from '../stores/cmsAuthStore'
 
 export const router = createBrowserRouter([
   // Patient
@@ -36,7 +37,11 @@ export const router = createBrowserRouter([
   // CMS - Admin / Doctor
   {
     path: '/cms/login',
-    element: <CmsLoginPage />,
+    element: (
+      <CmsAuthProvider>
+        <CmsLoginPage />
+      </CmsAuthProvider>
+    ),
   },
 ])
 

@@ -1,24 +1,32 @@
 import { cmsApiClient } from '../lib/cmsAxios'
 
-export interface CmsLoginPayload {
+export type CmsRole = 'ADMIN' | 'DOCTOR'
+
+export interface CmsLoginRequest {
   email: string
   password: string
+  role: CmsRole
 }
 
 export interface CmsAuthResponse {
-  userId: number
+  id: number
   email: string
-  fullName: string | null
-  userType: 'ADMIN' | 'DOCTOR'
+  name: string
+  role: CmsRole
+  lockedUntil?: string | null
 }
 
 export async function cmsLogin(
-  payload: CmsLoginPayload,
+  data: CmsLoginRequest
 ): Promise<CmsAuthResponse> {
-  const { data } = await cmsApiClient.post<CmsAuthResponse>(
+  const response = await cmsApiClient.post<CmsAuthResponse>(
     '/cms/auth/login',
-    payload,
+    data
   )
 
-  return data
+  return response.data
+}
+
+export async function cmsLogout(): Promise<void> {
+  await cmsApiClient.post('/cms/auth/logout')
 }

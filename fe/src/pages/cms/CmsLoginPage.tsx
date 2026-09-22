@@ -1,25 +1,44 @@
-import { Alert, Button, Card, Form, Input, Typography } from 'antd'
+import {
+  Alert,
+  Button,
+  Card,
+  Form,
+  Input,
+  Radio,
+  Typography,
+} from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { cmsLogin } from '../../api/cmsAuth'
-import { useCmsAuthStore } from '../../stores/cmsAuthStore'
+import {
+  cmsLogin,
+  type CmsRole,
+} from '../../api/cmsAuth'
+import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 const { Title, Text } = Typography
 
 interface LoginFormValues {
   email: string
   password: string
+  role: CmsRole
+}
+
+interface LoginErrorResponse {
+  message?: string
+  lockedUntil?: string
 }
 
 export default function CmsLoginPage() {
-  const setUser = useCmsAuthStore((state) => state.setUser)
+  const { setUser } = useCmsAuth()
   const navigate = useNavigate()
 
   const [error, setError] = useState<string | null>(null)
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function onFinish(values: LoginFormValues) {
     setError(null)
+    setLockedUntil(null)
     setLoading(true)
 
     try {
@@ -29,14 +48,33 @@ export default function CmsLoginPage() {
 
       navigate('/cms')
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response
-          ?.data?.message ?? 'Đăng nhập thất bại, thử lại sau'
+      const response = (
+        err as {
+          response?: {
+            data?: LoginErrorResponse
+          }
+        }
+      )?.response?.data
 
-      setError(message)
+      setError(
+        response?.message ?? 'Đăng nhập thất bại, thử lại sau'
+      )
+
+      if (response?.lockedUntil) {
+        setLockedUntil(response.lockedUntil)
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  function formatLockedUntil(value: string) {
+    const date = new Date(value)
+
+    return date.toLocaleString('vi-VN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
   }
 
   return (
@@ -54,8 +92,13 @@ export default function CmsLoginPage() {
 
         {error && (
           <Alert
-            type="error"
+            type={lockedUntil ? 'warning' : 'error'}
             message={error}
+            description={
+              lockedUntil
+                ? `Tài khoản bị khóa đến ${formatLockedUntil(lockedUntil)}.`
+                : undefined
+            }
             showIcon
             className="mb-4"
           />
@@ -65,7 +108,26 @@ export default function CmsLoginPage() {
           layout="vertical"
           onFinish={onFinish}
           disabled={loading}
+          initialValues={{
+            role: 'ADMIN',
+          }}
         >
+          <Form.Item
+            label="Vai trò"
+            name="role"
+            rules={[
+              {
+                required: true,
+                message: 'Chọn vai trò',
+              },
+            ]}
+          >
+            <Radio.Group>
+              <Radio value="ADMIN">Admin</Radio>
+              <Radio value="DOCTOR">Bác sĩ</Radio>
+            </Radio.Group>
+          </Form.Item>
+
           <Form.Item
             label="Email"
             name="email"
@@ -81,7 +143,10 @@ export default function CmsLoginPage() {
             label="Mật khẩu"
             name="password"
             rules={[
-              { required: true, message: 'Nhập mật khẩu' },
+              {
+                required: true,
+                message: 'Nhập mật khẩu',
+              },
             ]}
           >
             <Input.Password />
