@@ -1,9 +1,12 @@
 package vn.gastroai.be.api.auth;
 
 import vn.gastroai.be.application.readmodel.AuthResult;
+import java.time.Instant;
 
-public record AuthResponse(String token, Long patientId, String email, String fullName) {
+public record AuthResponse(String token, Long patientId, String email, String fullName,
+                           String role, Instant expiresAt) {
     public static AuthResponse from(AuthResult result) {
-        return new AuthResponse(result.token(), result.patientId(), result.email(), result.fullName());
+        return new AuthResponse(result.token(), result.patientId(), result.email(), result.fullName(),
+                result.role(), result.expiresAt());
     }
 }

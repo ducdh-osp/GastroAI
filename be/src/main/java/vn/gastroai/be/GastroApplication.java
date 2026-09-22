@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Datasource/JPA/Flyway auto-config mặc định bị tắt vì được khai báo thủ công
@@ -20,6 +21,7 @@ import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
         HibernateJpaAutoConfiguration.class,
         FlywayAutoConfiguration.class
 })
+@EnableScheduling
 public class GastroApplication {
 
 	public static void main(String[] args) {
