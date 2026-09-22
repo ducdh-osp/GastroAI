@@ -1,6 +1,5 @@
 package vn.gastroai.be;
 
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
@@ -21,7 +20,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         HibernateJpaAutoConfiguration.class,
         FlywayAutoConfiguration.class
 })
-@EnableScheduling
 public class GastroApplication {
 
 	public static void main(String[] args) {
