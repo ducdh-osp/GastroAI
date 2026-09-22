@@ -1,1 +1,40 @@
-package vn.gastroai.be.infrastructure.security; import io.jsonwebtoken.*; import io.jsonwebtoken.security.Keys; import org.springframework.beans.factory.annotation.Value; import org.springframework.stereotype.Component; import vn.gastroai.be.domain.auth.Patient; import javax.crypto.SecretKey; import java.nio.charset.StandardCharsets; import java.time.*; import java.util.*; @Component public class JwtService { private final SecretKey key; private final long minutes; public JwtService(@Value("${app.jwt.secret}")String secret,@Value("${app.jwt.expiration-minutes:60}")long minutes){key=Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));this.minutes=minutes;} public String generateToken(Patient p){Instant now=Instant.now(); return Jwts.builder().id(UUID.randomUUID().toString()).subject(p.getId().toString()).claim("email",p.getEmail()).claim("role",p.getRole().name()).claim("version",p.getTokenVersion()).issuedAt(Date.from(now)).expiration(Date.from(now.plus(minutes,java.time.temporal.ChronoUnit.MINUTES))).signWith(key).compact();} public Claims parse(String token){return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();} }
+package vn.gastroai.be.infrastructure.security;
+
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import vn.gastroai.be.domain.auth.Patient;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+
+@Component
+public class JwtService {
+    private final SecretKey key;
+    private final long minutes;
+
+    public JwtService(@Value("${app.jwt.secret}") String secret,
+                      @Value("${app.jwt.expiration-minutes:60}") long minutes) {
+        key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.minutes = minutes;
+    }
+
+    public String generateToken(Patient p) {
+        Instant now = Instant.now();
+        return Jwts.builder().id(UUID.randomUUID().toString()).subject(p.getId().toString())
+                .claim("email", p.getEmail()).claim("role", p.getRole().name())
+                .claim("version", p.getTokenVersion()).issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(minutes, ChronoUnit.MINUTES))).signWith(key).compact();
+    }
+
+    public Claims parse(String token) {
+        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+    }
+
+    public Instant expiration(String token) {
+        return parse(token).getExpiration().toInstant();
+    }
+}
