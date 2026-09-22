@@ -27,7 +27,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/register",
@@ -36,6 +36,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/login",
+                                "/api/v1/cms/auth/**",
+                                "/api/test/restore",
                                 "/error")
                         .permitAll()
                         .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")

@@ -38,3 +38,15 @@ app:
       lock-duration-minutes: ${LOGIN_LOCK_DURATION_MINUTES:10}
       history-retention-days: ${LOGIN_HISTORY_RETENTION_DAYS:90}
     trusted-proxies: ${TRUSTED_PROXIES:}
+  backup:
+    directory: ./backups
+
+    postgres:
+      username: gastroai
+      password: gastroai
+      database: gastroai
+
+    mysql:
+      username: gastroai
+      password: gastroai
+      database: gastroai_admin
