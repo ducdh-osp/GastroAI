@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
 
 const { Title } = Typography
@@ -63,6 +63,10 @@ export default function LoginPage() {
             </Button>
           </Form.Item>
         </Form>
+        <div className="flex justify-between text-sm">
+          <Link to="/register">Đăng ký tài khoản</Link>
+          <Link to="/forgot-password">Quên mật khẩu?</Link>
+        </div>
       </Card>
     </div>
   )
