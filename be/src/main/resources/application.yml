@@ -24,3 +24,17 @@ app:
     # CANH BAO: chi la default cho dev local, KHONG dung secret nay khi deploy that.
     secret: ${JWT_SECRET:dev-only-secret-key-change-me-please-32-chars-min}
     expiration-minutes: 60
+  backup:
+    directory: ./backups
+
+    postgres:
+      container: gastroai-postgres
+      username: gastroai
+      password: gastroai
+      database: gastroai
+
+    mysql:
+      container: gastroai-mysql
+      username: gastroai
+      password: gastroai
+      database: gastroai_admin
