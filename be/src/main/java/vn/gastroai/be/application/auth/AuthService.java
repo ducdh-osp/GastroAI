@@ -87,6 +87,20 @@ public class AuthService {
     }
 
     @Transactional("postgresTransactionManager")
+    public void resendVerification(String email) {
+        String normalizedEmail = normalize(email);
+        Patient patient = patients.findByEmail(normalizedEmail).orElse(null);
+        if (patient == null || patient.isEmailVerified()) {
+            return;
+        }
+
+        String rawToken = UUID.randomUUID() + UUID.randomUUID().toString();
+        patient.setVerificationTokenHash(hash(rawToken));
+        patient.setVerificationTokenExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
+        mail.send(normalizedEmail, rawToken);
+    }
+
+    @Transactional("postgresTransactionManager")
     public void requestPasswordReset(String email) {
         Patient patient = patients.findByEmail(normalize(email)).orElse(null);
         if (patient == null) {

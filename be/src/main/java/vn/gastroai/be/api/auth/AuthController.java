@@ -39,6 +39,14 @@ public class AuthController {
         return Map.of("message", "Email da duoc xac thuc");
     }
 
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Map<String, String>> resendVerification(
+            @Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request.email());
+        return ResponseEntity.ok(Map.of(
+                "message", "Neu email ton tai va chua xac thuc, chung toi da gui lai link"));
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request) {
