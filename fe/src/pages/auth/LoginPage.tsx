@@ -10,6 +10,22 @@ interface LoginFormValues {
   password: string
 }
 
+/** Map message ASCII từ BE → tiếng Việt có dấu đầy đủ + dấu chấm cuối câu */
+const BE_MESSAGE_MAP: Record<string, string> = {
+  'Email hoac mat khau khong dung': 'Email hoặc mật khẩu không đúng.',
+  'Email chua duoc xac thuc': 'Email chưa được xác thực. Vui lòng kiểm tra hộp thư.',
+  'Tai khoan bi khoa': 'Tài khoản đã bị khóa tạm thời do đăng nhập sai nhiều lần.',
+}
+
+function formatError(msg: string): string {
+  const mapped = BE_MESSAGE_MAP[msg.trim()]
+  if (mapped) return mapped
+  // Nếu không có trong map, chỉ đảm bảo có dấu chấm cuối
+  return msg.trim().endsWith('.') || msg.trim().endsWith('!') || msg.trim().endsWith('?')
+    ? msg.trim()
+    : msg.trim() + '.'
+}
+
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -23,10 +39,10 @@ export default function LoginPage() {
       await login(values)
       navigate('/')
     } catch (err: unknown) {
-      const message =
+      const raw =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Đăng nhập thất bại, thử lại sau'
-      setError(message)
+        'Đăng nhập thất bại, thử lại sau.'
+      setError(formatError(raw))
     } finally {
       setLoading(false)
     }

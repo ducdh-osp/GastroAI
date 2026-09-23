@@ -110,3 +110,43 @@ export async function resetPassword(payload: { token: string; newPassword: strin
   }
   await apiClient.post('/auth/reset-password', payload)
 }
+
+// --- Login History ---
+
+export interface LoginHistoryItem {
+  id: number
+  attemptedAt: string   // ISO 8601 Instant từ BE
+  outcome: string       // 'SUCCESS' | 'FAILED' | 'BLOCKED'
+  failureReason: string | null
+  ipAddress: string | null
+  userAgent: string | null
+  deviceLabel: string | null
+}
+
+export interface LoginHistoryResponse {
+  items: LoginHistoryItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+const MOCK_LOGIN_HISTORY: LoginHistoryItem[] = [
+  { id: 1, attemptedAt: '2026-09-22T11:42:00Z', outcome: 'SUCCESS', failureReason: null, ipAddress: '192.168.1.12', userAgent: 'Chrome/140', deviceLabel: 'Windows PC' },
+  { id: 2, attemptedAt: '2026-09-22T10:15:00Z', outcome: 'SUCCESS', failureReason: null, ipAddress: '113.161.42.18', userAgent: 'Safari Mobile', deviceLabel: 'iPhone 15' },
+  { id: 3, attemptedAt: '2026-09-21T16:08:00Z', outcome: 'FAILED', failureReason: 'Sai mật khẩu', ipAddress: '45.77.18.203', userAgent: 'Firefox/141', deviceLabel: null },
+  { id: 4, attemptedAt: '2026-09-21T16:07:00Z', outcome: 'BLOCKED', failureReason: 'Quá nhiều lần thất bại', ipAddress: '45.77.18.203', userAgent: 'Firefox/141', deviceLabel: null },
+  { id: 5, attemptedAt: '2026-09-20T02:30:00Z', outcome: 'SUCCESS', failureReason: null, ipAddress: '10.0.0.24', userAgent: 'Chrome/140', deviceLabel: 'MacBook Pro' },
+]
+
+export async function getLoginHistory(page = 0, size = 20): Promise<LoginHistoryResponse> {
+  if (useMockAuth) {
+    await mockDelay()
+    return { items: MOCK_LOGIN_HISTORY, page: 0, size, totalElements: MOCK_LOGIN_HISTORY.length, totalPages: 1 }
+  }
+  const { data } = await apiClient.get<LoginHistoryResponse>('/me/login-history', {
+    params: { page, size },
+  })
+  return data
+}
+

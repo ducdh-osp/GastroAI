@@ -1,122 +1,115 @@
-import { Alert, Button, Card, Space, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Pagination, Space, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { getLoginHistory, type LoginHistoryItem } from '../../api/auth'
 
 const { Title, Text } = Typography
 
-type LoginStatus = 'success' | 'failed' | 'blocked'
-
-interface LoginRecord {
-  key: string
-  time: string
-  device: string
-  browser: string
-  ip: string
-  location: string
-  status: LoginStatus
-}
-
-const mockLoginHistory: LoginRecord[] = [
-  {
-    key: '1',
-    time: '22/09/2026, 18:42',
-    device: 'Windows PC',
-    browser: 'Chrome 140',
-    ip: '192.168.1.12',
-    location: 'Mạng nội bộ',
-    status: 'success',
-  },
-  {
-    key: '2',
-    time: '22/09/2026, 17:15',
-    device: 'iPhone 15',
-    browser: 'Safari Mobile',
-    ip: '113.161.42.18',
-    location: 'Ho Chi Minh City',
-    status: 'success',
-  },
-  {
-    key: '3',
-    time: '21/09/2026, 23:08',
-    device: 'Unknown device',
-    browser: 'Firefox 141',
-    ip: '45.77.18.203',
-    location: 'Unknown location',
-    status: 'failed',
-  },
-  {
-    key: '4',
-    time: '21/09/2026, 23:07',
-    device: 'Unknown device',
-    browser: 'Firefox 141',
-    ip: '45.77.18.203',
-    location: 'Unknown location',
-    status: 'blocked',
-  },
-  {
-    key: '5',
-    time: '20/09/2026, 09:30',
-    device: 'MacBook Pro',
-    browser: 'Chrome 140',
-    ip: '10.0.0.24',
-    location: 'Mạng nội bộ',
-    status: 'success',
-  },
-]
+// Map outcome từ BE → hiển thị
+type LoginStatus = 'SUCCESS' | 'FAILED' | 'BLOCKED'
 
 const statusLabels: Record<LoginStatus, string> = {
-  success: 'Thành công',
-  failed: 'Thất bại',
-  blocked: 'Đã chặn',
+  SUCCESS: 'Thành công',
+  FAILED: 'Thất bại',
+  BLOCKED: 'Đã chặn',
 }
 
 const statusColors: Record<LoginStatus, string> = {
-  success: 'green',
-  failed: 'orange',
-  blocked: 'red',
+  SUCCESS: 'green',
+  FAILED: 'orange',
+  BLOCKED: 'red',
 }
 
-const columns: ColumnsType<LoginRecord> = [
+function formatDateTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+}
+
+const columns: ColumnsType<LoginHistoryItem> = [
   {
     title: 'Thời gian',
-    dataIndex: 'time',
-    key: 'time',
+    dataIndex: 'attemptedAt',
+    key: 'attemptedAt',
     width: 180,
+    render: (val: string) => formatDateTime(val),
   },
   {
     title: 'Thiết bị',
     key: 'device',
     render: (_, record) => (
       <div>
-        <Text strong>{record.device}</Text>
-        <div><Text type="secondary">{record.browser}</Text></div>
+        <Text strong>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
+        <div><Text type="secondary">{record.userAgent ?? '—'}</Text></div>
       </div>
     ),
   },
   {
     title: 'Địa chỉ IP',
-    dataIndex: 'ip',
     key: 'ip',
-    render: (ip: string, record) => (
+    render: (_, record) => (
       <div>
-        <Text code>{ip}</Text>
-        <div><Text type="secondary">{record.location}</Text></div>
+        <Text code>{record.ipAddress ?? '—'}</Text>
       </div>
     ),
   },
   {
+    title: 'Lý do thất bại',
+    dataIndex: 'failureReason',
+    key: 'failureReason',
+    render: (val: string | null) => val ? <Text type="danger">{val}</Text> : <Text type="secondary">—</Text>,
+  },
+  {
     title: 'Trạng thái',
-    dataIndex: 'status',
-    key: 'status',
+    dataIndex: 'outcome',
+    key: 'outcome',
     width: 130,
-    render: (status: LoginStatus) => (
-      <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
-    ),
+    render: (outcome: string) => {
+      const status = outcome as LoginStatus
+      return (
+        <Tag color={statusColors[status] ?? 'default'}>
+          {statusLabels[status] ?? outcome}
+        </Tag>
+      )
+    },
   },
 ]
 
 export default function LoginHistoryPage() {
-  const failedAttempts = mockLoginHistory.filter((record) => record.status !== 'success').length
+  const [items, setItems] = useState<LoginHistoryItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const pageSize = 20
+
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
+    getLoginHistory(page, pageSize)
+      .then((res) => {
+        setItems(res.items)
+        setTotalElements(res.totalElements)
+      })
+      .catch((err: unknown) => {
+        const msg =
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          'Không thể tải lịch sử đăng nhập.'
+        setError(msg)
+      })
+      .finally(() => setLoading(false))
+  }, [page])
+
+  const failedCount = items.filter((r) => r.outcome !== 'SUCCESS').length
 
   return (
     <div className="min-h-svh bg-slate-50 px-4 py-8 sm:px-8">
@@ -133,13 +126,17 @@ export default function LoginHistoryPage() {
           </Space>
         </div>
 
-        {failedAttempts > 0 && (
+        {error && (
+          <Alert type="error" showIcon message={error} className="mb-6" />
+        )}
+
+        {!error && !loading && failedCount > 0 && (
           <Alert
             className="mb-6"
             type="warning"
             showIcon
-            title="Có hoạt động cần kiểm tra"
-            description={`${failedAttempts} lần truy cập gần đây không thành công hoặc đã bị chặn. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
+            message="Có hoạt động cần kiểm tra"
+            description={`${failedCount} lần truy cập gần đây không thành công hoặc đã bị chặn. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
             action={<Button size="small" type="link">Đổi mật khẩu</Button>}
           />
         )}
@@ -148,16 +145,35 @@ export default function LoginHistoryPage() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <Title level={4} className="mb-1!">Các lần đăng nhập gần đây</Title>
-              <Text type="secondary">Dữ liệu minh họa cho nền FE, sẽ kết nối API BE sau.</Text>
+              <Text type="secondary">
+                {loading ? 'Đang tải...' : `Tổng cộng ${totalElements} hoạt động`}
+              </Text>
             </div>
-            <Tag color="blue">5 hoạt động</Tag>
+            {!loading && <Tag color="blue">{totalElements} hoạt động</Tag>}
           </div>
-          <Table<LoginRecord>
-            columns={columns}
-            dataSource={mockLoginHistory}
-            pagination={false}
-            scroll={{ x: 720 }}
-          />
+
+          <Spin spinning={loading}>
+            <Table<LoginHistoryItem>
+              columns={columns}
+              dataSource={items}
+              rowKey="id"
+              pagination={false}
+              scroll={{ x: 720 }}
+              locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
+            />
+          </Spin>
+
+          {totalElements > pageSize && (
+            <div className="mt-4 flex justify-end">
+              <Pagination
+                current={page + 1}
+                pageSize={pageSize}
+                total={totalElements}
+                onChange={(p) => setPage(p - 1)}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
         </Card>
       </main>
     </div>
