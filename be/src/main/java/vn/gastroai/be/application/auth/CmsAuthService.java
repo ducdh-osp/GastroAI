@@ -2,6 +2,8 @@ package vn.gastroai.be.application.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -414,6 +416,16 @@ public class CmsAuthService {
         if (session != null) {
             session.invalidate();
         }
+    }
+
+    /** Lịch sử đăng nhập của Admin đang xem, phân trang theo thời gian gần nhất. */
+    public Page<AdminLoginHistory> adminHistory(Long adminId, Pageable pageable) {
+        return adminLoginHistoryRepository.findByAdminId(adminId, pageable);
+    }
+
+    /** Tương tự adminHistory nhưng cho Bác sĩ — 2 bảng tách riêng nên 2 phương thức riêng. */
+    public Page<DoctorLoginHistory> doctorHistory(Long doctorId, Pageable pageable) {
+        return doctorLoginHistoryRepository.findByDoctorId(doctorId, pageable);
     }
 }
 

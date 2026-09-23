@@ -1,4 +1,5 @@
 import { cmsApiClient } from '../lib/cmsAxios'
+import type { LoginHistoryResponse } from './auth'
 
 export type CmsRole = 'ADMIN' | 'DOCTOR'
 
@@ -8,11 +9,12 @@ export interface CmsLoginRequest {
   role: CmsRole
 }
 
+// Khớp đúng field name JSON mà CmsAuthResult (BE) trả về — KHÔNG phải id/name/role.
 export interface CmsAuthResponse {
-  id: number
+  userId: number
   email: string
-  name: string
-  role: CmsRole
+  fullName: string
+  userType: CmsRole
   lockedUntil?: string | null
 }
 
@@ -29,4 +31,11 @@ export async function cmsLogin(
 
 export async function cmsLogout(): Promise<void> {
   await cmsApiClient.post('/cms/auth/logout')
+}
+
+export async function getCmsLoginHistory(page = 0, size = 20): Promise<LoginHistoryResponse> {
+  const { data } = await cmsApiClient.get<LoginHistoryResponse>('/cms/auth/login-history', {
+    params: { page, size },
+  })
+  return data
 }

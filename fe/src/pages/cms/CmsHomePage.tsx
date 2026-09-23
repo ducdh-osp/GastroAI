@@ -23,7 +23,7 @@ export default function CmsHomePage() {
     <CmsAppShell>
       <Card className="rounded-2xl border-black/5 shadow-sm">
         <Title level={3} className="mb-1!">
-          Chào {user?.name ?? user?.email}{user ? ` (${ROLE_LABEL[user.role]})` : ''} 👋
+          Chào {user?.fullName ?? user?.email}{user ? ` (${ROLE_LABEL[user.userType]})` : ''} 👋
         </Title>
         <Paragraph type="secondary" className="mb-0!">
           Đây là không gian quản trị GastroAI. Các phân hệ quản lý người dùng, kho tri thức và giám sát hệ thống

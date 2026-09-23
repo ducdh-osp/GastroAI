@@ -4,6 +4,7 @@ import {
   DashboardOutlined,
   DownOutlined,
   FileTextOutlined,
+  HistoryOutlined,
   HomeOutlined,
   LogoutOutlined,
   QuestionCircleOutlined,
@@ -28,6 +29,10 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Tổng quan',
     items: [{ key: 'home', label: 'Trang chủ', icon: <HomeOutlined />, to: '/cms' }],
+  },
+  {
+    title: 'Tài khoản',
+    items: [{ key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/cms/login-history' }],
   },
   {
     title: 'Người dùng',
@@ -126,11 +131,11 @@ export function CmsSidebar() {
         >
           <button className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-white/5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-500/20 text-sm font-semibold text-teal-300">
-              {(user?.name ?? user?.email ?? '?').charAt(0).toUpperCase()}
+              {(user?.fullName ?? user?.email ?? '?').charAt(0).toUpperCase()}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-white">{user?.name ?? user?.email}</span>
-              <span className="block text-xs text-white/50">{user ? ROLE_LABEL[user.role] : ''}</span>
+              <span className="block truncate text-sm font-medium text-white">{user?.fullName ?? user?.email}</span>
+              <span className="block text-xs text-white/50">{user ? ROLE_LABEL[user.userType] : ''}</span>
             </span>
             <DownOutlined className="text-xs text-white/40" />
           </button>

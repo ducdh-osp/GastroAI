@@ -2,6 +2,7 @@ import { createBrowserRouter, Outlet } from 'react-router-dom'
 import LoginPage from '../pages/auth/LoginPage'
 import CmsLoginPage from '../pages/cms/CmsLoginPage'
 import CmsHomePage from '../pages/cms/CmsHomePage'
+import CmsLoginHistoryPage from '../pages/cms/CmsLoginHistoryPage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
 import RegisterPage from '../pages/auth/RegisterPage'
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
@@ -61,6 +62,14 @@ export const router = createBrowserRouter([
         element: (
           <CmsProtectedRoute>
             <CmsHomePage />
+          </CmsProtectedRoute>
+        ),
+      },
+      {
+        path: '/cms/login-history',
+        element: (
+          <CmsProtectedRoute>
+            <CmsLoginHistoryPage />
           </CmsProtectedRoute>
         ),
       },

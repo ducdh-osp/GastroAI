@@ -54,8 +54,8 @@ export function AuthShell({
   children,
   footer,
   tone = 'brand',
-  eyebrow = 'Cơ sở dữ liệu công chứng y tế cá nhân',
-  heroTitle = 'Nền tảng chăm sóc tiêu hóa cùng AI',
+  eyebrow = 'Chatbot y tế cá nhân',
+  heroTitle = 'Nền tảng chăm sóc hệ tiêu hóa cùng AI',
   heroDescription = 'Theo dõi triệu chứng, nhật ký ăn uống và trò chuyện với trợ lý AI được huấn luyện từ tài liệu y khoa chuyên ngành tiêu hóa.',
   trustItems,
 }: AuthShellProps) {
