@@ -61,6 +61,7 @@ Cần cài sẵn PostgreSQL + MySQL (không dùng Docker). Sau đó tạo user +
 ```bash
 sudo -u postgres psql -c "CREATE USER gastroai WITH PASSWORD 'gastroai';"
 sudo -u postgres psql -c "CREATE DATABASE gastroai OWNER gastroai;"
+sudo -u postgres psql -d gastroai -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
 sudo mysql -e "CREATE USER 'gastroai'@'%' IDENTIFIED BY 'gastroai'; CREATE DATABASE gastroai_admin; GRANT ALL ON gastroai_admin.* TO 'gastroai'@'%'; FLUSH PRIVILEGES;"
 ```
@@ -71,7 +72,16 @@ mysql -u root -p -e "CREATE USER 'gastroai'@'%' IDENTIFIED BY 'gastroai'; CREATE
 
 psql -U postgres -c "CREATE USER gastroai WITH PASSWORD 'gastroai';"
 psql -U postgres -c "CREATE DATABASE gastroai OWNER gastroai;"
+psql -U postgres -d gastroai -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
+
+> `CREATE EXTENSION vector` (pgvector, dùng cho kho tri thức RAG — GĐ2) **bắt buộc chạy bằng
+> user superuser** (`postgres`), user ứng dụng `gastroai` không có quyền này — Flyway sẽ không
+> tự bật được, phải làm tay bước trên trước khi chạy app, nếu không migration `V7` sẽ lỗi.
+> Nếu báo thiếu `vector.control` file, nghĩa là chưa cài package pgvector cho Postgres —
+> Linux: `sudo apt install postgresql-<version>-pgvector` (xem version bằng
+> `psql --version`); Windows/Mac: cài qua [pgvector releases](https://github.com/pgvector/pgvector#installation)
+> hoặc dùng bản Postgres đã tích hợp sẵn (vd Postgres.app trên Mac).
 Nếu báo `'mysql'`/`'psql' is not recognized` thì do chưa có trong PATH — dùng đường dẫn đầy đủ, ví dụ `"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"` / `"C:\Program Files\PostgreSQL\16\bin\psql.exe"`. Ngại dòng lệnh thì mở **MySQL Workbench** / **pgAdmin** (thường cài kèm sẵn) → mở Query tab → dán câu SQL bên trong dấu `"..."` rồi chạy.
 
 > Dùng `'gastroai'@'%'` (mọi host) thay vì `'gastroai'@'localhost'` — MySQL coi `localhost` và `127.0.0.1` là 2 host khác nhau khi cấp quyền, mà JDBC (app Java) thường connect qua `127.0.0.1` nên dùng đúng `'localhost'` hay bị `Access denied` dù gõ đúng mật khẩu. Nếu đã lỡ tạo user kiểu `'gastroai'@'localhost'` và vẫn bị lỗi này, chạy `DROP USER IF EXISTS 'gastroai'@'localhost';` rồi tạo lại theo lệnh trên.
@@ -86,6 +96,15 @@ POSTGRES_PORT=5433 MYSQL_PORT=3307 mvn spring-boot:run
 # Bình thường thì chỉ cần:
 mvn spring-boot:run
 ```
+
+Từ GĐ2 (RAG) trở đi, cần thêm biến môi trường `GEMINI_API_KEY` (lấy free tại
+[Google AI Studio](https://aistudio.google.com) → icon chìa khóa → Create API key — chọn
+project mặc định, đừng gắn Cloud project có bật billing) trước khi chạy app, ví dụ:
+```bash
+GEMINI_API_KEY=AIza... mvn spring-boot:run
+```
+Thiếu biến này thì các API liên quan chat/tài liệu y khoa sẽ lỗi lúc gọi tới, còn lại (đăng
+nhập, quản lý người dùng...) vẫn chạy bình thường.
 
 Lần đầu chạy app, Flyway sẽ tự tạo bảng + seed dữ liệu test theo các file trong `db/migration/`.
 

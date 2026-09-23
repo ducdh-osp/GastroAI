@@ -68,6 +68,18 @@ app:
     # mới được phép "khai" IP thật qua header X-Forwarded-For (chống giả mạo IP trong log).
     # Để trống nếu chạy local không qua proxy nào.
     trusted-proxies: ${TRUSTED_PROXIES:}
+  # UC0028/029/033 - đọc bởi GeminiProperties (config/GeminiConfig). api-key để trống theo
+  # mặc định — BẮT BUỘC set biến môi trường GEMINI_API_KEY thật trước khi chạy các tính năng
+  # RAG/chat, xem README. embedding-model PHẢI khớp đúng số chiều vector(3072) khai trong
+  # migration V7 — đổi model thì phải tạo migration mới đổi cả số chiều lẫn xóa embedding cũ.
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    base-url: https://generativelanguage.googleapis.com/v1beta
+    embedding-model: gemini-embedding-2
+    chat-model: gemini-2.5-flash
+  # Đọc bởi RagQueryService (@Value) — số chunk truy xuất tối đa cho mỗi câu hỏi (UC0028).
+  rag:
+    top-k: ${RAG_TOP_K:5}
   # UC0057/58 - đọc bởi BackupProperties. directory là nơi lưu file .sql backup trên đĩa cục
   # bộ (không dùng Docker/S3 theo đúng phạm vi đề cương) — BackupScheduler ghi vào, RestoreService
   # đọc ra. username/password/database/port của 2 mục dưới đây trỏ vào ĐÚNG 2 CSDL ở
