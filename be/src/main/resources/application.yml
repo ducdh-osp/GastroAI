@@ -1,6 +1,13 @@
+# Cấu hình chạy local/dev. Toàn bộ giá trị đều override được qua biến môi trường
+# (${TEN_BIEN:default}) — mỗi thành viên trong nhóm có thể chạy Postgres/MySQL ở cổng khác
+# nhau, dùng SMTP khác nhau... mà không cần sửa file này, chỉ cần set env var trước khi chạy.
+
 spring:
   application:
     name: be
+  # SMTP dùng bởi EmailVerificationService (email xác thực tài khoản + đặt lại mật khẩu).
+  # Mặc định trỏ vào MailHog/Mailpit local (localhost:1025, không auth, không TLS) để dev
+  # không cần tài khoản email thật — email "gửi" được xem trực tiếp trong UI của MailHog.
   mail:
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:1025}
@@ -11,11 +18,18 @@ spring:
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
 
 server:
+  # 1 cổng HTTP duy nhất phục vụ cả API Bệnh nhân (JWT, api/v1/auth/**, api/v1/me/**) lẫn
+  # API CMS (session, api/v1/cms/**) — không phải 2 server riêng.
   port: 8080
 
 app:
+  # Kiến trúc đa cơ sở dữ liệu (mục 6 đề cương): Postgres cho Bệnh nhân/chat/RAG, MySQL cho
+  # Admin/Bác sĩ/CMS. Đọc bởi PostgresConfig/MysqlConfig qua @ConfigurationProperties, ánh xạ
+  # đúng prefix "app.datasource.postgres" / "app.datasource.mysql" bên dưới.
   datasource:
     postgres:
+      # Cổng 5432 chỉ là default — máy nào cài Postgres ở cổng khác (vd 5433) thì set
+      # POSTGRES_PORT trước khi chạy, không sửa file này.
       url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/gastroai
       username: ${POSTGRES_USERNAME:gastroai}
       password: ${POSTGRES_PASSWORD:gastroai}
@@ -25,19 +39,40 @@ app:
       username: ${MYSQL_USERNAME:gastroai}
       password: ${MYSQL_PASSWORD:gastroai}
       driver-class-name: com.mysql.cj.jdbc.Driver
+  # Đọc bởi JwtService (@Value trong constructor) — ký/giải mã JWT cho Bệnh nhân.
   jwt:
+    # CHỈ dùng cho dev — bắt buộc override bằng JWT_SECRET thật (>= 32 ký tự ngẫu nhiên) khi
+    # deploy, vì bất kỳ ai đọc được secret này đều tự ký được JWT giả mạo bất kỳ tài khoản nào.
     secret: ${JWT_SECRET:dev-only-secret-key-change-me-please-32-chars-min}
     expiration-minutes: 60
+  # Đọc bởi EmailVerificationService. 2 base-url trỏ tới route thật bên FE (Vite dev mặc định
+  # cổng 5173) — email gửi ra chỉ chứa link dạng "<base-url>?token=...", FE tự đọc token từ
+  # query string ở trang VerifyEmailPage/ResetPasswordPage.
   mail:
     from: ${MAIL_FROM:no-reply@gastroai.vn}
     verification-base-url: ${VERIFICATION_BASE_URL:http://localhost:5173/verify-email}
     reset-password-base-url: ${RESET_PASSWORD_BASE_URL:http://localhost:5173/reset-password}
+  # Đọc bởi LoginSecurityPolicy — dùng chung cho cả AuthService (Bệnh nhân) lẫn CmsAuthService
+  # (Admin/Bác sĩ), xem UC0008.
   security:
     login:
+      # Số lần sai mật khẩu liên tiếp trước khi khóa tài khoản tạm thời.
       max-failed-attempts: ${LOGIN_MAX_FAILED_ATTEMPTS:5}
+      # Khóa bao nhiêu phút sau khi chạm ngưỡng trên.
       lock-duration-minutes: ${LOGIN_LOCK_DURATION_MINUTES:10}
+      # LoginHistoryCleanupScheduler dọn log đăng nhập cũ hơn số ngày này (chỉ áp dụng cho
+      # Bệnh nhân hiện tại — Admin/Bác sĩ chưa có job dọn tương ứng, xem ghi chú trong
+      # AdminLoginHistoryRepository).
       history-retention-days: ${LOGIN_HISTORY_RETENTION_DAYS:90}
+    # Đọc bởi ClientRequestInfoResolver — danh sách IP reverse proxy tin cậy, CHỈ các IP này
+    # mới được phép "khai" IP thật qua header X-Forwarded-For (chống giả mạo IP trong log).
+    # Để trống nếu chạy local không qua proxy nào.
     trusted-proxies: ${TRUSTED_PROXIES:}
+  # UC0057/58 - đọc bởi BackupProperties. directory là nơi lưu file .sql backup trên đĩa cục
+  # bộ (không dùng Docker/S3 theo đúng phạm vi đề cương) — BackupScheduler ghi vào, RestoreService
+  # đọc ra. username/password/database/port của 2 mục dưới đây trỏ vào ĐÚNG 2 CSDL ở
+  # app.datasource phía trên, khai riêng vì BackupProperties là record độc lập, không tái
+  # dùng trực tiếp DataSourceProperties.
   backup:
     directory: ./backups
 
@@ -51,6 +86,10 @@ app:
       password: gastroai
       database: gastroai_admin
       port: ${MYSQL_PORT:3306}
+
+# Ghi log ra file ./logs/gastroai.log (ngoài console mặc định) — chủ yếu để BackupScheduler/
+# RestoreService (chạy nền, không ai theo dõi console lúc 2-3h sáng) có nơi lưu lại lỗi thật
+# sự. Thư mục be/logs/ đã nằm trong .gitignore + có CI guard chặn nếu lỡ commit nhầm file log.
 logging:
   file:
-    name: ./logs/gastroai.log 
+    name: ./logs/gastroai.log
