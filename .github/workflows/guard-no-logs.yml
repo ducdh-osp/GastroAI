@@ -3,24 +3,22 @@ name: Guard - block log/binary artifacts
 on:
   pull_request:
     branches: [dev, master]
+  push:
+    branches: [dev, master]
 
 jobs:
   check-forbidden-files:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Fail if PR adds log/build artifacts
+      - name: Fail if repo contains log/build artifacts
         run: |
-          git fetch origin ${{ github.base_ref }}
-          CHANGED=$(git diff --name-only --diff-filter=A origin/${{ github.base_ref }}...HEAD)
-          BAD=$(echo "$CHANGED" | grep -E '\.log$|\.log\.[0-9-]+.*\.gz$|^be/logs/|^be/target/|^fe/node_modules/|^fe/dist/' || true)
+          BAD=$(git ls-files | grep -E '\.log$|\.log\.[0-9-]+.*\.gz$|^be/logs/|^be/target/|^fe/node_modules/|^fe/dist/' || true)
           if [ -n "$BAD" ]; then
             echo "Các file sau không nên được commit (log/build artifact):"
             echo "$BAD"
-            echo "Xoá khỏi PR: git rm --cached <file>, kiểm tra .gitignore."
+            echo "Xoá khỏi repo: git rm --cached <file>, kiểm tra .gitignore."
             exit 1
           fi
           echo "OK - khong co file log/artifact la"
