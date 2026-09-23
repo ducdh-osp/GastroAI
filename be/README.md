@@ -53,7 +53,32 @@ Datasource/JPA/Flyway auto-config mặc định của Spring Boot bị tắt tro
 
 ## Chạy local
 
-Cần cả Postgres (db `gastroai`) và MySQL (db `gastroai_admin`) chạy sẵn, user/pass `gastroai`/`gastroai` cho cả 2.
+### Setup lần đầu (mỗi máy làm 1 lần)
+
+Cần cài sẵn PostgreSQL + MySQL (không dùng Docker). Sau đó tạo user + database — **clone code không tự tạo cái này**, ai cũng phải tự chạy 1 lần trên máy mình, không thì app báo lỗi `Access denied for user 'gastroai'@'localhost'`.
+
+**Linux/Mac** (Terminal):
+```bash
+sudo -u postgres psql -c "CREATE USER gastroai WITH PASSWORD 'gastroai';"
+sudo -u postgres psql -c "CREATE DATABASE gastroai OWNER gastroai;"
+
+sudo mysql -e "CREATE USER 'gastroai'@'%' IDENTIFIED BY 'gastroai'; CREATE DATABASE gastroai_admin; GRANT ALL ON gastroai_admin.* TO 'gastroai'@'%'; FLUSH PRIVILEGES;"
+```
+
+**Windows** (Command Prompt / PowerShell — không có `sudo`, sẽ hỏi mật khẩu user `root`/`postgres` đặt lúc cài):
+```
+mysql -u root -p -e "CREATE USER 'gastroai'@'%' IDENTIFIED BY 'gastroai'; CREATE DATABASE gastroai_admin; GRANT ALL ON gastroai_admin.* TO 'gastroai'@'%'; FLUSH PRIVILEGES;"
+
+psql -U postgres -c "CREATE USER gastroai WITH PASSWORD 'gastroai';"
+psql -U postgres -c "CREATE DATABASE gastroai OWNER gastroai;"
+```
+Nếu báo `'mysql'`/`'psql' is not recognized` thì do chưa có trong PATH — dùng đường dẫn đầy đủ, ví dụ `"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"` / `"C:\Program Files\PostgreSQL\16\bin\psql.exe"`. Ngại dòng lệnh thì mở **MySQL Workbench** / **pgAdmin** (thường cài kèm sẵn) → mở Query tab → dán câu SQL bên trong dấu `"..."` rồi chạy.
+
+> Dùng `'gastroai'@'%'` (mọi host) thay vì `'gastroai'@'localhost'` — MySQL coi `localhost` và `127.0.0.1` là 2 host khác nhau khi cấp quyền, mà JDBC (app Java) thường connect qua `127.0.0.1` nên dùng đúng `'localhost'` hay bị `Access denied` dù gõ đúng mật khẩu. Nếu đã lỡ tạo user kiểu `'gastroai'@'localhost'` và vẫn bị lỗi này, chạy `DROP USER IF EXISTS 'gastroai'@'localhost';` rồi tạo lại theo lệnh trên.
+
+Nếu máy đã có Postgres/MySQL chạy port khác 5432/3306 (vd trùng port với service khác đang chạy), đổi port lúc kết nối cho khớp, rồi dùng `POSTGRES_PORT`/`MYSQL_PORT` khi chạy app (xem dưới).
+
+### Chạy app
 
 ```bash
 # Nếu Postgres/MySQL máy m không ở cổng mặc định (vd bị app khác chiếm cổng):
@@ -61,5 +86,7 @@ POSTGRES_PORT=5433 MYSQL_PORT=3307 mvn spring-boot:run
 # Bình thường thì chỉ cần:
 mvn spring-boot:run
 ```
+
+Lần đầu chạy app, Flyway sẽ tự tạo bảng + seed dữ liệu test theo các file trong `db/migration/`.
 
 Tài khoản test có sẵn (seed ở migration `V2__seed_test_patient.sql`): `test@gastroai.vn` / `Passw0rd!`.

@@ -18,10 +18,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Datasource nội bộ — quản trị (Admin/CMS), RBAC, audit log (mục 6 đề cương).
- * Song song với config/PostgresConfig. Hiện domain.admin chưa có entity nào
- * (chưa code UC nào bên Admin) nên persistence unit này tạm rỗng — chỉ khởi
- * tạo kết nối + chạy Flyway để sẵn sàng cho lúc thêm entity/migration MySQL.
+ * Datasource nội bộ — quản trị (Admin/Bác sĩ/CMS), RBAC, audit log (mục 6 đề cương).
+ * Song song với config/PostgresConfig (dữ liệu Bệnh nhân). Domain.admin (Admin, Doctor,
+ * AdminLoginHistory, DoctorLoginHistory) chỉ scan/lưu ở đây, hoàn toàn tách biệt khỏi
+ * PostgresConfig — 2 EntityManagerFactory/TransactionManager/Flyway độc lập, không JOIN
+ * xuyên CSDL được ở tầng JPA.
  */
 @Configuration
 @EnableJpaRepositories(

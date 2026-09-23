@@ -1,0 +1,76 @@
+import { Alert, Button, Card, Form, Input, Typography } from 'antd'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { changePassword } from '../../api/auth'
+import { AppShell } from '../../components/layout/AppShell'
+import { useAuth } from '../../stores/authStore'
+
+const { Title, Text } = Typography
+
+interface ChangePasswordFormValues {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}
+
+export default function ChangePasswordPage() {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function onFinish(values: ChangePasswordFormValues) {
+    setError(null)
+    setSuccess(null)
+    if (values.newPassword !== values.confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await changePassword({ currentPassword: values.currentPassword, newPassword: values.newPassword })
+      // BE tăng tokenVersion khi đổi mật khẩu nên JWT hiện tại hết hiệu lực ngay — đăng xuất
+      // luôn thay vì để lại trạng thái "tưởng còn đăng nhập" nhưng gọi API nào cũng lỗi.
+      setSuccess('Đổi mật khẩu thành công. Vui lòng đăng nhập lại...')
+      setTimeout(() => {
+        logout()
+        navigate('/login')
+      }, 1500)
+    } catch (err: unknown) {
+      setError(
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          (err instanceof Error ? err.message : 'Không thể đổi mật khẩu.'),
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-md">
+        <Card className="rounded-2xl border-black/5 shadow-sm">
+          <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
+          <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
+          {error && <Alert type="error" message={error} showIcon className="my-4" />}
+          {success && <Alert type="success" message={success} showIcon className="my-4" />}
+          <Form<ChangePasswordFormValues> layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4">
+            <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: 'Nhập mật khẩu hiện tại' }]}>
+              <Input.Password autoComplete="current-password" />
+            </Form.Item>
+            <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+            <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu mới' }]}>
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" block loading={loading}>Đổi mật khẩu</Button>
+          </Form>
+          <div className="text-center mt-4"><Link to="/" className="text-teal-700 hover:text-teal-800">Quay lại trang chủ</Link></div>
+        </Card>
+      </div>
+    </AppShell>
+  )
+}
