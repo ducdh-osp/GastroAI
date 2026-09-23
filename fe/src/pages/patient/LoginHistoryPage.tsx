@@ -1,8 +1,9 @@
-import { Alert, Button, Card, Pagination, Space, Spin, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Pagination, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getLoginHistory, type LoginHistoryItem } from '../../api/auth'
+import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
 
@@ -112,70 +113,62 @@ export default function LoginHistoryPage() {
   const failedCount = items.filter((r) => r.outcome !== 'SUCCESS').length
 
   return (
-    <div className="min-h-svh bg-slate-50 px-4 py-8 sm:px-8">
-      <main className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <AppShell>
+      <div className="mb-6">
+        <Text type="secondary">Bảo mật tài khoản</Text>
+        <Title level={2} className="mb-1! mt-1!">Lịch sử đăng nhập</Title>
+        <Text type="secondary">Theo dõi các lần truy cập gần đây để phát hiện hoạt động bất thường.</Text>
+      </div>
+
+      {error && (
+        <Alert type="error" showIcon message={error} className="mb-6" />
+      )}
+
+      {!error && !loading && failedCount > 0 && (
+        <Alert
+          className="mb-6"
+          type="warning"
+          showIcon
+          message="Có hoạt động cần kiểm tra"
+          description={`${failedCount} lần truy cập gần đây không thành công hoặc đã bị chặn. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
+          action={<Button size="small" type="link"><Link to="/change-password">Đổi mật khẩu</Link></Button>}
+        />
+      )}
+
+      <Card className="rounded-2xl border-black/5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
           <div>
-            <Text type="secondary">Bảo mật tài khoản</Text>
-            <Title level={2} className="mb-1! mt-1!">Lịch sử đăng nhập</Title>
-            <Text type="secondary">Theo dõi các lần truy cập gần đây để phát hiện hoạt động bất thường.</Text>
+            <Title level={4} className="mb-1!">Các lần đăng nhập gần đây</Title>
+            <Text type="secondary">
+              {loading ? 'Đang tải...' : `Tổng cộng ${totalElements} hoạt động`}
+            </Text>
           </div>
-          <Space>
-            <Button><Link to="/">Trang chủ</Link></Button>
-            <Button type="primary"><Link className="text-white!" to="/login">Đăng nhập lại</Link></Button>
-          </Space>
+          {!loading && <Tag color="blue">{totalElements} hoạt động</Tag>}
         </div>
 
-        {error && (
-          <Alert type="error" showIcon message={error} className="mb-6" />
-        )}
-
-        {!error && !loading && failedCount > 0 && (
-          <Alert
-            className="mb-6"
-            type="warning"
-            showIcon
-            message="Có hoạt động cần kiểm tra"
-            description={`${failedCount} lần truy cập gần đây không thành công hoặc đã bị chặn. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
-            action={<Button size="small" type="link"><Link to="/change-password">Đổi mật khẩu</Link></Button>}
+        <Spin spinning={loading}>
+          <Table<LoginHistoryItem>
+            columns={columns}
+            dataSource={items}
+            rowKey="id"
+            pagination={false}
+            scroll={{ x: 720 }}
+            locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
           />
-        )}
+        </Spin>
 
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <Title level={4} className="mb-1!">Các lần đăng nhập gần đây</Title>
-              <Text type="secondary">
-                {loading ? 'Đang tải...' : `Tổng cộng ${totalElements} hoạt động`}
-              </Text>
-            </div>
-            {!loading && <Tag color="blue">{totalElements} hoạt động</Tag>}
-          </div>
-
-          <Spin spinning={loading}>
-            <Table<LoginHistoryItem>
-              columns={columns}
-              dataSource={items}
-              rowKey="id"
-              pagination={false}
-              scroll={{ x: 720 }}
-              locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
+        {totalElements > pageSize && (
+          <div className="mt-4 flex justify-end">
+            <Pagination
+              current={page + 1}
+              pageSize={pageSize}
+              total={totalElements}
+              onChange={(p) => setPage(p - 1)}
+              showSizeChanger={false}
             />
-          </Spin>
-
-          {totalElements > pageSize && (
-            <div className="mt-4 flex justify-end">
-              <Pagination
-                current={page + 1}
-                pageSize={pageSize}
-                total={totalElements}
-                onChange={(p) => setPage(p - 1)}
-                showSizeChanger={false}
-              />
-            </div>
-          )}
-        </Card>
-      </main>
-    </div>
+          </div>
+        )}
+      </Card>
+    </AppShell>
   )
 }

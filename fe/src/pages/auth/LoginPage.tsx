@@ -1,14 +1,20 @@
-import { Alert, Button, Card, Form, Input, Typography } from 'antd'
+import { HeartOutlined, ReadOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
+import { Alert, Button, Form, Input } from 'antd'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { AuthShell } from '../../components/auth/AuthShell'
 import { useAuth } from '../../stores/authStore'
-
-const { Title } = Typography
 
 interface LoginFormValues {
   email: string
   password: string
 }
+
+const TRUST_ITEMS = [
+  { icon: SafetyCertificateOutlined, text: 'Dữ liệu sức khỏe được mã hóa và bảo mật' },
+  { icon: ReadOutlined, text: 'Trả lời dựa trên tài liệu y khoa có nguồn gốc rõ ràng' },
+  { icon: HeartOutlined, text: 'Luôn nhắc bạn gặp bác sĩ khi có dấu hiệu bất thường' },
+]
 
 /** Map message ASCII từ BE → tiếng Việt có dấu đầy đủ + dấu chấm cuối câu */
 const BE_MESSAGE_MAP: Record<string, string> = {
@@ -49,41 +55,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-svh flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-sm">
-        <Title level={3} className="text-center!">
-          Đăng nhập Gastro AI
-        </Title>
-        {error && <Alert type="error" message={error} showIcon className="mb-4" />}
-        <Form<LoginFormValues> layout="vertical" onFinish={onFinish} disabled={loading}>
-          <Form.Item
-            label="Email"
-            name="email"
-            rules={[
-              { required: true, message: 'Nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
-            ]}
-          >
-            <Input placeholder="ban@example.com" />
-          </Form.Item>
-          <Form.Item
-            label="Mật khẩu"
-            name="password"
-            rules={[{ required: true, message: 'Nhập mật khẩu' }]}
-          >
-            <Input.Password />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
-              Đăng nhập
-            </Button>
-          </Form.Item>
-        </Form>
-        <div className="flex justify-between text-sm">
-          <Link to="/register">Đăng ký tài khoản</Link>
-          <Link to="/forgot-password">Quên mật khẩu?</Link>
-        </div>
-      </Card>
-    </div>
+    <AuthShell
+      title="Đăng nhập tài khoản"
+      subtitle="Tiếp tục hành trình chăm sóc tiêu hóa cùng GastroAI."
+      trustItems={TRUST_ITEMS}
+    >
+      {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+      <Form<LoginFormValues> layout="vertical" onFinish={onFinish} disabled={loading}>
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[
+            { required: true, message: 'Nhập email' },
+            { type: 'email', message: 'Email không hợp lệ' },
+          ]}
+        >
+          <Input placeholder="ban@example.com" />
+        </Form.Item>
+        <Form.Item
+          label="Mật khẩu"
+          name="password"
+          rules={[{ required: true, message: 'Nhập mật khẩu' }]}
+        >
+          <Input.Password />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit" block loading={loading}>
+            Đăng nhập
+          </Button>
+        </Form.Item>
+      </Form>
+      <div className="flex justify-between text-sm">
+        <Link to="/register" className="text-teal-700 hover:text-teal-800">Đăng ký tài khoản</Link>
+        <Link to="/forgot-password" className="text-teal-700 hover:text-teal-800">Quên mật khẩu?</Link>
+      </div>
+    </AuthShell>
   )
 }

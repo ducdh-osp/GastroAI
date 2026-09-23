@@ -1,24 +1,52 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import type { CmsAuthResponse } from '../api/cmsAuth'
+import { cmsLogout, type CmsAuthResponse } from '../api/cmsAuth'
 
 interface CmsAuthState {
   user: CmsAuthResponse | null
   isAuthenticated: boolean
   setUser: (user: CmsAuthResponse) => void
   clearUser: () => void
+  logout: () => void
 }
+
+const STORAGE_KEY = 'gastroai.cms.auth'
 
 const CmsAuthContext = createContext<CmsAuthState | null>(null)
 
+function loadStored(): CmsAuthResponse | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as CmsAuthResponse) : null
+  } catch {
+    return null
+  }
+}
+
 export function CmsAuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useState<CmsAuthResponse | null>(null)
+  const [user, setUserState] = useState<CmsAuthResponse | null>(loadStored)
 
   function setUser(user: CmsAuthResponse) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+    } catch {
+      // Trình duyệt chặn storage (chế độ riêng tư...) — bỏ qua, chỉ giữ trong bộ nhớ.
+    }
     setUserState(user)
   }
 
   function clearUser() {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // ignore
+    }
     setUserState(null)
+  }
+
+  function logout() {
+    // Gọi BE để huỷ session (cookie) — không chặn việc xoá state phía client dù request lỗi.
+    void cmsLogout().catch(() => {})
+    clearUser()
   }
 
   return (
@@ -28,6 +56,7 @@ export function CmsAuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: user !== null,
         setUser,
         clearUser,
+        logout,
       }}
     >
       {children}
@@ -44,4 +73,3 @@ export function useCmsAuth() {
 
   return ctx
 }
-

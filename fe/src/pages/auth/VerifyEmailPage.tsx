@@ -1,9 +1,10 @@
-import { Alert, Button, Card, Spin, Typography } from 'antd'
+import { Alert, Button, Spin, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { verifyEmail } from '../../api/auth'
+import { AuthShell } from '../../components/auth/AuthShell'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
@@ -28,9 +29,13 @@ export default function VerifyEmailPage() {
   }, [token])
 
   return (
-    <div className="min-h-svh flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md text-center">
-        <Title level={3}>Xác thực email</Title>
+    <AuthShell
+      title="Xác thực email"
+      eyebrow="Bước cuối cùng"
+      heroTitle="Gần hoàn tất rồi"
+      heroDescription="Xác thực email để kích hoạt tài khoản và bắt đầu sử dụng đầy đủ tính năng của GastroAI."
+    >
+      <div className="text-center">
         {state === 'loading' && <Spin />}
         {state !== 'loading' && (
           <Alert type={state === 'success' ? 'success' : 'error'} message={message} showIcon />
@@ -39,9 +44,12 @@ export default function VerifyEmailPage() {
           <Button type="primary" className="mt-4" href="/login">Đến trang đăng nhập</Button>
         )}
         {state === 'error' && (
-          <div className="mt-4"><Text type="secondary">Bạn có thể </Text><Link to="/register">đăng ký lại</Link></div>
+          <div className="mt-4">
+            <Text type="secondary">Bạn có thể </Text>
+            <Link to="/register" className="text-teal-700 hover:text-teal-800">đăng ký lại</Link>
+          </div>
         )}
-      </Card>
-    </div>
+      </div>
+    </AuthShell>
   )
 }

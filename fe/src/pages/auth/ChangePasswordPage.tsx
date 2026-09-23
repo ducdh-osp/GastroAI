@@ -2,6 +2,7 @@ import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { changePassword } from '../../api/auth'
+import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
 
@@ -39,26 +40,28 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="min-h-svh flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <Title level={3} className="text-center!">Đổi mật khẩu</Title>
-        <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
-        {error && <Alert type="error" message={error} showIcon className="my-4" />}
-        {success && <Alert type="success" message={success} showIcon className="my-4" />}
-        <Form<ChangePasswordFormValues> layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4">
-          <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: 'Nhập mật khẩu hiện tại' }]}>
-            <Input.Password autoComplete="current-password" />
-          </Form.Item>
-          <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
-          <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu mới' }]}>
-            <Input.Password autoComplete="new-password" />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" block loading={loading}>Đổi mật khẩu</Button>
-        </Form>
-        <div className="text-center mt-4"><Link to="/">Quay lại trang chủ</Link></div>
-      </Card>
-    </div>
+    <AppShell>
+      <div className="mx-auto max-w-md">
+        <Card className="rounded-2xl border-black/5 shadow-sm">
+          <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
+          <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
+          {error && <Alert type="error" message={error} showIcon className="my-4" />}
+          {success && <Alert type="success" message={success} showIcon className="my-4" />}
+          <Form<ChangePasswordFormValues> layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4">
+            <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: 'Nhập mật khẩu hiện tại' }]}>
+              <Input.Password autoComplete="current-password" />
+            </Form.Item>
+            <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+            <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu mới' }]}>
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" block loading={loading}>Đổi mật khẩu</Button>
+          </Form>
+          <div className="text-center mt-4"><Link to="/" className="text-teal-700 hover:text-teal-800">Quay lại trang chủ</Link></div>
+        </Card>
+      </div>
+    </AppShell>
   )
 }

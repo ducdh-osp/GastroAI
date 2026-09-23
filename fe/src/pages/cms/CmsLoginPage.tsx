@@ -1,21 +1,10 @@
-import {
-  Alert,
-  Button,
-  Card,
-  Form,
-  Input,
-  Radio,
-  Typography,
-} from 'antd'
+import { AuditOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
+import { Alert, Button, Form, Input, Radio } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  cmsLogin,
-  type CmsRole,
-} from '../../api/cmsAuth'
+import { cmsLogin, type CmsRole } from '../../api/cmsAuth'
+import { AuthShell } from '../../components/auth/AuthShell'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
-
-const { Title, Text } = Typography
 
 interface LoginFormValues {
   email: string
@@ -27,6 +16,12 @@ interface LoginErrorResponse {
   message?: string
   lockedUntil?: string
 }
+
+const TRUST_ITEMS = [
+  { icon: TeamOutlined, text: 'Quản lý tài khoản và phân quyền người dùng' },
+  { icon: AuditOutlined, text: 'Nhật ký thao tác minh bạch, có thể truy vết' },
+  { icon: SafetyOutlined, text: 'Truy cập được giám sát theo tiêu chuẩn bảo mật' },
+]
 
 export default function CmsLoginPage() {
   const { setUser } = useCmsAuth()
@@ -78,93 +73,88 @@ export default function CmsLoginPage() {
   }
 
   return (
-    <div className="min-h-svh flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-sm">
-        <Title level={3} className="text-center! mb-1!">
-          Đăng nhập Gastro AI
-        </Title>
+    <AuthShell
+      tone="admin"
+      title="Cổng quản trị"
+      subtitle="Dành cho Admin và Bác sĩ."
+      eyebrow="GastroAI · CMS"
+      heroTitle="Không gian quản trị GastroAI"
+      heroDescription="Quản lý người dùng, kho tài liệu y khoa và theo dõi hoạt động hệ thống ở một nơi duy nhất."
+      trustItems={TRUST_ITEMS}
+    >
+      {error && (
+        <Alert
+          type={lockedUntil ? 'warning' : 'error'}
+          message={error}
+          description={
+            lockedUntil
+              ? `Tài khoản bị khóa đến ${formatLockedUntil(lockedUntil)}.`
+              : undefined
+          }
+          showIcon
+          className="mb-4"
+        />
+      )}
 
-        <div className="text-center mb-6">
-          <Text type="secondary">
-            Cổng quản trị dành cho Admin và Bác sĩ
-          </Text>
-        </div>
-
-        {error && (
-          <Alert
-            type={lockedUntil ? 'warning' : 'error'}
-            message={error}
-            description={
-              lockedUntil
-                ? `Tài khoản bị khóa đến ${formatLockedUntil(lockedUntil)}.`
-                : undefined
-            }
-            showIcon
-            className="mb-4"
-          />
-        )}
-
-        <Form<LoginFormValues>
-          layout="vertical"
-          onFinish={onFinish}
-          disabled={loading}
-          initialValues={{
-            role: 'ADMIN',
-          }}
+      <Form<LoginFormValues>
+        layout="vertical"
+        onFinish={onFinish}
+        disabled={loading}
+        initialValues={{
+          role: 'ADMIN',
+        }}
+      >
+        <Form.Item
+          label="Vai trò"
+          name="role"
+          rules={[
+            {
+              required: true,
+              message: 'Chọn vai trò',
+            },
+          ]}
         >
-          <Form.Item
-            label="Vai trò"
-            name="role"
-            rules={[
-              {
-                required: true,
-                message: 'Chọn vai trò',
-              },
-            ]}
-          >
-            <Radio.Group>
-              <Radio value="ADMIN">Admin</Radio>
-              <Radio value="DOCTOR">Bác sĩ</Radio>
-            </Radio.Group>
-          </Form.Item>
+          <Radio.Group>
+            <Radio value="ADMIN">Admin</Radio>
+            <Radio value="DOCTOR">Bác sĩ</Radio>
+          </Radio.Group>
+        </Form.Item>
 
-          <Form.Item
-            label="Email"
-            name="email"
-            rules={[
-              { required: true, message: 'Nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
-            ]}
-          >
-            <Input placeholder="admin@gastroai.vn" />
-          </Form.Item>
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[
+            { required: true, message: 'Nhập email' },
+            { type: 'email', message: 'Email không hợp lệ' },
+          ]}
+        >
+          <Input placeholder="admin@gastroai.vn" />
+        </Form.Item>
 
-          <Form.Item
-            label="Mật khẩu"
-            name="password"
-            rules={[
-              {
-                required: true,
-                message: 'Nhập mật khẩu',
-              },
-            ]}
-          >
-            <Input.Password />
-          </Form.Item>
+        <Form.Item
+          label="Mật khẩu"
+          name="password"
+          rules={[
+            {
+              required: true,
+              message: 'Nhập mật khẩu',
+            },
+          ]}
+        >
+          <Input.Password />
+        </Form.Item>
 
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              block
-              loading={loading}
-            >
-              Đăng nhập
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
-    </div>
+        <Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            loading={loading}
+          >
+            Đăng nhập
+          </Button>
+        </Form.Item>
+      </Form>
+    </AuthShell>
   )
 }
-

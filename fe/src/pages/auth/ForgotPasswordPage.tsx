@@ -1,9 +1,8 @@
-import { Alert, Button, Card, Form, Input, Typography } from 'antd'
+import { Alert, Button, Form, Input } from 'antd'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { requestPasswordReset } from '../../api/auth'
-
-const { Title, Text } = Typography
+import { AuthShell } from '../../components/auth/AuthShell'
 
 export default function ForgotPasswordPage() {
   const [message, setMessage] = useState<string | null>(null)
@@ -28,20 +27,22 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-svh flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <Title level={3} className="text-center!">Quên mật khẩu</Title>
-        <Text type="secondary">Nhập email để nhận liên kết đặt lại mật khẩu.</Text>
-        {error && <Alert type="error" message={error} showIcon className="my-4" />}
-        {message && <Alert type="success" message={message} showIcon className="my-4" />}
-        <Form layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4">
-          <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}>
-            <Input placeholder="ban@example.com" />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" block loading={loading}>Gửi liên kết đặt lại</Button>
-        </Form>
-        <div className="text-center mt-4"><Link to="/login">Quay lại đăng nhập</Link></div>
-      </Card>
-    </div>
+    <AuthShell
+      title="Quên mật khẩu"
+      subtitle="Nhập email để nhận liên kết đặt lại mật khẩu."
+      eyebrow="Khôi phục truy cập"
+      heroTitle="Lấy lại quyền truy cập tài khoản"
+      heroDescription="Chúng tôi sẽ gửi một liên kết đặt lại mật khẩu tới email bạn đã đăng ký, có hiệu lực trong 30 phút."
+    >
+      {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+      {message && <Alert type="success" message={message} showIcon className="mb-4" />}
+      <Form layout="vertical" onFinish={onFinish} disabled={loading}>
+        <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}>
+          <Input placeholder="ban@example.com" />
+        </Form.Item>
+        <Button type="primary" htmlType="submit" block loading={loading}>Gửi liên kết đặt lại</Button>
+      </Form>
+      <div className="text-center mt-4"><Link to="/login" className="text-teal-700 hover:text-teal-800">Quay lại đăng nhập</Link></div>
+    </AuthShell>
   )
 }

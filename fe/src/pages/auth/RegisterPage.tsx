@@ -1,9 +1,10 @@
-import { Alert, Button, Card, Form, Input, Typography } from 'antd'
+import { Alert, Button, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { register as registerApi } from '../../api/auth'
+import { AuthShell } from '../../components/auth/AuthShell'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 interface RegisterFormValues {
   fullName: string
@@ -42,29 +43,31 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-svh flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <Title level={3} className="text-center!">Đăng ký tài khoản</Title>
-        <Text type="secondary">Sau khi đăng ký, hãy mở email để xác thực tài khoản.</Text>
-        {error && <Alert type="error" message={error} showIcon className="my-4" />}
-        {success && <Alert type="success" message={success} showIcon className="my-4" />}
-        <Form<RegisterFormValues> layout="vertical" onFinish={onFinish} disabled={loading}>
-          <Form.Item label="Họ và tên" name="fullName" rules={[{ required: true, message: 'Nhập họ và tên' }]}>
-            <Input placeholder="Nguyễn Văn A" />
-          </Form.Item>
-          <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}>
-            <Input placeholder="ban@example.com" />
-          </Form.Item>
-          <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, message: 'Nhập mật khẩu' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
-            <Input.Password />
-          </Form.Item>
-          <Form.Item label="Xác nhận mật khẩu" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu' }]}>
-            <Input.Password />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" block loading={loading}>Đăng ký</Button>
-        </Form>
-        <div className="text-center mt-4"><Text type="secondary">Đã có tài khoản? </Text><Link to="/login">Đăng nhập</Link></div>
-      </Card>
-    </div>
+    <AuthShell
+      title="Đăng ký tài khoản"
+      subtitle="Sau khi đăng ký, hãy mở email để xác thực tài khoản."
+      eyebrow="Bắt đầu miễn phí"
+      heroTitle="Tham gia GastroAI ngay hôm nay"
+      heroDescription="Tạo tài khoản để bắt đầu ghi nhật ký sức khỏe tiêu hóa và trò chuyện cùng trợ lý AI."
+    >
+      {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+      {success && <Alert type="success" message={success} showIcon className="mb-4" />}
+      <Form<RegisterFormValues> layout="vertical" onFinish={onFinish} disabled={loading}>
+        <Form.Item label="Họ và tên" name="fullName" rules={[{ required: true, message: 'Nhập họ và tên' }]}>
+          <Input placeholder="Nguyễn Văn A" />
+        </Form.Item>
+        <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}>
+          <Input placeholder="ban@example.com" />
+        </Form.Item>
+        <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, message: 'Nhập mật khẩu' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
+          <Input.Password />
+        </Form.Item>
+        <Form.Item label="Xác nhận mật khẩu" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu' }]}>
+          <Input.Password />
+        </Form.Item>
+        <Button type="primary" htmlType="submit" block loading={loading}>Đăng ký</Button>
+      </Form>
+      <div className="text-center mt-4"><Text type="secondary">Đã có tài khoản? </Text><Link to="/login" className="text-teal-700 hover:text-teal-800">Đăng nhập</Link></div>
+    </AuthShell>
   )
 }

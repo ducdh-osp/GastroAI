@@ -1,6 +1,7 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Outlet } from 'react-router-dom'
 import LoginPage from '../pages/auth/LoginPage'
 import CmsLoginPage from '../pages/cms/CmsLoginPage'
+import CmsHomePage from '../pages/cms/CmsHomePage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
 import RegisterPage from '../pages/auth/RegisterPage'
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
@@ -9,6 +10,7 @@ import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
 import { ProtectedRoute } from './ProtectedRoute'
+import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
 
 export const router = createBrowserRouter([
@@ -43,13 +45,25 @@ export const router = createBrowserRouter([
     ),
   },
 
-  // CMS - Admin / Doctor
+  // CMS - Admin / Doctor. Dùng 1 CmsAuthProvider chung cho cả nhánh /cms/* — nếu mỗi route
+  // tự bọc provider riêng, state đăng nhập ở /cms/login sẽ mất ngay khi điều hướng sang /cms
+  // (mỗi provider là 1 instance context độc lập, không chia sẻ được cho nhau).
   {
-    path: '/cms/login',
     element: (
       <CmsAuthProvider>
-        <CmsLoginPage />
+        <Outlet />
       </CmsAuthProvider>
     ),
+    children: [
+      { path: '/cms/login', element: <CmsLoginPage /> },
+      {
+        path: '/cms',
+        element: (
+          <CmsProtectedRoute>
+            <CmsHomePage />
+          </CmsProtectedRoute>
+        ),
+      },
+    ],
   },
 ])
