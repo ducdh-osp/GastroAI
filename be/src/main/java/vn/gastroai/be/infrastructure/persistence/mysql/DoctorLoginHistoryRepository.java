@@ -8,5 +8,6 @@ import java.time.Instant;
 public interface DoctorLoginHistoryRepository
         extends JpaRepository<DoctorLoginHistory, Long> {
 
+    // Cùng tình trạng với AdminLoginHistoryRepository — chưa có scheduler dọn định kỳ.
     long deleteByAttemptedAtBefore(Instant cutoff);
 }

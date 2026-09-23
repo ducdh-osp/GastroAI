@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.auth.AuthService;
 import vn.gastroai.be.application.readmodel.LoginHistoryItem;
 
+/** API cho thông tin của chính người dùng đang đăng nhập ("me"). */
 @RestController
 @RequestMapping("/api/v1/me")
 public class MeController {
@@ -21,6 +22,7 @@ public class MeController {
         this.authService = authService;
     }
 
+    /** UC0007 - Lịch sử đăng nhập của chính mình, sắp xếp mới nhất trước. */
     @GetMapping("/login-history")
     public LoginHistoryResponse history(
             @RequestParam(defaultValue = "0") int page,
@@ -30,6 +32,9 @@ public class MeController {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
+        // Endpoint nằm trong "anyRequest().authenticated()" của SecurityConfig nên về lý
+        // thuyết không tới được đây nếu chưa đăng nhập — check thêm ở đây cho chắc, phòng
+        // trường hợp cấu hình security đổi trong tương lai mà quên rà soát controller này.
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new org.springframework.security.access.AccessDeniedException("Chua dang nhap");
         }

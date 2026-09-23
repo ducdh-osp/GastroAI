@@ -5,6 +5,11 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
+/**
+ * UC0008 - Tham số chống brute-force, đọc từ application.yml (có default nếu không set).
+ * Dùng chung cho cả Bệnh nhân (AuthService) và Admin/Bác sĩ (CmsAuthService) để nhất quán
+ * chính sách khoá tài khoản trên toàn hệ thống.
+ */
 @Component
 public class LoginSecurityPolicy {
     private final int maxFailedAttempts;

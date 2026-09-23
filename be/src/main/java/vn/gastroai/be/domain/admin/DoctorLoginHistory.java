@@ -15,6 +15,7 @@ import vn.gastroai.be.domain.auth.LoginOutcome;
 
 import java.time.Instant;
 
+/** 1 dòng = 1 lần thử đăng nhập của Bác sĩ — cấu trúc giống AdminLoginHistory, tách bảng riêng. */
 @Entity
 @Table(name = "doctor_login_history")
 public class DoctorLoginHistory {

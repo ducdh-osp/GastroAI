@@ -9,8 +9,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * UC0007 - Trích thông tin thiết bị/IP thật của người dùng để ghi vào lịch sử đăng nhập,
+ * phục vụ việc tự phát hiện truy cập lạ.
+ */
 @Component
 public class ClientRequestInfoResolver {
+    // Danh sách IP reverse proxy được tin cậy (vd Nginx). Chỉ đọc header X-Forwarded-For
+    // khi request đến TỪ 1 trong các IP này — nếu đọc header đó vô điều kiện, ai cũng có
+    // thể tự set X-Forwarded-For giả để giả mạo IP nguồn trong log.
     private final Set<String> trustedProxies;
 
     public ClientRequestInfoResolver(@Value("${app.security.trusted-proxies:}") String configured) {
@@ -29,6 +36,8 @@ public class ClientRequestInfoResolver {
                 ip = forwarded.split(",")[0].trim();
             }
         }
+        // Cắt bớt cho khớp giới hạn cột ip_address/user_agent trong migration (VARCHAR(45)/
+        // VARCHAR(1024)) — tránh lỗi ghi DB nếu header bị client gửi dữ liệu bất thường/quá dài.
         if (ip.length() > 45) {
             ip = ip.substring(0, 45);
         }
@@ -41,6 +50,7 @@ public class ClientRequestInfoResolver {
         return new ClientRequestInfo(ip, userAgent, deviceLabel(userAgent));
     }
 
+    /** Suy ra tên trình duyệt + hệ điều hành từ User-Agent để hiển thị thân thiện ở UC0007. */
     private String deviceLabel(String userAgent) {
         String browser = userAgent.contains("Edg/") ? "Edge"
                 : userAgent.contains("Chrome/") ? "Chrome"

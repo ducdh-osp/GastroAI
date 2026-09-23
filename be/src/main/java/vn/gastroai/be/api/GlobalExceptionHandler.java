@@ -12,6 +12,11 @@ import vn.gastroai.be.application.auth.AccountLockedException;
 
 import java.util.Map;
 
+/**
+ * Bắt exception nghiệp vụ ném ra từ service, map sang HTTP status/JSON body thống nhất —
+ * để controller không cần try/catch lặp lại ở từng endpoint. Dùng chung cho cả luồng
+ * Bệnh nhân (AuthService) lẫn Admin/Bác sĩ (CmsAuthService) vì exception dùng chung.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -21,6 +26,7 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", exception.getMessage()));
     }
 
+    // 423 Locked kèm lockedUntil để FE hiển thị chính xác "còn khoá đến mấy giờ" (UC0008).
     @ExceptionHandler(AccountLockedException.class)
     public ResponseEntity<Map<String, Object>> handleLockedAccount(AccountLockedException exception) {
         return ResponseEntity.status(HttpStatus.LOCKED).body(Map.of(
@@ -40,6 +46,9 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", exception.getMessage()));
     }
 
+    // Lưới an toàn cuối cùng cho race condition (2 request cùng lúc lọt qua check
+    // "email đã tồn tại chưa" rồi cùng insert) — DB tự chặn nhờ ràng buộc UNIQUE,
+    // Hibernate ném exception này, map về 409 giống IllegalStateException phía trên.
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, String>> handleDataConflict(DataIntegrityViolationException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

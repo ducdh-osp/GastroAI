@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 
+/** Tài khoản Admin — bảng admins trên MySQL (schema gastroai_admin), tách riêng khỏi Bác sĩ. */
 @Entity
 @Table(name = "admins")
 @Getter

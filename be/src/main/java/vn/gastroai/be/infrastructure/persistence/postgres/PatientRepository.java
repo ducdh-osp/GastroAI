@@ -16,6 +16,11 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
 
     Optional<Patient> findByPasswordResetTokenHash(String hash);
 
+    /**
+     * Giống findByEmail nhưng khoá row (SELECT ... FOR UPDATE) — dùng riêng cho AuthService.login()
+     * để 2 request đăng nhập sai cùng lúc của cùng 1 tài khoản không bị race condition khi
+     * cùng đọc/tăng failedLoginAttempts (request sau phải đợi request trước commit xong).
+     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Patient p where p.email = :email")
     Optional<Patient> findByEmailForUpdate(@Param("email") String email);

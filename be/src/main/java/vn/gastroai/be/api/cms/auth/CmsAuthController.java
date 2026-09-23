@@ -11,6 +11,10 @@ import vn.gastroai.be.application.auth.CmsAuthService;
 import vn.gastroai.be.application.commands.CmsLoginCommand;
 import vn.gastroai.be.application.readmodel.CmsAuthResult;
 
+/**
+ * API đăng nhập/xuất cho cổng CMS (Admin/Bác sĩ, UC0045). Không có @RequestMapping ở class
+ * (khác AuthController) — path đầy đủ khai trực tiếp ở từng @PostMapping.
+ */
 @RestController
 public class CmsAuthController {
 

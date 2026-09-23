@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import vn.gastroai.be.domain.admin.CmsRole;
 
+/** UC0045 - body của POST /api/v1/cms/auth/login. FE phải tự chọn role (ADMIN/DOCTOR). */
 public record CmsLoginRequest(
 
         @NotBlank

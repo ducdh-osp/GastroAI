@@ -17,6 +17,11 @@ import lombok.Setter;
 
 import java.time.Instant;
 
+/**
+ * 1 dòng = 1 lần thử đăng nhập của Bệnh nhân (thành công lẫn thất bại) — phục vụ UC0007
+ * (tự xem lịch sử) và bị dọn định kỳ theo LoginSecurityPolicy.historyRetentionDays
+ * (xem LoginHistoryCleanupService).
+ */
 @Entity
 @Table(name = "patient_login_history")
 @Getter

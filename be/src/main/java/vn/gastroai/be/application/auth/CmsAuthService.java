@@ -20,9 +20,18 @@ import vn.gastroai.be.infrastructure.persistence.mysql.DoctorRepository;
 
 import java.time.Instant;
 
+/**
+ * Đăng nhập cho Admin/Bác sĩ (UC0045) — dùng HttpSession, khác hẳn JWT của Bệnh nhân, vì
+ * Admin/Doctor lưu ở MySQL (2 bảng riêng: admins, doctors), không dùng chung
+ * PatientRepository/AuthService. Logic khoá tài khoản (UC0008) tái dùng chung
+ * LoginSecurityPolicy với AuthService để nhất quán chính sách trên toàn hệ thống,
+ * dù dữ liệu tách bảng.
+ */
 @Service
 public class CmsAuthService {
 
+    // Session lưu 2 attribute này để AdminSessionFilter/controller sau biết ai đang đăng
+    // nhập và thuộc loại nào (ADMIN hay DOCTOR) mà không cần tra DB lại mỗi request.
     public static final String AUTH_USER_ID = "AUTH_USER_ID";
     public static final String AUTH_USER_TYPE = "AUTH_USER_TYPE";
 
@@ -52,6 +61,10 @@ public class CmsAuthService {
         this.loginSecurityPolicy = loginSecurityPolicy;
     }
 
+    // Chống session fixation: huỷ session cũ (nếu có) rồi tạo session MỚI hoàn toàn sau khi
+    // xác thực thành công, thay vì tái sử dụng session đã tồn tại từ trước khi đăng nhập —
+    // nếu không, kẻ tấn công có thể "gài" sẵn 1 session ID cho nạn nhân rồi chiếm quyền
+    // ngay khi nạn nhân đăng nhập vào chính session ID đó.
     private HttpSession rotateSession(HttpServletRequest request) {
         HttpSession oldSession = request.getSession(false);
 
@@ -62,6 +75,11 @@ public class CmsAuthService {
         return request.getSession(true);
     }
 
+    /**
+     * FE phải tự khai báo role (ADMIN/DOCTOR) muốn đăng nhập — không tự dò cả 2 bảng như
+     * cách cũ, vì email admin và doctor có thể trùng nhau ở 2 bảng khác nhau, dò cả 2 sẽ
+     * mơ hồ nên đăng nhập vào tài khoản nào.
+     */
     public CmsAuthResult login(
             CmsLoginCommand command,
             HttpServletRequest request) {
@@ -89,7 +107,9 @@ public class CmsAuthService {
             }
         }
 
-        // Giữ lại fake BCrypt để hạn chế timing attack
+        // Giữ lại fake BCrypt để hạn chế timing attack: không tìm thấy tài khoản vẫn mất
+        // ngần ấy thời gian xử lý như trường hợp tìm thấy nhưng sai mật khẩu bên dưới,
+        // tránh lộ email nào có tài khoản qua đo thời gian phản hồi.
         passwordEncoder.matches(
                 command.password(),
                 DUMMY_BCRYPT_HASH);
@@ -98,6 +118,10 @@ public class CmsAuthService {
                 "Email hoặc mật khẩu không đúng");
     }
 
+    // loginAdmin/loginDoctor giống hệt nhau về logic (khoá tài khoản → check mật khẩu →
+    // reset bộ đếm → ghi lịch sử → rotate session) — tách riêng theo Admin/Doctor vì 2 loại
+    // dùng 2 entity + 2 repository khác nhau ở MySQL (không gộp interface chung được vì cả
+    // 2 team làm độc lập, xem issue #5 mục 1 của Thăng).
     private CmsAuthResult loginAdmin(
             Admin user,
             CmsLoginCommand command,
@@ -365,6 +389,10 @@ public class CmsAuthService {
                 : "Unknown";
     }
 
+    // Lưu ý: chưa thật sự suy ra tên thiết bị/trình duyệt — đang trả về nguyên User-Agent
+    // giống hệt getUserAgent() ở trên, khác với ClientRequestInfoResolver.deviceLabel() bên
+    // AuthService (Bệnh nhân) đã parse ra dạng "Chrome trên Windows". Có thể tái dùng logic
+    // đó nếu muốn CMS hiển thị đẹp hơn, không cấp bách.
     private String getDeviceLabel(
             HttpServletRequest request) {
 
@@ -376,6 +404,7 @@ public class CmsAuthService {
                 : "Unknown";
     }
 
+    /** UC0045 - Đăng xuất Admin/Bác sĩ: chỉ cần huỷ session, không có token nào cần thu hồi. */
     public void logout(
             HttpServletRequest request) {
 

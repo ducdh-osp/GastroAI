@@ -8,6 +8,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 
+/** Tài khoản Bác sĩ — bảng doctors trên MySQL, cấu trúc giống Admin nhưng tách bảng riêng. */
 @Entity
 @Table(name = "doctors")
 @Getter

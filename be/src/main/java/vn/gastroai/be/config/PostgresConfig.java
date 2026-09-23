@@ -21,6 +21,10 @@ import java.util.Map;
 /**
  * Datasource "chính" — dữ liệu bệnh nhân, chat, RAG (mục 6 đề cương).
  * Song song với config/MysqlConfig (dữ liệu quản trị nội bộ).
+ * Các bean đánh dấu @Primary vì có 2 bộ DataSource/EntityManagerFactory/TransactionManager
+ * cùng tồn tại trong context (Postgres + MySQL) — bất kỳ chỗ nào autowire kiểu chung chung
+ * (vd DataSource, EntityManagerFactory) mà không chỉ định @Qualifier cụ thể sẽ cần 1 bean
+ * @Primary để Spring không báo lỗi NoUniqueBeanDefinitionException.
  */
 @Configuration
 @EnableJpaRepositories(

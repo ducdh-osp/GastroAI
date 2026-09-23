@@ -15,6 +15,11 @@ import vn.gastroai.be.domain.auth.LoginOutcome;
 
 import java.time.Instant;
 
+/**
+ * 1 dòng = 1 lần thử đăng nhập của Admin — tương đương PatientLoginHistory bên Bệnh nhân
+ * nhưng cho MySQL/Admin. Không dùng chung entity với PatientLoginHistory vì khác datasource
+ * (JPA không cho @ManyToOne xuyên 2 EntityManagerFactory khác nhau).
+ */
 @Entity
 @Table(name = "admin_login_history")
 public class AdminLoginHistory {

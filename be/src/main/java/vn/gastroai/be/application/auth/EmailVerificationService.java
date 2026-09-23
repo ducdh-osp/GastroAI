@@ -5,6 +5,10 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+/**
+ * Gửi email xác thực tài khoản (UC0001) và đặt lại mật khẩu (UC0004). Chỉ gửi link kèm
+ * token thô (chưa hash) — token hash mới là thứ lưu trong DB, xem AuthService.
+ */
 @Service
 public class EmailVerificationService {
     private final JavaMailSender mail;
