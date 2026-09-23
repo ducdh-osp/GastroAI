@@ -76,7 +76,9 @@ app:
     api-key: ${GEMINI_API_KEY:}
     base-url: https://generativelanguage.googleapis.com/v1beta
     embedding-model: gemini-embedding-2
-    chat-model: gemini-2.5-flash
+    # gemini-2.5-flash đã bị Google ngừng cấp cho API key mới tạo (xác nhận qua lỗi 404 thật
+    # lúc test) — dùng bản hiện tại theo đúng gợi ý trong message lỗi của Google.
+    chat-model: gemini-3.6-flash
   # Đọc bởi RagQueryService (@Value) — số chunk truy xuất tối đa cho mỗi câu hỏi (UC0028).
   rag:
     top-k: ${RAG_TOP_K:5}
