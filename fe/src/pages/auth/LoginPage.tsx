@@ -16,11 +16,12 @@ const TRUST_ITEMS = [
   { icon: HeartOutlined, text: 'Luôn nhắc bạn gặp bác sĩ khi có dấu hiệu bất thường' },
 ]
 
-/** Map message ASCII từ BE → tiếng Việt có dấu đầy đủ + dấu chấm cuối câu */
+// Message ASCII thật do BE trả (xem AuthService.java) → tiếng Việt có dấu đầy đủ. Riêng
+// tài khoản bị khóa không nằm ở đây — message đó đã có dấu sẵn từ AccountLockedException,
+// hiển thị kèm lockedUntil riêng bên dưới thay vì map cứng.
 const BE_MESSAGE_MAP: Record<string, string> = {
   'Email hoac mat khau khong dung': 'Email hoặc mật khẩu không đúng.',
   'Email chua duoc xac thuc': 'Email chưa được xác thực. Vui lòng kiểm tra hộp thư.',
-  'Tai khoan bi khoa': 'Tài khoản đã bị khóa tạm thời do đăng nhập sai nhiều lần.',
 }
 
 function formatError(msg: string): string {
@@ -32,23 +33,28 @@ function formatError(msg: string): string {
     : msg.trim() + '.'
 }
 
+function formatLockedUntil(value: string): string {
+  return new Date(value).toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function onFinish(values: LoginFormValues) {
     setError(null)
+    setLockedUntil(null)
     setLoading(true)
     try {
       await login(values)
       navigate('/')
     } catch (err: unknown) {
-      const raw =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Đăng nhập thất bại, thử lại sau.'
-      setError(formatError(raw))
+      const data = (err as { response?: { data?: { message?: string; lockedUntil?: string } } })?.response?.data
+      setError(formatError(data?.message ?? 'Đăng nhập thất bại, thử lại sau.'))
+      setLockedUntil(data?.lockedUntil ?? null)
     } finally {
       setLoading(false)
     }
@@ -60,7 +66,15 @@ export default function LoginPage() {
       subtitle="Tiếp tục hành trình chăm sóc tiêu hóa cùng GastroAI."
       trustItems={TRUST_ITEMS}
     >
-      {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+      {error && (
+        <Alert
+          type={lockedUntil ? 'warning' : 'error'}
+          message={error}
+          description={lockedUntil ? `Tài khoản bị khóa đến ${formatLockedUntil(lockedUntil)}.` : undefined}
+          showIcon
+          className="mb-4"
+        />
+      )}
       <Form<LoginFormValues> layout="vertical" onFinish={onFinish} disabled={loading}>
         <Form.Item
           label="Email"

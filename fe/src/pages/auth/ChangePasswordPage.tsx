@@ -1,8 +1,9 @@
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { changePassword } from '../../api/auth'
 import { AppShell } from '../../components/layout/AppShell'
+import { useAuth } from '../../stores/authStore'
 
 const { Title, Text } = Typography
 
@@ -13,6 +14,8 @@ interface ChangePasswordFormValues {
 }
 
 export default function ChangePasswordPage() {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -28,7 +31,13 @@ export default function ChangePasswordPage() {
     setLoading(true)
     try {
       await changePassword({ currentPassword: values.currentPassword, newPassword: values.newPassword })
-      setSuccess('Đổi mật khẩu thành công.')
+      // BE tăng tokenVersion khi đổi mật khẩu nên JWT hiện tại hết hiệu lực ngay — đăng xuất
+      // luôn thay vì để lại trạng thái "tưởng còn đăng nhập" nhưng gọi API nào cũng lỗi.
+      setSuccess('Đổi mật khẩu thành công. Vui lòng đăng nhập lại...')
+      setTimeout(() => {
+        logout()
+        navigate('/login')
+      }, 1500)
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??

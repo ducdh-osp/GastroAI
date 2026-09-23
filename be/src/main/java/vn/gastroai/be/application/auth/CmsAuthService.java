@@ -427,5 +427,19 @@ public class CmsAuthService {
     public Page<DoctorLoginHistory> doctorHistory(Long doctorId, Pageable pageable) {
         return doctorLoginHistoryRepository.findByDoctorId(doctorId, pageable);
     }
+
+    /** Số lần đăng nhập không thành công trong 7 ngày gần nhất — tính trên toàn bộ lịch sử. */
+    public long adminRecentFailureCount(Long adminId) {
+        Instant sevenDaysAgo = Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS);
+        return adminLoginHistoryRepository.countByAdminIdAndOutcomeNotAndAttemptedAtAfter(
+                adminId, LoginOutcome.SUCCESS, sevenDaysAgo);
+    }
+
+    /** Tương tự adminRecentFailureCount nhưng cho Bác sĩ. */
+    public long doctorRecentFailureCount(Long doctorId) {
+        Instant sevenDaysAgo = Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS);
+        return doctorLoginHistoryRepository.countByDoctorIdAndOutcomeNotAndAttemptedAtAfter(
+                doctorId, LoginOutcome.SUCCESS, sevenDaysAgo);
+    }
 }
 

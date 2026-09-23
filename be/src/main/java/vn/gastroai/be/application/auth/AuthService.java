@@ -263,6 +263,17 @@ public class AuthService {
         return history.findByPatientId(patientId, pageable);
     }
 
+    /**
+     * Số lần đăng nhập KHÔNG thành công trong 7 ngày gần nhất, tính trên toàn bộ lịch sử —
+     * dùng cho cảnh báo bảo mật ở MeController, không bị giới hạn bởi trang đang xem như khi
+     * tự đếm trên danh sách items() ở FE.
+     */
+    public long recentFailureCount(Long patientId) {
+        Instant sevenDaysAgo = Instant.now().minus(7, ChronoUnit.DAYS);
+        return history.countByPatientIdAndOutcomeNotAndAttemptedAtAfter(
+                patientId, LoginOutcome.SUCCESS, sevenDaysAgo);
+    }
+
     private void record(Patient patient, LoginOutcome outcome, String reason,
                         ClientRequestInfo requestInfo) {
         history.save(new PatientLoginHistory(patient, Instant.now(), outcome, reason,

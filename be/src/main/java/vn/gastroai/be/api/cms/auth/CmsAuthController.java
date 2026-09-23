@@ -76,7 +76,8 @@ public class CmsAuthController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "attemptedAt"));
         Long id = Long.valueOf(userId.toString());
-        Page<LoginHistoryItem> result = "DOCTOR".equals(userType)
+        boolean isDoctor = "DOCTOR".equals(userType);
+        Page<LoginHistoryItem> result = isDoctor
                 ? cmsAuthService.doctorHistory(id, pageable).map(history -> new LoginHistoryItem(
                         history.getId(), history.getAttemptedAt(), history.getOutcome().name(),
                         history.getFailureReason(), history.getIpAddress(),
@@ -85,9 +86,12 @@ public class CmsAuthController {
                         history.getId(), history.getAttemptedAt(), history.getOutcome().name(),
                         history.getFailureReason(), history.getIpAddress(),
                         history.getUserAgent(), history.getDeviceLabel()));
+        long recentFailureCount = isDoctor
+                ? cmsAuthService.doctorRecentFailureCount(id)
+                : cmsAuthService.adminRecentFailureCount(id);
 
         return new LoginHistoryResponse(
                 result.getContent(), result.getNumber(), result.getSize(),
-                result.getTotalElements(), result.getTotalPages());
+                result.getTotalElements(), result.getTotalPages(), recentFailureCount);
     }
 }

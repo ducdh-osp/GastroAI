@@ -38,20 +38,20 @@ public class MeController {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new org.springframework.security.access.AccessDeniedException("Chua dang nhap");
         }
+        Long patientId = Long.valueOf(principal.getName());
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "attemptedAt"));
-        Page<LoginHistoryItem> result = authService.history(
-                Long.valueOf(principal.getName()), pageable)
+        Page<LoginHistoryItem> result = authService.history(patientId, pageable)
                 .map(history -> new LoginHistoryItem(
                         history.getId(), history.getAttemptedAt(), history.getOutcome().name(),
                         history.getFailureReason(), history.getIpAddress(),
                         history.getUserAgent(), history.getDeviceLabel()));
-        return response(result);
+        return response(result, authService.recentFailureCount(patientId));
     }
 
-    private LoginHistoryResponse response(Page<LoginHistoryItem> page) {
+    private LoginHistoryResponse response(Page<LoginHistoryItem> page, long recentFailureCount) {
         return new LoginHistoryResponse(
                 page.getContent(), page.getNumber(), page.getSize(),
-                page.getTotalElements(), page.getTotalPages());
+                page.getTotalElements(), page.getTotalPages(), recentFailureCount);
     }
 }

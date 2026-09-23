@@ -91,6 +91,7 @@ export default function LoginHistoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
+  const [recentFailureCount, setRecentFailureCount] = useState(0)
   const pageSize = 20
 
   useEffect(() => {
@@ -100,6 +101,7 @@ export default function LoginHistoryPage() {
       .then((res) => {
         setItems(res.items)
         setTotalElements(res.totalElements)
+        setRecentFailureCount(res.recentFailureCount)
       })
       .catch((err: unknown) => {
         const msg =
@@ -109,8 +111,6 @@ export default function LoginHistoryPage() {
       })
       .finally(() => setLoading(false))
   }, [page])
-
-  const failedCount = items.filter((r) => r.outcome !== 'SUCCESS').length
 
   return (
     <AppShell>
@@ -124,13 +124,13 @@ export default function LoginHistoryPage() {
         <Alert type="error" showIcon message={error} className="mb-6" />
       )}
 
-      {!error && !loading && failedCount > 0 && (
+      {!error && !loading && recentFailureCount > 0 && (
         <Alert
           className="mb-6"
           type="warning"
           showIcon
           message="Có hoạt động cần kiểm tra"
-          description={`${failedCount} lần truy cập gần đây không thành công hoặc đã bị chặn. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
+          description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
           action={<Button size="small" type="link"><Link to="/change-password">Đổi mật khẩu</Link></Button>}
         />
       )}

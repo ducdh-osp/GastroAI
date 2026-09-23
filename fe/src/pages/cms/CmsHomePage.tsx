@@ -10,14 +10,17 @@ const ROLE_LABEL: Record<string, string> = {
   DOCTOR: 'Bác sĩ',
 }
 
+// Cùng nguyên tắc adminOnly với CmsSidebar — "Quản lý người dùng"/"Nhật ký hoạt động" chỉ
+// dành cho Admin theo masterplan, Bác sĩ không nên thấy dù chỉ là thẻ giới thiệu tính năng.
 const UPCOMING = [
-  { icon: TeamOutlined, title: 'Quản lý người dùng', desc: 'Xem, khóa/mở tài khoản bệnh nhân và gán vai trò RBAC.' },
+  { icon: TeamOutlined, title: 'Quản lý người dùng', desc: 'Xem, khóa/mở tài khoản bệnh nhân và gán vai trò RBAC.', adminOnly: true },
   { icon: FileTextOutlined, title: 'Kho tài liệu y khoa', desc: 'Tải lên, cập nhật và gỡ tài liệu dùng cho trợ lý AI.' },
-  { icon: AuditOutlined, title: 'Nhật ký hoạt động', desc: 'Theo dõi thao tác nhạy cảm để đảm bảo minh bạch.' },
+  { icon: AuditOutlined, title: 'Nhật ký hoạt động', desc: 'Theo dõi thao tác nhạy cảm để đảm bảo minh bạch.', adminOnly: true },
 ]
 
 export default function CmsHomePage() {
   const { user } = useCmsAuth()
+  const visibleUpcoming = UPCOMING.filter((item) => !item.adminOnly || user?.userType === 'ADMIN')
 
   return (
     <CmsAppShell>
@@ -32,7 +35,7 @@ export default function CmsHomePage() {
       </Card>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        {UPCOMING.map(({ icon: Icon, title, desc }) => (
+        {visibleUpcoming.map(({ icon: Icon, title, desc }) => (
           <Card key={title} className="rounded-2xl border-black/5 shadow-sm">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
               <Icon />

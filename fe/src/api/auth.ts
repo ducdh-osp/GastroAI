@@ -63,6 +63,10 @@ export interface LoginHistoryResponse {
   size: number
   totalElements: number
   totalPages: number
+  // Đếm trên TOÀN BỘ lịch sử (7 ngày gần nhất), không phải chỉ "items" của trang đang xem —
+  // dùng field này để cảnh báo bảo mật, không tự đếm items (sẽ bỏ sót nếu lần thất bại nằm
+  // ở trang khác).
+  recentFailureCount: number
 }
 
 export async function getLoginHistory(page = 0, size = 20): Promise<LoginHistoryResponse> {

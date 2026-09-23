@@ -82,6 +82,7 @@ export default function CmsLoginHistoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
+  const [recentFailureCount, setRecentFailureCount] = useState(0)
   const pageSize = 20
 
   useEffect(() => {
@@ -91,6 +92,7 @@ export default function CmsLoginHistoryPage() {
       .then((res) => {
         setItems(res.items)
         setTotalElements(res.totalElements)
+        setRecentFailureCount(res.recentFailureCount)
       })
       .catch((err: unknown) => {
         const msg =
@@ -110,6 +112,16 @@ export default function CmsLoginHistoryPage() {
       </div>
 
       {error && <Alert type="error" showIcon message={error} className="mb-6" />}
+
+      {!error && !loading && recentFailureCount > 0 && (
+        <Alert
+          className="mb-6"
+          type="warning"
+          showIcon
+          message="Có hoạt động cần kiểm tra"
+          description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy liên hệ quản trị viên hệ thống ngay.`}
+        />
+      )}
 
       <Card className="rounded-2xl border-black/5 shadow-sm">
         <Spin spinning={loading}>
