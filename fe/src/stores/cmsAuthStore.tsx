@@ -9,7 +9,10 @@ interface CmsAuthState {
   logout: () => void
 }
 
-const STORAGE_KEY = 'gastroai.cms.auth'
+// Export để cmsAxios.ts (interceptor 401) xoá đúng key khi session BE hết hạn/mất mà
+// không cần đi qua React context — interceptor chạy ngoài cây component.
+export const CMS_AUTH_STORAGE_KEY = 'gastroai.cms.auth'
+const STORAGE_KEY = CMS_AUTH_STORAGE_KEY
 
 const CmsAuthContext = createContext<CmsAuthState | null>(null)
 

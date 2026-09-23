@@ -23,8 +23,13 @@ interface NavItem {
   icon: ReactNode
   to?: string
   comingSoon?: boolean
+  adminOnly?: boolean
 }
 
+// adminOnly khớp đúng cột Actor trong masterplan (UC0046/47/51/52 chỉ ghi "Admin", không có
+// "Bác sĩ") — Bác sĩ không nên thấy các mục này dù chỉ là placeholder "Sắp có", vì sau này
+// cũng sẽ không bao giờ có quyền vào. "Kho tri thức" (UC0048/62/65) actor ghi "Admin / Bác sĩ"
+// nên cả 2 vai trò đều thấy.
 const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Tổng quan',
@@ -37,8 +42,8 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Người dùng',
     items: [
-      { key: 'users', label: 'Quản lý người dùng', icon: <TeamOutlined />, comingSoon: true },
-      { key: 'roles', label: 'Phân quyền RBAC', icon: <SafetyCertificateOutlined />, comingSoon: true },
+      { key: 'users', label: 'Quản lý người dùng', icon: <TeamOutlined />, comingSoon: true, adminOnly: true },
+      { key: 'roles', label: 'Phân quyền RBAC', icon: <SafetyCertificateOutlined />, comingSoon: true, adminOnly: true },
     ],
   },
   {
@@ -52,8 +57,8 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Giám sát',
     items: [
-      { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true },
-      { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true },
+      { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true, adminOnly: true },
+      { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
     ],
   },
 ]
@@ -72,6 +77,11 @@ export function CmsSidebar() {
   const { user, logout } = useCmsAuth()
   const location = useLocation()
 
+  const visibleSections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.adminOnly || user?.userType === 'ADMIN'),
+  })).filter((section) => section.items.length > 0)
+
   return (
     <aside className="flex h-svh w-64 shrink-0 flex-col justify-between border-r border-white/10 bg-[#0f172a] text-white">
       <div>
@@ -81,7 +91,7 @@ export function CmsSidebar() {
         </div>
 
         <nav className="mt-2 space-y-5 px-3">
-          {NAV_SECTIONS.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.title}>
               <p className="px-2 text-[0.65rem] font-semibold tracking-[0.2em] text-white/40 uppercase">
                 {section.title}

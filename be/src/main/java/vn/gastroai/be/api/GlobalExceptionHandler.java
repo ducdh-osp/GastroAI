@@ -4,6 +4,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,6 +20,17 @@ import java.util.Map;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // MeController và CmsAuthController tự kiểm tra "đã đăng nhập chưa" thủ công (không qua
+    // anyRequest().authenticated() vì /me/** và /cms/auth/** không được Spring Security tự
+    // gác). Không có handler này, exception rơi về AccessDeniedHandler mặc định của Spring
+    // Security — response không có field "message" mà FE đang mong đợi, hiện chữ chung chung
+    // vô nghĩa (vd session hết hạn do BE restart nhưng FE vẫn tưởng còn đăng nhập).
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("message", exception.getMessage()));
+    }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException exception) {
