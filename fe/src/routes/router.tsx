@@ -4,6 +4,7 @@ import CmsLoginPage from '../pages/cms/CmsLoginPage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
 import RegisterPage from '../pages/auth/RegisterPage'
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
+import ChangePasswordPage from '../pages/auth/ChangePasswordPage'
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
@@ -33,6 +34,14 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: '/change-password',
+    element: (
+      <ProtectedRoute>
+        <ChangePasswordPage />
+      </ProtectedRoute>
+    ),
+  },
 
   // CMS - Admin / Doctor
   {
@@ -44,4 +53,3 @@ export const router = createBrowserRouter([
     ),
   },
 ])
-

@@ -7,17 +7,17 @@ import { getLoginHistory, type LoginHistoryItem } from '../../api/auth'
 const { Title, Text } = Typography
 
 // Map outcome từ BE → hiển thị
-type LoginStatus = 'SUCCESS' | 'FAILED' | 'BLOCKED'
+type LoginStatus = 'SUCCESS' | 'FAILURE' | 'BLOCKED'
 
 const statusLabels: Record<LoginStatus, string> = {
   SUCCESS: 'Thành công',
-  FAILED: 'Thất bại',
+  FAILURE: 'Thất bại',
   BLOCKED: 'Đã chặn',
 }
 
 const statusColors: Record<LoginStatus, string> = {
   SUCCESS: 'green',
-  FAILED: 'orange',
+  FAILURE: 'orange',
   BLOCKED: 'red',
 }
 
@@ -137,7 +137,7 @@ export default function LoginHistoryPage() {
             showIcon
             message="Có hoạt động cần kiểm tra"
             description={`${failedCount} lần truy cập gần đây không thành công hoặc đã bị chặn. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
-            action={<Button size="small" type="link">Đổi mật khẩu</Button>}
+            action={<Button size="small" type="link"><Link to="/change-password">Đổi mật khẩu</Link></Button>}
           />
         )}
 

@@ -1,6 +1,6 @@
 import { apiClient } from '../lib/axios'
 
-const useMockAuth = import.meta.env.VITE_USE_MOCK_AUTH !== 'false'
+const useMockAuth = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
 const MOCK_USER_KEY = 'gastroai.mock.user'
 const MOCK_RESET_TOKEN_KEY = 'gastroai.mock.reset-token'
 
@@ -111,12 +111,24 @@ export async function resetPassword(payload: { token: string; newPassword: strin
   await apiClient.post('/auth/reset-password', payload)
 }
 
+export async function changePassword(payload: { currentPassword: string; newPassword: string }): Promise<void> {
+  if (useMockAuth) {
+    await mockDelay()
+    const user = getMockUser()
+    if (!user) throw new Error('Không tìm thấy tài khoản mô phỏng')
+    if (user.password !== payload.currentPassword) throw new Error('Mật khẩu hiện tại không đúng')
+    localStorage.setItem(MOCK_USER_KEY, JSON.stringify({ ...user, password: payload.newPassword }))
+    return
+  }
+  await apiClient.post('/auth/change-password', payload)
+}
+
 // --- Login History ---
 
 export interface LoginHistoryItem {
   id: number
   attemptedAt: string   // ISO 8601 Instant từ BE
-  outcome: string       // 'SUCCESS' | 'FAILED' | 'BLOCKED'
+  outcome: string       // 'SUCCESS' | 'FAILURE' | 'BLOCKED'
   failureReason: string | null
   ipAddress: string | null
   userAgent: string | null
@@ -134,7 +146,7 @@ export interface LoginHistoryResponse {
 const MOCK_LOGIN_HISTORY: LoginHistoryItem[] = [
   { id: 1, attemptedAt: '2026-09-22T11:42:00Z', outcome: 'SUCCESS', failureReason: null, ipAddress: '192.168.1.12', userAgent: 'Chrome/140', deviceLabel: 'Windows PC' },
   { id: 2, attemptedAt: '2026-09-22T10:15:00Z', outcome: 'SUCCESS', failureReason: null, ipAddress: '113.161.42.18', userAgent: 'Safari Mobile', deviceLabel: 'iPhone 15' },
-  { id: 3, attemptedAt: '2026-09-21T16:08:00Z', outcome: 'FAILED', failureReason: 'Sai mật khẩu', ipAddress: '45.77.18.203', userAgent: 'Firefox/141', deviceLabel: null },
+  { id: 3, attemptedAt: '2026-09-21T16:08:00Z', outcome: 'FAILURE', failureReason: 'Sai mật khẩu', ipAddress: '45.77.18.203', userAgent: 'Firefox/141', deviceLabel: null },
   { id: 4, attemptedAt: '2026-09-21T16:07:00Z', outcome: 'BLOCKED', failureReason: 'Quá nhiều lần thất bại', ipAddress: '45.77.18.203', userAgent: 'Firefox/141', deviceLabel: null },
   { id: 5, attemptedAt: '2026-09-20T02:30:00Z', outcome: 'SUCCESS', failureReason: null, ipAddress: '10.0.0.24', userAgent: 'Chrome/140', deviceLabel: 'MacBook Pro' },
 ]
@@ -149,4 +161,3 @@ export async function getLoginHistory(page = 0, size = 20): Promise<LoginHistory
   })
   return data
 }
-
