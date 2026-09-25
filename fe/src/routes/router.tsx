@@ -18,6 +18,8 @@ import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 
 export const router = createBrowserRouter([
   {
+    // Bọc toàn bộ route để FaviconSwitcher (cần useLocation, chỉ dùng được bên trong Router)
+    // theo dõi được path hiện tại và đổi icon tab tương ứng - không đổi hành vi route nào cả.
     element: (
       <>
         <FaviconSwitcher />
