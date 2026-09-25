@@ -3,8 +3,8 @@ import { Alert, Button, Card, Typography } from 'antd'
 import { useCallback, useState } from 'react'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { mockChatService } from './mockChatApi'
-import type { Attachment, Message, SendMessageRequest } from './chat.types'
+import { mockChatService } from '../../api/chat'
+import type { Attachment, Message, SendMessageRequest } from '../../api/chat'
 
 const { Text, Title } = Typography
 

@@ -1,13 +1,41 @@
-import type { ChatService, Message, SendMessageRequest } from './chat.types'
+export type SenderType = 'patient' | 'assistant' | 'system'
+
+export type MessageStatus = 'sending' | 'sent' | 'failed' | 'replying'
+
+export interface Attachment {
+  id: string
+  name: string
+  type: string
+  size: number
+  url: string
+  previewUrl?: string
+}
+
+export interface Message {
+  id: string
+  sender: SenderType
+  content: string
+  createdAt: string
+  status: MessageStatus
+  attachments?: Attachment[]
+}
+
+export interface SendMessageRequest {
+  content: string
+  attachments?: Attachment[]
+  isRetry?: boolean
+}
+
+export interface ChatService {
+  sendMessage: (request: SendMessageRequest) => Promise<Message>
+}
 
 export const QUICK_PROMPTS = [
   'Tư vấn triệu chứng sốt',
   'Hỏi lịch uống thuốc',
   'Đau bụng nên làm gì?',
-  'Giải thích kết quả xét nghiệm',
+  'Chế độ ăn cho người đau dạ dày',
 ] as const
-
-export const MOCK_MESSAGES: Message[] = []
 
 function wait(milliseconds: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds))
@@ -25,8 +53,8 @@ function createReply(content: string): string {
   if (normalizedContent.includes('đau bụng')) {
     return 'Bạn hãy theo dõi vị trí, mức độ và thời gian đau. Nếu đau dữ dội, bụng cứng, nôn ra máu hoặc đi ngoài phân đen, hãy đến cơ sở y tế ngay.'
   }
-  if (normalizedContent.includes('xét nghiệm')) {
-    return 'Bạn có thể đính kèm ảnh hoặc tệp kết quả xét nghiệm. Việc diễn giải chính xác vẫn cần được bác sĩ đối chiếu với triệu chứng và tiền sử của bạn.'
+  if (normalizedContent.includes('dạ dày') || normalizedContent.includes('chế độ ăn')) {
+    return 'Bạn nên ưu tiên bữa ăn nhỏ, đúng giờ; hạn chế rượu bia, cà phê, đồ cay và nhiều dầu mỡ. Nếu đau kéo dài, hãy trao đổi với bác sĩ.'
   }
 
   return 'Cảm ơn bạn đã chia sẻ. Thông tin từ GastroAI chỉ mang tính tham khảo và không thay thế chẩn đoán của bác sĩ. Nếu triệu chứng kéo dài hoặc tăng nặng, bạn nên đến cơ sở y tế.'
@@ -49,4 +77,5 @@ async function sendMessage(request: SendMessageRequest): Promise<Message> {
   }
 }
 
+/** Mock implementation boundary: có thể thay bằng REST/WebSocket mà không đổi UI. */
 export const mockChatService: ChatService = { sendMessage }

@@ -1,7 +1,7 @@
 import { CloseOutlined, FileTextOutlined, PaperClipOutlined, SendOutlined } from '@ant-design/icons'
 import { Alert, Button } from 'antd'
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
-import type { Attachment } from './chat.types'
+import type { Attachment } from '../../api/chat'
 
 const MAX_LENGTH = 1000
 const MAX_FILE_SIZE = 10 * 1024 * 1024
