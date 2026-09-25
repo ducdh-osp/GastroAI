@@ -1,4 +1,4 @@
-import { DownOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LogoutOutlined } from '@ant-design/icons'
+import { CommentOutlined, DownOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LogoutOutlined } from '@ant-design/icons'
 import { Dropdown } from 'antd'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
@@ -6,6 +6,7 @@ import { Logo } from '../brand/Logo'
 
 const NAV_ITEMS = [
   { key: 'home', label: 'Trang chủ', icon: <HomeOutlined />, to: '/' },
+  { key: 'chat', label: 'Tư vấn sức khỏe', icon: <CommentOutlined />, to: '/chat' },
   { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
   { key: 'change-password', label: 'Đổi mật khẩu', icon: <KeyOutlined />, to: '/change-password' },
 ]
