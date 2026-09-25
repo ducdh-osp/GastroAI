@@ -1,8 +1,8 @@
 import { MessageOutlined, RobotOutlined } from '@ant-design/icons'
 import { useEffect, useRef } from 'react'
 import { MessageBubble } from './MessageBubble'
-import { QUICK_PROMPTS } from './mockChatApi'
-import type { Message } from './chat.types'
+import { QUICK_PROMPTS } from '../../api/chat'
+import type { Message } from '../../api/chat'
 
 interface MessageListProps {
   messages: Message[]

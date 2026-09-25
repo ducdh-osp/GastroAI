@@ -7,7 +7,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { Button } from 'antd'
-import type { Message } from './chat.types'
+import type { Message } from '../../api/chat'
 
 interface MessageBubbleProps {
   message: Message
