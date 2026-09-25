@@ -13,65 +13,78 @@ import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
+import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 
 export const router = createBrowserRouter([
-  // Patient
-  { path: '/login', element: <LoginPage /> },
-  { path: '/register', element: <RegisterPage /> },
-  { path: '/verify-email', element: <VerifyEmailPage /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
-    path: '/',
+    // Bọc toàn bộ route để FaviconSwitcher (cần useLocation, chỉ dùng được bên trong Router)
+    // theo dõi được path hiện tại và đổi icon tab tương ứng - không đổi hành vi route nào cả.
     element: (
-      <ProtectedRoute>
-        <HomePage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/login-history',
-    element: (
-      <ProtectedRoute>
-        <LoginHistoryPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/change-password',
-    element: (
-      <ProtectedRoute>
-        <ChangePasswordPage />
-      </ProtectedRoute>
-    ),
-  },
-
-  // CMS - Admin / Doctor. Dùng 1 CmsAuthProvider chung cho cả nhánh /cms/* — nếu mỗi route
-  // tự bọc provider riêng, state đăng nhập ở /cms/login sẽ mất ngay khi điều hướng sang /cms
-  // (mỗi provider là 1 instance context độc lập, không chia sẻ được cho nhau).
-  {
-    element: (
-      <CmsAuthProvider>
+      <>
+        <FaviconSwitcher />
         <Outlet />
-      </CmsAuthProvider>
+      </>
     ),
     children: [
-      { path: '/cms/login', element: <CmsLoginPage /> },
+      // Patient
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+      { path: '/verify-email', element: <VerifyEmailPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
       {
-        path: '/cms',
+        path: '/',
         element: (
-          <CmsProtectedRoute>
-            <CmsHomePage />
-          </CmsProtectedRoute>
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
         ),
       },
       {
-        path: '/cms/login-history',
+        path: '/login-history',
         element: (
-          <CmsProtectedRoute>
-            <CmsLoginHistoryPage />
-          </CmsProtectedRoute>
+          <ProtectedRoute>
+            <LoginHistoryPage />
+          </ProtectedRoute>
         ),
+      },
+      {
+        path: '/change-password',
+        element: (
+          <ProtectedRoute>
+            <ChangePasswordPage />
+          </ProtectedRoute>
+        ),
+      },
+
+      // CMS - Admin / Doctor. Dùng 1 CmsAuthProvider chung cho cả nhánh /cms/* — nếu mỗi route
+      // tự bọc provider riêng, state đăng nhập ở /cms/login sẽ mất ngay khi điều hướng sang /cms
+      // (mỗi provider là 1 instance context độc lập, không chia sẻ được cho nhau).
+      {
+        element: (
+          <CmsAuthProvider>
+            <Outlet />
+          </CmsAuthProvider>
+        ),
+        children: [
+          { path: '/cms/login', element: <CmsLoginPage /> },
+          {
+            path: '/cms',
+            element: (
+              <CmsProtectedRoute>
+                <CmsHomePage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/login-history',
+            element: (
+              <CmsProtectedRoute>
+                <CmsLoginHistoryPage />
+              </CmsProtectedRoute>
+            ),
+          },
+        ],
       },
     ],
   },
