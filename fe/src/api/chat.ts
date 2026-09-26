@@ -59,5 +59,5 @@ async function sendMessage(request: SendMessageRequest): Promise<Message> {
   }
 }
 
-/** Gọi thật BE (UC0017), không còn là mock: BE gọi RagQueryService.answer() (Gemini/RAG thật). */
-export const mockChatService: ChatService = { sendMessage }
+/** Gọi thật BE (UC0017): BE gọi RagQueryService.answer() (Gemini/RAG thật), không còn là mock. */
+export const chatService: ChatService = { sendMessage }

@@ -3,7 +3,7 @@ import { Alert, Button, Card, Typography } from 'antd'
 import { useCallback, useState } from 'react'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { mockChatService } from '../../api/chat'
+import { chatService } from '../../api/chat'
 import type { Attachment, Message, SendMessageRequest } from '../../api/chat'
 
 const { Text, Title } = Typography
@@ -28,7 +28,7 @@ export function ChatContainer() {
     setIsReplying(true)
 
     try {
-      const response = await mockChatService.sendMessage(request)
+      const response = await chatService.sendMessage(request)
       updateMessage(patientMessage.id, { status: 'sent' })
       setMessages((current) => [...current, response])
     } catch (error) {
