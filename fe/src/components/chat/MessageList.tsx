@@ -36,7 +36,15 @@ export function MessageList({ messages, isReplying, onQuickPrompt, onRetry }: Me
           </div>
         )}
 
-        {messages.map((message) => <MessageBubble key={message.id} message={message} onRetry={onRetry} />)}
+        {messages.map((message) => (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            onRetry={onRetry}
+            onSuggestionClick={onQuickPrompt}
+            suggestionsDisabled={isReplying}
+          />
+        ))}
 
         {isReplying && (
           <div className="flex items-start gap-2.5" role="status">

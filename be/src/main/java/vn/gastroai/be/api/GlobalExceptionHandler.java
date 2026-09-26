@@ -9,6 +9,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.RestClientResponseException;
 import vn.gastroai.be.application.auth.AccountLockedException;
 
 import java.util.Map;
@@ -73,6 +74,21 @@ public class GlobalExceptionHandler {
                 .body(Map.of(
                         "code", "EMAIL_SERVICE_UNAVAILABLE",
                         "message", "Khong the gui email luc nay, vui long thu lai sau"));
+    }
+
+    // UC0017/UC0028/029 - GeminiEmbeddingClient/GeminiChatClient dung RestClient.retrieve()
+    // khong .onStatus(...) rieng, nen loi HTTP tu Gemini (429 het quota, 503 qua tai...) nem ra
+    // day nguyen dang, KHONG duoc bat o day thi FE se thay "Internal Server Error" chung chung
+    // (da xac nhan thuc te: 429 "GenerateRequestsPerDayPerProjectPerModel-FreeTier" khi het
+    // 20 luot/ngay cua tier free) - phai bao ro la loi tu dich vu AI, khong phai loi he thong.
+    @ExceptionHandler(RestClientResponseException.class)
+    public ResponseEntity<Map<String, String>> handleAiServiceFailure(RestClientResponseException exception) {
+        boolean quotaExceeded = exception.getStatusCode().value() == 429;
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                "code", quotaExceeded ? "AI_QUOTA_EXCEEDED" : "AI_SERVICE_UNAVAILABLE",
+                "message", quotaExceeded
+                        ? "Da het luot su dung tro ly AI hom nay, vui long thu lai sau"
+                        : "Tro ly AI dang tam thoi khong phan hoi duoc, vui long thu lai sau it phut"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

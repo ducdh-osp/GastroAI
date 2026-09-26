@@ -5,6 +5,12 @@
 spring:
   application:
     name: be
+  # File riêng từng máy, KHÔNG commit (xem be/.gitignore) - dùng để mỗi thành viên tự lưu
+  # GEMINI_API_KEY (hoặc override khác) trên máy mình 1 lần, khỏi phải gõ lại
+  # "GEMINI_API_KEY=... mvn spring-boot:run" mỗi lần chạy. "optional:" nên máy nào chưa tạo
+  # file này vẫn chạy bình thường (rơi về ${GEMINI_API_KEY:} rỗng như cũ).
+  config:
+    import: optional:file:./application-local.yml
   # SMTP dùng bởi EmailVerificationService (email xác thực tài khoản + đặt lại mật khẩu).
   # Mặc định trỏ vào MailHog/Mailpit local (localhost:1025, không auth, không TLS) để dev
   # không cần tài khoản email thật — email "gửi" được xem trực tiếp trong UI của MailHog.

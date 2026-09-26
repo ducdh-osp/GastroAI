@@ -35,6 +35,11 @@ public class RagQueryService {
     }
 
     public String answer(String question) {
+        return answerWithSources(question).answer();
+    }
+
+    /** UC0029 - nhu answer(), nhung tra ve them danh sach nguon (RagSource) da dung de sinh cau tra loi. */
+    public RagAnswer answerWithSources(String question) {
         float[] queryVector = embeddingClient.embed(question);
         List<SimilarChunk> context = embeddingStore.findTopK(queryVector, topK);
 
@@ -42,14 +47,41 @@ public class RagQueryService {
             // Chưa có tài liệu nào trong kho tri thức (hoặc UC0031/032 của Thăng chưa xong) —
             // vẫn trả lời được nhưng phải nói rõ KHÔNG có nguồn, tránh Gemini tự bịa thông tin
             // y tế mà không có căn cứ.
-            return chatClient.generate(SYSTEM_PROMPT_NO_CONTEXT, question);
+            String noContextAnswer = chatClient.generate(SYSTEM_PROMPT_NO_CONTEXT, question);
+            return new RagAnswer(noContextAnswer, List.of(), generateRelatedQuestions(question, noContextAnswer));
         }
 
         String contextText = context.stream()
                 .map(chunk -> "- " + chunk.content())
                 .collect(Collectors.joining("\n"));
         String systemPrompt = SYSTEM_PROMPT_PREFIX + contextText;
-        return chatClient.generate(systemPrompt, question);
+        String generatedAnswer = chatClient.generate(systemPrompt, question);
+
+        List<RagSource> sources = context.stream()
+                .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content()))
+                .toList();
+        return new RagAnswer(generatedAnswer, sources, generateRelatedQuestions(question, generatedAnswer));
+    }
+
+    /**
+     * Goi y cau hoi lien quan la tinh nang phu (khong phai ly do chinh nguoi dung hoi) - goi
+     * rieng 1 lan Gemini SAU KHI da co cau tra loi chinh, thay vi gop chung vao 1 lan goi, de
+     * khong dung vao prompt/logic sinh cau tra loi chinh dang chay on dinh. Neu buoc nay loi
+     * (Gemini timeout, tra ve rong...) chi tra danh sach rong - KHONG duoc lam hong cau tra
+     * loi chinh da co san.
+     */
+    private List<String> generateRelatedQuestions(String question, String answer) {
+        try {
+            String userPrompt = "Cau hoi: " + question + "\nCau tra loi: " + answer;
+            String raw = chatClient.generate(SYSTEM_PROMPT_RELATED_QUESTIONS, userPrompt);
+            return raw.lines()
+                    .map(line -> line.replaceFirst("^[-*\\d.)\\s]+", "").trim())
+                    .filter(line -> !line.isBlank())
+                    .limit(3)
+                    .toList();
+        } catch (RuntimeException exception) {
+            return List.of();
+        }
     }
 
     private static final String SYSTEM_PROMPT_PREFIX = """
@@ -65,5 +97,12 @@ public class RagQueryService {
             Ban la tro ly AI cua GastroAI, chuyen tu van ve suc khoe tieu hoa. Kho tri thuc \
             hien chua co tai lieu nao lien quan. Hay noi ro la chua co du lieu de tra loi \
             chinh xac, va khuyen nguoi dung gap bac si neu can thiet. Khong tu bia thong tin y khoa.
+            """;
+
+    private static final String SYSTEM_PROMPT_RELATED_QUESTIONS = """
+            Dua tren cau hoi va cau tra loi tu van suc khoe tieu hoa duoi day, hay de xuat dung \
+            3 cau hoi lien quan ma nguoi dung co the muon hoi tiep. Moi cau hoi ngan gon, viet \
+            tren 1 dong rieng, KHONG danh so, KHONG them giai thich hay ky tu nao khac ngoai \
+            chinh cau hoi.
             """;
 }
