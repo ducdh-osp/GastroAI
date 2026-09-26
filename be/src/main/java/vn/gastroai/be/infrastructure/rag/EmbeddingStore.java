@@ -44,21 +44,26 @@ public class EmbeddingStore {
      * UC0028 - top-k chunk gần nhất theo cosine distance ("&lt;=&gt;"). Chưa có index ANN trên
      * cột embedding (xem migration V7) nên đây là sequential scan — đủ nhanh ở quy mô đồ án,
      * cần cân nhắc lại nếu kho tri thức lớn dần lên hàng chục nghìn chunk trở lên.
+     *
+     * UC0029 - JOIN thêm documents để lấy title, dùng hiển thị "Nguồn tham khảo" phía FE
+     * (chunks.document_id NOT NULL + có FK tới documents nên INNER JOIN an toàn, xem migration V7).
      */
     public List<SimilarChunk> findTopK(float[] queryEmbedding, int topK) {
         String vectorLiteral = toVectorLiteral(queryEmbedding);
         return jdbcTemplate.query(
                 """
-                SELECT c.id AS chunk_id, c.document_id, c.content,
+                SELECT c.id AS chunk_id, c.document_id, d.title AS document_title, c.content,
                        e.embedding <=> ?::vector AS distance
                 FROM embeddings e
                 JOIN chunks c ON c.id = e.chunk_id
+                JOIN documents d ON d.id = c.document_id
                 ORDER BY e.embedding <=> ?::vector
                 LIMIT ?
                 """,
                 (rs, rowNum) -> new SimilarChunk(
                         rs.getLong("chunk_id"),
                         rs.getLong("document_id"),
+                        rs.getString("document_title"),
                         rs.getString("content"),
                         rs.getDouble("distance")),
                 vectorLiteral, vectorLiteral, topK);

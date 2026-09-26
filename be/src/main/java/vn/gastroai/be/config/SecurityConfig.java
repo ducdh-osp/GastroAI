@@ -53,6 +53,7 @@ public class SecurityConfig {
                                 "/error")
                         .permitAll()
                         .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
+                        .requestMatchers("/api/v1/chat/**").hasRole("PATIENT")
                         // Mọi endpoint còn lại (vd /api/v1/me/**, /api/v1/auth/change-password)
                         // bắt buộc phải có Authentication hợp lệ do JwtAuthenticationFilter set.
                         .anyRequest().authenticated())
