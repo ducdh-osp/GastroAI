@@ -27,7 +27,7 @@ public class DocumentChunkingService {
     }
 
     @Transactional
-    public void chunkDocument(Long documentId) {
+    public List<Chunk> chunkDocument(Long documentId) {
 
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() ->
@@ -50,6 +50,6 @@ public class DocumentChunkingService {
         List<Chunk> chunks =
                 chunkingService.chunk(document);
 
-        chunkRepository.saveAll(chunks);
+        return chunkRepository.saveAll(chunks);
     }
 }

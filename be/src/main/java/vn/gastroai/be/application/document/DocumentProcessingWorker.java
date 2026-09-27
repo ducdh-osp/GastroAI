@@ -2,27 +2,41 @@ package vn.gastroai.be.application.document;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import vn.gastroai.be.domain.rag.Chunk;
 import vn.gastroai.be.domain.rag.Document;
+import vn.gastroai.be.infrastructure.ai.GeminiEmbeddingClient;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
+import vn.gastroai.be.infrastructure.rag.EmbeddingStore;
 
 import java.nio.file.Path;
+import java.util.List;
 
 @Service
 public class DocumentProcessingWorker {
+
+    // UC0033 - ten model dung khi luu embedding, khop voi model GeminiEmbeddingClient dang goi.
+    private static final String EMBEDDING_MODEL = "gemini-embedding-2";
 
     private final DocumentStatusService documentStatusService;
     private final DocumentExtractionService documentExtractionService;
     private final DocumentRepository documentRepository;
     private final DocumentChunkingService documentChunkingService;
+    private final GeminiEmbeddingClient embeddingClient;
+    private final EmbeddingStore embeddingStore;
+
     public DocumentProcessingWorker(
             DocumentStatusService documentStatusService,
             DocumentExtractionService documentExtractionService,
             DocumentRepository documentRepository,
-            DocumentChunkingService documentChunkingService) {
+            DocumentChunkingService documentChunkingService,
+            GeminiEmbeddingClient embeddingClient,
+            EmbeddingStore embeddingStore) {
         this.documentStatusService = documentStatusService;
         this.documentExtractionService = documentExtractionService;
         this.documentRepository = documentRepository;
         this.documentChunkingService = documentChunkingService;
+        this.embeddingClient = embeddingClient;
+        this.embeddingStore = embeddingStore;
     }
 
     @Async
@@ -47,7 +61,13 @@ public class DocumentProcessingWorker {
 
             document.setFullText(fullText);
             documentRepository.save(document);
-            documentChunkingService.chunkDocument(documentId);
+
+            List<Chunk> chunks = documentChunkingService.chunkDocument(documentId);
+            for (Chunk chunk : chunks) {
+                float[] vector = embeddingClient.embed(chunk.getContent());
+                embeddingStore.save(chunk.getId(), vector, EMBEDDING_MODEL);
+            }
+
             documentStatusService.markDone(documentId);
 
         } catch (Exception e) {
