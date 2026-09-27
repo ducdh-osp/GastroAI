@@ -4,8 +4,6 @@ export type SenderType = 'patient' | 'assistant' | 'system'
 
 export type MessageStatus = 'sending' | 'sent' | 'failed' | 'replying'
 
-export type RatingValue = 'HELPFUL' | 'UNHELPFUL'
-
 export interface Attachment {
   id: string
   name: string
@@ -22,8 +20,6 @@ export interface SourceRef {
 
 export interface Message {
   id: string
-  /** DB-side message id — dùng để gọi API rating. null nếu là tin nhắn tạm thời chưa lưu DB. */
-  dbMessageId?: number | null
   sender: SenderType
   content: string
   createdAt: string
@@ -32,46 +28,16 @@ export interface Message {
   sources?: SourceRef[]
   relatedQuestions?: string[]
   emergency?: boolean
-  /** Đánh giá hiện tại của người dùng cho tin nhắn AI này. */
-  rating?: RatingValue | null
 }
 
 export interface SendMessageRequest {
   content: string
   attachments?: Attachment[]
   isRetry?: boolean
-  /** sessionId để tiếp tục phiên hiện tại. null = bắt đầu phiên mới. */
-  sessionId?: number | null
 }
 
 export interface ChatService {
-  sendMessage: (request: SendMessageRequest) => Promise<Message & { sessionId?: number | null }>
-}
-
-export interface ChatSessionSummary {
-  id: number
-  title: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ChatSessionListResponse {
-  sessions: ChatSessionSummary[]
-  page: number
-  size: number
-  totalElements: number
-  totalPages: number
-}
-
-export interface ChatMessageDetail {
-  id: number
-  sender: SenderType
-  content: string
-  createdAt: string
-  emergency: boolean
-  sources: SourceRef[]
-  relatedQuestions: string[]
-  rating: RatingValue | null
+  sendMessage: (request: SendMessageRequest) => Promise<Message>
 }
 
 export const QUICK_PROMPTS = [
@@ -81,12 +47,9 @@ export const QUICK_PROMPTS = [
   'Chế độ ăn cho người đau dạ dày',
 ] as const
 
-async function sendMessage(request: SendMessageRequest): Promise<Message & { sessionId?: number | null }> {
+async function sendMessage(request: SendMessageRequest): Promise<Message> {
   try {
-    const { data } = await apiClient.post<Message & { sessionId?: number | null }>('/chat/messages', {
-      content: request.content,
-      sessionId: request.sessionId ?? null,
-    })
+    const { data } = await apiClient.post<Message>('/chat/messages', { content: request.content })
     return data
   } catch (error) {
     const message =
@@ -98,24 +61,3 @@ async function sendMessage(request: SendMessageRequest): Promise<Message & { ses
 
 /** Gọi thật BE (UC0017): BE gọi RagQueryService.answer() (Gemini/RAG thật), không còn là mock. */
 export const chatService: ChatService = { sendMessage }
-
-// ─────────────────────────── Chat History API ────────────────────────────────
-
-/** Danh sách phiên chat của bệnh nhân đang đăng nhập, mới nhất trước. */
-export async function listChatSessions(page = 0, size = 20): Promise<ChatSessionListResponse> {
-  const { data } = await apiClient.get<ChatSessionListResponse>('/chat/sessions', {
-    params: { page, size },
-  })
-  return data
-}
-
-/** Toàn bộ tin nhắn trong 1 phiên chat. */
-export async function getChatSessionMessages(sessionId: number): Promise<ChatMessageDetail[]> {
-  const { data } = await apiClient.get<ChatMessageDetail[]>(`/chat/sessions/${sessionId}`)
-  return data
-}
-
-/** Đánh giá câu trả lời AI (UPSERT — có thể đổi ý). */
-export async function rateMessage(messageId: number, rating: RatingValue): Promise<void> {
-  await apiClient.post(`/chat/messages/${messageId}/rating`, { rating })
-}

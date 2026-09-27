@@ -1,25 +1,17 @@
 import { ReloadOutlined, SafetyOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Typography } from 'antd'
 import { useCallback, useState } from 'react'
-import { useLocation } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { chatService, rateMessage } from '../../api/chat'
-import type { Attachment, Message, RatingValue, SendMessageRequest } from '../../api/chat'
+import { chatService } from '../../api/chat'
+import type { Attachment, Message, SendMessageRequest } from '../../api/chat'
 
 const { Text, Title } = Typography
 
 export function ChatContainer() {
-  const location = useLocation()
-  // Khi FE điều hướng từ ChatHistoryPage với state { resumeSessionId, sessionTitle }
-  const resumeSessionId: number | null = (location.state as { resumeSessionId?: number } | null)?.resumeSessionId ?? null
-  const resumeTitle: string | null = (location.state as { sessionTitle?: string } | null)?.sessionTitle ?? null
-
   const [messages, setMessages] = useState<Message[]>([])
   const [isReplying, setIsReplying] = useState(false)
   const [networkError, setNetworkError] = useState<string | null>(null)
-  /** ID phiên hiện tại — null = chưa có phiên (câu đầu tiên sẽ tạo phiên mới). */
-  const [currentSessionId, setCurrentSessionId] = useState<number | null>(resumeSessionId)
 
   const updateMessage = useCallback((id: string, update: Partial<Message>) => {
     setMessages((current) => current.map((message) => message.id === id ? { ...message, ...update } : message))
@@ -36,14 +28,8 @@ export function ChatContainer() {
     setIsReplying(true)
 
     try {
-      const response = await chatService.sendMessage({
-        ...request,
-        // Tiếp tục phiên hiện tại (hoặc null để tạo phiên mới ở câu đầu tiên)
-        sessionId: currentSessionId,
-      })
+      const response = await chatService.sendMessage(request)
       updateMessage(patientMessage.id, { status: 'sent' })
-      // Giữ sessionId từ response cho các lượt sau
-      if (response.sessionId) setCurrentSessionId(response.sessionId)
       setMessages((current) => [...current, response])
     } catch (error) {
       updateMessage(patientMessage.id, { status: 'failed' })
@@ -61,24 +47,11 @@ export function ChatContainer() {
     void send({ content: message.content, attachments: message.attachments, isRetry: true }, message)
   }
 
-  async function handleRate(message: Message, rating: RatingValue) {
-    if (!message.dbMessageId) return
-    try {
-      await rateMessage(message.dbMessageId, rating)
-      // Cập nhật ngay UI, không cần reload
-      updateMessage(message.id, { rating: message.rating === rating ? null : rating })
-    } catch {
-      // Silent fail — đây là tính năng phụ, không block người dùng
-    }
-  }
-
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
       <div>
         <Text type="secondary">Chăm sóc sức khỏe tiêu hóa</Text>
-        <Title level={2} className="mb-1! mt-1!">
-          {resumeTitle ? `Tiếp tục: ${resumeTitle}` : 'Tư vấn sức khỏe'}
-        </Title>
+        <Title level={2} className="mb-1! mt-1!">Tư vấn sức khỏe</Title>
         <Text type="secondary">Đặt câu hỏi để nhận thông tin tham khảo từ trợ lý GastroAI.</Text>
       </div>
 
@@ -104,13 +77,7 @@ export function ChatContainer() {
 
         {networkError && <Alert className="m-3 mb-0" type="error" showIcon message={networkError} action={<Button type="link" size="small" icon={<ReloadOutlined />} onClick={() => setNetworkError(null)}>Đóng</Button>} />}
 
-        <MessageList
-          messages={messages}
-          isReplying={isReplying}
-          onQuickPrompt={(prompt) => handleSend(prompt, [])}
-          onRetry={handleRetry}
-          onRate={handleRate}
-        />
+        <MessageList messages={messages} isReplying={isReplying} onQuickPrompt={(prompt) => handleSend(prompt, [])} onRetry={handleRetry} />
         <ChatInput disabled={isReplying} onSend={handleSend} />
       </Card>
     </div>

@@ -7,6 +7,7 @@ import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * Datasource/JPA/Flyway auto-config mặc định bị tắt vì được khai báo thủ công
@@ -14,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * mục 6 đề cương).
  */
 @EnableScheduling
+@EnableAsync
 @ConfigurationPropertiesScan
 @SpringBootApplication(exclude = {
         DataSourceAutoConfiguration.class,

@@ -11,7 +11,6 @@ import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
 import ChatPage from '../pages/chat/ChatPage'
-import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
@@ -63,14 +62,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ChatPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/chat-history',
-        element: (
-          <ProtectedRoute>
-            <ChatHistoryPage />
           </ProtectedRoute>
         ),
       },
