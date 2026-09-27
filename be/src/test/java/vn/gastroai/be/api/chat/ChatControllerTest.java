@@ -94,7 +94,9 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.sources[0].snippet").value("Uong nhieu nuoc va an nhieu chat xo."))
                 .andExpect(jsonPath("$.relatedQuestions[0]").value("Trieu chung nay co nguy hiem khong?"))
                 .andExpect(jsonPath("$.relatedQuestions[1]").value("Khi nao nen di kham?"))
-                .andExpect(jsonPath("$.emergency").value(false));
+                .andExpect(jsonPath("$.emergency").value(false))
+                .andExpect(jsonPath("$.dbMessageId").value(1))
+                .andExpect(jsonPath("$.sessionId").value(1));
     }
 
     @Test

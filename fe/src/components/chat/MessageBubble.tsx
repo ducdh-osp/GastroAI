@@ -126,7 +126,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
           {/* Rating buttons — chỉ hiện dưới câu trả lời AI đã lưu DB */}
           {!isPatient && message.dbMessageId && (
             <span className="ml-auto flex items-center gap-0.5">
-              <Tooltip title={message.rating === 'HELPFUL' ? 'Bỏ đánh giá hữu ích' : 'Hữu ích'}>
+              <Tooltip title={message.rating === 'HELPFUL' ? 'Bạn đã đánh giá hữu ích' : 'Hữu ích'}>
                 <button
                   type="button"
                   aria-label="Đánh giá hữu ích"
@@ -140,7 +140,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
                   <LikeOutlined className="text-xs" />
                 </button>
               </Tooltip>
-              <Tooltip title={message.rating === 'UNHELPFUL' ? 'Bỏ đánh giá không hữu ích' : 'Không hữu ích'}>
+              <Tooltip title={message.rating === 'UNHELPFUL' ? 'Bạn đã đánh giá không hữu ích' : 'Không hữu ích'}>
                 <button
                   type="button"
                   aria-label="Đánh giá không hữu ích"
