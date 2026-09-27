@@ -2,16 +2,17 @@ import { MessageOutlined, RobotOutlined } from '@ant-design/icons'
 import { useEffect, useRef } from 'react'
 import { MessageBubble } from './MessageBubble'
 import { QUICK_PROMPTS } from '../../api/chat'
-import type { Message } from '../../api/chat'
+import type { Message, RatingValue } from '../../api/chat'
 
 interface MessageListProps {
   messages: Message[]
   isReplying: boolean
   onQuickPrompt: (prompt: string) => void
   onRetry: (message: Message) => void
+  onRate: (message: Message, rating: RatingValue) => void
 }
 
-export function MessageList({ messages, isReplying, onQuickPrompt, onRetry }: MessageListProps) {
+export function MessageList({ messages, isReplying, onQuickPrompt, onRetry, onRate }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export function MessageList({ messages, isReplying, onQuickPrompt, onRetry }: Me
             onRetry={onRetry}
             onSuggestionClick={onQuickPrompt}
             suggestionsDisabled={isReplying}
+            onRate={onRate}
           />
         ))}
 

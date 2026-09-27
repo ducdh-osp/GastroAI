@@ -1,21 +1,24 @@
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
+  DislikeOutlined,
   FileTextOutlined,
+  LikeOutlined,
   PhoneOutlined,
   ReloadOutlined,
   RobotOutlined,
   UserOutlined,
   WarningFilled,
 } from '@ant-design/icons'
-import { Button } from 'antd'
-import type { Message } from '../../api/chat'
+import { Button, Tooltip } from 'antd'
+import type { Message, RatingValue } from '../../api/chat'
 
 interface MessageBubbleProps {
   message: Message
   onRetry: (message: Message) => void
   onSuggestionClick: (question: string) => void
   suggestionsDisabled: boolean
+  onRate: (message: Message, rating: RatingValue) => void
 }
 
 function formatTimestamp(timestamp: string): string {
@@ -30,7 +33,7 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function MessageBubble({ message, onRetry, onSuggestionClick, suggestionsDisabled }: MessageBubbleProps) {
+export function MessageBubble({ message, onRetry, onSuggestionClick, suggestionsDisabled, onRate }: MessageBubbleProps) {
   const isPatient = message.sender === 'patient'
   const isFailed = message.status === 'failed'
 
@@ -119,6 +122,40 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
           {message.status === 'sending' && <span>· Đang gửi</span>}
           {message.status === 'sent' && isPatient && <><CheckCircleOutlined className="text-teal-600" /><span>Đã gửi</span></>}
           {isFailed && <><CloseCircleOutlined className="text-red-600" /><span className="text-red-600">Gửi lỗi</span></>}
+
+          {/* Rating buttons — chỉ hiện dưới câu trả lời AI đã lưu DB */}
+          {!isPatient && message.dbMessageId && (
+            <span className="ml-auto flex items-center gap-0.5">
+              <Tooltip title={message.rating === 'HELPFUL' ? 'Bỏ đánh giá hữu ích' : 'Hữu ích'}>
+                <button
+                  type="button"
+                  aria-label="Đánh giá hữu ích"
+                  onClick={() => onRate(message, 'HELPFUL')}
+                  className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
+                    message.rating === 'HELPFUL'
+                      ? 'bg-teal-100 text-teal-700'
+                      : 'text-slate-400 hover:bg-slate-100 hover:text-teal-600'
+                  }`}
+                >
+                  <LikeOutlined className="text-xs" />
+                </button>
+              </Tooltip>
+              <Tooltip title={message.rating === 'UNHELPFUL' ? 'Bỏ đánh giá không hữu ích' : 'Không hữu ích'}>
+                <button
+                  type="button"
+                  aria-label="Đánh giá không hữu ích"
+                  onClick={() => onRate(message, 'UNHELPFUL')}
+                  className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
+                    message.rating === 'UNHELPFUL'
+                      ? 'bg-red-100 text-red-600'
+                      : 'text-slate-400 hover:bg-slate-100 hover:text-red-500'
+                  }`}
+                >
+                  <DislikeOutlined className="text-xs" />
+                </button>
+              </Tooltip>
+            </span>
+          )}
         </div>
 
         {isFailed && (
