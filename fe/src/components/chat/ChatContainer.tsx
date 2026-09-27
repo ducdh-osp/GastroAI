@@ -63,10 +63,12 @@ export function ChatContainer() {
 
   async function handleRate(message: Message, rating: RatingValue) {
     if (!message.dbMessageId) return
+    // Clicking the active rating does not remove it: the API only supports HELPFUL/UNHELPFUL.
+    if (message.rating === rating) return
     try {
       await rateMessage(message.dbMessageId, rating)
       // Cập nhật ngay UI, không cần reload
-      updateMessage(message.id, { rating: message.rating === rating ? null : rating })
+      updateMessage(message.id, { rating })
     } catch {
       // Silent fail — đây là tính năng phụ, không block người dùng
     }
