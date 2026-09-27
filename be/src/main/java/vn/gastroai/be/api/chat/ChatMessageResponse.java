@@ -10,15 +10,38 @@ import java.util.UUID;
  * - dbMessageId: id cua ban ghi chat_messages trong DB — FE gui kem khi goi API rating.
  * - sessionId: id phien chat hien tai — FE gui kem o cac luot tiep theo de tiep tuc phien.
  */
-public record ChatMessageResponse(String id, String sender, String content, String createdAt, String status,
-                                  List<ChatSourceResponse> sources, List<String> relatedQuestions,
-                                  boolean emergency, Long dbMessageId, Long sessionId) {
+public record ChatMessageResponse(
+        String id,
+        String sender,
+        String content,
+        String createdAt,
+        String status,
+        List<ChatSourceResponse> sources,
+        List<String> relatedQuestions,
+        boolean emergency,
+        Long dbMessageId,
+        Long sessionId
+) {
+
     public static ChatMessageResponse assistantReply(
-            String content, List<ChatSourceResponse> sources, List<String> relatedQuestions,
-            boolean emergency, Long dbMessageId, Long sessionId) {
+            String content,
+            List<ChatSourceResponse> sources,
+            List<String> relatedQuestions,
+            boolean emergency,
+            Long dbMessageId,
+            Long sessionId) {
+
         return new ChatMessageResponse(
-                UUID.randomUUID().toString(), "assistant", content, Instant.now().toString(), "sent",
-                sources, relatedQuestions, emergency, dbMessageId, sessionId);
+                UUID.randomUUID().toString(),
+                "assistant",
+                content,
+                Instant.now().toString(),
+                "sent",
+                sources,
+                relatedQuestions,
+                emergency,
+                dbMessageId,
+                sessionId
+        );
     }
 }
-
