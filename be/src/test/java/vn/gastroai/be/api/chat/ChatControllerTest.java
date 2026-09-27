@@ -13,9 +13,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import vn.gastroai.be.application.chat.ChatAnswer;
+import vn.gastroai.be.application.chat.ChatHistoryService;
 import vn.gastroai.be.application.chat.ChatService;
 import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.application.rag.RagSource;
+import vn.gastroai.be.application.rag.StreamingRagQueryService;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
@@ -23,6 +25,9 @@ import vn.gastroai.be.infrastructure.security.JwtService;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -44,6 +49,16 @@ class ChatControllerTest {
     @MockitoBean
     private ChatService chatService;
 
+    // ChatController giờ gọi chatHistoryService.saveExchange() sau mỗi câu trả lời (UC0018) để
+    // lưu lịch sử - không mock thì @WebMvcTest không tìm được bean, context load lỗi.
+    @MockitoBean
+    private ChatHistoryService chatHistoryService;
+
+    // ChatController cũng cần StreamingRagQueryService cho endpoint /messages/stream (UC0030) -
+    // không dùng trong các test này nhưng vẫn phải mock để Spring dựng được bean chatController.
+    @MockitoBean
+    private StreamingRagQueryService streamingRagQueryService;
+
     // SecurityConfig đăng ký JwtAuthenticationFilter cho mọi request (kể cả trong slice test
     // này) -> filter cần 3 bean này để khởi tạo được, dù test không có Authorization header
     // (đã đăng nhập sẵn qua @WithMockUser nên filter không thực sự dùng tới).
@@ -57,13 +72,15 @@ class ChatControllerTest {
     private RevokedTokenRepository revokedTokenRepository;
 
     @Test
-    @WithMockUser(roles = "PATIENT")
+    @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageReturnsAssistantReplyMatchingFrontendContract() throws Exception {
         RagAnswer ragAnswer = new RagAnswer(
                 "Ban nen theo doi trieu chung.",
                 List.of(new RagSource("Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.")),
                 List.of("Trieu chung nay co nguy hiem khong?", "Khi nao nen di kham?"));
         when(chatService.ask(anyString())).thenReturn(new ChatAnswer(ragAnswer, false));
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean()))
+                .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L));
 
         mockMvc.perform(post("/api/v1/chat/messages")
                         .with(csrf())
@@ -81,7 +98,7 @@ class ChatControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "PATIENT")
+    @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageRejectsBlankContent() throws Exception {
         mockMvc.perform(post("/api/v1/chat/messages")
                         .with(csrf())
@@ -91,12 +108,14 @@ class ChatControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "PATIENT")
+    @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageStillReturnsRealAnswerWhenEmergencyDetected() throws Exception {
         // UC0034/035 - emergency=true KHONG duoc chan Gemini, chi la co bao them de FE hien thi
         // canh bao noi bat - benh nhan van phai nhan duoc cau tra loi that.
         RagAnswer ragAnswer = new RagAnswer("Ban nen den co so y te ngay.", List.of(), List.of());
         when(chatService.ask(anyString())).thenReturn(new ChatAnswer(ragAnswer, true));
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean()))
+                .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L));
 
         mockMvc.perform(post("/api/v1/chat/messages")
                         .with(csrf())
@@ -108,7 +127,7 @@ class ChatControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "PATIENT")
+    @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageReportsQuotaExceededInsteadOfGenericServerError() throws Exception {
         // Xac nhan thuc te tu log: Gemini free tier tra 429 khi het 20 luot generateContent/ngay.
         when(chatService.ask(anyString())).thenThrow(
@@ -124,7 +143,7 @@ class ChatControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "PATIENT")
+    @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageReportsGenericAiFailureForOtherGeminiErrors() throws Exception {
         when(chatService.ask(anyString())).thenThrow(
                 HttpServerErrorException.create(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable",
