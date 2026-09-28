@@ -1,10 +1,10 @@
 import { ReloadOutlined, SafetyOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Typography } from 'antd'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { chatService, rateMessage } from '../../api/chat'
+import { chatService, getChatSessionMessages, rateMessage } from '../../api/chat'
 import type { Attachment, Message, RatingValue, SendMessageRequest } from '../../api/chat'
 
 const { Text, Title } = Typography
@@ -17,9 +17,49 @@ export function ChatContainer() {
 
   const [messages, setMessages] = useState<Message[]>([])
   const [isReplying, setIsReplying] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(resumeSessionId !== null)
   const [networkError, setNetworkError] = useState<string | null>(null)
   /** ID phiên hiện tại — null = chưa có phiên (câu đầu tiên sẽ tạo phiên mới). */
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(resumeSessionId)
+
+  useEffect(() => {
+    let cancelled = false
+    setCurrentSessionId(resumeSessionId)
+    setMessages([])
+    setNetworkError(null)
+
+    if (resumeSessionId === null) {
+      setIsLoadingHistory(false)
+      return () => { cancelled = true }
+    }
+
+    setIsLoadingHistory(true)
+    getChatSessionMessages(resumeSessionId)
+      .then((history) => {
+        if (cancelled) return
+        setMessages(history.map((message) => ({
+          id: `history-${message.id}`,
+          dbMessageId: message.id,
+          sender: message.sender,
+          content: message.content,
+          createdAt: message.createdAt,
+          status: 'sent' as const,
+          sources: message.sources,
+          relatedQuestions: message.relatedQuestions,
+          emergency: message.emergency,
+          rating: message.rating,
+        })))
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        setNetworkError(error instanceof Error ? error.message : 'Không thể tải lịch sử cuộc trò chuyện.')
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingHistory(false)
+      })
+
+    return () => { cancelled = true }
+  }, [resumeSessionId])
 
   const updateMessage = useCallback((id: string, update: Partial<Message>) => {
     setMessages((current) => current.map((message) => message.id === id ? { ...message, ...update } : message))
@@ -109,11 +149,12 @@ export function ChatContainer() {
         <MessageList
           messages={messages}
           isReplying={isReplying}
+          isLoadingHistory={isLoadingHistory}
           onQuickPrompt={(prompt) => handleSend(prompt, [])}
           onRetry={handleRetry}
           onRate={handleRate}
         />
-        <ChatInput disabled={isReplying} onSend={handleSend} />
+        <ChatInput disabled={isReplying || isLoadingHistory} onSend={handleSend} />
       </Card>
     </div>
   )

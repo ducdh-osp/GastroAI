@@ -18,6 +18,7 @@ export interface Attachment {
 export interface SourceRef {
   documentTitle: string
   snippet: string
+  sourceUrl?: string | null
 }
 
 export interface Message {

@@ -7,12 +7,13 @@ import type { Message, RatingValue } from '../../api/chat'
 interface MessageListProps {
   messages: Message[]
   isReplying: boolean
+  isLoadingHistory: boolean
   onQuickPrompt: (prompt: string) => void
   onRetry: (message: Message) => void
   onRate: (message: Message, rating: RatingValue) => void
 }
 
-export function MessageList({ messages, isReplying, onQuickPrompt, onRetry, onRate }: MessageListProps) {
+export function MessageList({ messages, isReplying, isLoadingHistory, onQuickPrompt, onRetry, onRate }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -22,7 +23,13 @@ export function MessageList({ messages, isReplying, onQuickPrompt, onRetry, onRa
   return (
     <section className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6" aria-label="Nội dung hội thoại" aria-live="polite">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
-        {messages.length === 0 && (
+        {isLoadingHistory && (
+          <div className="flex min-h-72 items-center justify-center text-sm text-slate-500" role="status">
+            Đang tải lịch sử cuộc trò chuyện…
+          </div>
+        )}
+
+        {!isLoadingHistory && messages.length === 0 && (
           <div className="flex min-h-72 flex-col items-center justify-center text-center">
             <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-2xl text-teal-700" aria-hidden="true"><MessageOutlined /></span>
             <h2 className="m-0 text-xl font-semibold text-slate-800">Bạn cần tư vấn điều gì?</h2>

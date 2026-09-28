@@ -53,10 +53,7 @@ const columns: ColumnsType<LoginHistoryItem> = [
     title: 'Thiết bị',
     key: 'device',
     render: (_, record) => (
-      <div>
-        <Text strong>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
-        <div><Text type="secondary" className="block truncate" title={record.userAgent ?? undefined}>{record.userAgent ?? '—'}</Text></div>
-      </div>
+      <Text strong title={record.userAgent ?? undefined}>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
     ),
   },
   {

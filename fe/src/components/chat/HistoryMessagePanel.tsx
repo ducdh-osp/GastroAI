@@ -1,6 +1,5 @@
 import {
   DislikeTwoTone,
-  FileTextOutlined,
   LikeTwoTone,
   LoadingOutlined,
   MessageOutlined,
@@ -12,6 +11,8 @@ import {
 } from '@ant-design/icons'
 import { Alert, Button, Spin, Tag, Tooltip, Typography } from 'antd'
 import type { ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
+import { MarkdownContent } from './MarkdownContent'
+import { SourceReferences } from './SourceReferences'
 
 const { Text } = Typography
 
@@ -144,23 +145,10 @@ export function HistoryMessagePanel({
                         : 'rounded-bl-md bg-slate-100 text-slate-800'
                     }`}
                   >
-                    <p className="m-0 whitespace-pre-wrap break-words">{msg.content}</p>
+                    <MarkdownContent content={msg.content} />
 
                     {/* Nguồn tham khảo */}
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className={`mt-3 border-t pt-3 text-xs ${isPatient ? 'border-white/20 text-white/80' : 'border-slate-200 text-slate-500'}`}>
-                        <p className="m-0 font-medium flex items-center gap-1">
-                          <FileTextOutlined /> Nguồn tham khảo:
-                        </p>
-                        <ul className="m-0 mt-1 list-none space-y-0.5 p-0">
-                          {msg.sources.map((s, i) => (
-                            <li key={i} className="line-clamp-2">
-                              <span className="font-medium">{s.documentTitle}:</span> {s.snippet}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    {msg.sources && msg.sources.length > 0 && <SourceReferences sources={msg.sources} />}
 
                     {/* Câu hỏi gợi ý */}
                     {!isPatient && msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
