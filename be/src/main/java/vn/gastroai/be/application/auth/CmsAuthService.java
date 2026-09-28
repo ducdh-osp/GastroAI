@@ -46,6 +46,7 @@ public class CmsAuthService {
     private final DoctorLoginHistoryRepository doctorLoginHistoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final LoginSecurityPolicy loginSecurityPolicy;
+    private final ClientRequestInfoResolver clientRequestInfoResolver;
 
     public CmsAuthService(
             AdminRepository adminRepository,
@@ -53,7 +54,8 @@ public class CmsAuthService {
             AdminLoginHistoryRepository adminLoginHistoryRepository,
             DoctorLoginHistoryRepository doctorLoginHistoryRepository,
             PasswordEncoder passwordEncoder,
-            LoginSecurityPolicy loginSecurityPolicy) {
+            LoginSecurityPolicy loginSecurityPolicy,
+            ClientRequestInfoResolver clientRequestInfoResolver) {
 
         this.adminRepository = adminRepository;
         this.doctorRepository = doctorRepository;
@@ -61,6 +63,7 @@ public class CmsAuthService {
         this.doctorLoginHistoryRepository = doctorLoginHistoryRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginSecurityPolicy = loginSecurityPolicy;
+        this.clientRequestInfoResolver = clientRequestInfoResolver;
     }
 
     // Chống session fixation: huỷ session cũ (nếu có) rồi tạo session MỚI hoàn toàn sau khi
@@ -345,15 +348,17 @@ public class CmsAuthService {
             String failureReason,
             HttpServletRequest request) {
 
+        ClientRequestInfo requestInfo = clientRequestInfoResolver.resolve(request);
+
         adminLoginHistoryRepository.save(
                 new AdminLoginHistory(
                         user,
                         attemptedAt,
                         outcome,
                         failureReason,
-                        getIpAddress(request),
-                        getUserAgent(request),
-                        getDeviceLabel(request)));
+                        requestInfo.ipAddress(),
+                        requestInfo.userAgent(),
+                        requestInfo.deviceLabel()));
     }
 
     private void saveDoctorHistory(
@@ -363,47 +368,17 @@ public class CmsAuthService {
             String failureReason,
             HttpServletRequest request) {
 
+        ClientRequestInfo requestInfo = clientRequestInfoResolver.resolve(request);
+
         doctorLoginHistoryRepository.save(
                 new DoctorLoginHistory(
                         user,
                         attemptedAt,
                         outcome,
                         failureReason,
-                        getIpAddress(request),
-                        getUserAgent(request),
-                        getDeviceLabel(request)));
-    }
-
-    private String getIpAddress(
-            HttpServletRequest request) {
-
-        return request.getRemoteAddr();
-    }
-
-    private String getUserAgent(
-            HttpServletRequest request) {
-
-        String userAgent =
-                request.getHeader("User-Agent");
-
-        return userAgent != null
-                ? userAgent
-                : "Unknown";
-    }
-
-    // Lưu ý: chưa thật sự suy ra tên thiết bị/trình duyệt — đang trả về nguyên User-Agent
-    // giống hệt getUserAgent() ở trên, khác với ClientRequestInfoResolver.deviceLabel() bên
-    // AuthService (Bệnh nhân) đã parse ra dạng "Chrome trên Windows". Có thể tái dùng logic
-    // đó nếu muốn CMS hiển thị đẹp hơn, không cấp bách.
-    private String getDeviceLabel(
-            HttpServletRequest request) {
-
-        String userAgent =
-                request.getHeader("User-Agent");
-
-        return userAgent != null
-                ? userAgent
-                : "Unknown";
+                        requestInfo.ipAddress(),
+                        requestInfo.userAgent(),
+                        requestInfo.deviceLabel()));
     }
 
     /** UC0045 - Đăng xuất Admin/Bác sĩ: chỉ cần huỷ session, không có token nào cần thu hồi. */
