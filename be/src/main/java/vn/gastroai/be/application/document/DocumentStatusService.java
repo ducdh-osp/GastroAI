@@ -58,6 +58,7 @@ public class DocumentStatusService {
         Document document = getDocument(documentId);
 
         document.setStatus(DocumentStatus.ERROR);
+        document.setProcessingStage(DocumentProcessingStage.ERROR);
         document.setErrorMessage(errorMessage);
 
         documentRepository.save(document);
