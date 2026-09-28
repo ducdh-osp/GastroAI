@@ -8,6 +8,8 @@ import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
+import java.util.Optional;
+
 @Service
 public class DocumentStatusService {
 
@@ -15,6 +17,11 @@ public class DocumentStatusService {
 
     public DocumentStatusService(DocumentRepository documentRepository) {
         this.documentRepository = documentRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Document> findDocument(Long documentId) {
+        return documentRepository.findById(documentId);
     }
 
     @Transactional

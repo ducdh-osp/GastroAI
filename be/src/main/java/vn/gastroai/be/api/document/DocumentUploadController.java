@@ -3,8 +3,10 @@ package vn.gastroai.be.api.document;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import vn.gastroai.be.application.document.DocumentStatusService;
 import vn.gastroai.be.application.document.DocumentUploadService;
 import vn.gastroai.be.domain.rag.Document;
+import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 
 @RestController
@@ -12,33 +14,50 @@ import vn.gastroai.be.domain.rag.DocumentStatus;
 public class DocumentUploadController {
 
     private final DocumentUploadService documentUploadService;
+    private final DocumentStatusService documentStatusService;
 
     public DocumentUploadController(
-            DocumentUploadService documentUploadService
+            DocumentUploadService documentUploadService,
+            DocumentStatusService documentStatusService
     ) {
         this.documentUploadService = documentUploadService;
+        this.documentStatusService = documentStatusService;
     }
 
     @PostMapping
-    public ResponseEntity<DocumentUploadResponse> upload(
+    public ResponseEntity<DocumentStatusResponse> upload(
             @RequestParam("file") MultipartFile file
     ) {
         Document document =
                 documentUploadService.upload(file);
 
-        return ResponseEntity.accepted().body(
-                new DocumentUploadResponse(
-                        document.getId(),
-                        document.getTitle(),
-                        document.getStatus()
-                )
-        );
+        return ResponseEntity.accepted().body(toResponse(document));
     }
 
-    public record DocumentUploadResponse(
+    @GetMapping("/{documentId}")
+    public ResponseEntity<DocumentStatusResponse> getStatus(
+            @PathVariable Long documentId
+    ) {
+        return documentStatusService.findDocument(documentId)
+                .map(document -> ResponseEntity.ok(toResponse(document)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private DocumentStatusResponse toResponse(Document document) {
+        return new DocumentStatusResponse(
+                document.getId(),
+                document.getTitle(),
+                document.getStatus(),
+                document.getProcessingStage(),
+                document.getErrorMessage());
+    }
+
+    public record DocumentStatusResponse(
             Long documentId,
             String title,
-            DocumentStatus status
+            DocumentStatus status,
+            DocumentProcessingStage processingStage,
+            String errorMessage
     ) {
     }
 }

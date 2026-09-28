@@ -60,6 +60,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
                         .requestMatchers("/api/v1/chat/**").hasRole("PATIENT")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
+                        .hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/documents")
                         .hasAnyRole("ADMIN", "DOCTOR")
                         // Mọi endpoint còn lại (vd /api/v1/me/**, /api/v1/auth/change-password)
