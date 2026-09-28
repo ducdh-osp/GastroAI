@@ -18,6 +18,12 @@ import java.util.stream.Collectors;
  */
 @Service
 public class RagQueryService {
+    // Van dung du topK chunk de sinh cau tra loi (nhieu ngu canh hon = tra loi day du hon),
+    // nhung chi hien toi da 2 nguon dau tien (da sap xep gan nhat truoc, xem
+    // EmbeddingStore.findTopK) cho FE - hien het ca 5 nguon lam UI dai/roi mat, trong khi 2
+    // nguon lien quan nhat da du de nguoi dung tin tuong cau tra loi co can cu.
+    private static final int MAX_DISPLAYED_SOURCES = 2;
+
     private final GeminiEmbeddingClient embeddingClient;
     private final EmbeddingStore embeddingStore;
     private final GeminiChatClient chatClient;
@@ -58,6 +64,7 @@ public class RagQueryService {
         String generatedAnswer = chatClient.generate(systemPrompt, question);
 
         List<RagSource> sources = context.stream()
+                .limit(MAX_DISPLAYED_SOURCES)
                 .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content()))
                 .toList();
         return new RagAnswer(generatedAnswer, sources, generateRelatedQuestions(question, generatedAnswer));

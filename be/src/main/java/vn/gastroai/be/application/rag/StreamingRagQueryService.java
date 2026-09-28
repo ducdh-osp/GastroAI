@@ -16,6 +16,10 @@ import java.util.stream.Collectors;
 @Service
 public class StreamingRagQueryService {
 
+    // Xem giai thich o RagQueryService.MAX_DISPLAYED_SOURCES - cung logic, van dung du topK
+    // chunk de sinh cau tra loi nhung chi hien toi da 2 nguon cho FE.
+    private static final int MAX_DISPLAYED_SOURCES = 2;
+
     private final GeminiEmbeddingClient embeddingClient;
     private final EmbeddingStore embeddingStore;
     private final GeminiStreamingChatClient streamingChatClient;
@@ -53,6 +57,7 @@ public class StreamingRagQueryService {
                 embeddingStore.findTopK(queryVector, topK);
 
         List<RagSource> sources = context.stream()
+                .limit(MAX_DISPLAYED_SOURCES)
                 .map(chunk ->
                         new RagSource(
                                 chunk.documentTitle(),
