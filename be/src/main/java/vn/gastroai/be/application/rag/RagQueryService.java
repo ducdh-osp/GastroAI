@@ -58,7 +58,7 @@ public class RagQueryService {
         String generatedAnswer = chatClient.generate(systemPrompt, question);
 
         List<RagSource> sources = context.stream()
-                .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content()))
+                .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content(), chunk.sourceUrl()))
                 .toList();
         return new RagAnswer(generatedAnswer, sources, generateRelatedQuestions(question, generatedAnswer));
     }
