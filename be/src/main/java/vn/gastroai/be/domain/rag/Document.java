@@ -38,6 +38,10 @@ public class Document {
     @Column(nullable = false, length = 20)
     private DocumentStatus status = DocumentStatus.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "processing_stage", nullable = false, length = 20)
+    private DocumentProcessingStage processingStage = DocumentProcessingStage.PENDING;
+
     @Column(name = "error_message")
     private String errorMessage;
 

@@ -62,7 +62,10 @@ public class DocumentProcessingWorker {
             document.setFullText(fullText);
             documentRepository.save(document);
 
+            documentStatusService.markChunking(documentId);
             List<Chunk> chunks = documentChunkingService.chunkDocument(documentId);
+
+            documentStatusService.markEmbedding(documentId);
             for (Chunk chunk : chunks) {
                 float[] vector = embeddingClient.embed(chunk.getContent());
                 embeddingStore.save(chunk.getId(), vector, EMBEDDING_MODEL);
