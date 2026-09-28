@@ -1,18 +1,34 @@
 import { apiClient } from '../lib/axios'
 
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER'
+
 export interface MedicalProfile {
   id: number | null
+  dateOfBirth: string | null
+  gender: Gender | null
+  heightCm: number | null
+  weightKg: number | null
   medicalHistory: string | null
   allergies: string[]
+  chronicConditions: string[]
+  pastSurgeries: string[]
   currentMedications: string[]
+  dietaryRestrictions: string[]
   updatedAt: string | null
   exists: boolean
 }
 
 export interface UpdateMedicalProfileRequest {
+  dateOfBirth: string | null
+  gender: Gender | null
+  heightCm: number | null
+  weightKg: number | null
   medicalHistory: string
   allergies: string[]
+  chronicConditions: string[]
+  pastSurgeries: string[]
   currentMedications: string[]
+  dietaryRestrictions: string[]
 }
 
 /** UC0009/UC0010 - luon tra ve 200, exists=false neu benh nhan chua khai bao lan nao. */

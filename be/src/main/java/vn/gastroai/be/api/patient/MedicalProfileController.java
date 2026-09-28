@@ -35,8 +35,7 @@ public class MedicalProfileController {
             Principal principal, Authentication authentication) {
         requireAuthenticated(authentication);
         Long patientId = Long.valueOf(principal.getName());
-        return medicalProfileService.upsertProfile(
-                patientId, request.medicalHistory(), request.allergies(), request.currentMedications());
+        return medicalProfileService.upsertProfile(patientId, request);
     }
 
     private void requireAuthenticated(Authentication authentication) {
