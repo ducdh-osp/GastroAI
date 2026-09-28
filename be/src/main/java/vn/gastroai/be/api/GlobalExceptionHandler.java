@@ -10,6 +10,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientResponseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import vn.gastroai.be.application.auth.AccountLockedException;
 
 import java.util.Map;
@@ -21,6 +23,8 @@ import java.util.Map;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // MeController và CmsAuthController tự kiểm tra "đã đăng nhập chưa" thủ công (không qua
     // anyRequest().authenticated() vì /me/** và /cms/auth/** không được Spring Security tự
@@ -83,6 +87,8 @@ public class GlobalExceptionHandler {
     // 20 luot/ngay cua tier free) - phai bao ro la loi tu dich vu AI, khong phai loi he thong.
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<Map<String, String>> handleAiServiceFailure(RestClientResponseException exception) {
+        log.error("Loi tu Gemini API: status={} body={}", exception.getStatusCode(),
+                exception.getResponseBodyAsString(), exception);
         boolean quotaExceeded = exception.getStatusCode().value() == 429;
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
                 "code", quotaExceeded ? "AI_QUOTA_EXCEEDED" : "AI_SERVICE_UNAVAILABLE",

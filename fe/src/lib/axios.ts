@@ -4,7 +4,9 @@ const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/
 
 export const apiClient = axios.create({
   baseURL,
-  timeout: 10000,
+  // 60s (không phải 10s mặc định): /chat/messages gọi Gemini tuần tự 2-3 lượt
+  // (embedding câu hỏi + sinh câu trả lời + sinh câu hỏi gợi ý), cộng dồn dễ vượt 10s.
+  timeout: 60000,
 })
 
 // Tự động gắn Authorization header từ token đang lưu trong localStorage
