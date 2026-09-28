@@ -10,6 +10,7 @@ import ChangePasswordPage from '../pages/auth/ChangePasswordPage'
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
+import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import ChatPage from '../pages/chat/ChatPage'
 import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -55,6 +56,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ChangePasswordPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/medical-profile',
+        element: (
+          <ProtectedRoute>
+            <MedicalProfilePage />
           </ProtectedRoute>
         ),
       },
