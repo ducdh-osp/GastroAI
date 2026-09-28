@@ -14,7 +14,7 @@ class ChatMessageResponseTest {
     @Test
     void assistantReplyBuildsMessageMatchingFrontendContract() {
         List<ChatSourceResponse> sources =
-                List.of(new ChatSourceResponse("Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo."));
+                List.of(new ChatSourceResponse("Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.", null));
         List<String> relatedQuestions = List.of("Trieu chung nay co nguy hiem khong?");
 
         ChatMessageResponse response = ChatMessageResponse.assistantReply(

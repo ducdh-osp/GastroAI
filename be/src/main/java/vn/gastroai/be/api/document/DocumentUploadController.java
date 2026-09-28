@@ -26,10 +26,11 @@ public class DocumentUploadController {
 
     @PostMapping
     public ResponseEntity<DocumentStatusResponse> upload(
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "sourceUrl", required = false) String sourceUrl
     ) {
         Document document =
-                documentUploadService.upload(file);
+                documentUploadService.upload(file, sourceUrl);
 
         return ResponseEntity.accepted().body(toResponse(document));
     }

@@ -61,7 +61,8 @@ public class StreamingRagQueryService {
                 .map(chunk ->
                         new RagSource(
                                 chunk.documentTitle(),
-                                chunk.content()
+                                chunk.content(),
+                                chunk.sourceUrl()
                         )
                 )
                 .toList();
