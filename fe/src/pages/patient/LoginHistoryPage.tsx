@@ -1,11 +1,16 @@
 import { Alert, Button, Card, Pagination, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getLoginHistory, type LoginHistoryItem } from '../../api/auth'
 import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
+
+function pageSizeForViewport(height: number): number {
+  // Reserve space for the page heading, optional security alert, card header and pager.
+  return Math.max(4, Math.min(12, Math.floor((height - 440) / 50)))
+}
 
 // Map outcome từ BE → hiển thị
 type LoginStatus = 'SUCCESS' | 'FAILURE' | 'BLOCKED'
@@ -50,7 +55,7 @@ const columns: ColumnsType<LoginHistoryItem> = [
     render: (_, record) => (
       <div>
         <Text strong>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
-        <div><Text type="secondary">{record.userAgent ?? '—'}</Text></div>
+        <div><Text type="secondary" className="block truncate" title={record.userAgent ?? undefined}>{record.userAgent ?? '—'}</Text></div>
       </div>
     ),
   },
@@ -92,7 +97,24 @@ export default function LoginHistoryPage() {
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [recentFailureCount, setRecentFailureCount] = useState(0)
-  const pageSize = 20
+  const [pageSize, setPageSize] = useState(() => pageSizeForViewport(window.innerHeight))
+  const previousPageSize = useRef(pageSize)
+
+  useEffect(() => {
+    function updatePageSize() {
+      setPageSize(pageSizeForViewport(window.innerHeight))
+    }
+
+    window.addEventListener('resize', updatePageSize)
+    return () => window.removeEventListener('resize', updatePageSize)
+  }, [])
+
+  useEffect(() => {
+    if (previousPageSize.current !== pageSize) {
+      previousPageSize.current = pageSize
+      setPage(0)
+    }
+  }, [pageSize])
 
   useEffect(() => {
     setLoading(true)
@@ -114,61 +136,67 @@ export default function LoginHistoryPage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <Text type="secondary">Bảo mật tài khoản</Text>
-        <Title level={2} className="mb-1! mt-1!">Lịch sử đăng nhập</Title>
-        <Text type="secondary">Theo dõi các lần truy cập gần đây để phát hiện hoạt động bất thường.</Text>
-      </div>
-
-      {error && (
-        <Alert type="error" showIcon message={error} className="mb-6" />
-      )}
-
-      {!error && !loading && recentFailureCount > 0 && (
-        <Alert
-          className="mb-6"
-          type="warning"
-          showIcon
-          message="Có hoạt động cần kiểm tra"
-          description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
-          action={<Button size="small" type="link"><Link to="/change-password">Đổi mật khẩu</Link></Button>}
-        />
-      )}
-
-      <Card className="rounded-2xl border-black/5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <Title level={4} className="mb-1!">Các lần đăng nhập gần đây</Title>
-            <Text type="secondary">
-              {loading ? 'Đang tải...' : `Tổng cộng ${totalElements} hoạt động`}
-            </Text>
-          </div>
-          {!loading && <Tag color="blue">{totalElements} hoạt động</Tag>}
+      <div className="flex h-[calc(100svh-3rem)] min-h-0 flex-col gap-4 overflow-hidden sm:h-[calc(100svh-4rem)]">
+        <div className="shrink-0">
+          <Text type="secondary">Bảo mật tài khoản</Text>
+          <Title level={2} className="mb-1! mt-1!">Lịch sử đăng nhập</Title>
+          <Text type="secondary">Theo dõi các lần truy cập gần đây để phát hiện hoạt động bất thường.</Text>
         </div>
 
-        <Spin spinning={loading}>
-          <Table<LoginHistoryItem>
-            columns={columns}
-            dataSource={items}
-            rowKey="id"
-            pagination={false}
-            scroll={{ x: 720 }}
-            locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
-          />
-        </Spin>
-
-        {totalElements > pageSize && (
-          <div className="mt-4 flex justify-end">
-            <Pagination
-              current={page + 1}
-              pageSize={pageSize}
-              total={totalElements}
-              onChange={(p) => setPage(p - 1)}
-              showSizeChanger={false}
-            />
-          </div>
+        {error && (
+          <Alert type="error" showIcon message={error} className="shrink-0" />
         )}
-      </Card>
+
+        {!error && !loading && recentFailureCount > 0 && (
+          <Alert
+            className="shrink-0"
+            type="warning"
+            showIcon
+            message="Có hoạt động cần kiểm tra"
+            description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
+            action={<Button size="small" type="link"><Link to="/change-password">Đổi mật khẩu</Link></Button>}
+          />
+        )}
+
+        <Card
+          className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm"
+          styles={{ body: { display: 'flex', height: '100%', minHeight: 0, flexDirection: 'column', overflow: 'hidden' } }}
+        >
+          <div className="mb-4 flex shrink-0 items-center justify-between">
+            <div>
+              <Title level={4} className="mb-1!">Các lần đăng nhập gần đây</Title>
+              <Text type="secondary">
+                {loading ? 'Đang tải...' : `Tổng cộng ${totalElements} hoạt động`}
+              </Text>
+            </div>
+            {!loading && <Tag color="blue">{totalElements} hoạt động</Tag>}
+          </div>
+
+          <Spin spinning={loading}>
+            <Table<LoginHistoryItem>
+              columns={columns}
+              dataSource={items}
+              rowKey="id"
+              size="small"
+              pagination={false}
+              scroll={{ x: 720 }}
+              locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
+            />
+          </Spin>
+
+          {totalElements > pageSize && (
+            <div className="mt-auto flex shrink-0 justify-end pt-4">
+              <Pagination
+                current={page + 1}
+                pageSize={pageSize}
+                total={totalElements}
+                onChange={(p) => setPage(p - 1)}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
+        </Card>
+      </div>
     </AppShell>
   )
 }
