@@ -12,6 +12,8 @@ import {
 } from '@ant-design/icons'
 import { Button, Tooltip } from 'antd'
 import type { Message, RatingValue } from '../../api/chat'
+import { MarkdownContent } from './MarkdownContent'
+import { SourceReferences } from './SourceReferences'
 
 interface MessageBubbleProps {
   message: Message
@@ -68,7 +70,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
               : 'rounded-bl-md bg-slate-100 text-slate-800'
           }`}
         >
-          <p className="m-0 whitespace-pre-wrap break-words">{message.content}</p>
+          <MarkdownContent content={message.content} />
 
           {message.attachments && message.attachments.length > 0 && (
             <div className={`mt-3 flex flex-wrap gap-2 border-t pt-3 ${isPatient && !isFailed ? 'border-white/20' : 'border-slate-200'}`}>
@@ -87,18 +89,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
             </div>
           )}
 
-          {message.sources && message.sources.length > 0 && (
-            <div className={`mt-3 border-t pt-3 text-xs ${isPatient && !isFailed ? 'border-white/20 text-white/80' : 'border-slate-200 text-slate-500'}`}>
-              <p className="m-0 font-medium">Nguồn tham khảo:</p>
-              <ul className="m-0 mt-1 list-none space-y-1 p-0">
-                {message.sources.map((source, index) => (
-                  <li key={index} className="line-clamp-2">
-                    <span className="font-medium">{source.documentTitle}:</span> {source.snippet}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {message.sources && message.sources.length > 0 && <SourceReferences sources={message.sources} />}
         </div>
 
         {!isPatient && message.relatedQuestions && message.relatedQuestions.length > 0 && (
