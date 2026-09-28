@@ -44,16 +44,21 @@ public class ChatMessage {
     @Column(nullable = false)
     private boolean emergency;
 
+    /** JSON array of strings - cac nhom dau hieu Triage da khop (vd XUAT_HUYET_TIEU_HOA). Null khi sender='patient' hoac ban ghi cu truoc UC0035. */
+    @Column(name = "matched_groups", columnDefinition = "TEXT")
+    private String matchedGroups;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
     public ChatMessage(ChatSession session, String sender, String content,
-                       String sources, String relatedQuestions, boolean emergency) {
+                       String sources, String relatedQuestions, boolean emergency, String matchedGroups) {
         this.session = session;
         this.sender = sender;
         this.content = content;
         this.sources = sources;
         this.relatedQuestions = relatedQuestions;
         this.emergency = emergency;
+        this.matchedGroups = matchedGroups;
     }
 }

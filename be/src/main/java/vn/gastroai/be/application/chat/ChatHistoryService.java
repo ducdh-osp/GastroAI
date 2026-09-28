@@ -62,7 +62,8 @@ public class ChatHistoryService {
      */
     @Transactional("postgresTransactionManager")
     public SavedExchange saveExchange(Long patientId, Long sessionId,
-                                     String question, RagAnswer ragAnswer, boolean emergency) {
+                                     String question, RagAnswer ragAnswer, boolean emergency,
+                                     List<String> matchedGroups) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
 
@@ -78,16 +79,17 @@ public class ChatHistoryService {
         }
 
         // Lưu tin nhắn của patient
-        messageRepository.save(new ChatMessage(session, "patient", question, null, null, false));
+        messageRepository.save(new ChatMessage(session, "patient", question, null, null, false, null));
 
         // Serialize sources + relatedQuestions
         String sourcesJson = toJson(ragAnswer.sources());
         String questionsJson = toJson(ragAnswer.relatedQuestions());
+        String matchedGroupsJson = toJson(matchedGroups);
 
         // Lưu câu trả lời assistant
         ChatMessage assistantMsg = messageRepository.save(
                 new ChatMessage(session, "assistant", ragAnswer.answer(),
-                        sourcesJson, questionsJson, emergency));
+                        sourcesJson, questionsJson, emergency, matchedGroupsJson));
 
         // Cập nhật updatedAt của session để sort đúng "mới nhất trước"
         session.setUpdatedAt(assistantMsg.getCreatedAt());

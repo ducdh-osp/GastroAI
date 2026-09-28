@@ -19,6 +19,7 @@ public record ChatMessageResponse(
         List<ChatSourceResponse> sources,
         List<String> relatedQuestions,
         boolean emergency,
+        List<String> matchedGroups,
         Long dbMessageId,
         Long sessionId
 ) {
@@ -28,6 +29,7 @@ public record ChatMessageResponse(
             List<ChatSourceResponse> sources,
             List<String> relatedQuestions,
             boolean emergency,
+            List<String> matchedGroups,
             Long dbMessageId,
             Long sessionId) {
 
@@ -40,6 +42,7 @@ public record ChatMessageResponse(
                 sources,
                 relatedQuestions,
                 emergency,
+                matchedGroups,
                 dbMessageId,
                 sessionId
         );

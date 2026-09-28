@@ -8,6 +8,7 @@ import vn.gastroai.be.infrastructure.ai.GeminiStreamingChatClient;
 import vn.gastroai.be.infrastructure.rag.EmbeddingStore;
 import vn.gastroai.be.infrastructure.rag.SimilarChunk;
 import vn.gastroai.be.application.triage.TriageService;
+import vn.gastroai.be.domain.triage.TriageResult;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -47,8 +48,8 @@ public class StreamingRagQueryService {
             String question,
             Consumer<String> onToken
     ) {
-        boolean emergency =
-                triageService.check(question).emergency();
+        TriageResult triageResult =
+                triageService.check(question);
 
         float[] queryVector =
                 embeddingClient.embed(question);
@@ -102,7 +103,8 @@ public class StreamingRagQueryService {
         return new StreamingResult(
                 sources,
                 relatedQuestions,
-                emergency
+                triageResult.emergency(),
+                triageResult.matchedGroups()
         );
     }
 
@@ -162,7 +164,8 @@ public class StreamingRagQueryService {
     public record StreamingResult(
             List<RagSource> sources,
             List<String> relatedQuestions,
-            boolean emergency
+            boolean emergency,
+            List<String> matchedGroups
     ) {
     }
 }

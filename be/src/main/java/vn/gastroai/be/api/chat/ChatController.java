@@ -72,13 +72,15 @@ public class ChatController {
                         request.sessionId(),
                         request.content(),
                         ragAnswer,
-                        chatAnswer.emergency());
+                        chatAnswer.emergency(),
+                        chatAnswer.matchedGroups());
 
         return ChatMessageResponse.assistantReply(
                 ragAnswer.answer(),
                 sources,
                 ragAnswer.relatedQuestions(),
                 chatAnswer.emergency(),
+                chatAnswer.matchedGroups(),
                 saved.assistantMessageId(),
                 saved.sessionId());
     }
@@ -144,7 +146,8 @@ public class ChatController {
                                         new StreamingDoneEvent(
                                                 result.sources(),
                                                 result.relatedQuestions(),
-                                                result.emergency())));
+                                                result.emergency(),
+                                                result.matchedGroups())));
 
                 emitter.complete();
 

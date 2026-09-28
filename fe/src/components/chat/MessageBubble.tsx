@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons'
 import { Button, Tooltip } from 'antd'
 import type { Message, RatingValue } from '../../api/chat'
+import { describeMatchedGroups } from '../../api/chat'
 import { MarkdownContent } from './MarkdownContent'
 import { SourceReferences } from './SourceReferences'
 
@@ -38,6 +39,7 @@ function formatFileSize(bytes: number): string {
 export function MessageBubble({ message, onRetry, onSuggestionClick, suggestionsDisabled, onRate }: MessageBubbleProps) {
   const isPatient = message.sender === 'patient'
   const isFailed = message.status === 'failed'
+  const matchedGroupsText = describeMatchedGroups(message.matchedGroups)
 
   return (
     <article className={`flex items-start gap-2.5 ${isPatient ? 'justify-end' : 'justify-start'}`}>
@@ -57,6 +59,9 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
             <span>
               <strong className="block">Phát hiện dấu hiệu cần cấp cứu!</strong>
               Vui lòng gọi <PhoneOutlined /> <strong>115</strong> hoặc đến ngay cơ sở y tế gần nhất.
+              {matchedGroupsText && (
+                <span className="mt-1 block text-red-800">Dấu hiệu phát hiện: {matchedGroupsText}</span>
+              )}
             </span>
           </div>
         )}

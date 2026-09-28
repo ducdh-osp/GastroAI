@@ -34,6 +34,7 @@ class ChatServiceTest {
 
         assertEquals(expectedRagAnswer, result.ragAnswer());
         assertFalse(result.emergency());
+        assertTrue(result.matchedGroups().isEmpty());
     }
 
     @Test
@@ -54,5 +55,6 @@ class ChatServiceTest {
         // Emergency=true KHONG duoc chan/thay the cau tra loi that cua Gemini - chi la co bao them.
         assertTrue(result.emergency());
         assertEquals(expectedRagAnswer, result.ragAnswer());
+        assertEquals(List.of("DAU_BUNG_CAP_TINH"), result.matchedGroups());
     }
 }

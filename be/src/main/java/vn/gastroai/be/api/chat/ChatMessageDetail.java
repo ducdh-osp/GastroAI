@@ -12,6 +12,7 @@ public record ChatMessageDetail(
         boolean emergency,
         List<ChatSourceResponse> sources,
         List<String> relatedQuestions,
+        List<String> matchedGroups,
         /** Đánh giá hiện tại của người dùng: "HELPFUL", "UNHELPFUL", hoặc null nếu chưa đánh giá. */
         String rating
 ) {}

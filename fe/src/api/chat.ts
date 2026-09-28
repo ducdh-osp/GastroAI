@@ -33,6 +33,7 @@ export interface Message {
   sources?: SourceRef[]
   relatedQuestions?: string[]
   emergency?: boolean
+  matchedGroups?: string[]
   /** Đánh giá hiện tại của người dùng cho tin nhắn AI này. */
   rating?: RatingValue | null
 }
@@ -72,7 +73,27 @@ export interface ChatMessageDetail {
   emergency: boolean
   sources: SourceRef[]
   relatedQuestions: string[]
+  matchedGroups: string[]
   rating: RatingValue | null
+}
+
+const TRIAGE_GROUP_LABELS: Record<string, string> = {
+  XUAT_HUYET_TIEU_HOA: 'nghi xuất huyết tiêu hóa',
+  DAU_BUNG_CAP_TINH: 'đau bụng dữ dội, cấp tính',
+  TAC_RUOT: 'nghi tắc ruột',
+  SOC_MAT_MAU: 'dấu hiệu sốc/mất máu',
+  NHIEM_TRUNG_NANG: 'nghi nhiễm trùng nặng/viêm ruột thừa',
+  DAU_LAN_CO_QUAN_KHAC: 'đau lan sang vùng khác (lưng/vai/ngực)',
+  KEM_HO_HAP_TIM_MACH: 'kèm khó thở/đau ngực',
+  TIEU_DUONG_KEM_NON: 'tiểu đường kèm nôn nhiều',
+  VANG_DA_KEM_DAU_BUNG: 'vàng da kèm đau bụng',
+  MAT_NUOC_NANG: 'mất nước nặng do tiêu chảy kéo dài',
+}
+
+/** Chuỗi mô tả các nhóm dấu hiệu khẩn cấp đã khớp (dùng trong banner cảnh báo), null nếu rỗng/không có. */
+export function describeMatchedGroups(matchedGroups?: string[]): string | null {
+  if (!matchedGroups || matchedGroups.length === 0) return null
+  return matchedGroups.map((group) => TRIAGE_GROUP_LABELS[group] ?? group).join(', ')
 }
 
 export const QUICK_PROMPTS = [

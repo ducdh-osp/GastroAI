@@ -78,8 +78,8 @@ class ChatControllerTest {
                 "Ban nen theo doi trieu chung.",
                 List.of(new RagSource("Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.")),
                 List.of("Trieu chung nay co nguy hiem khong?", "Khi nao nen di kham?"));
-        when(chatService.ask(anyString())).thenReturn(new ChatAnswer(ragAnswer, false));
-        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean()))
+        when(chatService.ask(anyString())).thenReturn(new ChatAnswer(ragAnswer, false, List.of()));
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
                 .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L));
 
         mockMvc.perform(post("/api/v1/chat/messages")
@@ -115,8 +115,9 @@ class ChatControllerTest {
         // UC0034/035 - emergency=true KHONG duoc chan Gemini, chi la co bao them de FE hien thi
         // canh bao noi bat - benh nhan van phai nhan duoc cau tra loi that.
         RagAnswer ragAnswer = new RagAnswer("Ban nen den co so y te ngay.", List.of(), List.of());
-        when(chatService.ask(anyString())).thenReturn(new ChatAnswer(ragAnswer, true));
-        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean()))
+        when(chatService.ask(anyString())).thenReturn(
+                new ChatAnswer(ragAnswer, true, List.of("DAU_BUNG_CAP_TINH")));
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
                 .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L));
 
         mockMvc.perform(post("/api/v1/chat/messages")
@@ -125,7 +126,8 @@ class ChatControllerTest {
                         .content("{\"content\":\"Toi bi dau bung du doi qua\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").value("Ban nen den co so y te ngay."))
-                .andExpect(jsonPath("$.emergency").value(true));
+                .andExpect(jsonPath("$.emergency").value(true))
+                .andExpect(jsonPath("$.matchedGroups[0]").value("DAU_BUNG_CAP_TINH"));
     }
 
     @Test

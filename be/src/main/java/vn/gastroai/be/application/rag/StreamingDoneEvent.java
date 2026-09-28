@@ -5,6 +5,7 @@ import java.util.List;
 public record StreamingDoneEvent(
         List<RagSource> sources,
         List<String> relatedQuestions,
-        boolean emergency
+        boolean emergency,
+        List<String> matchedGroups
 ) {
 }

@@ -75,11 +75,13 @@ public class ChatHistoryController {
                 new TypeReference<List<ChatSourceResponse>>() {});
         List<String> related = parseJson(msg.getRelatedQuestions(),
                 new TypeReference<List<String>>() {});
+        List<String> matchedGroups = parseJson(msg.getMatchedGroups(),
+                new TypeReference<List<String>>() {});
         String rating = ratingRepository.findByMessageId(msg.getId())
                 .map(r -> r.getRating())
                 .orElse(null);
         return new ChatMessageDetail(msg.getId(), msg.getSender(), msg.getContent(),
-                msg.getCreatedAt(), msg.isEmergency(), sources, related, rating);
+                msg.getCreatedAt(), msg.isEmergency(), sources, related, matchedGroups, rating);
     }
 
     private <T> List<T> parseJson(String json, TypeReference<List<T>> typeRef) {

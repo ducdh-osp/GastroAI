@@ -18,7 +18,7 @@ class ChatMessageResponseTest {
         List<String> relatedQuestions = List.of("Trieu chung nay co nguy hiem khong?");
 
         ChatMessageResponse response = ChatMessageResponse.assistantReply(
-                "Xin chao", sources, relatedQuestions, false, 1L, 1L);
+                "Xin chao", sources, relatedQuestions, false, List.of(), 1L, 1L);
 
         assertNotNull(response.id());
         assertEquals("assistant", response.sender());
@@ -35,8 +35,10 @@ class ChatMessageResponseTest {
     @Test
     void assistantReplyCarriesEmergencyFlagWhenTrue() {
         ChatMessageResponse response = ChatMessageResponse.assistantReply(
-                "Ban nen den benh vien ngay.", List.of(), List.of(), true, null, null);
+                "Ban nen den benh vien ngay.", List.of(), List.of(), true,
+                List.of("DAU_BUNG_CAP_TINH"), null, null);
 
         assertTrue(response.emergency());
+        assertEquals(List.of("DAU_BUNG_CAP_TINH"), response.matchedGroups());
     }
 }

@@ -1,4 +1,4 @@
-import { ReloadOutlined, SafetyOutlined } from '@ant-design/icons'
+import { PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
 import { Alert, Button, Card, Typography } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -21,6 +21,8 @@ export function ChatContainer() {
   const [networkError, setNetworkError] = useState<string | null>(null)
   /** ID phiên hiện tại — null = chưa có phiên (câu đầu tiên sẽ tạo phiên mới). */
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(resumeSessionId)
+
+  const hasEmergencyInSession = messages.some((message) => message.emergency)
 
   useEffect(() => {
     let cancelled = false
@@ -47,6 +49,7 @@ export function ChatContainer() {
           sources: message.sources,
           relatedQuestions: message.relatedQuestions,
           emergency: message.emergency,
+          matchedGroups: message.matchedGroups,
           rating: message.rating,
         })))
       })
@@ -145,6 +148,18 @@ export function ChatContainer() {
         </div>
 
         {networkError && <Alert className="m-3 mb-0" type="error" showIcon message={networkError} action={<Button type="link" size="small" icon={<ReloadOutlined />} onClick={() => setNetworkError(null)}>Đóng</Button>} />}
+
+        {hasEmergencyInSession && (
+          <div
+            className="flex items-center gap-2 border-b border-red-300 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-900 sm:px-6"
+            role="alert"
+          >
+            <WarningFilled className="shrink-0 text-red-600" />
+            <span>
+              Phiên này có cảnh báo khẩn cấp — nếu đang gặp nguy hiểm, vui lòng gọi ngay <PhoneOutlined /> <strong>115</strong> hoặc đến cơ sở y tế gần nhất.
+            </span>
+          </div>
+        )}
 
         <MessageList
           messages={messages}

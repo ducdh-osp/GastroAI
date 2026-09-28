@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons'
 import { Alert, Button, Spin, Tag, Tooltip, Typography } from 'antd'
 import type { ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
+import { describeMatchedGroups } from '../../api/chat'
 import { MarkdownContent } from './MarkdownContent'
 import { SourceReferences } from './SourceReferences'
 
@@ -114,6 +115,7 @@ export function HistoryMessagePanel({
           !error &&
           messages.map((msg) => {
             const isPatient = msg.sender === 'patient'
+            const matchedGroupsText = describeMatchedGroups(msg.matchedGroups)
             return (
               <article
                 key={msg.id}
@@ -133,6 +135,9 @@ export function HistoryMessagePanel({
                       <span>
                         <strong className="block">Phát hiện dấu hiệu cần cấp cứu!</strong>
                         Vui lòng gọi <PhoneOutlined /> <strong>115</strong>.
+                        {matchedGroupsText && (
+                          <span className="mt-1 block text-red-800">Dấu hiệu phát hiện: {matchedGroupsText}</span>
+                        )}
                       </span>
                     </div>
                   )}

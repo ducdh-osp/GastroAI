@@ -3,6 +3,7 @@ package vn.gastroai.be.application.chat;
 import org.springframework.stereotype.Service;
 import vn.gastroai.be.application.rag.RagQueryService;
 import vn.gastroai.be.application.triage.TriageService;
+import vn.gastroai.be.domain.triage.TriageResult;
 
 /**
  * Tang application cho UC0017 (Chat voi AI) - boc RagQueryService (UC0028/029) de
@@ -21,7 +22,7 @@ public class ChatService {
     }
 
     public ChatAnswer ask(String question) {
-        boolean emergency = triageService.check(question).emergency();
-        return new ChatAnswer(ragQueryService.answerWithSources(question), emergency);
+        TriageResult triageResult = triageService.check(question);
+        return new ChatAnswer(ragQueryService.answerWithSources(question), triageResult.emergency(), triageResult.matchedGroups());
     }
 }
