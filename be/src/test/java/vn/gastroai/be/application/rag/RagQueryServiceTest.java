@@ -26,7 +26,7 @@ class RagQueryServiceTest {
         float[] queryVector = {0.1f, 0.2f};
         when(embeddingClient.embed("Lam sao de giam tao bon?")).thenReturn(queryVector);
         when(embeddingStore.findTopK(queryVector, 5)).thenReturn(List.of(
-                new SimilarChunk(1L, 10L, "Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.", 0.05)));
+                new SimilarChunk(1L, 10L, "Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.", 0.05, null)));
         when(chatClient.generate(anyString(), anyString())).thenReturn("Ban nen uong nhieu nuoc.");
 
         RagQueryService ragQueryService = new RagQueryService(embeddingClient, embeddingStore, chatClient, 5);
@@ -67,7 +67,7 @@ class RagQueryServiceTest {
         float[] queryVector = {0.1f, 0.2f};
         when(embeddingClient.embed(anyString())).thenReturn(queryVector);
         when(embeddingStore.findTopK(queryVector, 5)).thenReturn(List.of(
-                new SimilarChunk(1L, 10L, "Cam nang tieu hoa", "Uong nhieu nuoc.", 0.05)));
+                new SimilarChunk(1L, 10L, "Cam nang tieu hoa", "Uong nhieu nuoc.", 0.05, null)));
         when(chatClient.generate(anyString(), eq("Dau bung phai lam sao?")))
                 .thenReturn("Ban nen uong nhieu nuoc.");
         // Gemini dôi khi tra ve co danh so/gach dau dong du da yeu cau khong lam vay - phai

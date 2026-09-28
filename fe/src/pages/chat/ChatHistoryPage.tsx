@@ -53,9 +53,9 @@ export default function ChatHistoryPage() {
   }
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6">
+    <AppShell fixedViewport>
+      <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col">
+        <div className="mb-6 shrink-0">
           <Text type="secondary">Lịch sử tư vấn</Text>
           <Title level={2} className="mb-1! mt-1!">
             Phiên chat của tôi
@@ -65,32 +65,32 @@ export default function ChatHistoryPage() {
           </Text>
         </div>
 
-        <div className="flex gap-6" style={{ minHeight: 560 }}>
+        <div className="flex min-h-0 flex-1 gap-6">
           {/* ── Cột trái: danh sách phiên ── */}
-          <aside className="w-80 shrink-0">
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden h-full">
-              <div className="border-b border-slate-100 px-4 py-3 flex items-center gap-2">
+          <aside className="flex min-h-0 w-80 shrink-0 flex-col">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-4 py-3">
                 <ClockCircleOutlined className="text-teal-600" />
                 <span className="font-medium text-slate-700 text-sm">Danh sách phiên</span>
               </div>
 
               {loadingSessions ? (
-                <div className="flex items-center justify-center py-16">
+                <div className="flex min-h-0 flex-1 items-center justify-center py-16">
                   <Spin indicator={<LoadingOutlined className="text-teal-600 text-xl" spin />} />
                 </div>
               ) : sessionsError ? (
-                <div className="p-4">
+                <div className="min-h-0 flex-1 p-4">
                   <Alert type="error" message={sessionsError} showIcon />
                 </div>
               ) : sessions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-16 text-center">
                   <MessageOutlined className="text-3xl text-slate-300 mb-3" />
                   <Text type="secondary" className="text-sm">
                     Chưa có phiên chat nào. Hãy bắt đầu tư vấn!
                   </Text>
                 </div>
               ) : (
-                <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                   {sessions.map((session) => (
                     <HistorySessionItem
                       key={session.id}
@@ -106,7 +106,7 @@ export default function ChatHistoryPage() {
           </aside>
 
           {/* ── Cột phải: nội dung phiên được chọn ── */}
-          <div className="flex-1 min-w-0">
+          <div className="min-h-0 min-w-0 flex-1">
             <HistoryMessagePanel
               session={selectedSession}
               messages={messages}

@@ -52,7 +52,7 @@ class DocumentUploadControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void uploadResponseIncludesInitialStatusAndStage() throws Exception {
-        when(documentUploadService.upload(any()))
+        when(documentUploadService.upload(any(), any()))
                 .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
         MockMultipartFile file = new MockMultipartFile(
                 "file", "ibs.pdf", "application/pdf", new byte[]{1});

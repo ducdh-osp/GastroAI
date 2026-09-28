@@ -9,14 +9,20 @@ import javax.sql.DataSource;
 import java.util.List;
 
 /**
- * UC0033 (lưu embedding) / UC0028 (truy xuất theo độ tương đồng) - thao tác trực tiếp lên cột
- * kiểu "vector" (pgvector) bằng JDBC thuần thay vì qua JPA/Hibernate, vì Hibernate không có
- * type mapping sẵn cho "vector" nếu không thêm driver phụ (pgvector-java) — cân nhắc thêm
+ * UC0033 (lưu embedding) / UC0028 (truy xuất theo độ tương đồng) - thao tác
+ * trực tiếp lên cột
+ * kiểu "vector" (pgvector) bằng JDBC thuần thay vì qua JPA/Hibernate, vì
+ * Hibernate không có
+ * type mapping sẵn cho "vector" nếu không thêm driver phụ (pgvector-java) — cân
+ * nhắc thêm
  * dependency đó sau nếu code JDBC tay ở đây trở nên cồng kềnh.
  *
- * Tự tạo JdbcTemplate riêng (thay vì để Spring Boot auto-configure) để CHẮC CHẮN luôn trỏ đúng
- * datasource Postgres, không phụ thuộc vào việc @Primary trên postgresDataSource có được
- * Spring chọn đúng hay không khi có 2 DataSource cùng tồn tại (Postgres + MySQL).
+ * Tự tạo JdbcTemplate riêng (thay vì để Spring Boot auto-configure) để CHẮC
+ * CHẮN luôn trỏ đúng
+ * datasource Postgres, không phụ thuộc vào việc @Primary trên
+ * postgresDataSource có được
+ * Spring chọn đúng hay không khi có 2 DataSource cùng tồn tại (Postgres +
+ * MySQL).
  */
 @Repository
 public class EmbeddingStore {
@@ -32,11 +38,11 @@ public class EmbeddingStore {
         String vectorLiteral = toVectorLiteral(embedding);
         jdbcTemplate.update(
                 """
-                INSERT INTO embeddings (chunk_id, embedding, model)
-                VALUES (?, ?::vector, ?)
-                ON CONFLICT (chunk_id) DO UPDATE
-                    SET embedding = EXCLUDED.embedding, model = EXCLUDED.model
-                """,
+                        INSERT INTO embeddings (chunk_id, embedding, model)
+                        VALUES (?, ?::vector, ?)
+                        ON CONFLICT (chunk_id) DO UPDATE
+                            SET embedding = EXCLUDED.embedding, model = EXCLUDED.model
+                        """,
                 chunkId, vectorLiteral, model);
     }
 
@@ -52,7 +58,7 @@ public class EmbeddingStore {
         String vectorLiteral = toVectorLiteral(queryEmbedding);
         return jdbcTemplate.query(
                 """
-                SELECT c.id AS chunk_id, c.document_id, d.title AS document_title, c.content,
+                SELECT c.id AS chunk_id, c.document_id, d.title AS document_title, d.source_url, c.content,
                        e.embedding <=> ?::vector AS distance
                 FROM embeddings e
                 JOIN chunks c ON c.id = e.chunk_id
@@ -65,11 +71,15 @@ public class EmbeddingStore {
                         rs.getLong("document_id"),
                         rs.getString("document_title"),
                         rs.getString("content"),
-                        rs.getDouble("distance")),
+                        rs.getDouble("distance"),
+                        rs.getString("source_url")),
                 vectorLiteral, vectorLiteral, topK);
     }
 
-    /** vd [0.12,-0.34,0.05] — định dạng text mà pgvector chấp nhận qua ép kiểu "::vector". */
+    /**
+     * vd [0.12,-0.34,0.05] — định dạng text mà pgvector chấp nhận qua ép kiểu
+     * "::vector".
+     */
     private static String toVectorLiteral(float[] embedding) {
         StringBuilder sb = new StringBuilder(embedding.length * 10);
         sb.append('[');

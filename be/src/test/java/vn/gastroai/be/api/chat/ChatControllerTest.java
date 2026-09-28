@@ -76,7 +76,7 @@ class ChatControllerTest {
     void sendMessageReturnsAssistantReplyMatchingFrontendContract() throws Exception {
         RagAnswer ragAnswer = new RagAnswer(
                 "Ban nen theo doi trieu chung.",
-                List.of(new RagSource("Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.")),
+                List.of(new RagSource("Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.",null)),
                 List.of("Trieu chung nay co nguy hiem khong?", "Khi nao nen di kham?"));
         when(chatService.ask(anyString())).thenReturn(new ChatAnswer(ragAnswer, false, List.of()));
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))

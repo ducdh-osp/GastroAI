@@ -11,16 +11,21 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * UC0028 + UC0029 nối liền nhau: sinh embedding cho câu hỏi -> truy xuất top-k chunk gần nhất
- * -> đưa vào prompt cho Gemini sinh câu trả lời. Đây là "lõi" RAG — chưa gắn API/controller
- * nào (đó là việc của UC0017 Chat với AI, ngoài phạm vi 3 UC này), chỉ cần gọi answer() là
+ * UC0028 + UC0029 nối liền nhau: sinh embedding cho câu hỏi -> truy xuất top-k
+ * chunk gần nhất
+ * -> đưa vào prompt cho Gemini sinh câu trả lời. Đây là "lõi" RAG — chưa gắn
+ * API/controller
+ * nào (đó là việc của UC0017 Chat với AI, ngoài phạm vi 3 UC này), chỉ cần gọi
+ * answer() là
  * test được toàn bộ pipeline.
  */
 @Service
 public class RagQueryService {
-    // Van dung du topK chunk de sinh cau tra loi (nhieu ngu canh hon = tra loi day du hon),
+    // Van dung du topK chunk de sinh cau tra loi (nhieu ngu canh hon = tra loi day
+    // du hon),
     // nhung chi hien toi da 2 nguon dau tien (da sap xep gan nhat truoc, xem
-    // EmbeddingStore.findTopK) cho FE - hien het ca 5 nguon lam UI dai/roi mat, trong khi 2
+    // EmbeddingStore.findTopK) cho FE - hien het ca 5 nguon lam UI dai/roi mat,
+    // trong khi 2
     // nguon lien quan nhat da du de nguoi dung tin tuong cau tra loi co can cu.
     private static final int MAX_DISPLAYED_SOURCES = 2;
 
@@ -44,14 +49,19 @@ public class RagQueryService {
         return answerWithSources(question).answer();
     }
 
-    /** UC0029 - nhu answer(), nhung tra ve them danh sach nguon (RagSource) da dung de sinh cau tra loi. */
+    /**
+     * UC0029 - nhu answer(), nhung tra ve them danh sach nguon (RagSource) da dung
+     * de sinh cau tra loi.
+     */
     public RagAnswer answerWithSources(String question) {
         float[] queryVector = embeddingClient.embed(question);
         List<SimilarChunk> context = embeddingStore.findTopK(queryVector, topK);
 
         if (context.isEmpty()) {
-            // Chưa có tài liệu nào trong kho tri thức (hoặc UC0031/032 của Thăng chưa xong) —
-            // vẫn trả lời được nhưng phải nói rõ KHÔNG có nguồn, tránh Gemini tự bịa thông tin
+            // Chưa có tài liệu nào trong kho tri thức (hoặc UC0031/032 của Thăng chưa xong)
+            // —
+            // vẫn trả lời được nhưng phải nói rõ KHÔNG có nguồn, tránh Gemini tự bịa thông
+            // tin
             // y tế mà không có căn cứ.
             String noContextAnswer = chatClient.generate(SYSTEM_PROMPT_NO_CONTEXT, question);
             return new RagAnswer(noContextAnswer, List.of(), generateRelatedQuestions(question, noContextAnswer));
@@ -65,16 +75,20 @@ public class RagQueryService {
 
         List<RagSource> sources = context.stream()
                 .limit(MAX_DISPLAYED_SOURCES)
-                .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content()))
+                .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content(), chunk.sourceUrl()))
                 .toList();
         return new RagAnswer(generatedAnswer, sources, generateRelatedQuestions(question, generatedAnswer));
     }
 
     /**
-     * Goi y cau hoi lien quan la tinh nang phu (khong phai ly do chinh nguoi dung hoi) - goi
-     * rieng 1 lan Gemini SAU KHI da co cau tra loi chinh, thay vi gop chung vao 1 lan goi, de
-     * khong dung vao prompt/logic sinh cau tra loi chinh dang chay on dinh. Neu buoc nay loi
-     * (Gemini timeout, tra ve rong...) chi tra danh sach rong - KHONG duoc lam hong cau tra
+     * Goi y cau hoi lien quan la tinh nang phu (khong phai ly do chinh nguoi dung
+     * hoi) - goi
+     * rieng 1 lan Gemini SAU KHI da co cau tra loi chinh, thay vi gop chung vao 1
+     * lan goi, de
+     * khong dung vao prompt/logic sinh cau tra loi chinh dang chay on dinh. Neu
+     * buoc nay loi
+     * (Gemini timeout, tra ve rong...) chi tra danh sach rong - KHONG duoc lam hong
+     * cau tra
      * loi chinh da co san.
      */
     private List<String> generateRelatedQuestions(String question, String answer) {

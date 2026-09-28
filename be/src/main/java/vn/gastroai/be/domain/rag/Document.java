@@ -54,6 +54,9 @@ public class Document {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
+    @Column(name = "source_url", length = 2000)
+    private String sourceUrl;
+
     @PreUpdate
     void touch() {
         updatedAt = Instant.now();
