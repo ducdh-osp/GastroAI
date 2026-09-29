@@ -11,6 +11,8 @@ import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
 import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
+import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
+import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
 import ChatPage from '../pages/chat/ChatPage'
 import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -64,6 +66,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <MedicalProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/food-diary',
+        element: (
+          <ProtectedRoute>
+            <FoodDiaryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/food-diary-history',
+        element: (
+          <ProtectedRoute>
+            <FoodDiaryHistoryPage />
           </ProtectedRoute>
         ),
       },

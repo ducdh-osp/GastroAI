@@ -1,0 +1,68 @@
+import { apiClient } from '../lib/axios'
+
+export interface FoodDiaryEntry {
+  id: number
+  eatenAt: string
+  description: string
+  notes: string | null
+}
+
+export interface FoodDiaryListResponse {
+  items: FoodDiaryEntry[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+export interface FoodDiaryEntryRequest {
+  eatenAt: string
+  description: string
+  notes: string | null
+}
+
+export interface DailyCountPoint {
+  date: string
+  count: number
+}
+
+function extractErrorMessage(error: unknown, fallback: string): Error {
+  const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? fallback
+  return new Error(message)
+}
+
+export async function listFoodDiary(page = 0, size = 20): Promise<FoodDiaryListResponse> {
+  const { data } = await apiClient.get<FoodDiaryListResponse>('/patient/food-diary', { params: { page, size } })
+  return data
+}
+
+export async function getFoodDiaryTrend(days = 30): Promise<DailyCountPoint[]> {
+  const { data } = await apiClient.get<{ points: DailyCountPoint[] }>('/patient/food-diary/trend', { params: { days } })
+  return data.points
+}
+
+export async function createFoodDiaryEntry(payload: FoodDiaryEntryRequest): Promise<FoodDiaryEntry> {
+  try {
+    const { data } = await apiClient.post<FoodDiaryEntry>('/patient/food-diary', payload)
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể thêm nhật ký ăn uống. Vui lòng thử lại.')
+  }
+}
+
+export async function updateFoodDiaryEntry(id: number, payload: FoodDiaryEntryRequest): Promise<FoodDiaryEntry> {
+  try {
+    const { data } = await apiClient.put<FoodDiaryEntry>(`/patient/food-diary/${id}`, payload)
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể sửa nhật ký ăn uống. Vui lòng thử lại.')
+  }
+}
+
+export async function deleteFoodDiaryEntry(id: number): Promise<void> {
+  try {
+    await apiClient.delete(`/patient/food-diary/${id}`)
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể xoá nhật ký ăn uống. Vui lòng thử lại.')
+  }
+}
