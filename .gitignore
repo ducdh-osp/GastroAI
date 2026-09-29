@@ -36,3 +36,7 @@ be/logs/
 # Runtime data - file upload va backup DB tao ra luc chay app, khong phai code
 be/storage/
 be/backups/
+
+# Claude Code - setting rieng tung may/tung nguoi (permission allowlist ca nhan), khong dung
+# chung ca team. .claude/agents/ (persona review dung chung) VAN duoc commit binh thuong.
+.claude/settings.local.json
