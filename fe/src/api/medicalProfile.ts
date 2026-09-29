@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/axios'
+import { extractErrorMessage } from '../lib/errors'
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER'
 
@@ -43,9 +44,6 @@ export async function updateMedicalProfile(payload: UpdateMedicalProfileRequest)
     const { data } = await apiClient.put<MedicalProfile>('/patient/medical-profile', payload)
     return data
   } catch (error) {
-    const message =
-      (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-      'Không thể lưu hồ sơ bệnh lý. Vui lòng thử lại.'
-    throw new Error(message)
+    throw extractErrorMessage(error, 'Không thể lưu hồ sơ bệnh lý. Vui lòng thử lại.')
   }
 }

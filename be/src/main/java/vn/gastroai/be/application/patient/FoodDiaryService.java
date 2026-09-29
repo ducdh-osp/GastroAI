@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -87,10 +86,9 @@ public class FoodDiaryService {
 
         LocalDate start = from.atZone(VN_ZONE).toLocalDate();
         LocalDate end = to.atZone(VN_ZONE).toLocalDate();
-        List<DailyCountPoint> points = new ArrayList<>();
-        for (LocalDate day = start; !day.isAfter(end); day = day.plusDays(1)) {
-            points.add(new DailyCountPoint(day, countByDate.getOrDefault(day, 0L)));
-        }
+        List<DailyCountPoint> points = start.datesUntil(end.plusDays(1))
+                .map(day -> new DailyCountPoint(day, countByDate.getOrDefault(day, 0L)))
+                .toList();
         return new FoodDiaryTrendResponse(points);
     }
 

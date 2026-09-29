@@ -5,14 +5,9 @@ import { getFoodDiaryTrend, listFoodDiary } from '../../api/foodDiary'
 import type { DailyCountPoint, FoodDiaryEntry } from '../../api/foodDiary'
 import { AppShell } from '../../components/layout/AppShell'
 import { FoodDiaryTrendChart } from '../../components/foodDiary/FoodDiaryTrendChart'
+import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
-}
 
 const columns: ColumnsType<FoodDiaryEntry> = [
   { title: 'Thời điểm ăn', dataIndex: 'eatenAt', key: 'eatenAt', width: 180, render: formatDateTime },

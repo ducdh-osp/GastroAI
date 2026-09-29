@@ -11,14 +11,9 @@ import {
 import type { FoodDiaryEntry, FoodDiaryEntryRequest } from '../../api/foodDiary'
 import { AppShell } from '../../components/layout/AppShell'
 import { FoodDiaryEntryModal } from '../../components/foodDiary/FoodDiaryEntryModal'
+import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
-}
 
 export default function FoodDiaryPage() {
   const [items, setItems] = useState<FoodDiaryEntry[]>([])
@@ -76,7 +71,13 @@ export default function FoodDiaryPage() {
   async function handleDelete(id: number) {
     try {
       await deleteFoodDiaryEntry(id)
-      reload()
+      // Xoá mục cuối cùng còn lại của 1 trang không phải trang đầu -> lùi về trang trước
+      // (useEffect tự reload) thay vì để lại trang hiện tại trống, không có lối quay lại.
+      if (items.length === 1 && page > 0) {
+        setPage(page - 1)
+      } else {
+        reload()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể xoá nhật ký ăn uống.')
     }

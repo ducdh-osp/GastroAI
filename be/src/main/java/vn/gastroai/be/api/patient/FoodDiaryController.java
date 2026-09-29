@@ -33,6 +33,11 @@ public class FoodDiaryController {
             @RequestParam(defaultValue = "20") int size,
             Principal principal, Authentication authentication) {
         requireAuthenticated(authentication);
+        // Cung gioi han nhu MeController.history() - chan client tu gui size cuc lon lam
+        // qua tai truy van/response (vd size=2000000000).
+        if (page < 0 || size < 1 || size > 100) {
+            throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
+        }
         return foodDiaryService.list(Long.valueOf(principal.getName()), page, size);
     }
 
@@ -41,6 +46,11 @@ public class FoodDiaryController {
             @RequestParam(defaultValue = "30") int days,
             Principal principal, Authentication authentication) {
         requireAuthenticated(authentication);
+        // Gioi han tren de tranh client gui days cuc lon lam vong lap fill-0 va ket qua
+        // JSON phinh to khong kiem soat (vd days=100000000).
+        if (days < 1 || days > 365) {
+            throw new IllegalArgumentException("days trong khoang 1..365");
+        }
         return foodDiaryService.trend(Long.valueOf(principal.getName()), days);
     }
 

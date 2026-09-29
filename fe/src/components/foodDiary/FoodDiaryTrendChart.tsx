@@ -1,9 +1,12 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { DailyCountPoint } from '../../api/foodDiary'
 
+// Tach truc tiep tu chuoi "YYYY-MM-DD" (khong qua `new Date()`) - Date parse chuoi kieu
+// nay theo UTC, roi getDate()/getMonth() lai doc theo gio local trinh duyet, gay lech 1
+// ngay voi nguoi xem o mui gio khac VN (backend tinh diem theo Asia/Ho_Chi_Minh).
 function formatDay(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
+  const [, month, day] = dateStr.split('-')
+  return `${day}/${month}`
 }
 
 export function FoodDiaryTrendChart({ points }: { points: DailyCountPoint[] }) {
