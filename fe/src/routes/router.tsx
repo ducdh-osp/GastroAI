@@ -15,6 +15,7 @@ import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
 import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
 import BristolPage from '../pages/patient/BristolPage'
 import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
+import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
 import ChatPage from '../pages/chat/ChatPage'
 import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -100,6 +101,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <BristolHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/medications',
+        element: (
+          <ProtectedRoute>
+            <MedicationRemindersPage />
           </ProtectedRoute>
         ),
       },

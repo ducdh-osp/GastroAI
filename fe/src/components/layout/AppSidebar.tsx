@@ -1,4 +1,4 @@
-import { BarChartOutlined, CoffeeOutlined, CommentOutlined, DownOutlined, ExperimentOutlined, FileTextOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LineChartOutlined, LogoutOutlined, MessageOutlined } from '@ant-design/icons'
+import { BarChartOutlined, CoffeeOutlined, CommentOutlined, DownOutlined, ExperimentOutlined, FileTextOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LineChartOutlined, LogoutOutlined, MedicineBoxOutlined, MessageOutlined } from '@ant-design/icons'
 import { Dropdown } from 'antd'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { key: 'food-diary-history', label: 'Lịch sử ăn uống', icon: <BarChartOutlined />, to: '/food-diary-history' },
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
   { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
+  { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
   { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
   { key: 'change-password', label: 'Đổi mật khẩu', icon: <KeyOutlined />, to: '/change-password' },
 ]
