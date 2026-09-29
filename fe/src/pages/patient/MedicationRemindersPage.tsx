@@ -51,6 +51,7 @@ export default function MedicationRemindersPage() {
   // ban ghi xac nhan trung nhau, hoac toggle 2 lan lam ghi de field bang du lieu cu).
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [confirmingId, setConfirmingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const [confirmations, setConfirmations] = useState<MedicationConfirmationDetail[]>([])
   const [confirmationsPage, setConfirmationsPage] = useState(0)
@@ -122,11 +123,15 @@ export default function MedicationRemindersPage() {
   }
 
   async function handleDelete(id: number) {
+    if (deletingId !== null) return
+    setDeletingId(id)
     try {
       await deleteMedicationReminder(id)
       reloadReminders()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể xoá lịch nhắc thuốc.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -186,7 +191,14 @@ export default function MedicationRemindersPage() {
           </Button>
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm title="Xoá lịch nhắc này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+            <Button
+              size="small"
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              loading={deletingId === record.id}
+              disabled={deletingId !== null && deletingId !== record.id}
+            />
           </Popconfirm>
         </div>
       ),

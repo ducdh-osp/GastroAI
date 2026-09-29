@@ -26,6 +26,9 @@ export default function FoodDiaryPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FoodDiaryEntry | null>(null)
   const [saving, setSaving] = useState(false)
+  // Chan bam "Xoa" lien tuc gay 2 request chong nhau (Popconfirm khong tu chan double-click) -
+  // request thu 2 se loi vo hai (record da mat) nhung van hien loi gia cho nguoi dung.
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   function reload() {
     setLoading(true)
@@ -69,6 +72,8 @@ export default function FoodDiaryPage() {
   }
 
   async function handleDelete(id: number) {
+    if (deletingId !== null) return
+    setDeletingId(id)
     try {
       await deleteFoodDiaryEntry(id)
       // Xoá mục cuối cùng còn lại của 1 trang không phải trang đầu -> lùi về trang trước
@@ -80,6 +85,8 @@ export default function FoodDiaryPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể xoá nhật ký ăn uống.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -96,7 +103,14 @@ export default function FoodDiaryPage() {
         <div className="flex gap-1">
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm title="Xoá mục này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+            <Button
+              size="small"
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              loading={deletingId === record.id}
+              disabled={deletingId !== null && deletingId !== record.id}
+            />
           </Popconfirm>
         </div>
       ),

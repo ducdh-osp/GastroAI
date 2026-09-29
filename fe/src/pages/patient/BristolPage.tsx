@@ -27,6 +27,8 @@ export default function BristolPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingLog, setEditingLog] = useState<BristolLog | null>(null)
   const [saving, setSaving] = useState(false)
+  // Chan bam "Xoa" lien tuc gay 2 request chong nhau (Popconfirm khong tu chan double-click).
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   function reload() {
     setLoading(true)
@@ -70,6 +72,8 @@ export default function BristolPage() {
   }
 
   async function handleDelete(id: number) {
+    if (deletingId !== null) return
+    setDeletingId(id)
     try {
       await deleteBristolLog(id)
       if (items.length === 1 && page > 0) {
@@ -79,6 +83,8 @@ export default function BristolPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể xoá.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -98,7 +104,14 @@ export default function BristolPage() {
         <div className="flex gap-1">
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm title="Xoá mục này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => handleDelete(record.id)}>
-            <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+            <Button
+              size="small"
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              loading={deletingId === record.id}
+              disabled={deletingId !== null && deletingId !== record.id}
+            />
           </Popconfirm>
         </div>
       ),
