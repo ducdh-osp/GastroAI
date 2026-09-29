@@ -16,21 +16,24 @@ import java.util.Map;
 public class GeminiEmbeddingClient {
     private final RestClient restClient;
     private final String model;
+    private final GeminiRetryTemplate retryTemplate;
 
-    public GeminiEmbeddingClient(RestClient geminiRestClient, GeminiProperties properties) {
+    public GeminiEmbeddingClient(RestClient geminiRestClient, GeminiProperties properties,
+                                  GeminiRetryTemplate retryTemplate) {
         this.restClient = geminiRestClient;
         this.model = properties.embeddingModel();
+        this.retryTemplate = retryTemplate;
     }
 
     public float[] embed(String text) {
         Map<String, Object> body = Map.of(
                 "content", Map.of("parts", List.of(Map.of("text", text))));
 
-        EmbedResponse response = restClient.post()
+        EmbedResponse response = retryTemplate.withRetry(() -> restClient.post()
                 .uri("/models/{model}:embedContent", model)
                 .body(body)
                 .retrieve()
-                .body(EmbedResponse.class);
+                .body(EmbedResponse.class));
 
         if (response == null || response.embedding() == null) {
             throw new IllegalStateException("Gemini khong tra ve embedding cho text da cho");

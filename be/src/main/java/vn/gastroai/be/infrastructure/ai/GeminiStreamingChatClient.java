@@ -3,6 +3,7 @@ package vn.gastroai.be.infrastructure.ai;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
 import vn.gastroai.be.config.GeminiProperties;
 
@@ -20,14 +21,17 @@ public class GeminiStreamingChatClient {
     private final RestClient restClient;
     private final String model;
     private final ObjectMapper objectMapper;
+    private final GeminiRetryTemplate retryTemplate;
 
     public GeminiStreamingChatClient(
             RestClient geminiRestClient,
-            GeminiProperties properties
+            GeminiProperties properties,
+            GeminiRetryTemplate retryTemplate
     ) {
         this.restClient = geminiRestClient;
         this.model = properties.chatModel();
         this.objectMapper = new ObjectMapper();
+        this.retryTemplate = retryTemplate;
     }
 
     public void generateStream(
@@ -51,7 +55,7 @@ public class GeminiStreamingChatClient {
                 )
         );
 
-        restClient.post()
+        retryTemplate.withRetry(() -> restClient.post()
                 .uri(uriBuilder -> uriBuilder
                         .path("/models/{model}:streamGenerateContent")
                         .queryParam("alt", "sse")
@@ -59,10 +63,18 @@ public class GeminiStreamingChatClient {
                 .body(body)
                 .exchange((request, response) -> {
 
+                    // Nem RestClientResponseException (khong phai IllegalStateException) de
+                    // GeminiRetryTemplate nhan dien duoc ma 503 va retry, dong thoi
+                    // GlobalExceptionHandler.handleAiServiceFailure cung bat duoc giong het
+                    // luong khong-streaming (truoc day loi nay bi handleIllegalState() bat
+                    // nham thanh 409 chung chung, khong co log/thong bao rieng cho Gemini).
                     if (!response.getStatusCode().is2xxSuccessful()) {
-                        throw new IllegalStateException(
-                                "Gemini streaming failed: HTTP "
-                                        + response.getStatusCode()
+                        throw HttpServerErrorException.create(
+                                response.getStatusCode(),
+                                "Gemini streaming that bai",
+                                response.getHeaders(),
+                                new byte[0],
+                                null
                         );
                     }
 
@@ -77,7 +89,7 @@ public class GeminiStreamingChatClient {
                     readSseStream(inputStream, onToken);
 
                     return null;
-                });
+                }));
     }
 
     private void readSseStream(

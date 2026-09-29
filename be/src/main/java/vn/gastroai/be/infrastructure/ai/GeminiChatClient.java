@@ -12,10 +12,13 @@ import java.util.Map;
 public class GeminiChatClient {
     private final RestClient restClient;
     private final String model;
+    private final GeminiRetryTemplate retryTemplate;
 
-    public GeminiChatClient(RestClient geminiRestClient, GeminiProperties properties) {
+    public GeminiChatClient(RestClient geminiRestClient, GeminiProperties properties,
+                             GeminiRetryTemplate retryTemplate) {
         this.restClient = geminiRestClient;
         this.model = properties.chatModel();
+        this.retryTemplate = retryTemplate;
     }
 
     /**
@@ -30,11 +33,11 @@ public class GeminiChatClient {
                         "role", "user",
                         "parts", List.of(Map.of("text", userPrompt)))));
 
-        GenerateResponse response = restClient.post()
+        GenerateResponse response = retryTemplate.withRetry(() -> restClient.post()
                 .uri("/models/{model}:generateContent", model)
                 .body(body)
                 .retrieve()
-                .body(GenerateResponse.class);
+                .body(GenerateResponse.class));
 
         if (response == null || response.candidates() == null || response.candidates().isEmpty()) {
             throw new IllegalStateException("Gemini khong tra ve cau tra loi nao");
