@@ -15,7 +15,9 @@ import vn.gastroai.be.application.chat.ChatService;
 import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.application.rag.StreamingDoneEvent;
 import vn.gastroai.be.application.rag.StreamingRagQueryService;
-
+import vn.gastroai.be.application.triage.TriageAlertPublisher;
+import vn.gastroai.be.domain.triage.TriageAlertEvent;
+import java.time.Instant;
 import java.security.Principal;
 import java.util.List;
 
@@ -26,15 +28,18 @@ public class ChatController {
         private final ChatService chatService;
         private final ChatHistoryService chatHistoryService;
         private final StreamingRagQueryService streamingRagQueryService;
+        private final TriageAlertPublisher triageAlertPublisher;
 
         public ChatController(
                         ChatService chatService,
                         ChatHistoryService chatHistoryService,
-                        StreamingRagQueryService streamingRagQueryService) {
+                        StreamingRagQueryService streamingRagQueryService,
+                        TriageAlertPublisher triageAlertPublisher) {
 
                 this.chatService = chatService;
                 this.chatHistoryService = chatHistoryService;
                 this.streamingRagQueryService = streamingRagQueryService;
+                this.triageAlertPublisher = triageAlertPublisher;
         }
 
         /**
@@ -70,6 +75,15 @@ public class ChatController {
                                 ragAnswer,
                                 chatAnswer.emergency(),
                                 chatAnswer.matchedGroups());
+                if (chatAnswer.emergency()) {
+                        triageAlertPublisher.publish(new TriageAlertEvent(
+                                        patientId,
+                                        saved.sessionId(),
+                                        saved.assistantMessageId(),
+                                        request.content(),
+                                        chatAnswer.matchedGroups(),
+                                        Instant.now()));
+                }
 
                 return ChatMessageResponse.assistantReply(
                                 ragAnswer.answer(),
@@ -111,6 +125,7 @@ public class ChatController {
 
                 requireAuthenticated(authentication);
 
+                Long patientId = Long.valueOf(authentication.getName());
                 SseEmitter emitter = new SseEmitter(120_000L);
 
                 Thread.startVirtualThread(() -> {

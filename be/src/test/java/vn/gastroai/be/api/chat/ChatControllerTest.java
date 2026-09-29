@@ -18,6 +18,7 @@ import vn.gastroai.be.application.chat.ChatService;
 import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.application.rag.RagSource;
 import vn.gastroai.be.application.rag.StreamingRagQueryService;
+import vn.gastroai.be.application.triage.TriageAlertPublisher;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
@@ -29,6 +30,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -58,6 +62,11 @@ class ChatControllerTest {
     // không dùng trong các test này nhưng vẫn phải mock để Spring dựng được bean chatController.
     @MockitoBean
     private StreamingRagQueryService streamingRagQueryService;
+
+    // UC0036 - ChatController gio con day canh bao Triage qua TriageAlertPublisher khi
+    // emergency=true, can mock de context load duoc va de xac nhan hanh vi goi/khong goi.
+    @MockitoBean
+    private TriageAlertPublisher triageAlertPublisher;
 
     // SecurityConfig đăng ký JwtAuthenticationFilter cho mọi request (kể cả trong slice test
     // này) -> filter cần 3 bean này để khởi tạo được, dù test không có Authorization header
@@ -97,6 +106,10 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.emergency").value(false))
                 .andExpect(jsonPath("$.dbMessageId").value(1))
                 .andExpect(jsonPath("$.sessionId").value(1));
+
+        // UC0036 - khong co dau hieu khan cap thi KHONG duoc day canh bao sang admin, tranh
+        // lam nhieu dashboard voi nhung tin nhan binh thuong.
+        verify(triageAlertPublisher, never()).publish(any());
     }
 
     @Test
@@ -128,6 +141,13 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.content").value("Ban nen den co so y te ngay."))
                 .andExpect(jsonPath("$.emergency").value(true))
                 .andExpect(jsonPath("$.matchedGroups[0]").value("DAU_BUNG_CAP_TINH"));
+
+        // UC0036 - co dau hieu khan cap thi PHAI day 1 canh bao sang admin qua WebSocket,
+        // kem dung noi dung cau hoi that va nhom trieu chung da khop.
+        verify(triageAlertPublisher).publish(argThat(event ->
+                event.patientId().equals(1L)
+                        && event.messageSnippet().equals("Toi bi dau bung du doi qua")
+                        && event.matchedGroups().equals(List.of("DAU_BUNG_CAP_TINH"))));
     }
 
     @Test
