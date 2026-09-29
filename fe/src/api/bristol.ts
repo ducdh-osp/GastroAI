@@ -28,13 +28,21 @@ export interface BristolLogPoint {
 }
 
 export async function listBristolLogs(page = 0, size = 20): Promise<BristolListResponse> {
-  const { data } = await apiClient.get<BristolListResponse>('/patient/bristol-logs', { params: { page, size } })
-  return data
+  try {
+    const { data } = await apiClient.get<BristolListResponse>('/patient/bristol-logs', { params: { page, size } })
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải danh sách đã ghi nhận. Vui lòng thử lại.')
+  }
 }
 
 export async function getBristolTrend(days = 30): Promise<BristolLogPoint[]> {
-  const { data } = await apiClient.get<{ points: BristolLogPoint[] }>('/patient/bristol-logs/trend', { params: { days } })
-  return data.points
+  try {
+    const { data } = await apiClient.get<{ points: BristolLogPoint[] }>('/patient/bristol-logs/trend', { params: { days } })
+    return data.points
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải xu hướng Bristol. Vui lòng thử lại.')
+  }
 }
 
 export async function createBristolLog(payload: BristolLogRequest): Promise<BristolLog> {

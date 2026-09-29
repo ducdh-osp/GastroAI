@@ -28,7 +28,7 @@ export default function FoodDiaryHistoryPage() {
         setPoints(trendPoints)
         setRecentEntries(recent.items)
       })
-      .catch(() => setError('Không thể tải lịch sử ăn uống.'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải lịch sử ăn uống.'))
       .finally(() => setLoading(false))
   }, [])
 

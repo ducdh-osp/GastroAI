@@ -3,6 +3,8 @@ package vn.gastroai.be.application.patient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.api.patient.MedicalProfileRequest;
@@ -23,6 +25,8 @@ import java.util.List;
  */
 @Service
 public class MedicalProfileService {
+
+    private static final Logger log = LoggerFactory.getLogger(MedicalProfileService.class);
 
     private final MedicalProfileRepository medicalProfileRepository;
     private final PatientRepository patientRepository;
@@ -91,10 +95,20 @@ public class MedicalProfileService {
     }
 
     private String toJson(List<String> value) {
-        if (value == null || value.isEmpty()) return null;
+        if (value == null) return null;
+        // Loc bo entry rong/toan khoang trang - Select mode="tags" o FE co the tao ra ["")
+        // neu nguoi dung bam Enter khi chua go gi, khong nen luu rac vao du lieu tham khao AI.
+        List<String> cleaned = value.stream()
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::trim)
+                .toList();
+        if (cleaned.isEmpty()) return null;
         try {
-            return objectMapper.writeValueAsString(value);
+            return objectMapper.writeValueAsString(cleaned);
         } catch (JsonProcessingException e) {
+            // Khong nen bao gio xay ra voi List<String> don gian, nhung neu co thi phai biet
+            // - truoc day nuot loi am tham lam mat du lieu benh nhan da nhap ma khong ai hay.
+            log.warn("Khong the serialize danh sach thanh JSON, du lieu se bi bo qua: {}", cleaned, e);
             return null;
         }
     }
@@ -104,6 +118,7 @@ public class MedicalProfileService {
         try {
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (Exception e) {
+            log.warn("Khong the parse JSON da luu trong medical_profiles, tra ve rong: {}", json, e);
             return Collections.emptyList();
         }
     }

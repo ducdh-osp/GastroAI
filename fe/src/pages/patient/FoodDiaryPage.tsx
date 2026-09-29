@@ -35,7 +35,7 @@ export default function FoodDiaryPage() {
         setItems(res.items)
         setTotalElements(res.totalElements)
       })
-      .catch(() => setError('Không thể tải nhật ký ăn uống.'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải nhật ký ăn uống.'))
       .finally(() => setLoading(false))
   }
 

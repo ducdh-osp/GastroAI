@@ -26,6 +26,17 @@ function formatTimeOfDay(time: string): string {
   return time.slice(0, 5)
 }
 
+/** Dung chung cho ca handleSubmit (qua modal) lan handleToggleActive (Switch rieng) - tranh
+ * 2 noi tu xay dung payload rieng, de sot field khi sau nay them truong moi cho reminder. */
+function reminderToRequest(reminder: MedicationReminder): MedicationReminderRequest {
+  return {
+    medicineName: reminder.medicineName,
+    dosage: reminder.dosage,
+    timeOfDay: reminder.timeOfDay,
+    active: reminder.active,
+  }
+}
+
 export default function MedicationRemindersPage() {
   const [reminders, setReminders] = useState<MedicationReminder[]>([])
   const [loadingReminders, setLoadingReminders] = useState(true)
@@ -35,6 +46,11 @@ export default function MedicationRemindersPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingReminder, setEditingReminder] = useState<MedicationReminder | null>(null)
   const [saving, setSaving] = useState(false)
+  // Id dang xu ly dang do (toggle/confirm) - dung de disable dung 1 dong thay vi ca bang,
+  // va chan bam lien tuc gay 2 request chong nhau (vd bam "Da uong" 2 lan lien tiep tao 2
+  // ban ghi xac nhan trung nhau, hoac toggle 2 lan lam ghi de field bang du lieu cu).
+  const [togglingId, setTogglingId] = useState<number | null>(null)
+  const [confirmingId, setConfirmingId] = useState<number | null>(null)
 
   const [confirmations, setConfirmations] = useState<MedicationConfirmationDetail[]>([])
   const [confirmationsPage, setConfirmationsPage] = useState(0)
@@ -46,7 +62,7 @@ export default function MedicationRemindersPage() {
     setLoadingReminders(true)
     listMedicationReminders()
       .then(setReminders)
-      .catch(() => setError('Không thể tải danh sách lịch nhắc thuốc.'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải danh sách lịch nhắc thuốc.'))
       .finally(() => setLoadingReminders(false))
   }
 
@@ -57,7 +73,7 @@ export default function MedicationRemindersPage() {
         setConfirmations(res.items)
         setConfirmationsTotal(res.totalElements)
       })
-      .catch(() => setError('Không thể tải lịch sử xác nhận đã uống.'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải lịch sử xác nhận đã uống.'))
       .finally(() => setLoadingConfirmations(false))
   }
 
@@ -93,16 +109,15 @@ export default function MedicationRemindersPage() {
   }
 
   async function handleToggleActive(reminder: MedicationReminder, active: boolean) {
+    if (togglingId !== null) return
+    setTogglingId(reminder.id)
     try {
-      await updateMedicationReminder(reminder.id, {
-        medicineName: reminder.medicineName,
-        dosage: reminder.dosage,
-        timeOfDay: reminder.timeOfDay,
-        active,
-      })
+      await updateMedicationReminder(reminder.id, { ...reminderToRequest(reminder), active })
       reloadReminders()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể cập nhật trạng thái.')
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -116,15 +131,25 @@ export default function MedicationRemindersPage() {
   }
 
   async function handleConfirmDose(reminder: MedicationReminder) {
+    if (confirmingId !== null) return
+    setConfirmingId(reminder.id)
     setError(null)
     setSuccess(null)
     try {
       await confirmMedicationDose(reminder.id)
       setSuccess(`Đã ghi nhận uống ${reminder.medicineName}.`)
-      setConfirmationsPage(0)
-      reloadConfirmations()
+      // Chi goi 1 trong 2: neu da o trang 0 thi tu reload, neu chua thi doi trang ve 0 se tu
+      // kich hoat useEffect reload - goi ca 2 cung luc gay 2 request chong nhau (race, co the
+      // hien du lieu cu de len du lieu moi).
+      if (confirmationsPage === 0) {
+        reloadConfirmations()
+      } else {
+        setConfirmationsPage(0)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể ghi nhận đã uống thuốc.')
+    } finally {
+      setConfirmingId(null)
     }
   }
 
@@ -137,13 +162,28 @@ export default function MedicationRemindersPage() {
     { title: 'Giờ nhắc', dataIndex: 'timeOfDay', key: 'timeOfDay', width: 100, render: formatTimeOfDay },
     {
       title: 'Bật nhắc', key: 'active', width: 100,
-      render: (_, record) => <Switch checked={record.active} onChange={(checked) => handleToggleActive(record, checked)} />,
+      render: (_, record) => (
+        <Switch
+          checked={record.active}
+          loading={togglingId === record.id}
+          disabled={togglingId !== null && togglingId !== record.id}
+          onChange={(checked) => handleToggleActive(record, checked)}
+        />
+      ),
     },
     {
       title: '', key: 'actions', width: 180,
       render: (_, record) => (
         <div className="flex gap-1">
-          <Button size="small" icon={<CheckCircleOutlined />} onClick={() => handleConfirmDose(record)}>Đã uống</Button>
+          <Button
+            size="small"
+            icon={<CheckCircleOutlined />}
+            loading={confirmingId === record.id}
+            disabled={confirmingId !== null && confirmingId !== record.id}
+            onClick={() => handleConfirmDose(record)}
+          >
+            Đã uống
+          </Button>
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm title="Xoá lịch nhắc này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => handleDelete(record.id)}>
             <Button size="small" type="text" danger icon={<DeleteOutlined />} />

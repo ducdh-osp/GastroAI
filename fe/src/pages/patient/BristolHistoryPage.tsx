@@ -32,7 +32,7 @@ export default function BristolHistoryPage() {
         setPoints(trendPoints)
         setRecentLogs(recent.items)
       })
-      .catch(() => setError('Không thể tải xu hướng Bristol.'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải xu hướng Bristol.'))
       .finally(() => setLoading(false))
   }, [])
 

@@ -18,7 +18,6 @@ import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -71,12 +70,18 @@ public class FoodDiaryService {
                 result.getTotalElements(), result.getTotalPages());
     }
 
-    /** UC0012 - so bua an ghi nhan moi ngay trong `days` ngay gan nhat, fill 0 cho ngay
-     * khong co du lieu de bieu do lien tuc khong bi dut quang. */
+    /** UC0012 - so bua an ghi nhan moi ngay trong dung `days` ngay gan nhat (ke ca hom nay),
+     * fill 0 cho ngay khong co du lieu de bieu do lien tuc khong bi dut quang.
+     * Tinh start/end truc tiep tu LocalDate (khong suy tu Instant.now().minus(days)) de
+     * chac chan co dung `days` diem - truoc day tinh end tu `to` va start tu `to - days`
+     * roi lay ca 2 dau nen ra `days + 1` diem (off-by-one da phat hien qua code review). */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public FoodDiaryTrendResponse trend(Long patientId, int days) {
-        Instant to = Instant.now();
-        Instant from = to.minus(days, ChronoUnit.DAYS);
+        LocalDate today = Instant.now().atZone(VN_ZONE).toLocalDate();
+        LocalDate start = today.minusDays(days - 1L);
+
+        Instant from = start.atStartOfDay(VN_ZONE).toInstant();
+        Instant to = today.plusDays(1).atStartOfDay(VN_ZONE).toInstant();
 
         List<FoodDiaryEntry> entries =
                 foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(patientId, from, to);
@@ -84,9 +89,7 @@ public class FoodDiaryService {
         Map<LocalDate, Long> countByDate = entries.stream()
                 .collect(Collectors.groupingBy(e -> e.getEatenAt().atZone(VN_ZONE).toLocalDate(), Collectors.counting()));
 
-        LocalDate start = from.atZone(VN_ZONE).toLocalDate();
-        LocalDate end = to.atZone(VN_ZONE).toLocalDate();
-        List<DailyCountPoint> points = start.datesUntil(end.plusDays(1))
+        List<DailyCountPoint> points = start.datesUntil(today.plusDays(1))
                 .map(day -> new DailyCountPoint(day, countByDate.getOrDefault(day, 0L)))
                 .toList();
         return new FoodDiaryTrendResponse(points);

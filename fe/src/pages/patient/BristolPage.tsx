@@ -36,7 +36,7 @@ export default function BristolPage() {
         setItems(res.items)
         setTotalElements(res.totalElements)
       })
-      .catch(() => setError('Không thể tải danh sách đã ghi nhận.'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải danh sách đã ghi nhận.'))
       .finally(() => setLoading(false))
   }
 

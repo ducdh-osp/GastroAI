@@ -28,13 +28,21 @@ export interface DailyCountPoint {
 }
 
 export async function listFoodDiary(page = 0, size = 20): Promise<FoodDiaryListResponse> {
-  const { data } = await apiClient.get<FoodDiaryListResponse>('/patient/food-diary', { params: { page, size } })
-  return data
+  try {
+    const { data } = await apiClient.get<FoodDiaryListResponse>('/patient/food-diary', { params: { page, size } })
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải nhật ký ăn uống. Vui lòng thử lại.')
+  }
 }
 
 export async function getFoodDiaryTrend(days = 30): Promise<DailyCountPoint[]> {
-  const { data } = await apiClient.get<{ points: DailyCountPoint[] }>('/patient/food-diary/trend', { params: { days } })
-  return data.points
+  try {
+    const { data } = await apiClient.get<{ points: DailyCountPoint[] }>('/patient/food-diary/trend', { params: { days } })
+    return data.points
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải xu hướng ăn uống. Vui lòng thử lại.')
+  }
 }
 
 export async function createFoodDiaryEntry(payload: FoodDiaryEntryRequest): Promise<FoodDiaryEntry> {

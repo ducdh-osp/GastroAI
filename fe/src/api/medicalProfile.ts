@@ -34,8 +34,12 @@ export interface UpdateMedicalProfileRequest {
 
 /** UC0009/UC0010 - luon tra ve 200, exists=false neu benh nhan chua khai bao lan nao. */
 export async function getMedicalProfile(): Promise<MedicalProfile> {
-  const { data } = await apiClient.get<MedicalProfile>('/patient/medical-profile')
-  return data
+  try {
+    const { data } = await apiClient.get<MedicalProfile>('/patient/medical-profile')
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải hồ sơ bệnh lý. Vui lòng thử lại.')
+  }
 }
 
 /** UPSERT - dung chung cho ca khai bao lan dau (UC0009) lan cap nhat (UC0010). */

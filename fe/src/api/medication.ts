@@ -38,8 +38,12 @@ export interface MedicationConfirmationListResponse {
 }
 
 export async function listMedicationReminders(): Promise<MedicationReminder[]> {
-  const { data } = await apiClient.get<MedicationReminder[]>('/patient/medications')
-  return data
+  try {
+    const { data } = await apiClient.get<MedicationReminder[]>('/patient/medications')
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải danh sách lịch nhắc thuốc. Vui lòng thử lại.')
+  }
 }
 
 export async function createMedicationReminder(payload: MedicationReminderRequest): Promise<MedicationReminder> {
@@ -78,8 +82,12 @@ export async function confirmMedicationDose(reminderId: number): Promise<Medicat
 }
 
 export async function listMedicationConfirmations(page = 0, size = 20): Promise<MedicationConfirmationListResponse> {
-  const { data } = await apiClient.get<MedicationConfirmationListResponse>('/patient/medications/confirmations', {
-    params: { page, size },
-  })
-  return data
+  try {
+    const { data } = await apiClient.get<MedicationConfirmationListResponse>('/patient/medications/confirmations', {
+      params: { page, size },
+    })
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải lịch sử xác nhận đã uống. Vui lòng thử lại.')
+  }
 }

@@ -64,8 +64,8 @@ export default function MedicalProfilePage() {
         setExists(profile.exists)
         setUpdatedAt(profile.updatedAt)
       })
-      .catch(() => {
-        if (!cancelled) setError('Không thể tải hồ sơ bệnh lý.')
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Không thể tải hồ sơ bệnh lý.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -129,7 +129,12 @@ export default function MedicalProfilePage() {
               <Form<MedicalProfileFormValues> form={form} layout="vertical" onFinish={onFinish} disabled={saving}>
                 <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                   <Form.Item label="Ngày sinh" name="dateOfBirth">
-                    <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày sinh" />
+                    <DatePicker
+                      className="w-full"
+                      format="DD/MM/YYYY"
+                      placeholder="Chọn ngày sinh"
+                      disabledDate={(d) => d.isAfter(dayjs(), 'day')}
+                    />
                   </Form.Item>
                   <Form.Item label="Giới tính" name="gender">
                     <Select allowClear placeholder="Chọn giới tính" options={GENDER_OPTIONS} />

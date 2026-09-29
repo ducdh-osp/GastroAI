@@ -68,7 +68,8 @@ class FoodDiaryServiceTest {
 
         FoodDiaryTrendResponse trend = service.trend(1L, 7);
 
-        assertEquals(8, trend.points().size()); // 7 ngay truoc + hom nay = 8 diem
+        // days=7 phai ra DUNG 7 diem (ke ca hom nay) - truoc day co bug off-by-one ra 8.
+        assertEquals(7, trend.points().size());
         long totalCount = trend.points().stream().mapToLong(DailyCountPoint::count).sum();
         assertEquals(1, totalCount); // dung 1 entry duy nhat trong toan bo khoang
     }
