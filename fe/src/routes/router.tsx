@@ -13,6 +13,8 @@ import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
 import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
 import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
+import BristolPage from '../pages/patient/BristolPage'
+import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
 import ChatPage from '../pages/chat/ChatPage'
 import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -82,6 +84,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FoodDiaryHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/bristol',
+        element: (
+          <ProtectedRoute>
+            <BristolPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/bristol-history',
+        element: (
+          <ProtectedRoute>
+            <BristolHistoryPage />
           </ProtectedRoute>
         ),
       },
