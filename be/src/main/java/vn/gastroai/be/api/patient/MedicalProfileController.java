@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.patient.MedicalProfileService;
+import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
 
@@ -24,8 +25,7 @@ public class MedicalProfileController {
 
     @GetMapping
     public MedicalProfileResponse getProfile(Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        Long patientId = Long.valueOf(principal.getName());
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         return medicalProfileService.getProfile(patientId);
     }
 
@@ -33,14 +33,7 @@ public class MedicalProfileController {
     public MedicalProfileResponse upsertProfile(
             @Valid @RequestBody MedicalProfileRequest request,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        Long patientId = Long.valueOf(principal.getName());
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         return medicalProfileService.upsertProfile(patientId, request);
-    }
-
-    private void requireAuthenticated(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new org.springframework.security.access.AccessDeniedException("Chua dang nhap");
-        }
     }
 }

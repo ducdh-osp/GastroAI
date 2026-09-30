@@ -17,6 +17,7 @@ import type {
 } from '../../api/medication'
 import { AppShell } from '../../components/layout/AppShell'
 import { MedicationReminderModal } from '../../components/medication/MedicationReminderModal'
+import { useInFlightGuard } from '../../hooks/useInFlightGuard'
 import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
@@ -46,12 +47,9 @@ export default function MedicationRemindersPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingReminder, setEditingReminder] = useState<MedicationReminder | null>(null)
   const [saving, setSaving] = useState(false)
-  // Id dang xu ly dang do (toggle/confirm) - dung de disable dung 1 dong thay vi ca bang,
-  // va chan bam lien tuc gay 2 request chong nhau (vd bam "Da uong" 2 lan lien tiep tao 2
-  // ban ghi xac nhan trung nhau, hoac toggle 2 lan lam ghi de field bang du lieu cu).
-  const [togglingId, setTogglingId] = useState<number | null>(null)
-  const [confirmingId, setConfirmingId] = useState<number | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const toggleGuard = useInFlightGuard<number>()
+  const confirmGuard = useInFlightGuard<number>()
+  const deleteGuard = useInFlightGuard<number>()
 
   const [confirmations, setConfirmations] = useState<MedicationConfirmationDetail[]>([])
   const [confirmationsPage, setConfirmationsPage] = useState(0)
@@ -115,55 +113,47 @@ export default function MedicationRemindersPage() {
   }
 
   async function handleToggleActive(reminder: MedicationReminder, active: boolean) {
-    if (togglingId !== null) return
-    setTogglingId(reminder.id)
-    try {
-      await updateMedicationReminder(reminder.id, { ...reminderToRequest(reminder), active })
-      reloadReminders()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể cập nhật trạng thái.')
-    } finally {
-      setTogglingId(null)
-    }
+    await toggleGuard.run(reminder.id, async () => {
+      try {
+        await updateMedicationReminder(reminder.id, { ...reminderToRequest(reminder), active })
+        reloadReminders()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Không thể cập nhật trạng thái.')
+      }
+    })
   }
 
   async function handleDelete(id: number) {
-    if (deletingId !== null) return
-    setDeletingId(id)
-    try {
-      await deleteMedicationReminder(id)
-      reloadReminders()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể xoá lịch nhắc thuốc.')
-    } finally {
-      setDeletingId(null)
-    }
+    await deleteGuard.run(id, async () => {
+      try {
+        await deleteMedicationReminder(id)
+        reloadReminders()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Không thể xoá lịch nhắc thuốc.')
+      }
+    })
   }
 
   async function handleConfirmDose(reminder: MedicationReminder) {
-    if (confirmingId !== null) return
-    setConfirmingId(reminder.id)
-    setError(null)
-    setSuccess(null)
-    try {
-      await confirmMedicationDose(reminder.id)
-      setReminders((current) => current.map((item) =>
-        item.id === reminder.id ? { ...item, confirmedToday: true } : item,
-      ))
-      setSuccess(`Đã ghi nhận uống ${reminder.medicineName}.`)
-      // Chi goi 1 trong 2: neu da o trang 0 thi tu reload, neu chua thi doi trang ve 0 se tu
-      // kich hoat useEffect reload - goi ca 2 cung luc gay 2 request chong nhau (race, co the
-      // hien du lieu cu de len du lieu moi).
-      if (confirmationsPage === 0) {
-        reloadConfirmations()
-      } else {
-        setConfirmationsPage(0)
+    await confirmGuard.run(reminder.id, async () => {
+      setError(null)
+      setSuccess(null)
+      try {
+        await confirmMedicationDose(reminder.id)
+        setReminders((current) => current.map((item) =>
+          item.id === reminder.id ? { ...item, confirmedToday: true } : item,
+        ))
+        setSuccess(`Đã ghi nhận uống ${reminder.medicineName}.`)
+        // Chỉ gọi một trong hai: đổi về trang 0 sẽ để useEffect tải lại lịch sử.
+        if (confirmationsPage === 0) {
+          reloadConfirmations()
+        } else {
+          setConfirmationsPage(0)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Không thể ghi nhận đã uống thuốc.')
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể ghi nhận đã uống thuốc.')
-    } finally {
-      setConfirmingId(null)
-    }
+    })
   }
 
   const reminderColumns: ColumnsType<MedicationReminder> = [
@@ -178,8 +168,8 @@ export default function MedicationRemindersPage() {
       render: (_, record) => (
         <Switch
           checked={record.active}
-          loading={togglingId === record.id}
-          disabled={togglingId !== null && togglingId !== record.id}
+          loading={toggleGuard.inFlightId === record.id}
+          disabled={toggleGuard.inFlightId !== null && toggleGuard.inFlightId !== record.id}
           onChange={(checked) => handleToggleActive(record, checked)}
         />
       ),
@@ -191,8 +181,8 @@ export default function MedicationRemindersPage() {
           <Button
             size="small"
             icon={<CheckCircleOutlined />}
-            loading={confirmingId === record.id}
-            disabled={record.confirmedToday || (confirmingId !== null && confirmingId !== record.id)}
+            loading={confirmGuard.inFlightId === record.id}
+            disabled={record.confirmedToday || (confirmGuard.inFlightId !== null && confirmGuard.inFlightId !== record.id)}
             onClick={() => handleConfirmDose(record)}
           >
             {record.confirmedToday ? 'Đã xác nhận hôm nay' : 'Đã uống'}
@@ -210,8 +200,8 @@ export default function MedicationRemindersPage() {
               type="text"
               danger
               icon={<StopOutlined />}
-              loading={deletingId === record.id}
-              disabled={deletingId !== null && deletingId !== record.id}
+              loading={deleteGuard.inFlightId === record.id}
+              disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
             />
           </Popconfirm>
         </div>

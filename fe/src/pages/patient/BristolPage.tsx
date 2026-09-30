@@ -1,7 +1,7 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   createBristolLog,
   deleteBristolLog,
@@ -12,42 +12,25 @@ import type { BristolLog, BristolLogRequest } from '../../api/bristol'
 import { AppShell } from '../../components/layout/AppShell'
 import { BristolLogModal } from '../../components/bristol/BristolLogModal'
 import { BRISTOL_TYPE_LABELS } from '../../constants/bristol'
+import { useInFlightGuard } from '../../hooks/useInFlightGuard'
+import { usePagedList } from '../../hooks/usePagedList'
 import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
 
 export default function BristolPage() {
-  const [items, setItems] = useState<BristolLog[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(0)
-  const [pageSize] = useState(10)
-  const [totalElements, setTotalElements] = useState(0)
-  const requestId = useRef(0)
+  const {
+    items, loading, error, setError, page, setPage, pageSize, totalElements, reload,
+  } = usePagedList({
+    fetchPage: listBristolLogs,
+    pageSize: 10,
+    loadErrorMessage: 'Không thể tải danh sách đã ghi nhận.',
+  })
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingLog, setEditingLog] = useState<BristolLog | null>(null)
   const [saving, setSaving] = useState(false)
-  // Chan bam "Xoa" lien tuc gay 2 request chong nhau (Popconfirm khong tu chan double-click).
-  const [deletingId, setDeletingId] = useState<number | null>(null)
-
-  function reload() {
-    const currentRequestId = ++requestId.current
-    setLoading(true)
-    setError(null)
-    listBristolLogs(page, pageSize)
-      .then((res) => {
-        if (currentRequestId !== requestId.current) return
-        setItems(res.items)
-        setTotalElements(res.totalElements)
-      })
-      .catch((err: unknown) => {
-        if (currentRequestId === requestId.current) setError(err instanceof Error ? err.message : 'Không thể tải danh sách đã ghi nhận.')
-      })
-      .finally(() => { if (currentRequestId === requestId.current) setLoading(false) })
-  }
-
-  useEffect(reload, [page, pageSize])
+  const deleteGuard = useInFlightGuard<number>()
 
   function openCreate() {
     setEditingLog(null)
@@ -77,20 +60,18 @@ export default function BristolPage() {
   }
 
   async function handleDelete(id: number) {
-    if (deletingId !== null) return
-    setDeletingId(id)
-    try {
-      await deleteBristolLog(id)
-      if (items.length === 1 && page > 0) {
-        setPage(page - 1)
-      } else {
-        reload()
+    await deleteGuard.run(id, async () => {
+      try {
+        await deleteBristolLog(id)
+        if (items.length === 1 && page > 0) {
+          setPage(page - 1)
+        } else {
+          void reload()
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Không thể xoá.')
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể xoá.')
-    } finally {
-      setDeletingId(null)
-    }
+    })
   }
 
   const columns: ColumnsType<BristolLog> = [
@@ -114,8 +95,8 @@ export default function BristolPage() {
               type="text"
               danger
               icon={<DeleteOutlined />}
-              loading={deletingId === record.id}
-              disabled={deletingId !== null && deletingId !== record.id}
+              loading={deleteGuard.inFlightId === record.id}
+              disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
             />
           </Popconfirm>
         </div>

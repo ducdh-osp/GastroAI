@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.chat.ChatHistoryService;
+import vn.gastroai.be.api.support.AuthenticatedRequest;
 import vn.gastroai.be.domain.chat.ChatMessage;
 import vn.gastroai.be.domain.chat.ChatSession;
 import vn.gastroai.be.infrastructure.persistence.postgres.MessageRatingRepository;
@@ -41,8 +42,7 @@ public class ChatHistoryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Principal principal, Authentication authentication) {
-        requireAuth(authentication);
-        Long patientId = Long.valueOf(principal.getName());
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         Page<ChatSession> result = chatHistoryService.listSessions(patientId, page, size);
         List<ChatSessionSummary> summaries = result.getContent().stream()
                 .map(s -> new ChatSessionSummary(s.getId(), s.getTitle(), s.getCreatedAt(), s.getUpdatedAt()))
@@ -56,19 +56,12 @@ public class ChatHistoryController {
     public List<ChatMessageDetail> getSessionMessages(
             @PathVariable Long sessionId,
             Principal principal, Authentication authentication) {
-        requireAuth(authentication);
-        Long patientId = Long.valueOf(principal.getName());
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         List<ChatMessage> messages = chatHistoryService.listMessages(patientId, sessionId);
         return messages.stream().map(this::toDetail).toList();
     }
 
     // ─────────────────────────────── helpers ────────────────────────────────
-
-    private void requireAuth(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new org.springframework.security.access.AccessDeniedException("Chua dang nhap");
-        }
-    }
 
     private ChatMessageDetail toDetail(ChatMessage msg) {
         List<ChatSourceResponse> sources = parseJson(msg.getSources(),

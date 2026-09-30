@@ -16,6 +16,7 @@ import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.application.rag.StreamingDoneEvent;
 import vn.gastroai.be.application.rag.StreamingRagQueryService;
 import vn.gastroai.be.application.triage.TriageAlertPublisher;
+import vn.gastroai.be.api.support.AuthenticatedRequest;
 import vn.gastroai.be.domain.triage.TriageAlertEvent;
 import java.time.Instant;
 import java.security.Principal;
@@ -52,9 +53,7 @@ public class ChatController {
                         Principal principal,
                         Authentication authentication) {
 
-                requireAuthenticated(authentication);
-
-                Long patientId = Long.valueOf(principal.getName());
+                Long patientId = AuthenticatedRequest.patientId(principal, authentication);
 
                 ChatAnswer chatAnswer = chatService.ask(request.content());
 
@@ -105,9 +104,7 @@ public class ChatController {
                         Principal principal,
                         Authentication authentication) {
 
-                requireAuthenticated(authentication);
-
-                Long patientId = Long.valueOf(principal.getName());
+                Long patientId = AuthenticatedRequest.patientId(principal, authentication);
 
                 chatHistoryService.rateMessage(
                                 patientId,
@@ -123,7 +120,7 @@ public class ChatController {
                         @Valid @RequestBody ChatMessageRequest request,
                         Authentication authentication) {
 
-                requireAuthenticated(authentication);
+                AuthenticatedRequest.requireAuthenticated(authentication);
 
                 Long patientId = Long.valueOf(authentication.getName());
                 SseEmitter emitter = new SseEmitter(120_000L);
@@ -166,14 +163,4 @@ public class ChatController {
                 return emitter;
         }
 
-        private void requireAuthenticated(
-                        Authentication authentication) {
-
-                if (authentication == null
-                                || !authentication.isAuthenticated()) {
-
-                        throw new org.springframework.security.access.AccessDeniedException(
-                                        "Chua dang nhap");
-                }
-        }
 }

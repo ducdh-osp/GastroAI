@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.patient.BristolLogService;
+import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
 
@@ -23,8 +24,7 @@ public class BristolLogController {
     public BristolLogResponse create(
             @Valid @RequestBody BristolLogRequest request,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        return bristolLogService.create(Long.valueOf(principal.getName()), request);
+        return bristolLogService.create(AuthenticatedRequest.patientId(principal, authentication), request);
     }
 
     @GetMapping
@@ -32,22 +32,22 @@ public class BristolLogController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
-        return bristolLogService.list(Long.valueOf(principal.getName()), page, size);
+        return bristolLogService.list(patientId, page, size);
     }
 
     @GetMapping("/trend")
     public BristolTrendResponse trend(
             @RequestParam(defaultValue = "30") int days,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         if (days < 1 || days > 365) {
             throw new IllegalArgumentException("days trong khoang 1..365");
         }
-        return bristolLogService.trend(Long.valueOf(principal.getName()), days);
+        return bristolLogService.trend(patientId, days);
     }
 
     @PutMapping("/{id}")
@@ -55,8 +55,7 @@ public class BristolLogController {
             @PathVariable Long id,
             @Valid @RequestBody BristolLogRequest request,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        return bristolLogService.update(Long.valueOf(principal.getName()), id, request);
+        return bristolLogService.update(AuthenticatedRequest.patientId(principal, authentication), id, request);
     }
 
     @DeleteMapping("/{id}")
@@ -64,13 +63,6 @@ public class BristolLogController {
     public void delete(
             @PathVariable Long id,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        bristolLogService.delete(Long.valueOf(principal.getName()), id);
-    }
-
-    private void requireAuthenticated(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new org.springframework.security.access.AccessDeniedException("Chua dang nhap");
-        }
+        bristolLogService.delete(AuthenticatedRequest.patientId(principal, authentication), id);
     }
 }
