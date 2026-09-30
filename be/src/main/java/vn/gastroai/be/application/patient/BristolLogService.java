@@ -5,6 +5,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.gastroai.be.application.support.OwnedResourceLoader;
+import vn.gastroai.be.application.support.ResourceNotFoundException;
+import vn.gastroai.be.application.support.VietnamDateRange;
 import vn.gastroai.be.api.patient.BristolListResponse;
 import vn.gastroai.be.api.patient.BristolLogPoint;
 import vn.gastroai.be.api.patient.BristolLogRequest;
@@ -15,8 +18,6 @@ import vn.gastroai.be.domain.patient.BristolLog;
 import vn.gastroai.be.infrastructure.persistence.postgres.BristolLogRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /** UC0013 (ghi nhan Bristol) + UC0014 (xem xu huong theo thoi gian). */
@@ -34,7 +35,7 @@ public class BristolLogService {
     @Transactional("postgresTransactionManager")
     public BristolLogResponse create(Long patientId, BristolLogRequest request) {
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay benh nhan"));
         BristolLog log = new BristolLog(patient, request.loggedAt(), request.bristolType(), request.notes());
         return toResponse(bristolLogRepository.save(log));
     }
@@ -67,19 +68,19 @@ public class BristolLogService {
      * "tan suat/ngay"). */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public BristolTrendResponse trend(Long patientId, int days) {
-        Instant to = Instant.now();
-        Instant from = to.minus(days, ChronoUnit.DAYS);
+        VietnamDateRange.Range range = VietnamDateRange.recentDaysIncludingToday(days);
         List<BristolLogPoint> points =
-                bristolLogRepository.findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(patientId, from, to).stream()
+                bristolLogRepository.findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(
+                        patientId, range.fromInclusive(), range.toExclusive()).stream()
                         .map(log -> new BristolLogPoint(log.getLoggedAt(), log.getBristolType()))
                         .toList();
         return new BristolTrendResponse(points);
     }
 
     private BristolLog loadOwned(Long patientId, Long logId) {
-        return bristolLogRepository.findById(logId)
-                .filter(l -> l.getPatient().getId().equals(patientId))
-                .orElseThrow(() -> new IllegalArgumentException("Bristol log not found or access denied"));
+        return OwnedResourceLoader.loadOwned(bristolLogRepository.findById(logId),
+                l -> l.getPatient().getId().equals(patientId),
+                "Khong tim thay muc ghi nhan Bristol hoac ban khong co quyen truy cap");
     }
 
     private BristolLogResponse toResponse(BristolLog log) {

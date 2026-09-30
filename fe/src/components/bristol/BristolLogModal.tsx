@@ -53,17 +53,17 @@ export function BristolLogModal({ open, log, saving, onCancel, onSubmit }: Brist
     >
       <Form<BristolLogFormValues> form={form} layout="vertical" className="mt-4">
         <Form.Item label="Thời điểm" name="loggedAt" rules={[{ required: true, message: 'Chọn thời điểm' }]}>
-          <DatePicker showTime className="w-full" format="DD/MM/YYYY HH:mm" />
+          <DatePicker showTime className="w-full" format="DD/MM/YYYY HH:mm" disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
         </Form.Item>
         <Form.Item label="Phân loại theo thang Bristol" name="bristolType" rules={[{ required: true, message: 'Chọn 1 mức' }]}>
-          <Radio.Group className="flex flex-col gap-1.5">
+          <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {BRISTOL_TYPE_OPTIONS.map((opt) => (
               <Radio key={opt.value} value={opt.value}>{opt.label}</Radio>
             ))}
           </Radio.Group>
         </Form.Item>
-        <Form.Item label="Ghi chú" name="notes">
-          <Input.TextArea rows={2} placeholder="Vd: kèm đau bụng, sau khi ăn..." />
+        <Form.Item label="Ghi chú" name="notes" rules={[{ max: 5000, message: 'Ghi chú tối đa 5000 ký tự' }]}>
+          <Input.TextArea rows={2} maxLength={5000} showCount placeholder="Vd: kèm đau bụng, sau khi ăn..." />
         </Form.Item>
       </Form>
     </Modal>

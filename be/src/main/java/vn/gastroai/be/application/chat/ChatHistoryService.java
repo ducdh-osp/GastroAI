@@ -7,6 +7,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.gastroai.be.application.support.OwnedResourceLoader;
+import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.chat.ChatMessage;
@@ -65,14 +67,14 @@ public class ChatHistoryService {
                                      String question, RagAnswer ragAnswer, boolean emergency,
                                      List<String> matchedGroups) {
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay benh nhan"));
 
         // Lấy hoặc tạo phiên
         ChatSession session;
         if (sessionId != null) {
-            session = sessionRepository.findById(sessionId)
-                    .filter(s -> s.getPatient().getId().equals(patientId))
-                    .orElseThrow(() -> new IllegalArgumentException("Session not found or access denied"));
+            session = OwnedResourceLoader.loadOwned(sessionRepository.findById(sessionId),
+                    s -> s.getPatient().getId().equals(patientId),
+                    "Khong tim thay phien chat hoac ban khong co quyen truy cap");
         } else {
             String title = question.length() > 60 ? question.substring(0, 60) + "…" : question;
             session = sessionRepository.save(new ChatSession(patient, title));
@@ -108,9 +110,9 @@ public class ChatHistoryService {
     /** Toàn bộ tin nhắn trong 1 phiên (kiểm tra quyền sở hữu). */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public List<ChatMessage> listMessages(Long patientId, Long sessionId) {
-        ChatSession session = sessionRepository.findById(sessionId)
-                .filter(s -> s.getPatient().getId().equals(patientId))
-                .orElseThrow(() -> new IllegalArgumentException("Session not found or access denied"));
+        ChatSession session = OwnedResourceLoader.loadOwned(sessionRepository.findById(sessionId),
+                s -> s.getPatient().getId().equals(patientId),
+                "Khong tim thay phien chat hoac ban khong co quyen truy cap");
         return messageRepository.findBySessionIdOrderByCreatedAtAsc(session.getId());
     }
 
@@ -123,10 +125,10 @@ public class ChatHistoryService {
     @Transactional("postgresTransactionManager")
     public void rateMessage(Long patientId, Long messageId, String rating) {
         ChatMessage message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new IllegalArgumentException("Message not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tin nhan"));
 
         if (!message.getSession().getPatient().getId().equals(patientId)) {
-            throw new IllegalArgumentException("Access denied");
+            throw new ResourceNotFoundException("Khong tim thay tin nhan hoac ban khong co quyen truy cap");
         }
         if (!"assistant".equals(message.getSender())) {
             throw new IllegalArgumentException("Chỉ được đánh giá câu trả lời của AI");

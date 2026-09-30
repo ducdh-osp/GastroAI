@@ -10,6 +10,8 @@ import vn.gastroai.be.infrastructure.persistence.postgres.BristolLogRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,8 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 class BristolLogServiceTest {
 
@@ -69,5 +73,22 @@ class BristolLogServiceTest {
         assertEquals(2, trend.points().size());
         assertEquals(3, trend.points().get(0).bristolType());
         assertEquals(5, trend.points().get(1).bristolType());
+    }
+
+    @Test
+    void trendUsesWholeVietnamCalendarDays() {
+        when(bristolLogRepository.findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(anyLong(), any(), any()))
+                .thenReturn(List.of());
+
+        service.trend(1L, 1);
+
+        var fromCaptor = forClass(Instant.class);
+        var toCaptor = forClass(Instant.class);
+        verify(bristolLogRepository).findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(
+                org.mockito.ArgumentMatchers.eq(1L), fromCaptor.capture(), toCaptor.capture());
+        ZoneId vietnam = ZoneId.of("Asia/Ho_Chi_Minh");
+        LocalDate today = Instant.now().atZone(vietnam).toLocalDate();
+        assertEquals(today.atStartOfDay(vietnam).toInstant(), fromCaptor.getValue());
+        assertEquals(today.plusDays(1).atStartOfDay(vietnam).toInstant(), toCaptor.getValue());
     }
 }

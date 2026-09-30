@@ -53,4 +53,14 @@ class BristolLogControllerTest {
         mockMvc.perform(get("/api/v1/patient/bristol-logs/trend").with(csrf()).param("days", "9999"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void createRejectsFutureLoggedAt() throws Exception {
+        mockMvc.perform(post("/api/v1/patient/bristol-logs")
+                        .with(csrf())
+                        .contentType("application/json")
+                        .content("{\"loggedAt\":\"2999-01-01T08:00:00Z\",\"bristolType\":4}"))
+                .andExpect(status().isBadRequest());
+    }
 }

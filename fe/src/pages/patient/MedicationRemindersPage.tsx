@@ -1,7 +1,7 @@
-import { CheckCircleOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, EditOutlined, PlusOutlined, StopOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Pagination, Popconfirm, Spin, Switch, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   confirmMedicationDose,
   createMedicationReminder,
@@ -57,6 +57,7 @@ export default function MedicationRemindersPage() {
   const [confirmationsPage, setConfirmationsPage] = useState(0)
   const [confirmationsTotal, setConfirmationsTotal] = useState(0)
   const [loadingConfirmations, setLoadingConfirmations] = useState(true)
+  const confirmationsRequestId = useRef(0)
   const confirmationsPageSize = 10
 
   function reloadReminders() {
@@ -68,14 +69,18 @@ export default function MedicationRemindersPage() {
   }
 
   function reloadConfirmations() {
+    const currentRequestId = ++confirmationsRequestId.current
     setLoadingConfirmations(true)
     listMedicationConfirmations(confirmationsPage, confirmationsPageSize)
       .then((res) => {
+        if (currentRequestId !== confirmationsRequestId.current) return
         setConfirmations(res.items)
         setConfirmationsTotal(res.totalElements)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải lịch sử xác nhận đã uống.'))
-      .finally(() => setLoadingConfirmations(false))
+      .catch((err: unknown) => {
+        if (currentRequestId === confirmationsRequestId.current) setError(err instanceof Error ? err.message : 'Không thể tải lịch sử xác nhận đã uống.')
+      })
+      .finally(() => { if (currentRequestId === confirmationsRequestId.current) setLoadingConfirmations(false) })
   }
 
   useEffect(reloadReminders, [])
@@ -142,6 +147,9 @@ export default function MedicationRemindersPage() {
     setSuccess(null)
     try {
       await confirmMedicationDose(reminder.id)
+      setReminders((current) => current.map((item) =>
+        item.id === reminder.id ? { ...item, confirmedToday: true } : item,
+      ))
       setSuccess(`Đã ghi nhận uống ${reminder.medicineName}.`)
       // Chi goi 1 trong 2: neu da o trang 0 thi tu reload, neu chua thi doi trang ve 0 se tu
       // kich hoat useEffect reload - goi ca 2 cung luc gay 2 request chong nhau (race, co the
@@ -184,18 +192,24 @@ export default function MedicationRemindersPage() {
             size="small"
             icon={<CheckCircleOutlined />}
             loading={confirmingId === record.id}
-            disabled={confirmingId !== null && confirmingId !== record.id}
+            disabled={record.confirmedToday || (confirmingId !== null && confirmingId !== record.id)}
             onClick={() => handleConfirmDose(record)}
           >
-            Đã uống
+            {record.confirmedToday ? 'Đã xác nhận hôm nay' : 'Đã uống'}
           </Button>
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm title="Xoá lịch nhắc này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm
+            title="Tắt lịch nhắc này?"
+            description="Lịch sử xác nhận đã uống trước đây vẫn được giữ lại."
+            okText="Tắt nhắc"
+            cancelText="Huỷ"
+            onConfirm={() => handleDelete(record.id)}
+          >
             <Button
               size="small"
               type="text"
               danger
-              icon={<DeleteOutlined />}
+              icon={<StopOutlined />}
               loading={deletingId === record.id}
               disabled={deletingId !== null && deletingId !== record.id}
             />

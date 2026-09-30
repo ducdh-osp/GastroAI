@@ -3,10 +3,12 @@ package vn.gastroai.be.application.patient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.api.patient.MedicalProfileRequest;
 import vn.gastroai.be.api.patient.MedicalProfileResponse;
 import vn.gastroai.be.domain.auth.Patient;
@@ -46,7 +48,7 @@ public class MedicalProfileService {
     public MedicalProfileResponse getProfile(Long patientId) {
         return medicalProfileRepository.findByPatientId(patientId)
                 .map(this::toResponse)
-                .orElse(new MedicalProfileResponse(null, null, null, null, null, null,
+                .orElse(new MedicalProfileResponse(null, null, null, null, null, null, null,
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
                         Collections.emptyList(), Collections.emptyList(), null, false));
     }
@@ -54,9 +56,20 @@ public class MedicalProfileService {
     @Transactional("postgresTransactionManager")
     public MedicalProfileResponse upsertProfile(Long patientId, MedicalProfileRequest request) {
         MedicalProfile profile = medicalProfileRepository.findByPatientId(patientId)
+                .map(existing -> {
+                    if (request.version() == null || !request.version().equals(existing.getVersion())) {
+                        throw new IllegalStateException(
+                                "Ho so da duoc cap nhat o noi khac. Vui long tai lai truoc khi luu.");
+                    }
+                    return existing;
+                })
                 .orElseGet(() -> {
+                    if (request.version() != null) {
+                        throw new IllegalStateException(
+                                "Ho so da thay doi. Vui long tai lai truoc khi luu.");
+                    }
                     Patient patient = patientRepository.findById(patientId)
-                            .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
+                            .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay benh nhan"));
                     MedicalProfile created = new MedicalProfile();
                     created.setPatient(patient);
                     return created;
@@ -73,13 +86,24 @@ public class MedicalProfileService {
         profile.setCurrentMedications(toJson(request.currentMedications()));
         profile.setDietaryRestrictions(toJson(request.dietaryRestrictions()));
 
-        MedicalProfile saved = medicalProfileRepository.save(profile);
-        return toResponse(saved);
+        // Flush before building the response so @Version/updatedAt contain their committed
+        // values and a concurrent update is reported by this request, not silently lost.
+        try {
+            MedicalProfile saved = medicalProfileRepository.saveAndFlush(profile);
+            return toResponse(saved);
+        } catch (DataIntegrityViolationException exception) {
+            // Two first-time submissions can both observe "no profile". The unique
+            // patient_id constraint wins atomically; return a useful conflict instead of 500.
+            throw new IllegalStateException(
+                    "Ho so da duoc tao hoac cap nhat o noi khac. Vui long tai lai truoc khi luu.",
+                    exception);
+        }
     }
 
     private MedicalProfileResponse toResponse(MedicalProfile profile) {
         return new MedicalProfileResponse(
                 profile.getId(),
+                profile.getVersion(),
                 profile.getDateOfBirth(),
                 profile.getGender(),
                 profile.getHeightCm(),

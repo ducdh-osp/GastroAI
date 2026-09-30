@@ -7,6 +7,7 @@ export interface MedicationReminder {
   dosage: string | null
   timeOfDay: string
   active: boolean
+  confirmedToday: boolean
 }
 
 export interface MedicationReminderRequest {
