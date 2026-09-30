@@ -10,6 +10,7 @@ import java.util.List;
  */
 public record MedicalProfileResponse(
         Long id,
+        Long version,
         LocalDate dateOfBirth,
         String gender,
         Integer heightCm,

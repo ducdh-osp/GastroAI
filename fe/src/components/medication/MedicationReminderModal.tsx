@@ -54,11 +54,11 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
       cancelText="Huỷ"
     >
       <Form<MedicationReminderFormValues> form={form} layout="vertical" className="mt-4">
-        <Form.Item label="Tên thuốc" name="medicineName" rules={[{ required: true, message: 'Nhập tên thuốc' }]}>
-          <Input placeholder="Vd: Omeprazole" />
+        <Form.Item label="Tên thuốc" name="medicineName" rules={[{ required: true, message: 'Nhập tên thuốc' }, { max: 200, message: 'Tên thuốc tối đa 200 ký tự' }]}>
+          <Input maxLength={200} showCount placeholder="Vd: Omeprazole" />
         </Form.Item>
-        <Form.Item label="Liều lượng" name="dosage">
-          <Input placeholder="Vd: 20mg, 1 viên" />
+        <Form.Item label="Liều lượng" name="dosage" rules={[{ max: 200, message: 'Liều lượng tối đa 200 ký tự' }]}>
+          <Input maxLength={200} showCount placeholder="Vd: 20mg, 1 viên" />
         </Form.Item>
         <Form.Item label="Giờ nhắc (lặp lại hằng ngày)" name="timeOfDay" rules={[{ required: true, message: 'Chọn giờ nhắc' }]}>
           <TimePicker className="w-full" format="HH:mm" />

@@ -96,6 +96,7 @@ export default function LoginHistoryPage() {
   const [recentFailureCount, setRecentFailureCount] = useState(0)
   const [pageSize, setPageSize] = useState(() => pageSizeForViewport(window.innerHeight))
   const previousPageSize = useRef(pageSize)
+  const requestId = useRef(0)
 
   useEffect(() => {
     function updatePageSize() {
@@ -114,22 +115,25 @@ export default function LoginHistoryPage() {
   }, [pageSize])
 
   useEffect(() => {
+    const currentRequestId = ++requestId.current
     setLoading(true)
     setError(null)
     getLoginHistory(page, pageSize)
       .then((res) => {
+        if (currentRequestId !== requestId.current) return
         setItems(res.items)
         setTotalElements(res.totalElements)
         setRecentFailureCount(res.recentFailureCount)
       })
       .catch((err: unknown) => {
+        if (currentRequestId !== requestId.current) return
         const msg =
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
           'Không thể tải lịch sử đăng nhập.'
         setError(msg)
       })
-      .finally(() => setLoading(false))
-  }, [page])
+      .finally(() => { if (currentRequestId === requestId.current) setLoading(false) })
+  }, [page, pageSize])
 
   return (
     <AppShell>

@@ -1,7 +1,7 @@
 import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Select, Spin, Typography } from 'antd'
 import { LoadingOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getMedicalProfile, updateMedicalProfile } from '../../api/medicalProfile'
 import type { Gender } from '../../api/medicalProfile'
 import { AppShell } from '../../components/layout/AppShell'
@@ -37,18 +37,21 @@ export default function MedicalProfilePage() {
   const [form] = Form.useForm<MedicalProfileFormValues>()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   // exists + updatedAt tach rieng khoi form (khong phai du lieu nguoi dung go) - dung de
   // hien "Cap nhat lan cuoi" va doi nhan nut Tao/Cap nhat.
   const [exists, setExists] = useState(false)
+  const [version, setVersion] = useState<number | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  const loadSequence = useRef(0)
 
-  useEffect(() => {
-    let cancelled = false
-    getMedicalProfile()
+  const loadProfile = useCallback(() => {
+    const sequence = ++loadSequence.current
+    return getMedicalProfile()
       .then((profile) => {
-        if (cancelled) return
+        if (sequence !== loadSequence.current) return
         form.setFieldsValue({
           dateOfBirth: profile.dateOfBirth ? dayjs(profile.dateOfBirth) : null,
           gender: profile.gender,
@@ -62,24 +65,38 @@ export default function MedicalProfilePage() {
           dietaryRestrictions: profile.dietaryRestrictions,
         })
         setExists(profile.exists)
+        setVersion(profile.version)
         setUpdatedAt(profile.updatedAt)
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Không thể tải hồ sơ bệnh lý.')
+        if (sequence !== loadSequence.current) return
+        setLoadError(err instanceof Error ? err.message : 'Không thể tải hồ sơ bệnh lý.')
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (sequence === loadSequence.current) setLoading(false)
       })
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [form])
+
+  useEffect(() => {
+    void loadProfile()
+    return () => { loadSequence.current += 1 }
+  }, [loadProfile])
+
+  function retryLoad() {
+    setLoading(true)
+    setLoadError(null)
+    setSaveError(null)
+    setSuccess(null)
+    void loadProfile()
+  }
 
   async function onFinish(values: MedicalProfileFormValues) {
-    setError(null)
+    setSaveError(null)
     setSuccess(null)
     setSaving(true)
     try {
       const profile = await updateMedicalProfile({
+        version,
         dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DD') : null,
         gender: values.gender ?? null,
         heightCm: values.heightCm ?? null,
@@ -92,10 +109,11 @@ export default function MedicalProfilePage() {
         dietaryRestrictions: values.dietaryRestrictions ?? [],
       })
       setExists(profile.exists)
+      setVersion(profile.version)
       setUpdatedAt(profile.updatedAt)
       setSuccess('Đã lưu hồ sơ bệnh lý.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể lưu hồ sơ bệnh lý.')
+      setSaveError(err instanceof Error ? err.message : 'Không thể lưu hồ sơ bệnh lý.')
     } finally {
       setSaving(false)
     }
@@ -103,7 +121,7 @@ export default function MedicalProfilePage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-4xl">
         <div className="mb-6">
           <Text type="secondary">Thông tin sức khỏe</Text>
           <Title level={2} className="mb-1! mt-1!">Hồ sơ bệnh lý cá nhân</Title>
@@ -117,9 +135,17 @@ export default function MedicalProfilePage() {
             <div className="flex justify-center py-12">
               <Spin indicator={<LoadingOutlined className="text-teal-600 text-xl" spin />} />
             </div>
+          ) : loadError ? (
+            <Alert
+              type="error"
+              message={loadError}
+              description="Hồ sơ sẽ không được mở để chỉnh sửa cho tới khi tải thành công."
+              showIcon
+              action={<Button size="small" onClick={retryLoad}>Thử lại</Button>}
+            />
           ) : (
             <>
-              {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+              {saveError && <Alert type="error" message={saveError} showIcon className="mb-4" />}
               {success && <Alert type="success" message={success} showIcon className="mb-4" />}
               {exists && updatedAt && (
                 <Text type="secondary" className="mb-4 block text-xs">
@@ -133,34 +159,34 @@ export default function MedicalProfilePage() {
                       className="w-full"
                       format="DD/MM/YYYY"
                       placeholder="Chọn ngày sinh"
-                      disabledDate={(d) => d.isAfter(dayjs(), 'day')}
+                      disabledDate={(d) => !d.isBefore(dayjs(), 'day')}
                     />
                   </Form.Item>
                   <Form.Item label="Giới tính" name="gender">
                     <Select allowClear placeholder="Chọn giới tính" options={GENDER_OPTIONS} />
                   </Form.Item>
                   <Form.Item label="Chiều cao (cm)" name="heightCm">
-                    <InputNumber className="w-full" min={0} max={300} placeholder="Vd: 170" />
+                    <InputNumber className="w-full" min={30} max={300} placeholder="Vd: 170" />
                   </Form.Item>
                   <Form.Item label="Cân nặng (kg)" name="weightKg">
-                    <InputNumber className="w-full" min={0} max={500} placeholder="Vd: 65" />
+                    <InputNumber className="w-full" min={1} max={500} placeholder="Vd: 65" />
                   </Form.Item>
                 </div>
 
                 <Form.Item label="Bệnh nền đang mắc" name="chronicConditions">
-                  <Select mode="tags" placeholder="Gõ tên bệnh rồi nhấn Enter để thêm" />
+                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Gõ tên bệnh rồi nhấn Enter để thêm" />
                 </Form.Item>
                 <Form.Item label="Tiền sử phẫu thuật" name="pastSurgeries">
-                  <Select mode="tags" placeholder="Gõ tên phẫu thuật rồi nhấn Enter để thêm" />
+                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Gõ tên phẫu thuật rồi nhấn Enter để thêm" />
                 </Form.Item>
                 <Form.Item label="Dị ứng" name="allergies">
-                  <Select mode="tags" placeholder="Gõ tên dị ứng rồi nhấn Enter để thêm" />
+                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Gõ tên dị ứng rồi nhấn Enter để thêm" />
                 </Form.Item>
                 <Form.Item label="Thuốc đang dùng" name="currentMedications">
-                  <Select mode="tags" placeholder="Gõ tên thuốc rồi nhấn Enter để thêm" />
+                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Gõ tên thuốc rồi nhấn Enter để thêm" />
                 </Form.Item>
                 <Form.Item label="Chế độ ăn đặc biệt / không dung nạp" name="dietaryRestrictions">
-                  <Select mode="tags" placeholder="Vd: không dung nạp lactose, ăn chay..." />
+                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Vd: không dung nạp lactose, ăn chay..." />
                 </Form.Item>
                 <Form.Item label="Ghi chú thêm về tiền sử bệnh" name="medicalHistory">
                   <Input.TextArea rows={3} placeholder="Thông tin khác chưa có mục riêng ở trên" />

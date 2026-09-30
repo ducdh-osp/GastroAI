@@ -5,6 +5,7 @@ export type Gender = 'MALE' | 'FEMALE' | 'OTHER'
 
 export interface MedicalProfile {
   id: number | null
+  version: number | null
   dateOfBirth: string | null
   gender: Gender | null
   heightCm: number | null
@@ -20,6 +21,7 @@ export interface MedicalProfile {
 }
 
 export interface UpdateMedicalProfileRequest {
+  version: number | null
   dateOfBirth: string | null
   gender: Gender | null
   heightCm: number | null

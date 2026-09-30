@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 /** UC0016 - 1 lan benh nhan bam "da uong thuoc" cho 1 MedicationReminder. GD4 chi la log
  * don gian (test thu cong), chua noi voi notification/scheduler that (GD7). */
@@ -27,7 +28,16 @@ public class MedicationConfirmation {
     @Column(name = "confirmed_at", nullable = false)
     private Instant confirmedAt = Instant.now();
 
-    public MedicationConfirmation(MedicationReminder reminder) {
+    /**
+     * Local calendar date of this daily dose in Vietnam. Legacy duplicate rows may have a
+     * null value; every new confirmation supplies one and is protected by a unique index.
+     */
+    @Column(name = "confirmation_date")
+    private LocalDate confirmationDate;
+
+    public MedicationConfirmation(MedicationReminder reminder, Instant confirmedAt, LocalDate confirmationDate) {
         this.reminder = reminder;
+        this.confirmedAt = confirmedAt;
+        this.confirmationDate = confirmationDate;
     }
 }

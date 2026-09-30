@@ -5,6 +5,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.gastroai.be.application.support.OwnedResourceLoader;
+import vn.gastroai.be.application.support.ResourceNotFoundException;
+import vn.gastroai.be.application.support.VietnamDateRange;
 import vn.gastroai.be.api.patient.DailyCountPoint;
 import vn.gastroai.be.api.patient.FoodDiaryEntryRequest;
 import vn.gastroai.be.api.patient.FoodDiaryEntryResponse;
@@ -15,9 +18,7 @@ import vn.gastroai.be.domain.patient.FoodDiaryEntry;
 import vn.gastroai.be.infrastructure.persistence.postgres.FoodDiaryEntryRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -28,8 +29,6 @@ public class FoodDiaryService {
 
     // Gom nhom theo ngay theo gio Viet Nam (khong dung gio server) - benh nhan quan tam
     // "an luc may gio theo dong ho cua ho", khong phai UTC.
-    private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-
     private final FoodDiaryEntryRepository foodDiaryEntryRepository;
     private final PatientRepository patientRepository;
 
@@ -41,7 +40,7 @@ public class FoodDiaryService {
     @Transactional("postgresTransactionManager")
     public FoodDiaryEntryResponse create(Long patientId, FoodDiaryEntryRequest request) {
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new IllegalArgumentException("Patient not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay benh nhan"));
         FoodDiaryEntry entry = new FoodDiaryEntry(patient, request.eatenAt(), request.description(), request.notes());
         return toResponse(foodDiaryEntryRepository.save(entry));
     }
@@ -77,28 +76,27 @@ public class FoodDiaryService {
      * roi lay ca 2 dau nen ra `days + 1` diem (off-by-one da phat hien qua code review). */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public FoodDiaryTrendResponse trend(Long patientId, int days) {
-        LocalDate today = Instant.now().atZone(VN_ZONE).toLocalDate();
-        LocalDate start = today.minusDays(days - 1L);
-
-        Instant from = start.atStartOfDay(VN_ZONE).toInstant();
-        Instant to = today.plusDays(1).atStartOfDay(VN_ZONE).toInstant();
+        VietnamDateRange.Range range = VietnamDateRange.recentDaysIncludingToday(days);
+        LocalDate start = range.startDate();
+        LocalDate endExclusive = range.endExclusiveDate();
 
         List<FoodDiaryEntry> entries =
-                foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(patientId, from, to);
+                foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(
+                        patientId, range.fromInclusive(), range.toExclusive());
 
         Map<LocalDate, Long> countByDate = entries.stream()
-                .collect(Collectors.groupingBy(e -> e.getEatenAt().atZone(VN_ZONE).toLocalDate(), Collectors.counting()));
+                .collect(Collectors.groupingBy(e -> e.getEatenAt().atZone(VietnamDateRange.ZONE).toLocalDate(), Collectors.counting()));
 
-        List<DailyCountPoint> points = start.datesUntil(today.plusDays(1))
+        List<DailyCountPoint> points = start.datesUntil(endExclusive)
                 .map(day -> new DailyCountPoint(day, countByDate.getOrDefault(day, 0L)))
                 .toList();
         return new FoodDiaryTrendResponse(points);
     }
 
     private FoodDiaryEntry loadOwned(Long patientId, Long entryId) {
-        return foodDiaryEntryRepository.findById(entryId)
-                .filter(e -> e.getPatient().getId().equals(patientId))
-                .orElseThrow(() -> new IllegalArgumentException("Food diary entry not found or access denied"));
+        return OwnedResourceLoader.loadOwned(foodDiaryEntryRepository.findById(entryId),
+                e -> e.getPatient().getId().equals(patientId),
+                "Khong tim thay muc nhat ky an uong hoac ban khong co quyen truy cap");
     }
 
     private FoodDiaryEntryResponse toResponse(FoodDiaryEntry entry) {

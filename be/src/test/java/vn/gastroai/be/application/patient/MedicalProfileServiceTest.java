@@ -2,6 +2,7 @@ package vn.gastroai.be.application.patient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import vn.gastroai.be.api.patient.MedicalProfileRequest;
 import vn.gastroai.be.api.patient.MedicalProfileResponse;
 import vn.gastroai.be.domain.auth.Patient;
@@ -15,6 +16,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -29,8 +31,9 @@ class MedicalProfileServiceTest {
     private final MedicalProfileService service =
             new MedicalProfileService(medicalProfileRepository, patientRepository, new ObjectMapper());
 
-    private static MedicalProfileRequest sampleRequest(String medicalHistory) {
+    private static MedicalProfileRequest sampleRequest(String medicalHistory, Long version) {
         return new MedicalProfileRequest(
+                version,
                 LocalDate.of(1995, 5, 20), "MALE", 172, 65,
                 medicalHistory,
                 List.of("Penicillin"), List.of("Viem dai trang man"), List.of("Cat ruot thua 2020"),
@@ -55,9 +58,10 @@ class MedicalProfileServiceTest {
         patient.setId(1L);
         when(medicalProfileRepository.findByPatientId(1L)).thenReturn(Optional.empty());
         when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
-        when(medicalProfileRepository.save(any(MedicalProfile.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(medicalProfileRepository.saveAndFlush(any(MedicalProfile.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        MedicalProfileResponse response = service.upsertProfile(1L, sampleRequest("Tung phau thuat ruot thua nam 2020"));
+        MedicalProfileResponse response = service.upsertProfile(
+                1L, sampleRequest("Tung phau thuat ruot thua nam 2020", null));
 
         assertTrue(response.exists());
         assertEquals(LocalDate.of(1995, 5, 20), response.dateOfBirth());
@@ -76,13 +80,44 @@ class MedicalProfileServiceTest {
         MedicalProfile existing = new MedicalProfile();
         existing.setPatient(patient);
         existing.setMedicalHistory("Cu");
+        existing.setVersion(0L);
         when(medicalProfileRepository.findByPatientId(1L)).thenReturn(Optional.of(existing));
-        when(medicalProfileRepository.save(any(MedicalProfile.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(medicalProfileRepository.saveAndFlush(any(MedicalProfile.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        MedicalProfileResponse response = service.upsertProfile(1L, sampleRequest("Moi"));
+        MedicalProfileResponse response = service.upsertProfile(1L, sampleRequest("Moi", 0L));
 
         assertEquals("Moi", response.medicalHistory());
         // Khong duoc goi patientRepository (khong tao ban ghi moi) khi da co san profile.
         verify(patientRepository, never()).findById(any());
+    }
+
+    @Test
+    void upsertRejectsStaleVersionWithoutChangingExistingProfile() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        MedicalProfile existing = new MedicalProfile();
+        existing.setPatient(patient);
+        existing.setMedicalHistory("Du lieu moi nhat");
+        existing.setVersion(2L);
+        when(medicalProfileRepository.findByPatientId(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.upsertProfile(1L, sampleRequest("Du lieu tu tab cu", 1L)));
+
+        assertEquals("Du lieu moi nhat", existing.getMedicalHistory());
+        verify(medicalProfileRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void upsertReportsConflictWhenConcurrentFirstCreateHitsUniqueConstraint() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        when(medicalProfileRepository.findByPatientId(1L)).thenReturn(Optional.empty());
+        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+        when(medicalProfileRepository.saveAndFlush(any(MedicalProfile.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate patient_id"));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.upsertProfile(1L, sampleRequest("Du lieu", null)));
     }
 }

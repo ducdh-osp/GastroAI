@@ -27,6 +27,14 @@ public class MedicalProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Optimistic-lock token. The API returns this value and requires it on updates so a
+     * form loaded in an older tab cannot silently overwrite a newer medical profile.
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "patient_id", nullable = false, unique = true)
     private Patient patient;

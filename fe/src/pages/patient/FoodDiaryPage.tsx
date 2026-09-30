@@ -1,7 +1,7 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   createFoodDiaryEntry,
   deleteFoodDiaryEntry,
@@ -22,6 +22,7 @@ export default function FoodDiaryPage() {
   const [page, setPage] = useState(0)
   const [pageSize] = useState(10)
   const [totalElements, setTotalElements] = useState(0)
+  const requestId = useRef(0)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FoodDiaryEntry | null>(null)
@@ -31,18 +32,22 @@ export default function FoodDiaryPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
   function reload() {
+    const currentRequestId = ++requestId.current
     setLoading(true)
     setError(null)
     listFoodDiary(page, pageSize)
       .then((res) => {
+        if (currentRequestId !== requestId.current) return
         setItems(res.items)
         setTotalElements(res.totalElements)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải nhật ký ăn uống.'))
-      .finally(() => setLoading(false))
+      .catch((err: unknown) => {
+        if (currentRequestId === requestId.current) setError(err instanceof Error ? err.message : 'Không thể tải nhật ký ăn uống.')
+      })
+      .finally(() => { if (currentRequestId === requestId.current) setLoading(false) })
   }
 
-  useEffect(reload, [page])
+  useEffect(reload, [page, pageSize])
 
   function openCreate() {
     setEditingEntry(null)

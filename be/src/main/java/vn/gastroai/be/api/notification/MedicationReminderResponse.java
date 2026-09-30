@@ -8,6 +8,7 @@ public record MedicationReminderResponse(
         String medicineName,
         String dosage,
         LocalTime timeOfDay,
-        boolean active
+        boolean active,
+        boolean confirmedToday
 ) {
 }
