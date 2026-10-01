@@ -3,6 +3,7 @@ package vn.gastroai.be.api.chat;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.chat.ChatHistoryService;
@@ -19,6 +20,7 @@ import java.util.List;
  * Lịch sử phiên chat của bệnh nhân:
  *   GET /api/v1/chat/sessions          — danh sách phiên (phân trang, mới nhất trước)
  *   GET /api/v1/chat/sessions/{id}     — toàn bộ tin nhắn trong 1 phiên
+ *   DELETE /api/v1/chat/sessions/{id}  — xóa phiên của bệnh nhân đang đăng nhập
  */
 @RestController
 @RequestMapping("/api/v1/chat/sessions")
@@ -59,6 +61,16 @@ public class ChatHistoryController {
         Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         List<ChatMessage> messages = chatHistoryService.listMessages(patientId, sessionId);
         return messages.stream().map(this::toDetail).toList();
+    }
+
+    /** Xóa phiên chat và toàn bộ tin nhắn/đánh giá đi kèm của bệnh nhân hiện tại. */
+    @DeleteMapping("/{sessionId}")
+    public ResponseEntity<Void> deleteSession(
+            @PathVariable Long sessionId,
+            Principal principal, Authentication authentication) {
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
+        chatHistoryService.deleteSession(patientId, sessionId);
+        return ResponseEntity.noContent().build();
     }
 
     // ─────────────────────────────── helpers ────────────────────────────────

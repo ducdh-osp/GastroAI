@@ -7,6 +7,7 @@ import vn.gastroai.be.application.rag.RagSource;
 import vn.gastroai.be.application.triage.TriageService;
 import vn.gastroai.be.domain.triage.TriageResult;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,7 +43,6 @@ class ChatServiceTest {
         RagQueryService ragQueryService = mock(RagQueryService.class);
         TriageService triageService = mock(TriageService.class);
         RagAnswer expectedRagAnswer = new RagAnswer("Ban nen den benh vien ngay.", List.of(), List.of());
-        // UC0034 - vi du y het TriageServiceTest: "dau bung du doi" khop nhom DAU_BUNG_CAP_TINH.
         when(triageService.check("Toi bi dau bung du doi qua, khong dung thang duoc"))
                 .thenReturn(new TriageResult(true, List.of("DAU_BUNG_CAP_TINH")));
         when(ragQueryService.answerWithSources("Toi bi dau bung du doi qua, khong dung thang duoc"))
@@ -52,9 +52,35 @@ class ChatServiceTest {
 
         ChatAnswer result = chatService.ask("Toi bi dau bung du doi qua, khong dung thang duoc");
 
-        // Emergency=true KHONG duoc chan/thay the cau tra loi that cua Gemini - chi la co bao them.
         assertTrue(result.emergency());
         assertEquals(expectedRagAnswer, result.ragAnswer());
         assertEquals(List.of("DAU_BUNG_CAP_TINH"), result.matchedGroups());
+    }
+
+    @Test
+    void askWithCallbackInvokesOnTriageCheckedBeforeCallingRagQueryService() {
+        RagQueryService ragQueryService = mock(RagQueryService.class);
+        TriageService triageService = mock(TriageService.class);
+        RagAnswer expectedRagAnswer = new RagAnswer("Ban nen den benh vien ngay.", List.of(), List.of());
+        when(triageService.check("Toi bi dau bung du doi qua"))
+                .thenReturn(new TriageResult(true, List.of("DAU_BUNG_CAP_TINH")));
+
+        List<String> callOrder = new ArrayList<>();
+        when(ragQueryService.answerWithSources("Toi bi dau bung du doi qua")).thenAnswer(invocation -> {
+            callOrder.add("ragQueryService");
+            return expectedRagAnswer;
+        });
+
+        ChatService chatService = new ChatService(ragQueryService, triageService);
+
+        ChatAnswer result = chatService.ask("Toi bi dau bung du doi qua", triageResult -> {
+            callOrder.add("onTriageChecked");
+            assertTrue(triageResult.emergency());
+            assertEquals(List.of("DAU_BUNG_CAP_TINH"), triageResult.matchedGroups());
+        });
+
+        assertEquals(List.of("onTriageChecked", "ragQueryService"), callOrder);
+        assertTrue(result.emergency());
+        assertEquals(expectedRagAnswer, result.ragAnswer());
     }
 }

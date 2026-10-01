@@ -109,6 +109,8 @@ app:
   storage:
     dir: ./storage
     max-file-size: 20971520
+  cors:
+    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
 
 # Ghi log ra file ./logs/gastroai.log (ngoài console mặc định) — chủ yếu để BackupScheduler/
 # RestoreService (chạy nền, không ai theo dõi console lúc 2-3h sáng) có nơi lưu lại lỗi thật

@@ -116,6 +116,16 @@ public class ChatHistoryService {
         return messageRepository.findBySessionIdOrderByCreatedAtAsc(session.getId());
     }
 
+    /** Xóa phiên thuộc bệnh nhân cùng toàn bộ tin nhắn và đánh giá liên quan. */
+    @Transactional("postgresTransactionManager")
+    public void deleteSession(Long patientId, Long sessionId) {
+        ChatSession session = OwnedResourceLoader.loadOwned(sessionRepository.findById(sessionId),
+                s -> s.getPatient().getId().equals(patientId),
+                "Khong tim thay phien chat hoac ban khong co quyen truy cap");
+        // Các FK chat_messages/session_id và message_ratings/message_id có ON DELETE CASCADE.
+        sessionRepository.delete(session);
+    }
+
     // ─────────────────────────────── Rating ─────────────────────────────────
 
     /**

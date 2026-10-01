@@ -18,19 +18,22 @@ import vn.gastroai.be.application.chat.ChatService;
 import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.application.rag.RagSource;
 import vn.gastroai.be.application.rag.StreamingRagQueryService;
-import vn.gastroai.be.application.triage.TriageAlertPublisher;
+import vn.gastroai.be.application.triage.TriageAlertService;
 import vn.gastroai.be.config.SecurityConfig;
+import vn.gastroai.be.domain.triage.TriageResult;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,10 +42,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// @WebMvcTest bo qua cac @Configuration thuong (khong tu nap SecurityConfig cua app) nen
-// phai @Import thu cong - neu khong Spring Boot se dung security mac dinh (CSRF bat, user
-// sinh ngau nhien) thay vi rule that (CSRF tat, permitAll/hasRole("PATIENT")) -> test se
-// khong con phan anh dung hanh vi endpoint that su chay production.
 @WebMvcTest(ChatController.class)
 @Import(SecurityConfig.class)
 class ChatControllerTest {
@@ -53,24 +52,18 @@ class ChatControllerTest {
     @MockitoBean
     private ChatService chatService;
 
-    // ChatController giờ gọi chatHistoryService.saveExchange() sau mỗi câu trả lời (UC0018) để
-    // lưu lịch sử - không mock thì @WebMvcTest không tìm được bean, context load lỗi.
     @MockitoBean
     private ChatHistoryService chatHistoryService;
 
-    // ChatController cũng cần StreamingRagQueryService cho endpoint /messages/stream (UC0030) -
-    // không dùng trong các test này nhưng vẫn phải mock để Spring dựng được bean chatController.
     @MockitoBean
     private StreamingRagQueryService streamingRagQueryService;
 
-    // UC0036 - ChatController gio con day canh bao Triage qua TriageAlertPublisher khi
-    // emergency=true, can mock de context load duoc va de xac nhan hanh vi goi/khong goi.
+    // UC0036/067(vá) - ChatController gio goi TriageAlertService.createAndPublish() (thay vi
+    // tu dung TriageAlertPublisher truc tiep) khi emergency=true - can mock de context load
+    // duoc va de xac nhan hanh vi goi/khong goi.
     @MockitoBean
-    private TriageAlertPublisher triageAlertPublisher;
+    private TriageAlertService triageAlertService;
 
-    // SecurityConfig đăng ký JwtAuthenticationFilter cho mọi request (kể cả trong slice test
-    // này) -> filter cần 3 bean này để khởi tạo được, dù test không có Authorization header
-    // (đã đăng nhập sẵn qua @WithMockUser nên filter không thực sự dùng tới).
     @MockitoBean
     private JwtService jwtService;
 
@@ -87,7 +80,7 @@ class ChatControllerTest {
                 "Ban nen theo doi trieu chung.",
                 List.of(new RagSource("Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.",null)),
                 List.of("Trieu chung nay co nguy hiem khong?", "Khi nao nen di kham?"));
-        when(chatService.ask(anyString())).thenReturn(new ChatAnswer(ragAnswer, false, List.of()));
+        stubChatServiceAsk(new ChatAnswer(ragAnswer, false, List.of()), TriageResult.safe());
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
                 .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L));
 
@@ -109,7 +102,7 @@ class ChatControllerTest {
 
         // UC0036 - khong co dau hieu khan cap thi KHONG duoc day canh bao sang admin, tranh
         // lam nhieu dashboard voi nhung tin nhan binh thuong.
-        verify(triageAlertPublisher, never()).publish(any());
+        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -125,11 +118,10 @@ class ChatControllerTest {
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageStillReturnsRealAnswerWhenEmergencyDetected() throws Exception {
-        // UC0034/035 - emergency=true KHONG duoc chan Gemini, chi la co bao them de FE hien thi
-        // canh bao noi bat - benh nhan van phai nhan duoc cau tra loi that.
         RagAnswer ragAnswer = new RagAnswer("Ban nen den co so y te ngay.", List.of(), List.of());
-        when(chatService.ask(anyString())).thenReturn(
-                new ChatAnswer(ragAnswer, true, List.of("DAU_BUNG_CAP_TINH")));
+        stubChatServiceAsk(
+                new ChatAnswer(ragAnswer, true, List.of("DAU_BUNG_CAP_TINH")),
+                new TriageResult(true, List.of("DAU_BUNG_CAP_TINH")));
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
                 .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L));
 
@@ -142,19 +134,18 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.emergency").value(true))
                 .andExpect(jsonPath("$.matchedGroups[0]").value("DAU_BUNG_CAP_TINH"));
 
-        // UC0036 - co dau hieu khan cap thi PHAI day 1 canh bao sang admin qua WebSocket,
-        // kem dung noi dung cau hoi that va nhom trieu chung da khop.
-        verify(triageAlertPublisher).publish(argThat(event ->
-                event.patientId().equals(1L)
-                        && event.messageSnippet().equals("Toi bi dau bung du doi qua")
-                        && event.matchedGroups().equals(List.of("DAU_BUNG_CAP_TINH"))));
+        // UC0036/067(vá) - co dau hieu khan cap thi PHAI goi TriageAlertService.createAndPublish()
+        // voi dung patientId/noi dung/nhom trieu chung da khop - sessionId/messageId la null vi
+        // goi TRUOC khi chatHistoryService.saveExchange() luu tin nhan that (xem ChatController).
+        verify(triageAlertService).createAndPublish(
+                eq(1L), isNull(), isNull(),
+                eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
     }
 
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageReportsQuotaExceededInsteadOfGenericServerError() throws Exception {
-        // Xac nhan thuc te tu log: Gemini free tier tra 429 khi het 20 luot generateContent/ngay.
-        when(chatService.ask(anyString())).thenThrow(
+        when(chatService.ask(anyString(), any())).thenThrow(
                 HttpClientErrorException.create(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests",
                         HttpHeaders.EMPTY, new byte[0], null));
 
@@ -169,7 +160,7 @@ class ChatControllerTest {
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageReportsGenericAiFailureForOtherGeminiErrors() throws Exception {
-        when(chatService.ask(anyString())).thenThrow(
+        when(chatService.ask(anyString(), any())).thenThrow(
                 HttpServerErrorException.create(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable",
                         HttpHeaders.EMPTY, new byte[0], null));
 
@@ -179,5 +170,14 @@ class ChatControllerTest {
                         .content("{\"content\":\"Lam sao de giam dau bung?\"}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("AI_SERVICE_UNAVAILABLE"));
+    }
+
+ 
+    private void stubChatServiceAsk(ChatAnswer chatAnswer, TriageResult triageResult) {
+        when(chatService.ask(anyString(), any())).thenAnswer(invocation -> {
+            Consumer<TriageResult> onTriageChecked = invocation.getArgument(1);
+            onTriageChecked.accept(triageResult);
+            return chatAnswer;
+        });
     }
 }

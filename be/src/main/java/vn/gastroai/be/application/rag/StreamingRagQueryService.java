@@ -17,8 +17,6 @@ import java.util.stream.Collectors;
 @Service
 public class StreamingRagQueryService {
 
-    // Xem giai thich o RagQueryService.MAX_DISPLAYED_SOURCES - cung logic, van dung du topK
-    // chunk de sinh cau tra loi nhung chi hien toi da 2 nguon cho FE.
     private static final int MAX_DISPLAYED_SOURCES = 2;
 
     private final GeminiEmbeddingClient embeddingClient;
@@ -46,42 +44,31 @@ public class StreamingRagQueryService {
 
     public StreamingResult streamAnswer(
             String question,
-            Consumer<String> onToken
+            Consumer<String> onToken,
+            Consumer<TriageResult> onTriageChecked
     ) {
-        TriageResult triageResult =
-                triageService.check(question);
+        TriageResult triageResult = triageService.check(question);
 
-        float[] queryVector =
-                embeddingClient.embed(question);
+        onTriageChecked.accept(triageResult);
 
-        List<SimilarChunk> context =
-                embeddingStore.findTopK(queryVector, topK);
+        float[] queryVector = embeddingClient.embed(question);
+
+        List<SimilarChunk> context = embeddingStore.findTopK(queryVector, topK);
 
         List<RagSource> sources = context.stream()
                 .limit(MAX_DISPLAYED_SOURCES)
-                .map(chunk ->
-                        new RagSource(
-                                chunk.documentTitle(),
-                                chunk.content(),
-                                chunk.sourceUrl()
-                        )
-                )
+                .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content(), chunk.sourceUrl()))
                 .toList();
 
         String systemPrompt;
 
         if (context.isEmpty()) {
-
             systemPrompt = SYSTEM_PROMPT_NO_CONTEXT;
-
         } else {
-
             String contextText = context.stream()
                     .map(chunk -> "- " + chunk.content())
                     .collect(Collectors.joining("\n"));
-
-            systemPrompt =
-                    SYSTEM_PROMPT_PREFIX + contextText;
+            systemPrompt = SYSTEM_PROMPT_PREFIX + contextText;
         }
 
         StringBuilder answer = new StringBuilder();
@@ -95,13 +82,10 @@ public class StreamingRagQueryService {
                 }
         );
 
-        List<String> relatedQuestions =
-                generateRelatedQuestions(
-                        question,
-                        answer.toString()
-                );
+        List<String> relatedQuestions = generateRelatedQuestions(question, answer.toString());
 
         return new StreamingResult(
+                answer.toString(),
                 sources,
                 relatedQuestions,
                 triageResult.emergency(),
@@ -109,28 +93,14 @@ public class StreamingRagQueryService {
         );
     }
 
-    private List<String> generateRelatedQuestions(
-            String question,
-            String answer
-    ) {
+    private List<String> generateRelatedQuestions(String question, String answer) {
         try {
-            String userPrompt =
-                    "Cau hoi: " + question
-                            + "\nCau tra loi: " + answer;
+            String userPrompt = "Cau hoi: " + question + "\nCau tra loi: " + answer;
 
-            String raw =
-                    chatClient.generate(
-                            SYSTEM_PROMPT_RELATED_QUESTIONS,
-                            userPrompt
-                    );
+            String raw = chatClient.generate(SYSTEM_PROMPT_RELATED_QUESTIONS, userPrompt);
 
             return raw.lines()
-                    .map(line ->
-                            line.replaceFirst(
-                                    "^[-*\\d.)\\s]+",
-                                    ""
-                            ).trim()
-                    )
+                    .map(line -> line.replaceFirst("^[-*\\d.)\\s]+", "").trim())
                     .filter(line -> !line.isBlank())
                     .limit(3)
                     .toList();
@@ -163,6 +133,7 @@ public class StreamingRagQueryService {
             """;
 
     public record StreamingResult(
+            String answer,
             List<RagSource> sources,
             List<String> relatedQuestions,
             boolean emergency,

@@ -17,8 +17,10 @@ import lombok.Setter;
 import java.time.Instant;
 
 /**
- * Tài khoản Bệnh nhân — bảng patients trên PostgreSQL. Có CHECK constraint role='PATIENT'
- * ở DB (migration V6) vì trước đây bảng này từng bị dùng chung cho cả Admin/Bác sĩ, giờ
+ * Tài khoản Bệnh nhân — bảng patients trên PostgreSQL. Có CHECK constraint
+ * role='PATIENT'
+ * ở DB (migration V6) vì trước đây bảng này từng bị dùng chung cho cả Admin/Bác
+ * sĩ, giờ
  * đã tách hẳn sang MySQL (Admin/Doctor) theo đúng kiến trúc đa cơ sở dữ liệu.
  */
 @Entity
@@ -41,11 +43,15 @@ public class Patient {
     @Column(name = "full_name")
     private String fullName;
 
+    @Column(name = "phone", length = 20)
+    private String phone;
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role = UserRole.PATIENT;
 
-    // false cho tới khi bấm link trong email xác thực (UC0001) — AuthService.login()
+    // false cho tới khi bấm link trong email xác thực (UC0001) —
+    // AuthService.login()
     // chặn đăng nhập nếu còn false, dù mật khẩu đúng.
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified;
@@ -74,7 +80,8 @@ public class Patient {
     @Column(name = "failed_login_attempts", nullable = false)
     private int failedLoginAttempts;
 
-    // null = không bị khoá. Có giá trị và còn trong tương lai = đang bị khoá tạm thời.
+    // null = không bị khoá. Có giá trị và còn trong tương lai = đang bị khoá tạm
+    // thời.
     @Column(name = "locked_until")
     private Instant lockedUntil;
 

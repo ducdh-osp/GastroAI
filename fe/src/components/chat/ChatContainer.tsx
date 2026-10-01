@@ -1,7 +1,7 @@
-import { PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
+import { HeartOutlined, PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
 import { Alert, Button, Card, Typography } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
 import { chatService, getChatSessionMessages, rateMessage } from '../../api/chat'
@@ -11,6 +11,7 @@ const { Text, Title } = Typography
 
 export function ChatContainer() {
   const location = useLocation()
+  const navigate = useNavigate()
   // Khi FE điều hướng từ ChatHistoryPage với state { resumeSessionId, sessionTitle }
   const resumeSessionId: number | null = (location.state as { resumeSessionId?: number } | null)?.resumeSessionId ?? null
   const resumeTitle: string | null = (location.state as { sessionTitle?: string } | null)?.sessionTitle ?? null
@@ -139,7 +140,9 @@ export function ChatContainer() {
               <span className="mt-0.5 block text-xs font-medium text-emerald-600">Đang hoạt động</span>
             </div>
           </div>
-          <span className="hidden rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700 sm:inline-flex">Tư vấn trực tuyến</span>
+          <Button size="small" icon={<HeartOutlined />} onClick={() => navigate('/symptom-assessment')}>
+            Đánh giá triệu chứng
+          </Button>
         </header>
 
         <div className="flex items-start gap-3 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3.5 text-sm leading-5 text-amber-900 sm:px-6" role="note">

@@ -18,6 +18,7 @@ import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
 import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
 import ChatPage from '../pages/chat/ChatPage'
 import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
+import SymptomAssessmentPage from '../pages/chat/SymptomAssessmentPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
@@ -125,6 +126,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ChatHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/symptom-assessment',
+        element: (
+          <ProtectedRoute>
+            <SymptomAssessmentPage />
           </ProtectedRoute>
         ),
       },
