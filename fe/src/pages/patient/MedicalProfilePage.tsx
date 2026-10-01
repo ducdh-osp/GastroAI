@@ -20,11 +20,22 @@ interface MedicalProfileFormValues {
   heightCm: number | null
   weightKg: number | null
   medicalHistory: string
-  allergies: string[]
-  chronicConditions: string[]
-  pastSurgeries: string[]
-  currentMedications: string[]
-  dietaryRestrictions: string[]
+  allergies: string
+  chronicConditions: string
+  pastSurgeries: string
+  currentMedications: string
+  dietaryRestrictions: string
+}
+
+function listToText(items: string[]): string {
+  return items.join('\n')
+}
+
+function textToList(value: string | null | undefined): string[] {
+  return (value ?? '')
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 function formatUpdatedAt(iso: string): string {
@@ -58,11 +69,11 @@ export default function MedicalProfilePage() {
           heightCm: profile.heightCm,
           weightKg: profile.weightKg,
           medicalHistory: profile.medicalHistory ?? '',
-          allergies: profile.allergies,
-          chronicConditions: profile.chronicConditions,
-          pastSurgeries: profile.pastSurgeries,
-          currentMedications: profile.currentMedications,
-          dietaryRestrictions: profile.dietaryRestrictions,
+          allergies: listToText(profile.allergies),
+          chronicConditions: listToText(profile.chronicConditions),
+          pastSurgeries: listToText(profile.pastSurgeries),
+          currentMedications: listToText(profile.currentMedications),
+          dietaryRestrictions: listToText(profile.dietaryRestrictions),
         })
         setExists(profile.exists)
         setVersion(profile.version)
@@ -102,11 +113,11 @@ export default function MedicalProfilePage() {
         heightCm: values.heightCm ?? null,
         weightKg: values.weightKg ?? null,
         medicalHistory: values.medicalHistory ?? '',
-        allergies: values.allergies ?? [],
-        chronicConditions: values.chronicConditions ?? [],
-        pastSurgeries: values.pastSurgeries ?? [],
-        currentMedications: values.currentMedications ?? [],
-        dietaryRestrictions: values.dietaryRestrictions ?? [],
+        allergies: textToList(values.allergies),
+        chronicConditions: textToList(values.chronicConditions),
+        pastSurgeries: textToList(values.pastSurgeries),
+        currentMedications: textToList(values.currentMedications),
+        dietaryRestrictions: textToList(values.dietaryRestrictions),
       })
       setExists(profile.exists)
       setVersion(profile.version)
@@ -174,19 +185,23 @@ export default function MedicalProfilePage() {
                 </div>
 
                 <Form.Item label="Bệnh nền đang mắc" name="chronicConditions">
-                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Gõ tên bệnh rồi nhấn Enter để thêm" />
+                  <Input.TextArea rows={2} placeholder="Nhập các bệnh nền, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
                 </Form.Item>
                 <Form.Item label="Tiền sử phẫu thuật" name="pastSurgeries">
-                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Gõ tên phẫu thuật rồi nhấn Enter để thêm" />
+                  <Input.TextArea rows={2} placeholder="Nhập các lần phẫu thuật, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
                 </Form.Item>
                 <Form.Item label="Dị ứng" name="allergies">
-                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Gõ tên dị ứng rồi nhấn Enter để thêm" />
+                  <Input.TextArea rows={2} placeholder="Nhập các dị ứng, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
                 </Form.Item>
-                <Form.Item label="Thuốc đang dùng" name="currentMedications">
-                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Gõ tên thuốc rồi nhấn Enter để thêm" />
+                <Form.Item
+                  label="Thuốc đang dùng"
+                  name="currentMedications"
+                  extra="Danh sách này chỉ để tham khảo trong hồ sơ; lịch bật/tắt và xác nhận liều được quản lý ở trang Nhắc uống thuốc."
+                >
+                  <Input.TextArea rows={2} placeholder="Nhập các thuốc đang dùng, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
                 </Form.Item>
                 <Form.Item label="Chế độ ăn đặc biệt / không dung nạp" name="dietaryRestrictions">
-                  <Select mode="tags" tokenSeparators={[',']} notFoundContent="Nhập nội dung rồi nhấn Enter để thêm" placeholder="Vd: không dung nạp lactose, ăn chay..." />
+                  <Input.TextArea rows={2} placeholder="Vd: không dung nạp lactose, ăn chay..." />
                 </Form.Item>
                 <Form.Item label="Ghi chú thêm về tiền sử bệnh" name="medicalHistory">
                   <Input.TextArea rows={3} placeholder="Thông tin khác chưa có mục riêng ở trên" />

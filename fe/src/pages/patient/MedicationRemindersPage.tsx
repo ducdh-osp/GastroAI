@@ -169,7 +169,10 @@ export default function MedicationRemindersPage() {
         <Switch
           checked={record.active}
           loading={toggleGuard.inFlightId === record.id}
-          disabled={toggleGuard.inFlightId !== null && toggleGuard.inFlightId !== record.id}
+          // Chỉ cho phép một thao tác bật/tắt tại một thời điểm. Khoá cả
+          // công tắc đang gửi request để tránh click liên tiếp trước khi
+          // trạng thái loading của Ant Design kịp cập nhật.
+          disabled={saving || toggleGuard.inFlightId !== null}
           onChange={(checked) => handleToggleActive(record, checked)}
         />
       ),
