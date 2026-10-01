@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.application.commands.CmsLoginCommand;
 import vn.gastroai.be.application.readmodel.CmsAuthResult;
 import vn.gastroai.be.domain.admin.Admin;
@@ -84,14 +85,24 @@ public class CmsAuthService {
      * FE phải tự khai báo role (ADMIN/DOCTOR) muốn đăng nhập — không tự dò cả 2 bảng như
      * cách cũ, vì email admin và doctor có thể trùng nhau ở 2 bảng khác nhau, dò cả 2 sẽ
      * mơ hồ nên đăng nhập vào tài khoản nào.
+     *
+     * noRollbackFor giống hệt AuthService.login() (bên bệnh nhân) — các exception nghiệp vụ
+     * (sai mật khẩu, bị khoá) không được rollback transaction, phải giữ lại thay đổi (tăng
+     * failedLoginAttempts, ghi lịch sử) dù request kết thúc bằng exception. Dùng
+     * findByEmailForUpdate (SELECT ... FOR UPDATE) để khoá row khi đọc, tránh race condition
+     * khi 2 request đăng nhập sai cùng lúc làm đếm sai số lần thất bại — trước đây chỗ này
+     * dùng findByEmail thường (không khoá), khác bên Patient đã làm đúng.
      */
+    @Transactional(value = "mysqlTransactionManager", noRollbackFor = {
+            BadCredentialsException.class, AccountLockedException.class
+    })
     public CmsAuthResult login(
             CmsLoginCommand command,
             HttpServletRequest request) {
 
         if (command.role() == CmsRole.ADMIN) {
 
-            var admin = adminRepository.findByEmail(command.email());
+            var admin = adminRepository.findByEmailForUpdate(command.email());
 
             if (admin.isPresent()) {
                 return loginAdmin(
@@ -102,7 +113,7 @@ public class CmsAuthService {
 
         } else if (command.role() == CmsRole.DOCTOR) {
 
-            var doctor = doctorRepository.findByEmail(command.email());
+            var doctor = doctorRepository.findByEmailForUpdate(command.email());
 
             if (doctor.isPresent()) {
                 return loginDoctor(

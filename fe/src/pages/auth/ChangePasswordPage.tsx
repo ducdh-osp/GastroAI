@@ -35,7 +35,7 @@ export default function ChangePasswordPage() {
       // luôn thay vì để lại trạng thái "tưởng còn đăng nhập" nhưng gọi API nào cũng lỗi.
       setSuccess('Đổi mật khẩu thành công. Vui lòng đăng nhập lại...')
       setTimeout(() => {
-        logout()
+        void logout()
         navigate('/login')
       }, 1500)
     } catch (err: unknown) {

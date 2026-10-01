@@ -23,6 +23,12 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
   return data
 }
 
+/** Huỷ token hiện tại phía server (ghi vào revoked_tokens) - BE đọc token từ header
+ * Authorization do apiClient tự gắn, không cần truyền gì thêm. */
+export async function logout(): Promise<void> {
+  await apiClient.post('/auth/logout')
+}
+
 export async function register(payload: RegisterPayload): Promise<{ message: string }> {
   const { data } = await apiClient.post<{ message: string }>('/auth/register', payload)
   return data
