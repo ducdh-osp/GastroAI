@@ -60,12 +60,17 @@ public class ChatController {
 
         ChatAnswer chatAnswer = chatService.ask(request.content(), triageResult -> {
             if (triageResult.emergency()) {
-                triageAlertService.createAndPublish(
-                        patientId,
-                        null,
-                        null,
-                        request.content(),
-                        triageResult.matchedGroups());
+                try {
+                    triageAlertService.createAndPublish(
+                            patientId,
+                            null,
+                            null,
+                            request.content(),
+                            triageResult.matchedGroups());
+                } catch (Exception exception) {
+                    log.error("Khong the tao/gui canh bao Triage cho patientId={}: {}",
+                            patientId, exception.getMessage(), exception);
+                }
             }
         });
 
@@ -147,12 +152,18 @@ public class ChatController {
                         },
                         triageResult -> {
                             if (triageResult.emergency()) {
-                                triageAlertService.createAndPublish(
-                                        patientId,
-                                        null,
-                                        null,
-                                        request.content(),
-                                        triageResult.matchedGroups());
+                                try {
+                                    triageAlertService.createAndPublish(
+                                            patientId,
+                                            null,
+                                            null,
+                                            request.content(),
+                                            triageResult.matchedGroups());
+                                } catch (Exception exception) {
+                                    log.error(
+                                            "Khong the tao/gui canh bao Triage (streaming) cho patientId={}: {}",
+                                            patientId, exception.getMessage(), exception);
+                                }
                             }
                         });
 

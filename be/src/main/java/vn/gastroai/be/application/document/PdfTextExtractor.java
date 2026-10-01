@@ -27,7 +27,6 @@ public class PdfTextExtractor implements TextExtractor {
 
     private static final int MIN_TEXT_LENGTH = 50;
 
-    private static final double REPEATED_LINE_THRESHOLD_RATIO = 0.4;
     private static final Pattern LONE_PAGE_NUMBER = Pattern.compile("^\\d{1,4}$");
 
     private static final double HEADER_FOOTER_ZONE_RATIO = 0.1;
@@ -107,37 +106,30 @@ public class PdfTextExtractor implements TextExtractor {
     }
 
     private List<String> findBoilerplateLines(List<List<PositionedLine>> linesByPage, int pageCount) {
-        Map<String, Integer> countByLine = new HashMap<>();
         Map<String, Integer> zoneCountByLine = new HashMap<>();
 
         for (List<PositionedLine> pageLines : linesByPage) {
-            LinkedHashSet<String> distinctOnPage = new LinkedHashSet<>();
             LinkedHashSet<String> distinctInZoneOnPage = new LinkedHashSet<>();
 
             for (PositionedLine line : pageLines) {
                 String trimmed = line.text().trim();
-                if (trimmed.isEmpty()) {
+                if (trimmed.isEmpty() || !line.inHeaderOrFooterZone()) {
                     continue;
                 }
-                distinctOnPage.add(trimmed);
-                if (line.inHeaderOrFooterZone()) {
-                    distinctInZoneOnPage.add(trimmed);
-                }
+                distinctInZoneOnPage.add(trimmed);
             }
 
             // dung Set trong 1 trang de khong dem 2 lan neu 1 dong lap trong cung 1 trang
-            distinctOnPage.forEach(l -> countByLine.merge(l, 1, Integer::sum));
             distinctInZoneOnPage.forEach(l -> zoneCountByLine.merge(l, 1, Integer::sum));
         }
 
-        int threshold = Math.max(2, (int) Math.ceil(pageCount * REPEATED_LINE_THRESHOLD_RATIO));
         List<String> boilerplate = new ArrayList<>();
 
-        countByLine.forEach((line, count) -> {
-            boolean repeatedEnough = count >= threshold;
-            boolean positionalRepeat = zoneCountByLine.getOrDefault(line, 0) >= POSITIONAL_REPEAT_MIN_COUNT;
+        zoneCountByLine.forEach((line, zoneCount) -> {
+            boolean positionalRepeat = zoneCount >= POSITIONAL_REPEAT_MIN_COUNT;
+            boolean lonePageNumberInZone = LONE_PAGE_NUMBER.matcher(line).matches();
 
-            if (LONE_PAGE_NUMBER.matcher(line).matches() || repeatedEnough || positionalRepeat) {
+            if (positionalRepeat || lonePageNumberInZone) {
                 boilerplate.add(line);
             }
         });

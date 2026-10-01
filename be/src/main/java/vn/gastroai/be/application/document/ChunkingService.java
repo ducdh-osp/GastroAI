@@ -148,16 +148,10 @@ public class ChunkingService {
 
                 chunks.add(chunk);
 
-                String overlap = getOverlap(chunk);
-
                 current.setLength(0);
-                current.append(overlap);
+                current.append(getOverlap(chunk));
 
-                if (!current.isEmpty()) {
-                    current.append("\n\n");
-                }
-
-                current.append(paragraph);
+                appendKeepingLimit(current, paragraph, chunks);
 
             } else {
 
@@ -174,6 +168,67 @@ public class ChunkingService {
         }
 
         return chunks;
+    }
+
+    private void appendKeepingLimit(
+            StringBuilder current,
+            String paragraph,
+            List<String> chunks) {
+
+        String rest = paragraph;
+
+        while (true) {
+
+            int separatorLength = current.isEmpty() ? 0 : 2;
+            int room = MAX_CHUNK_SIZE - current.length() - separatorLength;
+
+            if (rest.length() <= room) {
+                if (separatorLength > 0) {
+                    current.append("\n\n");
+                }
+                current.append(rest);
+                return;
+            }
+
+            int cut = findCutPoint(rest, room);
+
+            if (separatorLength > 0) {
+                current.append("\n\n");
+            }
+            current.append(rest, 0, cut);
+
+            String chunk = current.toString().trim();
+            chunks.add(chunk);
+
+            current.setLength(0);
+            current.append(getOverlap(chunk));
+
+            rest = rest.substring(cut).trim();
+
+            if (rest.isEmpty()) {
+                return;
+            }
+        }
+    }
+
+    private int findCutPoint(String text, int maxLength) {
+
+        int minCut = maxLength / 2;
+
+        for (int i = maxLength; i > minCut; i--) {
+            char previous = text.charAt(i - 1);
+            if ((previous == '.' || previous == '!' || previous == '?' || previous == ';')
+                    && Character.isWhitespace(text.charAt(i))) {
+                return i;
+            }
+        }
+
+        int lastSpace = text.lastIndexOf(' ', maxLength);
+        if (lastSpace > minCut) {
+            return lastSpace;
+        }
+
+        return maxLength;
     }
 
     private List<String> coalesceTinyHeadingChunks(List<String> chunks) {
@@ -196,12 +251,13 @@ public class ChunkingService {
             if (canMergeForward) {
                 result.set(i + 1, current + "\n\n" + result.get(i + 1));
                 result.remove(i);
-            } else if (i > 0) {
+            } else if (i > 0
+                    && result.get(i - 1).length() + current.length() + 2 <= MAX_CHUNK_SIZE) {
                 result.set(i - 1, result.get(i - 1) + "\n\n" + current);
                 result.remove(i);
             } else {
-                // Chi con 1 chunk duy nhat, khong the ghep di dau - giu nguyen de tranh
-                // vong lap vo han.
+                // Khong ghep duoc ve phia nao ma van giu <= MAX_CHUNK_SIZE - giu nguyen
+                // chunk ngan nay, bo qua de tranh vong lap vo han.
                 i++;
             }
         }
@@ -246,8 +302,14 @@ public class ChunkingService {
             return text;
         }
 
-        return text.substring(
-                text.length() - OVERLAP_SIZE);
+        int start = text.length() - OVERLAP_SIZE;
+        int nextSpace = text.indexOf(' ', start);
+
+        if (nextSpace > 0 && nextSpace < text.length() - 1) {
+            return text.substring(nextSpace + 1);
+        }
+
+        return text.substring(start);
     }
 
     private record Paragraph(String text, boolean isSectionBoundary) {
