@@ -1,9 +1,10 @@
-import { PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
+import { HeartOutlined, PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
 import { Alert, Button, Card, Typography } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
+import { SymptomAssessmentModal } from './SymptomAssessmentModal'
 import { chatService, getChatSessionMessages, rateMessage } from '../../api/chat'
 import type { Attachment, Message, RatingValue, SendMessageRequest } from '../../api/chat'
 
@@ -19,6 +20,7 @@ export function ChatContainer() {
   const [isReplying, setIsReplying] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(resumeSessionId !== null)
   const [networkError, setNetworkError] = useState<string | null>(null)
+  const [assessmentOpen, setAssessmentOpen] = useState(false)
   /** ID phiên hiện tại — null = chưa có phiên (câu đầu tiên sẽ tạo phiên mới). */
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(resumeSessionId)
 
@@ -139,7 +141,9 @@ export function ChatContainer() {
               <span className="mt-0.5 block text-xs font-medium text-emerald-600">Đang hoạt động</span>
             </div>
           </div>
-          <span className="hidden rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700 sm:inline-flex">Tư vấn trực tuyến</span>
+          <Button size="small" icon={<HeartOutlined />} onClick={() => setAssessmentOpen(true)}>
+            Đánh giá triệu chứng
+          </Button>
         </header>
 
         <div className="flex items-start gap-3 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3.5 text-sm leading-5 text-amber-900 sm:px-6" role="note">
@@ -171,6 +175,7 @@ export function ChatContainer() {
         />
         <ChatInput disabled={isReplying || isLoadingHistory} onSend={handleSend} />
       </Card>
+      <SymptomAssessmentModal open={assessmentOpen} onClose={() => setAssessmentOpen(false)} />
     </div>
   )
 }
