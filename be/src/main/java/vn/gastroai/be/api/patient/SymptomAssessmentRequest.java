@@ -12,7 +12,7 @@ public record SymptomAssessmentRequest(
         @NotNull SymptomAssessmentInput.ActivityImpact activityImpact,
         @NotNull SymptomAssessmentInput.Progression progression,
         @NotNull SymptomAssessmentInput.PatientGroup patientGroup,
-        @NotNull Set<@NotNull SymptomAssessmentInput.WarningSign> warningSigns) {
+        @NotNull Set<SymptomAssessmentInput.@NotNull WarningSign> warningSigns) {
 
     public SymptomAssessmentInput toInput() {
         return new SymptomAssessmentInput(primarySymptom, duration, reportedSeverity,
