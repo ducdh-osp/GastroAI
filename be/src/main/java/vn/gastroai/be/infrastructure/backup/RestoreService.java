@@ -112,7 +112,6 @@ public class RestoreService {
 
             Process process = processBuilder.start();
 
-            
             StringBuilder errorOutput = new StringBuilder();
             Thread errorReader = new Thread(() -> {
                 try {
@@ -120,7 +119,8 @@ public class RestoreService {
                             process.getErrorStream().readAllBytes(),
                             StandardCharsets.UTF_8));
                 } catch (Exception ignored) {
-                    
+                    // Bo qua loi doc stderr - loi restore that (neu co) van duoc phat hien
+                    // qua exitCode ben duoi.
                 }
             });
             errorReader.start();
@@ -141,6 +141,13 @@ public class RestoreService {
             }
 
             log.info("MySQL restore completed from {}", backupFile.getFileName());
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                    "MySQL restore was interrupted",
+                    e
+            );
 
         } catch (Exception e) {
             throw new IllegalStateException(
@@ -204,6 +211,13 @@ public class RestoreService {
             }
 
             log.info("{} restore completed.", databaseName);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                    databaseName + " restore was interrupted",
+                    e
+            );
 
         } catch (Exception e) {
             throw new IllegalStateException(
