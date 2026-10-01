@@ -36,9 +36,12 @@ export type WarningSign =
   | 'DIABETES_WITH_VOMITING'
   | 'JAUNDICE_WITH_ABDOMINAL_PAIN'
   | 'SEVERE_DEHYDRATION'
+  | 'UNEXPLAINED_WEIGHT_LOSS'
+  | 'DIFFICULT_OR_PAINFUL_SWALLOWING'
 
 export interface SymptomAssessmentRequest {
   primarySymptom: PrimarySymptom
+  primarySymptomDetail?: string
   duration: SymptomDuration
   reportedSeverity: Exclude<SeverityLevel, 'UNDETERMINED'>
   activityImpact: ActivityImpact
@@ -48,6 +51,8 @@ export interface SymptomAssessmentRequest {
 }
 
 export interface SymptomAssessmentResponse {
+  id: number
+  assessedAt: string
   severityLevel: SeverityLevel
   emergency: boolean
   matchedGroups: string[]
@@ -55,7 +60,18 @@ export interface SymptomAssessmentResponse {
   requiresClinicianReview: boolean
 }
 
+export interface SymptomAssessmentHistoryItem extends SymptomAssessmentRequest, SymptomAssessmentResponse {
+  severityLevel: SeverityLevel
+  matchedGroups: string[]
+  reasonCodes: string[]
+}
+
 export async function assessSymptoms(request: SymptomAssessmentRequest): Promise<SymptomAssessmentResponse> {
   const { data } = await apiClient.post<SymptomAssessmentResponse>('/patient/triage/assessments', request)
+  return data
+}
+
+export async function getSymptomAssessmentHistory(): Promise<SymptomAssessmentHistoryItem[]> {
+  const { data } = await apiClient.get<SymptomAssessmentHistoryItem[]>('/patient/triage/assessments')
   return data
 }

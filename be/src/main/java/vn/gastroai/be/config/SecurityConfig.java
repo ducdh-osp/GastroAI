@@ -67,6 +67,7 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
                         // Mọi endpoint còn lại (vd /api/v1/me/**, /api/v1/auth/change-password)
                         // bắt buộc phải có Authentication hợp lệ do JwtAuthenticationFilter set.
                         .anyRequest().authenticated())

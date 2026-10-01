@@ -5,6 +5,7 @@ import java.util.Set;
 /** Structured, patient-reported input for the first-level symptom assessment. */
 public record SymptomAssessmentInput(
         PrimarySymptom primarySymptom,
+        String primarySymptomDetail,
         Duration duration,
         SeverityLevel reportedSeverity,
         ActivityImpact activityImpact,
@@ -43,6 +44,7 @@ public record SymptomAssessmentInput(
         RIGID_OR_TENDER_ABDOMEN, UNABLE_TO_PASS_STOOL_OR_GAS, UNABLE_TO_URINATE,
         BREATHING_DIFFICULTY_OR_CHEST_PAIN, FAINTING_OR_CONFUSION,
         HIGH_FEVER_WITH_ABDOMINAL_PAIN, PAIN_RADIATING_TO_BACK_OR_SHOULDER,
-        DIABETES_WITH_VOMITING, JAUNDICE_WITH_ABDOMINAL_PAIN, SEVERE_DEHYDRATION
+        DIABETES_WITH_VOMITING, JAUNDICE_WITH_ABDOMINAL_PAIN, SEVERE_DEHYDRATION,
+        UNEXPLAINED_WEIGHT_LOSS, DIFFICULT_OR_PAINFUL_SWALLOWING
     }
 }

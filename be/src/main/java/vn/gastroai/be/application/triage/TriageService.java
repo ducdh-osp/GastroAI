@@ -44,7 +44,9 @@ public class TriageService {
             Map.entry(WarningSign.PAIN_RADIATING_TO_BACK_OR_SHOULDER, "DAU_LAN_CO_QUAN_KHAC"),
             Map.entry(WarningSign.DIABETES_WITH_VOMITING, "TIEU_DUONG_KEM_NON"),
             Map.entry(WarningSign.JAUNDICE_WITH_ABDOMINAL_PAIN, "VANG_DA_KEM_DAU_BUNG"),
-            Map.entry(WarningSign.SEVERE_DEHYDRATION, "MAT_NUOC_NANG"));
+            Map.entry(WarningSign.SEVERE_DEHYDRATION, "MAT_NUOC_NANG"),
+            Map.entry(WarningSign.UNEXPLAINED_WEIGHT_LOSS, "SUT_CAN_KHONG_RO_NGUYEN_NHAN"),
+            Map.entry(WarningSign.DIFFICULT_OR_PAINFUL_SWALLOWING, "KHO_NUOT_DAU_KHI_NUOT"));
 
     private static final Set<WarningSign> EMERGENCY_SIGNS = Set.of(
             WarningSign.BLOOD_IN_VOMIT,

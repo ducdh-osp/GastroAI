@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined, CheckCircleOutlined, ExclamationCircleOutlined, HeartOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Checkbox, Result, Steps, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Input, Result, Steps, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -46,10 +46,16 @@ const patientGroupOptions: { value: PatientGroup; label: string }[] = [
 ]
 
 const severityOptions: { value: Exclude<SeverityLevel, 'UNDETERMINED'>; label: string; description: string }[] = [
-  { value: 'MILD', label: 'Nhẹ', description: 'Khó chịu nhưng vẫn sinh hoạt gần như bình thường' },
-  { value: 'MODERATE', label: 'Trung bình', description: 'Ảnh hưởng một phần đến công việc hoặc sinh hoạt' },
-  { value: 'SEVERE', label: 'Nặng', description: 'Khó thực hiện các hoạt động thường ngày' },
+  { value: 'MILD', label: 'Nhẹ', description: 'Cảm giác triệu chứng ở mức nhẹ' },
+  { value: 'MODERATE', label: 'Trung bình', description: 'Cảm giác triệu chứng rõ rệt, mức vừa' },
+  { value: 'SEVERE', label: 'Nặng', description: 'Cảm giác triệu chứng rất mạnh' },
 ]
+
+const activityImpactOptions = [
+  { value: 'NONE', label: 'Không ảnh hưởng', description: 'Sinh hoạt như thường ngày' },
+  { value: 'SOME_LIMITATION', label: 'Ảnh hưởng một phần', description: 'Phải giảm hoặc điều chỉnh một số hoạt động' },
+  { value: 'PREVENTS_NORMAL_ACTIVITY', label: 'Không thể sinh hoạt bình thường', description: 'Khó thực hiện các hoạt động thường ngày' },
+] as const
 
 const progressionOptions: { value: Progression; label: string }[] = [
   { value: 'IMPROVING', label: 'Đang giảm' },
@@ -74,6 +80,8 @@ const clinicianReviewWarningOptions: { value: WarningSign; label: string }[] = [
   { value: 'HIGH_FEVER_WITH_ABDOMINAL_PAIN', label: 'Sốt cao kèm đau bụng' },
   { value: 'PAIN_RADIATING_TO_BACK_OR_SHOULDER', label: 'Đau bụng lan ra lưng hoặc vai' },
   { value: 'JAUNDICE_WITH_ABDOMINAL_PAIN', label: 'Vàng da/vàng mắt kèm đau bụng' },
+  { value: 'UNEXPLAINED_WEIGHT_LOSS', label: 'Sụt cân không rõ nguyên nhân' },
+  { value: 'DIFFICULT_OR_PAINFUL_SWALLOWING', label: 'Khó nuốt hoặc đau khi nuốt' },
 ]
 
 const severityLabels: Record<SeverityLevel, string> = {
@@ -96,10 +104,17 @@ const groupLabel = (value?: PatientGroup) => patientGroupOptions.find((option) =
 const progressionLabel = (value?: Progression) => progressionOptions.find((option) => option.value === value)?.label ?? 'Chưa chọn'
 const warningLabel = (value: WarningSign) => [...emergencyWarningOptions, ...clinicianReviewWarningOptions].find((option) => option.value === value)?.label ?? value
 
-function getActivityImpact(severity: Exclude<SeverityLevel, 'UNDETERMINED'>) {
-  if (severity === 'MILD') return 'NONE' as const
-  if (severity === 'MODERATE') return 'SOME_LIMITATION' as const
-  return 'PREVENTS_NORMAL_ACTIVITY' as const
+const activityImpactLabel = (value?: SymptomAssessmentRequest['activityImpact']) => activityImpactOptions.find((option) => option.value === value)?.label ?? 'Chưa chọn'
+
+const reasonExplanations: Record<string, string> = {
+  WARNING_SIGNS_PRESENT: 'Có dấu hiệu cần trợ giúp y tế khẩn cấp.',
+  UNSUPPORTED_PATIENT_GROUP: 'Công cụ chưa có quy tắc đánh giá cho nhóm đối tượng này.',
+  NON_EMERGENCY_WARNING_SIGNS_PRESENT: 'Có dấu hiệu cần được nhân viên y tế xem xét.',
+  SELF_REPORTED_SEVERITY: 'Kết quả dựa trên mức độ bạn tự đánh giá.',
+  IMPACT_OR_WORSENING_ESCALATION: 'Mức đánh giá được nâng lên vì sinh hoạt bị ảnh hưởng hoặc triệu chứng đang nặng hơn.',
+  SEVERE_SELF_REPORTED_SYMPTOMS: 'Bạn tự đánh giá triệu chứng ở mức nặng.',
+  NEEDS_MORE_INFORMATION: 'Thông tin hiện có chưa đủ để xác định mức độ.',
+  DURATION_UNCLEAR: 'Thời gian kéo dài chưa rõ; nên trao đổi thêm với nhân viên y tế.',
 }
 
 function getAdvice(result: SymptomAssessmentResponse) {
@@ -165,12 +180,12 @@ export default function SymptomAssessmentPage() {
   }
 
   function next() {
-    if (step === 0 && (!answers.primarySymptom || !answers.duration || !answers.patientGroup)) {
+    if (step === 0 && (!answers.primarySymptom || !answers.duration || !answers.patientGroup || (answers.primarySymptom === 'OTHER' && !answers.primarySymptomDetail?.trim()))) {
       setError('Vui lòng chọn triệu chứng, thời gian kéo dài và đối tượng được đánh giá.')
       return
     }
-    if (step === 1 && (!answers.reportedSeverity || !answers.progression)) {
-      setError('Vui lòng chọn mức độ ảnh hưởng và diễn tiến của triệu chứng.')
+    if (step === 1 && (!answers.reportedSeverity || !answers.activityImpact || !answers.progression)) {
+      setError('Vui lòng chọn mức độ triệu chứng, ảnh hưởng sinh hoạt và diễn tiến.')
       return
     }
     setError(null)
@@ -178,7 +193,7 @@ export default function SymptomAssessmentPage() {
   }
 
   async function submit() {
-    if (!answers.primarySymptom || !answers.duration || !answers.reportedSeverity || !answers.progression || !answers.patientGroup) {
+    if (!answers.primarySymptom || !answers.duration || !answers.reportedSeverity || !answers.activityImpact || !answers.progression || !answers.patientGroup) {
       setError('Thiếu thông tin bắt buộc. Hãy quay lại kiểm tra các câu trả lời.')
       return
     }
@@ -188,9 +203,10 @@ export default function SymptomAssessmentPage() {
     try {
       const assessment = await assessSymptoms({
         primarySymptom: answers.primarySymptom,
+        primarySymptomDetail: answers.primarySymptom === 'OTHER' ? answers.primarySymptomDetail?.trim() : undefined,
         duration: answers.duration,
         reportedSeverity: answers.reportedSeverity,
-        activityImpact: getActivityImpact(answers.reportedSeverity),
+        activityImpact: answers.activityImpact,
         progression: answers.progression,
         patientGroup: answers.patientGroup,
         warningSigns: answers.warningSigns ?? [],
@@ -260,10 +276,11 @@ export default function SymptomAssessmentPage() {
 
             <Card title="Tóm tắt câu trả lời" className="rounded-2xl border-black/5 shadow-sm">
               <dl className="grid gap-4 sm:grid-cols-2">
-                <div><dt className="text-xs text-slate-500">Triệu chứng chính</dt><dd className="mb-0 mt-1 font-medium text-slate-800">{symptomLabel(answers.primarySymptom)}</dd></div>
+                <div><dt className="text-xs text-slate-500">Triệu chứng chính</dt><dd className="mb-0 mt-1 font-medium text-slate-800">{symptomLabel(answers.primarySymptom)}{answers.primarySymptomDetail ? `: ${answers.primarySymptomDetail}` : ''}</dd></div>
                 <div><dt className="text-xs text-slate-500">Thời gian</dt><dd className="mb-0 mt-1 font-medium text-slate-800">{durationLabel(answers.duration)}</dd></div>
                 <div><dt className="text-xs text-slate-500">Đối tượng</dt><dd className="mb-0 mt-1 font-medium text-slate-800">{groupLabel(answers.patientGroup)}</dd></div>
                 <div><dt className="text-xs text-slate-500">Mức độ tự đánh giá</dt><dd className="mb-0 mt-1 font-medium text-slate-800">{titleForSeverity}</dd></div>
+                <div><dt className="text-xs text-slate-500">Ảnh hưởng sinh hoạt</dt><dd className="mb-0 mt-1 font-medium text-slate-800">{activityImpactLabel(answers.activityImpact)}</dd></div>
                 <div><dt className="text-xs text-slate-500">Diễn tiến</dt><dd className="mb-0 mt-1 font-medium text-slate-800">{progressionLabel(answers.progression)}</dd></div>
                 <div className="sm:col-span-2">
                   <dt className="text-xs text-slate-500">Dấu hiệu đã chọn</dt>
@@ -272,6 +289,14 @@ export default function SymptomAssessmentPage() {
                   </dd>
                 </div>
               </dl>
+              {result.reasonCodes.length > 0 && (
+                <div className="mt-4 border-t border-slate-100 pt-3">
+                  <Text strong>Vì sao có kết quả này</Text>
+                  <ul className="mb-0 mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                    {result.reasonCodes.map((code) => <li key={code}>{reasonExplanations[code] ?? 'Một số câu trả lời đã ảnh hưởng đến kết quả đánh giá.'}</li>)}
+                  </ul>
+                </div>
+              )}
               <p className="mb-0 mt-4 border-t border-slate-100 pt-3 text-xs leading-5 text-slate-500">
                 Mức đánh giá lấy mức độ bạn tự khai làm cơ sở; dấu hiệu cảnh báo, mức ảnh hưởng sinh hoạt và diễn tiến có thể làm thay đổi kết quả. Thời gian và triệu chứng chính được ghi nhận để cung cấp ngữ cảnh.
               </p>
@@ -306,6 +331,21 @@ export default function SymptomAssessmentPage() {
                       )
                     })}
                   </div>
+                  {answers.primarySymptom === 'OTHER' && (
+                    <div className="mt-3">
+                      <Text strong>Mô tả triệu chứng khác</Text>
+                      <Input.TextArea
+                        className="mt-2"
+                        value={answers.primarySymptomDetail}
+                        maxLength={500}
+                        showCount
+                        autoSize={{ minRows: 2, maxRows: 4 }}
+                        placeholder="Mô tả ngắn triệu chứng bạn đang gặp"
+                        onChange={(event) => update('primarySymptomDetail', event.target.value)}
+                      />
+                      <Text type="secondary">Thông tin này sẽ được lưu cùng kết quả để nhân viên y tế có thể tham khảo.</Text>
+                    </div>
+                  )}
                 </section>
 
                 <section>
@@ -378,6 +418,20 @@ export default function SymptomAssessmentPage() {
                       <Button key={option.value} type={answers.progression === option.value ? 'primary' : 'default'} onClick={() => update('progression', option.value)} aria-pressed={answers.progression === option.value}>
                         {option.label}
                       </Button>
+                    ))}
+                  </div>
+                </section>
+                <section>
+                  <Title level={4} className="mb-1!">Mức ảnh hưởng đến sinh hoạt</Title>
+                  <Text type="secondary">Trả lời riêng theo những gì bạn đang trải qua; mức này không tự suy ra từ mức độ triệu chứng.</Text>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    {activityImpactOptions.map((option) => (
+                      <button key={option.value} type="button" aria-pressed={answers.activityImpact === option.value}
+                        onClick={() => update('activityImpact', option.value)}
+                        className={`rounded-xl border p-4 text-left transition-colors ${answers.activityImpact === option.value ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50'}`}>
+                        <span className="block font-semibold text-slate-800">{option.label}</span>
+                        <span className="mt-2 block text-sm leading-5 text-slate-500">{option.description}</span>
+                      </button>
                     ))}
                   </div>
                 </section>
