@@ -131,8 +131,8 @@ export default function MedicalProfilePage() {
   }
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-4xl">
+    <AppShell fixedViewport>
+      <div className="mx-auto h-full max-w-4xl overflow-y-auto overscroll-contain pr-2">
         <div className="mb-6">
           <Text type="secondary">Thông tin sức khỏe</Text>
           <Title level={2} className="mb-1! mt-1!">Hồ sơ bệnh lý cá nhân</Title>

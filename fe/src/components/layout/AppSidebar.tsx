@@ -33,7 +33,7 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="flex min-h-svh w-64 shrink-0 flex-col justify-between border-r border-white/10 bg-[#0f2926] text-white">
+    <aside className="flex h-svh w-64 shrink-0 flex-col justify-between border-r border-white/10 bg-[#0f2926] text-white">
       <div>
         <div className="p-5">
           <Logo variant="light" />
