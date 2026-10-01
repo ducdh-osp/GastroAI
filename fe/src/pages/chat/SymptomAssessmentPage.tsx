@@ -236,7 +236,7 @@ export default function SymptomAssessmentPage() {
 
         {!result && (
           <Steps
-            className="mb-5 shrink-0"
+            className="mb-8 shrink-0"
             current={step}
             responsive
             items={[{ title: 'Triệu chứng' }, { title: 'Mức độ' }, { title: 'Dấu hiệu cảnh báo' }]}
@@ -322,6 +322,7 @@ export default function SymptomAssessmentPage() {
 
                 <section>
                   <Title level={4} className="mb-1!">3. Bạn đang đánh giá cho ai?</Title>
+                  <Text type="secondary">Chọn nhóm phù hợp nhất với người đang có triệu chứng.</Text>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {patientGroupOptions.map((option) => (
                       <Button key={option.value} block type={answers.patientGroup === option.value ? 'primary' : 'default'} onClick={() => update('patientGroup', option.value)} aria-pressed={answers.patientGroup === option.value}>
@@ -329,6 +330,18 @@ export default function SymptomAssessmentPage() {
                       </Button>
                     ))}
                   </div>
+                  <p className="mb-0 mt-3 text-sm leading-5 text-slate-500">
+                    “Không chắc” dùng khi bạn chưa xác định được người có triệu chứng thuộc nhóm nào trong ba nhóm còn lại.
+                  </p>
+                  {answers.patientGroup === 'UNSURE' && (
+                    <Alert
+                      className="mt-3"
+                      type="info"
+                      showIcon
+                      message="Chưa thể đánh giá theo nhóm đối tượng"
+                      description="Công cụ hiện chưa áp dụng cách phân loại cho trường hợp này và sẽ khuyến nghị bạn trao đổi với nhân viên y tế."
+                    />
+                  )}
                 </section>
               </div>
             )}
