@@ -47,9 +47,6 @@ public class BackupScheduler {
             e.printStackTrace();
         }
 
-        // Bug fix (audit) - bo sung buoc don file backup cu, tranh tich luy vo han theo thoi
-        // gian co the lam day o dia neu chay lau dai. Chay rieng try/catch - loi khi don dep
-        // khong duoc anh huong toi backup vua tao thanh cong o tren.
         try {
             cleanupOldBackups();
         } catch (Exception e) {
@@ -89,11 +86,10 @@ public class BackupScheduler {
                 postgres.port() + "",
                 "-U",
                 postgres.username(),
+                "--clean",
+                "--if-exists",
                 "-d",
                 postgres.database());
-        // pg_dump không có flag nhập mật khẩu trực tiếp — cách chuẩn là set biến môi trường
-        // PGPASSWORD cho riêng process con này (không set ở env hệ thống, tránh lộ mật khẩu
-        // cho các process khác/khi liệt kê env toàn hệ thống).
         processBuilder.environment().put(
         "PGPASSWORD",
         postgres.password()
@@ -122,8 +118,8 @@ public class BackupScheduler {
                 "-u",
                 mysql.username(),
                 "--no-tablespaces",
+                "--add-drop-table",
                 mysql.database());
-        // Tương tự PGPASSWORD ở trên nhưng cho mysqldump (biến MYSQL_PWD).
         processBuilder.environment().put(
         "MYSQL_PWD",
         mysql.password());
@@ -133,78 +129,41 @@ public class BackupScheduler {
                 "MySQL");
     }
 
-   
     private void runBackupProcess(
             ProcessBuilder processBuilder,
             Path outputFile,
-            String databaseName) {
-
-        Process process = null;
+            String databaseName
+    ) {
+        processBuilder.redirectErrorStream(false);
 
         try {
-            process = processBuilder.start();
+            Process process = processBuilder.start();
 
-            Process currentProcess = process;
-
-            Thread errorReader = new Thread(() -> {
-                try {
-                    currentProcess.getErrorStream().transferTo(
-                            System.err);
+            Thread errorReaderThread = new Thread(() -> {
+                try (InputStream errorStream = process.getErrorStream()) {
+                    errorStream.readAllBytes();
                 } catch (Exception ignored) {
-                    // Error stream will be handled after process completion.
                 }
             });
+            errorReaderThread.start();
 
-            errorReader.start();
-
-            try (InputStream input = process.getInputStream()) {
-                Files.copy(input, outputFile);
+            try (InputStream inputStream = process.getInputStream()) {
+                Files.copy(inputStream, outputFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
+
+            errorReaderThread.join();
 
             int exitCode = process.waitFor();
 
-            errorReader.join();
-
             if (exitCode != 0) {
-                // Lệnh dump thất bại giữa chừng vẫn có thể để lại file .sql dở dang trên
-                // đĩa — xoá đi để không nhầm lẫn với 1 bản backup hợp lệ khi restore sau này.
-                deleteBackupFile(outputFile);
-
-                throw new IllegalStateException(
-                        databaseName
-                                + " backup failed with exit code "
-                                + exitCode);
+                throw new IllegalStateException(databaseName + " backup failed with exit code " + exitCode);
             }
 
-            logger.info(
-                    "{} backup completed: {}",
-                    databaseName,
-                    outputFile.toAbsolutePath());
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-
-            deleteBackupFile(outputFile);
-
-            throw new IllegalStateException(
-                    databaseName + " backup was interrupted",
-                    e);
+            logger.info("{} backup completed: {}", databaseName, outputFile);
 
         } catch (Exception e) {
-            deleteBackupFile(outputFile);
-
             throw new IllegalStateException(
-                    databaseName + " backup failed",
-                    e);
-        }
-    }
-
-    private void deleteBackupFile(Path outputFile) {
-        try {
-            Files.deleteIfExists(outputFile);
-        } catch (Exception e) {
-            logger.error(
-            "Cannot delete failed backup file: {}",
+                    "Error during " + databaseName + " backup, output file: " +
             outputFile, e);
         }
     }

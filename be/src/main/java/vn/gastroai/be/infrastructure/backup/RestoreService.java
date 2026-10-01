@@ -22,20 +22,30 @@ public class RestoreService {
         this.backupProperties = backupProperties;
     }
 
-    public void restoreAll() {
+    public RestoreResult restoreAll() {
+        boolean postgresOk = true;
+        String postgresError = null;
         try {
             restorePostgres();
         } catch (Exception e) {
             log.error("PostgreSQL restore failed", e);
+            postgresOk = false;
+            postgresError = e.getMessage();
         }
 
+        boolean mysqlOk = true;
+        String mysqlError = null;
         try {
             restoreMysql();
         } catch (Exception e) {
             log.error("MySQL restore failed", e);
+            mysqlOk = false;
+            mysqlError = e.getMessage();
         }
 
         log.info("Database restore process completed.");
+
+        return new RestoreResult(postgresOk, postgresError, mysqlOk, mysqlError);
     }
 
 
@@ -51,20 +61,13 @@ public class RestoreService {
 
         ProcessBuilder processBuilder = new ProcessBuilder(
                 "psql",
-                "-h",
-                "localhost",
-                "-p",
-                String.valueOf(postgres.port()),
-                "-U",
-                postgres.username(),
-                "-d",
-                postgres.database(),
-                "-v",
-                "ON_ERROR_STOP=1",
-                "-f",
-                backupFile.toString()
+                "-h", "localhost",
+                "-p", postgres.port() + "",
+                "-U", postgres.username(),
+                "-d", postgres.database(),
+                "-v", "ON_ERROR_STOP=1",
+                "-f", backupFile.toString()
         );
-
         processBuilder.environment().put(
                 "PGPASSWORD",
                 postgres.password()
@@ -72,10 +75,10 @@ public class RestoreService {
 
         runProcess(
                 processBuilder,
-                "PostgreSQL",
-                backupFile
+                "PostgreSQL"
         );
     }
+
 
     private void restoreMysql() {
         Path backupFile = findLatestBackup("mysql_");
@@ -89,12 +92,9 @@ public class RestoreService {
 
         ProcessBuilder processBuilder = new ProcessBuilder(
                 "mysql",
-                "-h",
-                "localhost",
-                "-P",
-                String.valueOf(mysql.port()),
-                "-u",
-                mysql.username(),
+                "-h", "localhost",
+                "-P", mysql.port() + "",
+                "-u", mysql.username(),
                 mysql.database()
         );
 
@@ -108,9 +108,7 @@ public class RestoreService {
                     StandardCharsets.UTF_8
             );
 
-            processBuilder.redirectError(
-                    ProcessBuilder.Redirect.PIPE
-            );
+            processBuilder.redirectErrorStream(false);
 
             Process process = processBuilder.start();
 
@@ -142,18 +140,7 @@ public class RestoreService {
                 );
             }
 
-            log.info(
-                    "MySQL restore completed from: {}",
-                    backupFile.toAbsolutePath()
-            );
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-
-            throw new IllegalStateException(
-                    "MySQL restore was interrupted",
-                    e
-            );
+            log.info("MySQL restore completed from {}", backupFile.getFileName());
 
         } catch (Exception e) {
             throw new IllegalStateException(
@@ -163,44 +150,30 @@ public class RestoreService {
         }
     }
 
+
     private Path findLatestBackup(String prefix) {
         try (var files = Files.list(
                 Path.of(backupProperties.directory())
         )) {
-
             return files
                     .filter(Files::isRegularFile)
-                    .filter(path ->
-                            path.getFileName()
-                                    .toString()
-                                    .startsWith(prefix)
-                    )
-                    .filter(path ->
-                            path.getFileName()
-                                    .toString()
-                                    .endsWith(".sql")
-                    )
-                    .max((a, b) ->
-                            a.getFileName()
-                                    .toString()
-                                    .compareTo(
-                                            b.getFileName().toString()
-                                    )
-                    )
+                    .filter(path -> path.getFileName().toString().startsWith(prefix))
+                    .max(Path::compareTo)
                     .orElse(null);
-
         } catch (Exception e) {
             throw new IllegalStateException(
-                    "Cannot find latest backup",
+                    "Cannot list backup directory",
                     e
             );
         }
     }
 
+
     private void runProcess(
             ProcessBuilder processBuilder,
-            String databaseName,
-            Path backupFile) {
+            String databaseName
+    ) {
+        processBuilder.redirectErrorStream(false);
 
         try {
             Process process = processBuilder.start();
@@ -229,19 +202,7 @@ public class RestoreService {
                 );
             }
 
-            log.info(
-                    "{} restore completed from: {}",
-                    databaseName,
-                    backupFile.toAbsolutePath()
-            );
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-
-            throw new IllegalStateException(
-                    databaseName + " restore was interrupted",
-                    e
-            );
+            log.info("{} restore completed.", databaseName);
 
         } catch (Exception e) {
             throw new IllegalStateException(
