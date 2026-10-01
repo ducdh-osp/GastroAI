@@ -1,10 +1,9 @@
 import { HeartOutlined, PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
 import { Alert, Button, Card, Typography } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { SymptomAssessmentModal } from './SymptomAssessmentModal'
 import { chatService, getChatSessionMessages, rateMessage } from '../../api/chat'
 import type { Attachment, Message, RatingValue, SendMessageRequest } from '../../api/chat'
 
@@ -12,6 +11,7 @@ const { Text, Title } = Typography
 
 export function ChatContainer() {
   const location = useLocation()
+  const navigate = useNavigate()
   // Khi FE điều hướng từ ChatHistoryPage với state { resumeSessionId, sessionTitle }
   const resumeSessionId: number | null = (location.state as { resumeSessionId?: number } | null)?.resumeSessionId ?? null
   const resumeTitle: string | null = (location.state as { sessionTitle?: string } | null)?.sessionTitle ?? null
@@ -20,7 +20,6 @@ export function ChatContainer() {
   const [isReplying, setIsReplying] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(resumeSessionId !== null)
   const [networkError, setNetworkError] = useState<string | null>(null)
-  const [assessmentOpen, setAssessmentOpen] = useState(false)
   /** ID phiên hiện tại — null = chưa có phiên (câu đầu tiên sẽ tạo phiên mới). */
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(resumeSessionId)
 
@@ -141,7 +140,7 @@ export function ChatContainer() {
               <span className="mt-0.5 block text-xs font-medium text-emerald-600">Đang hoạt động</span>
             </div>
           </div>
-          <Button size="small" icon={<HeartOutlined />} onClick={() => setAssessmentOpen(true)}>
+          <Button size="small" icon={<HeartOutlined />} onClick={() => navigate('/symptom-assessment')}>
             Đánh giá triệu chứng
           </Button>
         </header>
@@ -175,7 +174,6 @@ export function ChatContainer() {
         />
         <ChatInput disabled={isReplying || isLoadingHistory} onSend={handleSend} />
       </Card>
-      <SymptomAssessmentModal open={assessmentOpen} onClose={() => setAssessmentOpen(false)} />
     </div>
   )
 }
