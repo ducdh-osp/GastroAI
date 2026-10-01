@@ -13,7 +13,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import vn.gastroai.be.infrastructure.security.JwtAuthenticationFilter;
 import vn.gastroai.be.infrastructure.security.AdminSessionFilter;
 import org.springframework.http.HttpMethod;
-
+import org.springframework.beans.factory.annotation.Value;
 import java.util.List;
 
 /**
@@ -27,7 +27,8 @@ import java.util.List;
  */
 @Configuration
 public class SecurityConfig {
-
+    @Value("${app.cors.allowed-origin}")
+    private String allowedOrigin;
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -64,6 +65,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/documents")
                         .hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         // Mọi endpoint còn lại (vd /api/v1/me/**, /api/v1/auth/change-password)
                         // bắt buộc phải có Authentication hợp lệ do JwtAuthenticationFilter set.
                         .anyRequest().authenticated())
@@ -74,7 +77,7 @@ public class SecurityConfig {
 
     private UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(List.of(allowedOrigin));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

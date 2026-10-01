@@ -1,6 +1,8 @@
 package vn.gastroai.be.api.chat;
 
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,9 +17,7 @@ import vn.gastroai.be.application.chat.ChatService;
 import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.application.rag.StreamingDoneEvent;
 import vn.gastroai.be.application.rag.StreamingRagQueryService;
-import vn.gastroai.be.application.triage.TriageAlertPublisher;
-import vn.gastroai.be.domain.triage.TriageAlertEvent;
-import java.time.Instant;
+import vn.gastroai.be.application.triage.TriageAlertService;
 import java.security.Principal;
 import java.util.List;
 
@@ -25,155 +25,180 @@ import java.util.List;
 @RequestMapping("/api/v1/chat")
 public class ChatController {
 
-        private final ChatService chatService;
-        private final ChatHistoryService chatHistoryService;
-        private final StreamingRagQueryService streamingRagQueryService;
-        private final TriageAlertPublisher triageAlertPublisher;
+    private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
-        public ChatController(
-                        ChatService chatService,
-                        ChatHistoryService chatHistoryService,
-                        StreamingRagQueryService streamingRagQueryService,
-                        TriageAlertPublisher triageAlertPublisher) {
+    private final ChatService chatService;
+    private final ChatHistoryService chatHistoryService;
+    private final StreamingRagQueryService streamingRagQueryService;
+    private final TriageAlertService triageAlertService;
 
-                this.chatService = chatService;
-                this.chatHistoryService = chatHistoryService;
-                this.streamingRagQueryService = streamingRagQueryService;
-                this.triageAlertPublisher = triageAlertPublisher;
-        }
+    public ChatController(
+            ChatService chatService,
+            ChatHistoryService chatHistoryService,
+            StreamingRagQueryService streamingRagQueryService,
+            TriageAlertService triageAlertService) {
 
-        /**
-         * Gửi câu hỏi, nhận câu trả lời AI,
-         * đồng thời lưu câu hỏi và câu trả lời vào lịch sử chat.
-         */
-        @PostMapping("/messages")
-        public ChatMessageResponse sendMessage(
-                        @Valid @RequestBody ChatMessageRequest request,
-                        Principal principal,
-                        Authentication authentication) {
+        this.chatService = chatService;
+        this.chatHistoryService = chatHistoryService;
+        this.streamingRagQueryService = streamingRagQueryService;
+        this.triageAlertService = triageAlertService;
+    }
 
-                requireAuthenticated(authentication);
+    /**
+     * Gửi câu hỏi, nhận câu trả lời AI,
+     * đồng thời lưu câu hỏi và câu trả lời vào lịch sử chat.
+     */
+    @PostMapping("/messages")
+    public ChatMessageResponse sendMessage(
+            @Valid @RequestBody ChatMessageRequest request,
+            Principal principal,
+            Authentication authentication) {
 
-                Long patientId = Long.valueOf(principal.getName());
+        requireAuthenticated(authentication);
 
-                ChatAnswer chatAnswer = chatService.ask(request.content());
+        Long patientId = Long.valueOf(principal.getName());
 
-                RagAnswer ragAnswer = chatAnswer.ragAnswer();
+        ChatAnswer chatAnswer = chatService.ask(request.content(), triageResult -> {
+            if (triageResult.emergency()) {
+                triageAlertService.createAndPublish(
+                        patientId,
+                        null,
+                        null,
+                        request.content(),
+                        triageResult.matchedGroups());
+            }
+        });
 
-                List<ChatSourceResponse> sources = ragAnswer.sources()
-                                .stream()
-                                .map(source -> new ChatSourceResponse(
-                                                source.documentTitle(),
-                                                source.snippet(),
-                                                source.sourceUrl()))
-                                .toList();
+        RagAnswer ragAnswer = chatAnswer.ragAnswer();
 
-                ChatHistoryService.SavedExchange saved = chatHistoryService.saveExchange(
-                                patientId,
-                                request.sessionId(),
-                                request.content(),
-                                ragAnswer,
-                                chatAnswer.emergency(),
-                                chatAnswer.matchedGroups());
-                if (chatAnswer.emergency()) {
-                        triageAlertPublisher.publish(new TriageAlertEvent(
-                                        patientId,
-                                        saved.sessionId(),
-                                        saved.assistantMessageId(),
-                                        request.content(),
-                                        chatAnswer.matchedGroups(),
-                                        Instant.now()));
-                }
+        List<ChatSourceResponse> sources = ragAnswer.sources()
+                .stream()
+                .map(source -> new ChatSourceResponse(
+                        source.documentTitle(),
+                        source.snippet(),
+                        source.sourceUrl()))
+                .toList();
 
-                return ChatMessageResponse.assistantReply(
-                                ragAnswer.answer(),
-                                sources,
-                                ragAnswer.relatedQuestions(),
-                                chatAnswer.emergency(),
-                                chatAnswer.matchedGroups(),
-                                saved.assistantMessageId(),
-                                saved.sessionId());
-        }
+        ChatHistoryService.SavedExchange saved = chatHistoryService.saveExchange(
+                patientId,
+                request.sessionId(),
+                request.content(),
+                ragAnswer,
+                chatAnswer.emergency(),
+                chatAnswer.matchedGroups());
 
-        /**
-         * Đánh giá câu trả lời AI.
-         */
-        @PostMapping("/messages/{messageId}/rating")
-        public void rateMessage(
-                        @PathVariable Long messageId,
-                        @Valid @RequestBody RateMessageRequest request,
-                        Principal principal,
-                        Authentication authentication) {
+        return ChatMessageResponse.assistantReply(
+                ragAnswer.answer(),
+                sources,
+                ragAnswer.relatedQuestions(),
+                chatAnswer.emergency(),
+                chatAnswer.matchedGroups(),
+                saved.assistantMessageId(),
+                saved.sessionId());
+    }
 
-                requireAuthenticated(authentication);
+    /**
+     * Đánh giá câu trả lời AI.
+     */
+    @PostMapping("/messages/{messageId}/rating")
+    public void rateMessage(
+            @PathVariable Long messageId,
+            @Valid @RequestBody RateMessageRequest request,
+            Principal principal,
+            Authentication authentication) {
 
-                Long patientId = Long.valueOf(principal.getName());
+        requireAuthenticated(authentication);
 
-                chatHistoryService.rateMessage(
-                                patientId,
-                                messageId,
-                                request.rating());
-        }
+        Long patientId = Long.valueOf(principal.getName());
 
-        /**
-         * Streaming câu trả lời từ Gemini thông qua SSE.
-         */
-        @PostMapping(value = "/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-        public SseEmitter streamMessage(
-                        @Valid @RequestBody ChatMessageRequest request,
-                        Authentication authentication) {
+        chatHistoryService.rateMessage(
+                patientId,
+                messageId,
+                request.rating());
+    }
 
-                requireAuthenticated(authentication);
+    /**
+     * Streaming câu trả lời từ Gemini thông qua SSE.
+     */
+    @PostMapping(value = "/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamMessage(
+            @Valid @RequestBody ChatMessageRequest request,
+            Authentication authentication) {
 
-                Long patientId = Long.valueOf(authentication.getName());
-                SseEmitter emitter = new SseEmitter(120_000L);
+        requireAuthenticated(authentication);
 
-                Thread.startVirtualThread(() -> {
-                        try {
-                                StreamingRagQueryService.StreamingResult result = streamingRagQueryService.streamAnswer(
-                                                request.content(),
-                                                token -> {
-                                                        try {
-                                                                emitter.send(
-                                                                                SseEmitter.event()
-                                                                                                .data(token));
-                                                        } catch (Exception exception) {
-                                                                emitter.completeWithError(
-                                                                                exception);
+        Long patientId = Long.valueOf(authentication.getName());
+        SseEmitter emitter = new SseEmitter(120_000L);
 
-                                                                throw new RuntimeException(
-                                                                                exception);
-                                                        }
-                                                });
-
+        Thread.startVirtualThread(() -> {
+            try {
+                StreamingRagQueryService.StreamingResult result = streamingRagQueryService.streamAnswer(
+                        request.content(),
+                        token -> {
+                            try {
                                 emitter.send(
-                                                SseEmitter.event()
-                                                                .name("done")
-                                                                .data(
-                                                                                new StreamingDoneEvent(
-                                                                                                result.sources(),
-                                                                                                result.relatedQuestions(),
-                                                                                                result.emergency(),
-                                                                                                result.matchedGroups())));
+                                        SseEmitter.event()
+                                                .data(token));
+                            } catch (Exception exception) {
+                                emitter.completeWithError(
+                                        exception);
 
-                                emitter.complete();
+                                throw new RuntimeException(
+                                        exception);
+                            }
+                        },
+                        triageResult -> {
+                            if (triageResult.emergency()) {
+                                triageAlertService.createAndPublish(
+                                        patientId,
+                                        null,
+                                        null,
+                                        request.content(),
+                                        triageResult.matchedGroups());
+                            }
+                        });
 
-                        } catch (Exception exception) {
-                                emitter.completeWithError(exception);
-                        }
-                });
+                emitter.send(
+                        SseEmitter.event()
+                                .name("done")
+                                .data(
+                                        new StreamingDoneEvent(
+                                                result.sources(),
+                                                result.relatedQuestions(),
+                                                result.emergency(),
+                                                result.matchedGroups())));
 
-                return emitter;
-        }
+                emitter.complete();
 
-        private void requireAuthenticated(
-                        Authentication authentication) {
-
-                if (authentication == null
-                                || !authentication.isAuthenticated()) {
-
-                        throw new org.springframework.security.access.AccessDeniedException(
-                                        "Chua dang nhap");
+                try {
+                    chatHistoryService.saveExchange(
+                            patientId,
+                            request.sessionId(),
+                            request.content(),
+                            new RagAnswer(result.answer(), result.sources(), result.relatedQuestions()),
+                            result.emergency(),
+                            result.matchedGroups());
+                } catch (Exception exception) {
+                    log.error("Khong the luu lich su chat cho luong streaming, patientId={}: {}",
+                            patientId, exception.getMessage(), exception);
                 }
+
+            } catch (Exception exception) {
+                emitter.completeWithError(exception);
+            }
+        });
+
+        return emitter;
+    }
+
+    private void requireAuthenticated(
+            Authentication authentication) {
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Chua dang nhap");
         }
+    }
 }

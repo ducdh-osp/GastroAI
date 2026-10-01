@@ -16,7 +16,10 @@ import java.util.Set;
 @Component
 public class AdminWebSocketHandshakeInterceptor implements HandshakeInterceptor {
     private static final Set<String> ALLOWED_ROLES = Set.of("ADMIN", "DOCTOR");
-     @Override
+
+    public static final String HTTP_SESSION_ID_ATTRIBUTE = "HTTP_SESSION_ID";
+
+    @Override
     public boolean beforeHandshake(
             ServerHttpRequest request,
             ServerHttpResponse response,
@@ -30,6 +33,7 @@ public class AdminWebSocketHandshakeInterceptor implements HandshakeInterceptor 
                 Object userType = session.getAttribute(CmsAuthService.AUTH_USER_TYPE);
 
                 if (userType != null && ALLOWED_ROLES.contains(userType.toString())) {
+                    attributes.put(HTTP_SESSION_ID_ATTRIBUTE, session.getId());
                     return true;
                 }
             }
@@ -38,7 +42,8 @@ public class AdminWebSocketHandshakeInterceptor implements HandshakeInterceptor 
         response.setStatusCode(HttpStatus.FORBIDDEN);
         return false;
     }
-     @Override
+
+    @Override
     public void afterHandshake(
             ServerHttpRequest request,
             ServerHttpResponse response,
@@ -46,5 +51,4 @@ public class AdminWebSocketHandshakeInterceptor implements HandshakeInterceptor 
             Exception exception) {
         // Khong can lam gi sau khi bat tay thanh cong.
     }
-
 }

@@ -1,21 +1,30 @@
 package vn.gastroai.be.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
+import vn.gastroai.be.infrastructure.security.AdminWebSocketHandlerDecoratorFactory;
 import vn.gastroai.be.infrastructure.security.AdminWebSocketHandshakeInterceptor;
 
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-    private static final String ALLOWED_ORIGIN = "http://localhost:5173";
+
+    @Value("${app.cors.allowed-origin}")
+    private String allowedOrigin;
 
     private final AdminWebSocketHandshakeInterceptor adminWebSocketHandshakeInterceptor;
+    private final AdminWebSocketHandlerDecoratorFactory adminWebSocketHandlerDecoratorFactory;
 
-    public WebSocketConfig(AdminWebSocketHandshakeInterceptor adminWebSocketHandshakeInterceptor) {
+    public WebSocketConfig(
+            AdminWebSocketHandshakeInterceptor adminWebSocketHandshakeInterceptor,
+            AdminWebSocketHandlerDecoratorFactory adminWebSocketHandlerDecoratorFactory) {
         this.adminWebSocketHandshakeInterceptor = adminWebSocketHandshakeInterceptor;
+        this.adminWebSocketHandlerDecoratorFactory = adminWebSocketHandlerDecoratorFactory;
     }
 
     @Override
@@ -27,9 +36,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(ALLOWED_ORIGIN)
+                .setAllowedOrigins(allowedOrigin)
                 .addInterceptors(adminWebSocketHandshakeInterceptor)
                 .withSockJS();
     }
 
+    @Override
+    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+        registration.addDecoratorFactory(adminWebSocketHandlerDecoratorFactory);
+    }
 }
