@@ -5,12 +5,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import vn.gastroai.be.api.support.AuthenticatedRequest;
 import vn.gastroai.be.application.chat.ChatAnswer;
 import vn.gastroai.be.application.chat.ChatHistoryService;
 import vn.gastroai.be.application.chat.ChatService;
@@ -18,6 +19,7 @@ import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.application.rag.StreamingDoneEvent;
 import vn.gastroai.be.application.rag.StreamingRagQueryService;
 import vn.gastroai.be.application.triage.TriageAlertService;
+
 import java.security.Principal;
 import java.util.List;
 
@@ -54,9 +56,7 @@ public class ChatController {
             Principal principal,
             Authentication authentication) {
 
-        requireAuthenticated(authentication);
-
-        Long patientId = Long.valueOf(principal.getName());
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
 
         ChatAnswer chatAnswer = chatService.ask(request.content(), triageResult -> {
             if (triageResult.emergency()) {
@@ -107,9 +107,7 @@ public class ChatController {
             Principal principal,
             Authentication authentication) {
 
-        requireAuthenticated(authentication);
-
-        Long patientId = Long.valueOf(principal.getName());
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
 
         chatHistoryService.rateMessage(
                 patientId,
@@ -125,7 +123,7 @@ public class ChatController {
             @Valid @RequestBody ChatMessageRequest request,
             Authentication authentication) {
 
-        requireAuthenticated(authentication);
+        AuthenticatedRequest.requireAuthenticated(authentication);
 
         Long patientId = Long.valueOf(authentication.getName());
         SseEmitter emitter = new SseEmitter(120_000L);
@@ -189,16 +187,5 @@ public class ChatController {
         });
 
         return emitter;
-    }
-
-    private void requireAuthenticated(
-            Authentication authentication) {
-
-        if (authentication == null
-                || !authentication.isAuthenticated()) {
-
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "Chua dang nhap");
-        }
     }
 }

@@ -10,6 +10,7 @@ import vn.gastroai.be.application.support.OwnedResourceLoader;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.api.notification.MedicationConfirmationDetail;
 import vn.gastroai.be.api.notification.MedicationConfirmationListResponse;
+import vn.gastroai.be.api.notification.MedicationConfirmationRequest;
 import vn.gastroai.be.api.notification.MedicationConfirmationResponse;
 import vn.gastroai.be.api.notification.MedicationReminderRequest;
 import vn.gastroai.be.api.notification.MedicationReminderResponse;
@@ -23,9 +24,14 @@ import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.stream.Collectors;
 
 /** UC0015 (lich nhac uong thuoc) + UC0016 (xac nhan da uong - GD4 chi la nut thu cong,
  * chua tich hop notification/scheduler that, viec do la GD7). */
@@ -50,22 +56,32 @@ public class MedicationReminderService {
     public MedicationReminderResponse create(Long patientId, MedicationReminderRequest request) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay benh nhan"));
+        validateRequest(request);
         MedicationReminder reminder = new MedicationReminder(
-                patient, request.medicineName(), request.dosage(), request.timeOfDay(), request.active());
-        return toResponse(medicationReminderRepository.save(reminder), false);
+                patient, request.medicineName(), request.dosage(), normalizedTimes(request),
+                request.startDate(), request.endDate(), request.instructions(), request.active());
+        return toResponse(medicationReminderRepository.save(reminder), Set.of());
     }
 
     @Transactional("postgresTransactionManager")
     public MedicationReminderResponse update(Long patientId, Long reminderId, MedicationReminderRequest request) {
         MedicationReminder reminder = loadOwnedReminder(patientId, reminderId);
+        validateRequest(request);
         reminder.setMedicineName(request.medicineName());
         reminder.setDosage(request.dosage());
-        reminder.setTimeOfDay(request.timeOfDay());
+        reminder.setTimesOfDay(new ArrayList<>(normalizedTimes(request)));
+        reminder.setStartDate(request.startDate());
+        reminder.setEndDate(request.endDate());
+        reminder.setInstructions(request.instructions());
         reminder.setActive(request.active());
         LocalDate today = Instant.now().atZone(VN_ZONE).toLocalDate();
-        boolean confirmedToday = medicationConfirmationRepository
-                .existsByReminder_IdAndConfirmationDate(reminderId, today);
-        return toResponse(medicationReminderRepository.save(reminder), confirmedToday);
+        Set<LocalTime> confirmedTimes = medicationConfirmationRepository
+                .findByPatientIdAndConfirmationDate(patientId, today).stream()
+                .filter(confirmation -> confirmation.getReminder().getId().equals(reminderId))
+                .map(MedicationConfirmation::getScheduledTime)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        return toResponse(medicationReminderRepository.save(reminder), confirmedTimes);
     }
 
     @Transactional("postgresTransactionManager")
@@ -82,28 +98,43 @@ public class MedicationReminderService {
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public List<MedicationReminderResponse> list(Long patientId) {
         LocalDate today = Instant.now().atZone(VN_ZONE).toLocalDate();
-        Set<Long> confirmedReminderIds = new HashSet<>(
-                medicationConfirmationRepository.findReminderIdsByPatientIdAndConfirmationDate(patientId, today));
-        return medicationReminderRepository.findByPatientIdOrderByTimeOfDayAsc(patientId).stream()
-                .map(reminder -> toResponse(reminder, confirmedReminderIds.contains(reminder.getId())))
+        Map<Long, Set<LocalTime>> confirmedByReminder = medicationConfirmationRepository
+                .findByPatientIdAndConfirmationDate(patientId, today).stream()
+                .filter(confirmation -> confirmation.getScheduledTime() != null)
+                .collect(Collectors.groupingBy(
+                        confirmation -> confirmation.getReminder().getId(),
+                        Collectors.mapping(MedicationConfirmation::getScheduledTime, Collectors.toSet())));
+        return medicationReminderRepository.findByPatientIdOrderByCreatedAtAsc(patientId).stream()
+                .map(reminder -> toResponse(reminder,
+                        confirmedByReminder.getOrDefault(reminder.getId(), Set.of())))
                 .toList();
     }
 
     @Transactional("postgresTransactionManager")
-    public MedicationConfirmationResponse confirmDose(Long patientId, Long reminderId) {
+    public MedicationConfirmationResponse confirmDose(
+            Long patientId, Long reminderId, MedicationConfirmationRequest request) {
         MedicationReminder reminder = loadOwnedReminder(patientId, reminderId);
         Instant confirmedAt = Instant.now();
         LocalDate confirmationDate = confirmedAt.atZone(VN_ZONE).toLocalDate();
-        if (medicationConfirmationRepository.existsByReminder_IdAndConfirmationDate(
-                reminderId, confirmationDate)) {
+        if (!reminder.isActive()
+                || (reminder.getStartDate() != null && confirmationDate.isBefore(reminder.getStartDate()))
+                || (reminder.getEndDate() != null && confirmationDate.isAfter(reminder.getEndDate()))) {
+            throw new IllegalStateException("Lich thuoc khong hoat dong trong ngay hom nay.");
+        }
+        if (!reminder.getTimesOfDay().contains(request.scheduledTime())) {
+            throw new IllegalArgumentException("Gio uong khong thuoc lich nhac nay.");
+        }
+        if (medicationConfirmationRepository.existsByReminder_IdAndConfirmationDateAndScheduledTime(
+                reminderId, confirmationDate, request.scheduledTime())) {
             throw new IllegalStateException("Lieu thuoc nay da duoc xac nhan trong hom nay.");
         }
 
         // The DB unique index is the final guard if two requests pass the check together.
         try {
             MedicationConfirmation saved = medicationConfirmationRepository.saveAndFlush(
-                    new MedicationConfirmation(reminder, confirmedAt, confirmationDate));
-            return new MedicationConfirmationResponse(saved.getId(), reminder.getId(), saved.getConfirmedAt());
+                    new MedicationConfirmation(reminder, confirmedAt, confirmationDate, request.scheduledTime()));
+            return new MedicationConfirmationResponse(
+                    saved.getId(), reminder.getId(), saved.getScheduledTime(), saved.getConfirmedAt());
         } catch (DataIntegrityViolationException exception) {
             throw new IllegalStateException("Lieu thuoc nay da duoc xac nhan trong hom nay.", exception);
         }
@@ -116,7 +147,8 @@ public class MedicationReminderService {
                 medicationConfirmationRepository.findByReminder_Patient_IdOrderByConfirmedAtDesc(patientId, pageable);
         List<MedicationConfirmationDetail> items = result.getContent().stream()
                 .map(c -> new MedicationConfirmationDetail(
-                        c.getId(), c.getReminder().getId(), c.getReminder().getMedicineName(), c.getConfirmedAt()))
+                        c.getId(), c.getReminder().getId(), c.getReminder().getMedicineName(),
+                        c.getScheduledTime(), c.getConfirmedAt()))
                 .toList();
         return new MedicationConfirmationListResponse(items, result.getNumber(), result.getSize(),
                 result.getTotalElements(), result.getTotalPages());
@@ -128,9 +160,25 @@ public class MedicationReminderService {
                 "Khong tim thay lich nhac thuoc hoac ban khong co quyen truy cap");
     }
 
-    private MedicationReminderResponse toResponse(MedicationReminder reminder, boolean confirmedToday) {
+    private MedicationReminderResponse toResponse(
+            MedicationReminder reminder, Set<LocalTime> confirmedTimesToday) {
         return new MedicationReminderResponse(
                 reminder.getId(), reminder.getMedicineName(), reminder.getDosage(),
-                reminder.getTimeOfDay(), reminder.isActive(), confirmedToday);
+                reminder.getTimesOfDay(), reminder.getStartDate(), reminder.getEndDate(),
+                reminder.getInstructions(), reminder.isActive(), confirmedTimesToday);
+    }
+
+    private void validateRequest(MedicationReminderRequest request) {
+        if (request.startDate() != null && request.endDate() != null
+                && request.endDate().isBefore(request.startDate())) {
+            throw new IllegalArgumentException("Ngay ket thuc khong duoc truoc ngay bat dau.");
+        }
+        if (new HashSet<>(request.timesOfDay()).size() != request.timesOfDay().size()) {
+            throw new IllegalArgumentException("Cac gio nhac khong duoc trung nhau.");
+        }
+    }
+
+    private List<LocalTime> normalizedTimes(MedicationReminderRequest request) {
+        return request.timesOfDay().stream().sorted(Comparator.naturalOrder()).toList();
     }
 }

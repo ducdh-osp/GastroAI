@@ -7,7 +7,10 @@ import lombok.Setter;
 import vn.gastroai.be.domain.auth.Patient;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /** UC0015 - lich nhac uong 1 loai thuoc, lap lai hang ngay vao 1 khung gio co dinh. */
 @Entity
@@ -31,8 +34,20 @@ public class MedicationReminder {
     @Column(length = 200)
     private String dosage;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "medication_reminder_times", joinColumns = @JoinColumn(name = "reminder_id"))
     @Column(name = "time_of_day", nullable = false)
-    private LocalTime timeOfDay;
+    @OrderColumn(name = "sort_order")
+    private List<LocalTime> timesOfDay = new ArrayList<>();
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
+
+    @Column(columnDefinition = "TEXT")
+    private String instructions;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -49,10 +64,26 @@ public class MedicationReminder {
     }
 
     public MedicationReminder(Patient patient, String medicineName, String dosage, LocalTime timeOfDay, boolean active) {
+        this(patient, medicineName, dosage, List.of(timeOfDay), null, null, null, active);
+    }
+
+    public MedicationReminder(Patient patient, String medicineName, String dosage, List<LocalTime> timesOfDay,
+                              LocalDate startDate, LocalDate endDate, String instructions, boolean active) {
         this.patient = patient;
         this.medicineName = medicineName;
         this.dosage = dosage;
-        this.timeOfDay = timeOfDay;
+        this.timesOfDay = new ArrayList<>(timesOfDay);
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.instructions = instructions;
         this.active = active;
+    }
+
+    public LocalTime getTimeOfDay() {
+        return timesOfDay.isEmpty() ? null : timesOfDay.get(0);
+    }
+
+    public void setTimeOfDay(LocalTime timeOfDay) {
+        this.timesOfDay = new ArrayList<>(List.of(timeOfDay));
     }
 }

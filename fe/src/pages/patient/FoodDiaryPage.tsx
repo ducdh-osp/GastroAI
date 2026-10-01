@@ -1,7 +1,7 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   createFoodDiaryEntry,
   deleteFoodDiaryEntry,
@@ -11,43 +11,29 @@ import {
 import type { FoodDiaryEntry, FoodDiaryEntryRequest } from '../../api/foodDiary'
 import { AppShell } from '../../components/layout/AppShell'
 import { FoodDiaryEntryModal } from '../../components/foodDiary/FoodDiaryEntryModal'
+import { useInFlightGuard } from '../../hooks/useInFlightGuard'
+import { usePagedList } from '../../hooks/usePagedList'
 import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
 
+const MEAL_TYPE_LABELS = {
+  BREAKFAST: 'Bữa sáng', LUNCH: 'Bữa trưa', DINNER: 'Bữa tối', SNACK: 'Bữa phụ', OTHER: 'Khác',
+} as const
+
 export default function FoodDiaryPage() {
-  const [items, setItems] = useState<FoodDiaryEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(0)
-  const [pageSize] = useState(10)
-  const [totalElements, setTotalElements] = useState(0)
-  const requestId = useRef(0)
+  const {
+    items, loading, error, setError, page, setPage, pageSize, totalElements, reload,
+  } = usePagedList({
+    fetchPage: listFoodDiary,
+    pageSize: 10,
+    loadErrorMessage: 'Không thể tải nhật ký ăn uống.',
+  })
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FoodDiaryEntry | null>(null)
   const [saving, setSaving] = useState(false)
-  // Chan bam "Xoa" lien tuc gay 2 request chong nhau (Popconfirm khong tu chan double-click) -
-  // request thu 2 se loi vo hai (record da mat) nhung van hien loi gia cho nguoi dung.
-  const [deletingId, setDeletingId] = useState<number | null>(null)
-
-  function reload() {
-    const currentRequestId = ++requestId.current
-    setLoading(true)
-    setError(null)
-    listFoodDiary(page, pageSize)
-      .then((res) => {
-        if (currentRequestId !== requestId.current) return
-        setItems(res.items)
-        setTotalElements(res.totalElements)
-      })
-      .catch((err: unknown) => {
-        if (currentRequestId === requestId.current) setError(err instanceof Error ? err.message : 'Không thể tải nhật ký ăn uống.')
-      })
-      .finally(() => { if (currentRequestId === requestId.current) setLoading(false) })
-  }
-
-  useEffect(reload, [page, pageSize])
+  const deleteGuard = useInFlightGuard<number>()
 
   function openCreate() {
     setEditingEntry(null)
@@ -77,27 +63,30 @@ export default function FoodDiaryPage() {
   }
 
   async function handleDelete(id: number) {
-    if (deletingId !== null) return
-    setDeletingId(id)
-    try {
-      await deleteFoodDiaryEntry(id)
-      // Xoá mục cuối cùng còn lại của 1 trang không phải trang đầu -> lùi về trang trước
-      // (useEffect tự reload) thay vì để lại trang hiện tại trống, không có lối quay lại.
-      if (items.length === 1 && page > 0) {
-        setPage(page - 1)
-      } else {
-        reload()
+    await deleteGuard.run(id, async () => {
+      try {
+        await deleteFoodDiaryEntry(id)
+        if (items.length === 1 && page > 0) {
+          setPage(page - 1)
+        } else {
+          void reload()
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Không thể xoá nhật ký ăn uống.')
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể xoá nhật ký ăn uống.')
-    } finally {
-      setDeletingId(null)
-    }
+    })
   }
 
   const columns: ColumnsType<FoodDiaryEntry> = [
     { title: 'Thời điểm ăn', dataIndex: 'eatenAt', key: 'eatenAt', width: 180, render: formatDateTime },
+    { title: 'Loại bữa', dataIndex: 'mealType', key: 'mealType', width: 110, render: (value: keyof typeof MEAL_TYPE_LABELS) => MEAL_TYPE_LABELS[value] },
     { title: 'Món ăn', dataIndex: 'description', key: 'description' },
+    {
+      title: 'Triệu chứng sau ăn', dataIndex: 'symptomsAfterMeal', key: 'symptomsAfterMeal',
+      render: (value: string | null, record) => value
+        ? `${value}${record.symptomOnsetMinutes !== null ? ` (sau ${record.symptomOnsetMinutes} phút)` : ''}`
+        : <Text type="secondary">—</Text>,
+    },
     {
       title: 'Ghi chú', dataIndex: 'notes', key: 'notes',
       render: (val: string | null) => val || <Text type="secondary">—</Text>,
@@ -113,8 +102,8 @@ export default function FoodDiaryPage() {
               type="text"
               danger
               icon={<DeleteOutlined />}
-              loading={deletingId === record.id}
-              disabled={deletingId !== null && deletingId !== record.id}
+              loading={deleteGuard.inFlightId === record.id}
+              disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
             />
           </Popconfirm>
         </div>

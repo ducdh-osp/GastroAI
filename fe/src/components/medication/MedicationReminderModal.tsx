@@ -1,4 +1,4 @@
-import { Form, Input, Modal, Switch, TimePicker } from 'antd'
+import { DatePicker, Form, Input, Modal, Select, Switch } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect } from 'react'
 import type { MedicationReminder, MedicationReminderRequest } from '../../api/medication'
@@ -14,7 +14,9 @@ interface MedicationReminderModalProps {
 interface MedicationReminderFormValues {
   medicineName: string
   dosage: string
-  timeOfDay: Dayjs
+  timesOfDay: string[]
+  treatmentDates: [Dayjs, Dayjs] | null
+  instructions: string
   active: boolean
 }
 
@@ -27,7 +29,11 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
       medicineName: reminder?.medicineName ?? '',
       dosage: reminder?.dosage ?? '',
       // BE co the tra "HH:mm" hoac "HH:mm:ss" tuy LocalTime co giay hay khong - thu ca 2.
-      timeOfDay: reminder ? dayjs(reminder.timeOfDay, ['HH:mm:ss', 'HH:mm']) : dayjs('08:00', 'HH:mm'),
+      timesOfDay: reminder ? reminder.timesOfDay.map((time) => time.slice(0, 5)) : ['08:00'],
+      treatmentDates: reminder?.startDate && reminder?.endDate
+        ? [dayjs(reminder.startDate), dayjs(reminder.endDate)]
+        : null,
+      instructions: reminder?.instructions ?? '',
       active: reminder?.active ?? true,
     })
   }, [open, reminder, form])
@@ -37,7 +43,10 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
       onSubmit({
         medicineName: values.medicineName,
         dosage: values.dosage || null,
-        timeOfDay: values.timeOfDay.format('HH:mm:ss'),
+        timesOfDay: values.timesOfDay.map((time) => `${time}:00`),
+        startDate: values.treatmentDates?.[0].format('YYYY-MM-DD') ?? null,
+        endDate: values.treatmentDates?.[1].format('YYYY-MM-DD') ?? null,
+        instructions: values.instructions || null,
         active: values.active,
       })
     })
@@ -60,8 +69,19 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
         <Form.Item label="Liều lượng" name="dosage" rules={[{ max: 200, message: 'Liều lượng tối đa 200 ký tự' }]}>
           <Input maxLength={200} showCount placeholder="Vd: 20mg, 1 viên" />
         </Form.Item>
-        <Form.Item label="Giờ nhắc (lặp lại hằng ngày)" name="timeOfDay" rules={[{ required: true, message: 'Chọn giờ nhắc' }]}>
-          <TimePicker className="w-full" format="HH:mm" />
+        <Form.Item label="Các giờ uống trong ngày" name="timesOfDay" rules={[{ required: true, message: 'Chọn ít nhất một giờ nhắc' }]}>
+          <Select mode="multiple" className="w-full" options={Array.from({ length: 96 }, (_, index) => {
+            const hour = Math.floor(index / 4).toString().padStart(2, '0')
+            const minute = ((index % 4) * 15).toString().padStart(2, '0')
+            const value = `${hour}:${minute}`
+            return { value, label: value }
+          })} maxTagCount="responsive" />
+        </Form.Item>
+        <Form.Item label="Thời gian điều trị" name="treatmentDates">
+          <DatePicker.RangePicker className="w-full" format="DD/MM/YYYY" />
+        </Form.Item>
+        <Form.Item label="Hướng dẫn dùng thuốc" name="instructions" rules={[{ max: 1000, message: 'Hướng dẫn tối đa 1000 ký tự' }]}>
+          <Input.TextArea rows={2} maxLength={1000} showCount placeholder="Vd: uống trước ăn sáng 30 phút" />
         </Form.Item>
         <Form.Item label="Đang bật nhắc" name="active" valuePropName="checked">
           <Switch />

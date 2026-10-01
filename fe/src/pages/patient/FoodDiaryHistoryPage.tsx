@@ -37,7 +37,7 @@ export default function FoodDiaryHistoryPage() {
       <div className="mx-auto max-w-4xl">
         <div className="mb-6">
           <Text type="secondary">Theo dõi sức khỏe</Text>
-          <Title level={2} className="mb-1! mt-1!">Lịch sử &amp; xu hướng ăn uống</Title>
+          <Title level={2} className="mb-1! mt-1!">Lịch sử ăn uống</Title>
           <Text type="secondary">Số bữa ăn ghi nhận mỗi ngày trong 30 ngày gần nhất.</Text>
         </div>
 

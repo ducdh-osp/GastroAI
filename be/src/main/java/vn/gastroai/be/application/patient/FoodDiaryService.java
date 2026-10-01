@@ -9,6 +9,8 @@ import vn.gastroai.be.application.support.OwnedResourceLoader;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.application.support.VietnamDateRange;
 import vn.gastroai.be.api.patient.DailyCountPoint;
+import vn.gastroai.be.api.patient.DigestiveTimelineItem;
+import vn.gastroai.be.api.patient.DigestiveTimelineResponse;
 import vn.gastroai.be.api.patient.FoodDiaryEntryRequest;
 import vn.gastroai.be.api.patient.FoodDiaryEntryResponse;
 import vn.gastroai.be.api.patient.FoodDiaryListResponse;
@@ -16,6 +18,7 @@ import vn.gastroai.be.api.patient.FoodDiaryTrendResponse;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.patient.FoodDiaryEntry;
 import vn.gastroai.be.infrastructure.persistence.postgres.FoodDiaryEntryRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.BristolLogRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 
 import java.time.LocalDate;
@@ -31,17 +34,22 @@ public class FoodDiaryService {
     // "an luc may gio theo dong ho cua ho", khong phai UTC.
     private final FoodDiaryEntryRepository foodDiaryEntryRepository;
     private final PatientRepository patientRepository;
+    private final BristolLogRepository bristolLogRepository;
 
-    public FoodDiaryService(FoodDiaryEntryRepository foodDiaryEntryRepository, PatientRepository patientRepository) {
+    public FoodDiaryService(FoodDiaryEntryRepository foodDiaryEntryRepository,
+                            PatientRepository patientRepository,
+                            BristolLogRepository bristolLogRepository) {
         this.foodDiaryEntryRepository = foodDiaryEntryRepository;
         this.patientRepository = patientRepository;
+        this.bristolLogRepository = bristolLogRepository;
     }
 
     @Transactional("postgresTransactionManager")
     public FoodDiaryEntryResponse create(Long patientId, FoodDiaryEntryRequest request) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay benh nhan"));
-        FoodDiaryEntry entry = new FoodDiaryEntry(patient, request.eatenAt(), request.description(), request.notes());
+        FoodDiaryEntry entry = new FoodDiaryEntry(patient, request.eatenAt(), request.description(),
+                request.mealType(), request.symptomsAfterMeal(), request.symptomOnsetMinutes(), request.notes());
         return toResponse(foodDiaryEntryRepository.save(entry));
     }
 
@@ -50,6 +58,9 @@ public class FoodDiaryService {
         FoodDiaryEntry entry = loadOwned(patientId, entryId);
         entry.setEatenAt(request.eatenAt());
         entry.setDescription(request.description());
+        entry.setMealType(request.mealType());
+        entry.setSymptomsAfterMeal(request.symptomsAfterMeal());
+        entry.setSymptomOnsetMinutes(request.symptomOnsetMinutes());
         entry.setNotes(request.notes());
         return toResponse(foodDiaryEntryRepository.save(entry));
     }
@@ -93,6 +104,32 @@ public class FoodDiaryService {
         return new FoodDiaryTrendResponse(points);
     }
 
+    @Transactional(value = "postgresTransactionManager", readOnly = true)
+    public DigestiveTimelineResponse timeline(Long patientId, int days) {
+        VietnamDateRange.Range range = VietnamDateRange.recentDaysIncludingToday(days);
+        List<DigestiveTimelineItem> meals = foodDiaryEntryRepository
+                .findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(
+                        patientId, range.fromInclusive(), range.toExclusive())
+                .stream()
+                .map(entry -> new DigestiveTimelineItem(
+                        "MEAL", entry.getId(), entry.getEatenAt(), entry.getMealType(),
+                        entry.getDescription(), entry.getSymptomsAfterMeal(), entry.getSymptomOnsetMinutes(),
+                        null, entry.getNotes()))
+                .toList();
+        List<DigestiveTimelineItem> bristolLogs = bristolLogRepository
+                .findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(
+                        patientId, range.fromInclusive(), range.toExclusive())
+                .stream()
+                .map(log -> new DigestiveTimelineItem(
+                        "BRISTOL", log.getId(), log.getLoggedAt(), null,
+                        null, null, null, log.getBristolType(), log.getNotes()))
+                .toList();
+        List<DigestiveTimelineItem> items = java.util.stream.Stream.concat(meals.stream(), bristolLogs.stream())
+                .sorted(java.util.Comparator.comparing(DigestiveTimelineItem::occurredAt).reversed())
+                .toList();
+        return new DigestiveTimelineResponse(items);
+    }
+
     private FoodDiaryEntry loadOwned(Long patientId, Long entryId) {
         return OwnedResourceLoader.loadOwned(foodDiaryEntryRepository.findById(entryId),
                 e -> e.getPatient().getId().equals(patientId),
@@ -100,6 +137,7 @@ public class FoodDiaryService {
     }
 
     private FoodDiaryEntryResponse toResponse(FoodDiaryEntry entry) {
-        return new FoodDiaryEntryResponse(entry.getId(), entry.getEatenAt(), entry.getDescription(), entry.getNotes());
+        return new FoodDiaryEntryResponse(entry.getId(), entry.getEatenAt(), entry.getDescription(),
+                entry.getMealType(), entry.getSymptomsAfterMeal(), entry.getSymptomOnsetMinutes(), entry.getNotes());
     }
 }

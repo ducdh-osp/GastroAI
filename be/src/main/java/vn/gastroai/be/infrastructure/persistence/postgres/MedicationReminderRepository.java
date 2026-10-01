@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface MedicationReminderRepository extends JpaRepository<MedicationReminder, Long> {
 
-    List<MedicationReminder> findByPatientIdOrderByTimeOfDayAsc(Long patientId);
+    List<MedicationReminder> findByPatientIdOrderByCreatedAtAsc(Long patientId);
 }

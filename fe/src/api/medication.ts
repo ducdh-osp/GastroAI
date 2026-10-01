@@ -5,21 +5,28 @@ export interface MedicationReminder {
   id: number
   medicineName: string
   dosage: string | null
-  timeOfDay: string
+  timesOfDay: string[]
+  startDate: string | null
+  endDate: string | null
+  instructions: string | null
   active: boolean
-  confirmedToday: boolean
+  confirmedTimesToday: string[]
 }
 
 export interface MedicationReminderRequest {
   medicineName: string
   dosage: string | null
-  timeOfDay: string
+  timesOfDay: string[]
+  startDate: string | null
+  endDate: string | null
+  instructions: string | null
   active: boolean
 }
 
 export interface MedicationConfirmation {
   id: number
   reminderId: number
+  scheduledTime: string
   confirmedAt: string
 }
 
@@ -27,6 +34,7 @@ export interface MedicationConfirmationDetail {
   id: number
   reminderId: number
   medicineName: string
+  scheduledTime: string
   confirmedAt: string
 }
 
@@ -73,9 +81,9 @@ export async function deleteMedicationReminder(id: number): Promise<void> {
   }
 }
 
-export async function confirmMedicationDose(reminderId: number): Promise<MedicationConfirmation> {
+export async function confirmMedicationDose(reminderId: number, scheduledTime: string): Promise<MedicationConfirmation> {
   try {
-    const { data } = await apiClient.post<MedicationConfirmation>(`/patient/medications/${reminderId}/confirmations`)
+    const { data } = await apiClient.post<MedicationConfirmation>(`/patient/medications/${reminderId}/confirmations`, { scheduledTime })
     return data
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể ghi nhận đã uống thuốc. Vui lòng thử lại.')

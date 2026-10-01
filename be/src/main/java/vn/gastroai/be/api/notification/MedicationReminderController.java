@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.notification.MedicationReminderService;
+import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
 import java.util.List;
@@ -29,14 +30,12 @@ public class MedicationReminderController {
     public MedicationReminderResponse create(
             @Valid @RequestBody MedicationReminderRequest request,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        return medicationReminderService.create(Long.valueOf(principal.getName()), request);
+        return medicationReminderService.create(AuthenticatedRequest.patientId(principal, authentication), request);
     }
 
     @GetMapping
     public List<MedicationReminderResponse> list(Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        return medicationReminderService.list(Long.valueOf(principal.getName()));
+        return medicationReminderService.list(AuthenticatedRequest.patientId(principal, authentication));
     }
 
     @PutMapping("/{id}")
@@ -44,8 +43,7 @@ public class MedicationReminderController {
             @PathVariable Long id,
             @Valid @RequestBody MedicationReminderRequest request,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        return medicationReminderService.update(Long.valueOf(principal.getName()), id, request);
+        return medicationReminderService.update(AuthenticatedRequest.patientId(principal, authentication), id, request);
     }
 
     @DeleteMapping("/{id}")
@@ -53,16 +51,16 @@ public class MedicationReminderController {
     public void delete(
             @PathVariable Long id,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        medicationReminderService.delete(Long.valueOf(principal.getName()), id);
+        medicationReminderService.delete(AuthenticatedRequest.patientId(principal, authentication), id);
     }
 
     @PostMapping("/{id}/confirmations")
     public MedicationConfirmationResponse confirmDose(
             @PathVariable Long id,
+            @Valid @RequestBody MedicationConfirmationRequest request,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
-        return medicationReminderService.confirmDose(Long.valueOf(principal.getName()), id);
+        return medicationReminderService.confirmDose(
+                AuthenticatedRequest.patientId(principal, authentication), id, request);
     }
 
     @GetMapping("/confirmations")
@@ -70,16 +68,10 @@ public class MedicationReminderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Principal principal, Authentication authentication) {
-        requireAuthenticated(authentication);
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
-        return medicationReminderService.listConfirmations(Long.valueOf(principal.getName()), page, size);
-    }
-
-    private void requireAuthenticated(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new org.springframework.security.access.AccessDeniedException("Chua dang nhap");
-        }
+        return medicationReminderService.listConfirmations(patientId, page, size);
     }
 }

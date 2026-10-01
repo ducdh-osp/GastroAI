@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /** UC0016 - 1 lan benh nhan bam "da uong thuoc" cho 1 MedicationReminder. GD4 chi la log
  * don gian (test thu cong), chua noi voi notification/scheduler that (GD7). */
@@ -35,9 +36,18 @@ public class MedicationConfirmation {
     @Column(name = "confirmation_date")
     private LocalDate confirmationDate;
 
+    @Column(name = "scheduled_time")
+    private LocalTime scheduledTime;
+
     public MedicationConfirmation(MedicationReminder reminder, Instant confirmedAt, LocalDate confirmationDate) {
+        this(reminder, confirmedAt, confirmationDate, reminder.getTimeOfDay());
+    }
+
+    public MedicationConfirmation(MedicationReminder reminder, Instant confirmedAt,
+                                  LocalDate confirmationDate, LocalTime scheduledTime) {
         this.reminder = reminder;
         this.confirmedAt = confirmedAt;
         this.confirmationDate = confirmationDate;
+        this.scheduledTime = scheduledTime;
     }
 }
