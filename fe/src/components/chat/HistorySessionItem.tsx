@@ -1,12 +1,13 @@
-import { ArrowRightOutlined, CommentOutlined } from '@ant-design/icons'
-import { Button, Tooltip } from 'antd'
+import { CommentOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Button, Popconfirm, Tooltip } from 'antd'
 import type { ChatSessionSummary } from '../../api/chat'
 
 interface HistorySessionItemProps {
   session: ChatSessionSummary
   isSelected: boolean
   onClick: () => void
-  onContinue: () => void
+  onDelete: () => void
+  deleting?: boolean
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -27,7 +28,8 @@ export function HistorySessionItem({
   session,
   isSelected,
   onClick,
-  onContinue,
+  onDelete,
+  deleting = false,
 }: HistorySessionItemProps) {
   return (
     <div
@@ -59,19 +61,33 @@ export function HistorySessionItem({
         </div>
       </div>
 
-      {/* Nút "Tiếp tục" hiện ra khi hover */}
-      <Tooltip title="Tiếp tục cuộc trò chuyện này">
-        <Button
-          type="text"
-          size="small"
-          icon={<ArrowRightOutlined />}
-          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-teal-600 hover:bg-teal-50!"
-          onClick={(e) => {
-            e.stopPropagation()
-            onContinue()
-          }}
-        />
-      </Tooltip>
+      <Popconfirm
+        title="Xóa phiên chat này?"
+        description="Toàn bộ tin nhắn và đánh giá trong phiên sẽ bị xóa vĩnh viễn."
+        okText="Xóa phiên"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true, loading: deleting }}
+        onConfirm={(event) => {
+          event?.stopPropagation()
+          onDelete()
+        }}
+        onCancel={(event) => event?.stopPropagation()}
+      >
+        <Tooltip title="Xóa phiên chat khỏi lịch sử">
+          <Button
+            type="text"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            loading={deleting}
+            disabled={deleting}
+            aria-label={`Xóa phiên chat: ${session.title}`}
+            className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50!"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          />
+        </Tooltip>
+      </Popconfirm>
     </div>
   )
 }

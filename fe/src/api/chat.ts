@@ -137,6 +137,11 @@ export async function getChatSessionMessages(sessionId: number): Promise<ChatMes
   return data
 }
 
+/** Xóa một phiên chat cùng toàn bộ tin nhắn và đánh giá liên quan. */
+export async function deleteChatSession(sessionId: number): Promise<void> {
+  await apiClient.delete(`/chat/sessions/${sessionId}`)
+}
+
 /** Đánh giá câu trả lời AI (UPSERT — có thể đổi ý). */
 export async function rateMessage(messageId: number, rating: RatingValue): Promise<void> {
   await apiClient.post(`/chat/messages/${messageId}/rating`, { rating })

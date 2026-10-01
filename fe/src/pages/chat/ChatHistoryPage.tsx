@@ -2,7 +2,7 @@ import { ClockCircleOutlined, LoadingOutlined, MessageOutlined } from '@ant-desi
 import { Alert, Spin, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getChatSessionMessages, listChatSessions } from '../../api/chat'
+import { deleteChatSession, getChatSessionMessages, listChatSessions } from '../../api/chat'
 import type { ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
 import { AppShell } from '../../components/layout/AppShell'
 import { HistorySessionItem } from '../../components/chat/HistorySessionItem'
@@ -23,6 +23,8 @@ export default function ChatHistoryPage() {
   const [messages, setMessages] = useState<ChatMessageDetail[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [messagesError, setMessagesError] = useState<string | null>(null)
+  const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     setLoadingSessions(true)
@@ -52,6 +54,27 @@ export default function ChatHistoryPage() {
     navigate('/chat', { state: { resumeSessionId: session.id, sessionTitle: session.title } })
   }
 
+  async function handleDeleteSession(session: ChatSessionSummary) {
+    if (deletingSessionId !== null) return
+
+    const sessionId = session.id
+    setDeletingSessionId(sessionId)
+    setDeleteError(null)
+    try {
+      await deleteChatSession(sessionId)
+      setSessions((current) => current.filter((session) => session.id !== sessionId))
+      if (selectedSession?.id === sessionId) {
+        setSelectedSession(null)
+        setMessages([])
+        setMessagesError(null)
+      }
+    } catch {
+      setDeleteError('Không thể xóa phiên chat. Vui lòng thử lại.')
+    } finally {
+      setDeletingSessionId(null)
+    }
+  }
+
   return (
     <AppShell fixedViewport>
       <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col">
@@ -64,6 +87,8 @@ export default function ChatHistoryPage() {
             Xem lại các cuộc trò chuyện với trợ lý GastroAI và tiếp tục nơi bạn dừng lại.
           </Text>
         </div>
+
+        {deleteError && <Alert type="error" message={deleteError} showIcon className="mb-4 shrink-0" />}
 
         <div className="flex min-h-0 flex-1 gap-6">
           {/* ── Cột trái: danh sách phiên ── */}
@@ -97,7 +122,8 @@ export default function ChatHistoryPage() {
                       session={session}
                       isSelected={selectedSession?.id === session.id}
                       onClick={() => void handleSelectSession(session)}
-                      onContinue={() => handleContinueChat(session)}
+                      onDelete={() => void handleDeleteSession(session)}
+                      deleting={deletingSessionId === session.id}
                     />
                   ))}
                 </div>
