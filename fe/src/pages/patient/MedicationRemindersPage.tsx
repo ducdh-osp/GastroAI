@@ -33,7 +33,10 @@ function reminderToRequest(reminder: MedicationReminder): MedicationReminderRequ
   return {
     medicineName: reminder.medicineName,
     dosage: reminder.dosage,
-    timeOfDay: reminder.timeOfDay,
+    timesOfDay: reminder.timesOfDay,
+    startDate: reminder.startDate,
+    endDate: reminder.endDate,
+    instructions: reminder.instructions,
     active: reminder.active,
   }
 }
@@ -48,7 +51,7 @@ export default function MedicationRemindersPage() {
   const [editingReminder, setEditingReminder] = useState<MedicationReminder | null>(null)
   const [saving, setSaving] = useState(false)
   const toggleGuard = useInFlightGuard<number>()
-  const confirmGuard = useInFlightGuard<number>()
+  const confirmGuard = useInFlightGuard<string>()
   const deleteGuard = useInFlightGuard<number>()
 
   const [confirmations, setConfirmations] = useState<MedicationConfirmationDetail[]>([])
@@ -134,14 +137,17 @@ export default function MedicationRemindersPage() {
     })
   }
 
-  async function handleConfirmDose(reminder: MedicationReminder) {
-    await confirmGuard.run(reminder.id, async () => {
+  async function handleConfirmDose(reminder: MedicationReminder, scheduledTime: string) {
+    const guardKey = `${reminder.id}-${scheduledTime}`
+    await confirmGuard.run(guardKey, async () => {
       setError(null)
       setSuccess(null)
       try {
-        await confirmMedicationDose(reminder.id)
+        await confirmMedicationDose(reminder.id, scheduledTime)
         setReminders((current) => current.map((item) =>
-          item.id === reminder.id ? { ...item, confirmedToday: true } : item,
+          item.id === reminder.id
+            ? { ...item, confirmedTimesToday: [...item.confirmedTimesToday, scheduledTime] }
+            : item,
         ))
         setSuccess(`Đã ghi nhận uống ${reminder.medicineName}.`)
         // Chỉ gọi một trong hai: đổi về trang 0 sẽ để useEffect tải lại lịch sử.
@@ -162,7 +168,19 @@ export default function MedicationRemindersPage() {
       title: 'Liều lượng', dataIndex: 'dosage', key: 'dosage',
       render: (val: string | null) => val || <Text type="secondary">—</Text>,
     },
-    { title: 'Giờ nhắc', dataIndex: 'timeOfDay', key: 'timeOfDay', width: 100, render: formatTimeOfDay },
+    {
+      title: 'Giờ nhắc', dataIndex: 'timesOfDay', key: 'timesOfDay', width: 180,
+      render: (times: string[]) => <div className="flex flex-wrap gap-1">{times.map((time) => <Tag key={time}>{formatTimeOfDay(time)}</Tag>)}</div>,
+    },
+    {
+      title: 'Liệu trình / hướng dẫn', key: 'regimen',
+      render: (_, record) => (
+        <div>
+          <div>{record.startDate || record.endDate ? `${record.startDate ?? 'Không giới hạn'} → ${record.endDate ?? 'Không giới hạn'}` : 'Dùng liên tục'}</div>
+          {record.instructions && <Text type="secondary">{record.instructions}</Text>}
+        </div>
+      ),
+    },
     {
       title: 'Bật nhắc', key: 'active', width: 100,
       render: (_, record) => (
@@ -178,18 +196,23 @@ export default function MedicationRemindersPage() {
       ),
     },
     {
-      title: '', key: 'actions', width: 180,
+      title: 'Xác nhận liều', key: 'actions', width: 260,
       render: (_, record) => (
-        <div className="flex gap-1">
-          <Button
-            size="small"
-            icon={<CheckCircleOutlined />}
-            loading={confirmGuard.inFlightId === record.id}
-            disabled={record.confirmedToday || (confirmGuard.inFlightId !== null && confirmGuard.inFlightId !== record.id)}
-            onClick={() => handleConfirmDose(record)}
-          >
-            {record.confirmedToday ? 'Đã xác nhận hôm nay' : 'Đã uống'}
-          </Button>
+        <div className="flex flex-wrap gap-1">
+          {record.timesOfDay.map((time) => {
+            const guardKey = `${record.id}-${time}`
+            const confirmed = record.confirmedTimesToday.includes(time)
+            return <Button
+              key={time}
+              size="small"
+              icon={<CheckCircleOutlined />}
+              loading={confirmGuard.inFlightId === guardKey}
+              disabled={confirmed || (confirmGuard.inFlightId !== null && confirmGuard.inFlightId !== guardKey)}
+              onClick={() => handleConfirmDose(record, time)}
+            >
+              {confirmed ? `${formatTimeOfDay(time)} đã uống` : `Uống ${formatTimeOfDay(time)}`}
+            </Button>
+          })}
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm
             title="Tắt lịch nhắc này?"
@@ -215,6 +238,7 @@ export default function MedicationRemindersPage() {
   const confirmationColumns: ColumnsType<MedicationConfirmationDetail> = [
     { title: 'Thời điểm xác nhận', dataIndex: 'confirmedAt', key: 'confirmedAt', width: 180, render: formatDateTime },
     { title: 'Thuốc', dataIndex: 'medicineName', key: 'medicineName' },
+    { title: 'Liều lúc', dataIndex: 'scheduledTime', key: 'scheduledTime', width: 100, render: formatTimeOfDay },
   ]
 
   return (
@@ -225,7 +249,7 @@ export default function MedicationRemindersPage() {
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhắc uống thuốc</Title>
             <Text type="secondary">
-              Thiết lập giờ nhắc lặp lại hằng ngày và bấm "Đã uống" để ghi nhận (chưa gửi thông báo thật, xác nhận thủ công).
+              Thiết lập liệu trình, nhiều giờ uống mỗi ngày và hướng dẫn trước/sau ăn. Danh sách này dành cho các liều cần nhắc, tách biệt với thuốc dài hạn tự khai trong hồ sơ.
             </Text>
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm lịch nhắc</Button>

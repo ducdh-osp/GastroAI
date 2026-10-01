@@ -7,7 +7,10 @@ import vn.gastroai.be.api.patient.FoodDiaryEntryResponse;
 import vn.gastroai.be.api.patient.FoodDiaryTrendResponse;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.patient.FoodDiaryEntry;
+import vn.gastroai.be.domain.patient.BristolLog;
+import vn.gastroai.be.domain.patient.MealType;
 import vn.gastroai.be.infrastructure.persistence.postgres.FoodDiaryEntryRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.BristolLogRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 
 import java.time.Instant;
@@ -25,7 +28,9 @@ class FoodDiaryServiceTest {
 
     private final FoodDiaryEntryRepository foodDiaryEntryRepository = mock(FoodDiaryEntryRepository.class);
     private final PatientRepository patientRepository = mock(PatientRepository.class);
-    private final FoodDiaryService service = new FoodDiaryService(foodDiaryEntryRepository, patientRepository);
+    private final BristolLogRepository bristolLogRepository = mock(BristolLogRepository.class);
+    private final FoodDiaryService service = new FoodDiaryService(
+            foodDiaryEntryRepository, patientRepository, bristolLogRepository);
 
     @Test
     void updateThrowsWhenEntryBelongsToAnotherPatient() {
@@ -72,5 +77,29 @@ class FoodDiaryServiceTest {
         assertEquals(7, trend.points().size());
         long totalCount = trend.points().stream().mapToLong(DailyCountPoint::count).sum();
         assertEquals(1, totalCount); // dung 1 entry duy nhat trong toan bo khoang
+    }
+
+    @Test
+    void timelineCombinesMealsAndBristolLogsInReverseChronologicalOrder() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        Instant mealTime = Instant.now().minusSeconds(3600);
+        Instant bristolTime = Instant.now();
+        FoodDiaryEntry meal = new FoodDiaryEntry(patient, mealTime, "Sua", MealType.BREAKFAST,
+                "Day bung", 30, null);
+        meal.setId(10L);
+        BristolLog bristolLog = new BristolLog(patient, bristolTime, 6, "Long");
+        bristolLog.setId(20L);
+        when(foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(anyLong(), any(), any()))
+                .thenReturn(List.of(meal));
+        when(bristolLogRepository.findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(anyLong(), any(), any()))
+                .thenReturn(List.of(bristolLog));
+
+        var timeline = service.timeline(1L, 30);
+
+        assertEquals(2, timeline.items().size());
+        assertEquals("BRISTOL", timeline.items().get(0).type());
+        assertEquals("MEAL", timeline.items().get(1).type());
+        assertEquals("Day bung", timeline.items().get(1).symptomsAfterMeal());
     }
 }

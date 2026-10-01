@@ -57,8 +57,10 @@ public class MedicationReminderController {
     @PostMapping("/{id}/confirmations")
     public MedicationConfirmationResponse confirmDose(
             @PathVariable Long id,
+            @Valid @RequestBody MedicationConfirmationRequest request,
             Principal principal, Authentication authentication) {
-        return medicationReminderService.confirmDose(AuthenticatedRequest.patientId(principal, authentication), id);
+        return medicationReminderService.confirmDose(
+                AuthenticatedRequest.patientId(principal, authentication), id, request);
     }
 
     @GetMapping("/confirmations")

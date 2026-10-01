@@ -17,6 +17,10 @@ import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
 
+const MEAL_TYPE_LABELS = {
+  BREAKFAST: 'Bữa sáng', LUNCH: 'Bữa trưa', DINNER: 'Bữa tối', SNACK: 'Bữa phụ', OTHER: 'Khác',
+} as const
+
 export default function FoodDiaryPage() {
   const {
     items, loading, error, setError, page, setPage, pageSize, totalElements, reload,
@@ -75,7 +79,14 @@ export default function FoodDiaryPage() {
 
   const columns: ColumnsType<FoodDiaryEntry> = [
     { title: 'Thời điểm ăn', dataIndex: 'eatenAt', key: 'eatenAt', width: 180, render: formatDateTime },
+    { title: 'Loại bữa', dataIndex: 'mealType', key: 'mealType', width: 110, render: (value: keyof typeof MEAL_TYPE_LABELS) => MEAL_TYPE_LABELS[value] },
     { title: 'Món ăn', dataIndex: 'description', key: 'description' },
+    {
+      title: 'Triệu chứng sau ăn', dataIndex: 'symptomsAfterMeal', key: 'symptomsAfterMeal',
+      render: (value: string | null, record) => value
+        ? `${value}${record.symptomOnsetMinutes !== null ? ` (sau ${record.symptomOnsetMinutes} phút)` : ''}`
+        : <Text type="secondary">—</Text>,
+    },
     {
       title: 'Ghi chú', dataIndex: 'notes', key: 'notes',
       render: (val: string | null) => val || <Text type="secondary">—</Text>,

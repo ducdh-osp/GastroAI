@@ -30,6 +30,16 @@ public class FoodDiaryEntry {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "meal_type", nullable = false, length = 20)
+    private MealType mealType = MealType.OTHER;
+
+    @Column(name = "symptoms_after_meal", columnDefinition = "TEXT")
+    private String symptomsAfterMeal;
+
+    @Column(name = "symptom_onset_minutes")
+    private Integer symptomOnsetMinutes;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -45,9 +55,17 @@ public class FoodDiaryEntry {
     }
 
     public FoodDiaryEntry(Patient patient, Instant eatenAt, String description, String notes) {
+        this(patient, eatenAt, description, MealType.OTHER, null, null, notes);
+    }
+
+    public FoodDiaryEntry(Patient patient, Instant eatenAt, String description, MealType mealType,
+                          String symptomsAfterMeal, Integer symptomOnsetMinutes, String notes) {
         this.patient = patient;
         this.eatenAt = eatenAt;
         this.description = description;
+        this.mealType = mealType;
+        this.symptomsAfterMeal = symptomsAfterMeal;
+        this.symptomOnsetMinutes = symptomOnsetMinutes;
         this.notes = notes;
     }
 }

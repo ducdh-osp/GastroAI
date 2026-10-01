@@ -1,14 +1,20 @@
 package vn.gastroai.be.api.notification;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
+import java.util.Set;
 
 /** UC0015 - 1 lich nhac uong thuoc. */
 public record MedicationReminderResponse(
         Long id,
         String medicineName,
         String dosage,
-        LocalTime timeOfDay,
+        List<LocalTime> timesOfDay,
+        LocalDate startDate,
+        LocalDate endDate,
+        String instructions,
         boolean active,
-        boolean confirmedToday
+        Set<LocalTime> confirmedTimesToday
 ) {
 }

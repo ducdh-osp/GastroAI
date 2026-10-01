@@ -8,15 +8,17 @@ import org.springframework.data.repository.query.Param;
 import vn.gastroai.be.domain.notification.MedicationConfirmation;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 public interface MedicationConfirmationRepository extends JpaRepository<MedicationConfirmation, Long> {
 
-    boolean existsByReminder_IdAndConfirmationDate(Long reminderId, LocalDate confirmationDate);
+    boolean existsByReminder_IdAndConfirmationDateAndScheduledTime(
+            Long reminderId, LocalDate confirmationDate, LocalTime scheduledTime);
 
-    @Query("select c.reminder.id from MedicationConfirmation c "
+    @Query("select c from MedicationConfirmation c join fetch c.reminder r "
             + "where c.reminder.patient.id = :patientId and c.confirmationDate = :confirmationDate")
-    List<Long> findReminderIdsByPatientIdAndConfirmationDate(
+    List<MedicationConfirmation> findByPatientIdAndConfirmationDate(
             @Param("patientId") Long patientId, @Param("confirmationDate") LocalDate confirmationDate);
 
     // JOIN FETCH reminder - service.listConfirmations() doc reminder.getMedicineName() cho

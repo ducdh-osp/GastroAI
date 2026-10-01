@@ -54,6 +54,17 @@ public class FoodDiaryController {
         return foodDiaryService.trend(patientId, days);
     }
 
+    @GetMapping("/timeline")
+    public DigestiveTimelineResponse timeline(
+            @RequestParam(defaultValue = "30") int days,
+            Principal principal, Authentication authentication) {
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
+        if (days < 1 || days > 90) {
+            throw new IllegalArgumentException("days trong khoang 1..90");
+        }
+        return foodDiaryService.timeline(patientId, days);
+    }
+
     @PutMapping("/{id}")
     public FoodDiaryEntryResponse update(
             @PathVariable Long id,

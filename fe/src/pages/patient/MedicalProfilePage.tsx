@@ -194,7 +194,7 @@ export default function MedicalProfilePage() {
                   <Input.TextArea rows={2} placeholder="Nhập các dị ứng, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
                 </Form.Item>
                 <Form.Item
-                  label="Thuốc đang dùng"
+                  label="Thuốc đang dùng dài hạn / tự khai"
                   name="currentMedications"
                   extra="Danh sách này chỉ để tham khảo trong hồ sơ; lịch bật/tắt và xác nhận liều được quản lý ở trang Nhắc uống thuốc."
                 >

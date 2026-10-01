@@ -3,14 +3,15 @@ package vn.gastroai.be.api.patient;
 import java.time.Instant;
 import vn.gastroai.be.domain.patient.MealType;
 
-/** UC0011 - 1 muc trong nhat ky an uong. */
-public record FoodDiaryEntryResponse(
+public record DigestiveTimelineItem(
+        String type,
         Long id,
-        Instant eatenAt,
-        String description,
+        Instant occurredAt,
         MealType mealType,
+        String description,
         String symptomsAfterMeal,
         Integer symptomOnsetMinutes,
+        Integer bristolType,
         String notes
 ) {
 }
