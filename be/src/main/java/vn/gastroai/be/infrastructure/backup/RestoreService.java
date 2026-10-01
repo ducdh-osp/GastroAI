@@ -158,6 +158,7 @@ public class RestoreService {
             return files
                     .filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().startsWith(prefix))
+                    .filter(path -> path.getFileName().toString().endsWith(".sql"))
                     .max(Path::compareTo)
                     .orElse(null);
         } catch (Exception e) {

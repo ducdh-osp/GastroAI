@@ -4,8 +4,10 @@ import org.springframework.stereotype.Component;
 import vn.gastroai.be.config.BackupProperties;
 import org.springframework.scheduling.annotation.Scheduled;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,14 +39,12 @@ public class BackupScheduler {
             backupPostgres();
         } catch (Exception e) {
             logger.error("PostgreSQL backup failed:", e);
-            e.printStackTrace();
         }
 
         try {
             backupMysql();
         } catch (Exception e) {
             logger.error("MySQL backup failed:", e);
-            e.printStackTrace();
         }
 
         try {
@@ -132,43 +132,81 @@ public class BackupScheduler {
     private void runBackupProcess(
             ProcessBuilder processBuilder,
             Path outputFile,
-            String databaseName
-    ) {
+            String databaseName) {
+
         processBuilder.redirectErrorStream(false);
 
-        try {
-            Process process = processBuilder.start();
+        Process process = null;
 
-            Thread errorReaderThread = new Thread(() -> {
-                try (InputStream errorStream = process.getErrorStream()) {
-                    errorStream.readAllBytes();
+        try {
+            process = processBuilder.start();
+            Process currentProcess = process;
+
+            StringBuilder errorOutput = new StringBuilder();
+            Thread errorReader = new Thread(() -> {
+                try {
+                    errorOutput.append(new String(
+                            currentProcess.getErrorStream().readAllBytes(),
+                            StandardCharsets.UTF_8));
                 } catch (Exception ignored) {
+                    // Loi doc stderr khong che mat loi backup that - exitCode ben duoi van
+                    // phat hien duoc.
                 }
             });
-            errorReaderThread.start();
+            errorReader.start();
 
-            try (InputStream inputStream = process.getInputStream()) {
-                Files.copy(inputStream, outputFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            try (InputStream input = process.getInputStream()) {
+                Files.copy(input, outputFile, StandardCopyOption.REPLACE_EXISTING);
             }
-
-            errorReaderThread.join();
 
             int exitCode = process.waitFor();
+            errorReader.join();
 
             if (exitCode != 0) {
-                throw new IllegalStateException(databaseName + " backup failed with exit code " + exitCode);
+                // Lệnh dump thất bại giữa chừng vẫn có thể để lại file .sql dở dang trên
+                // đĩa — xoá đi để không nhầm lẫn với 1 bản backup hợp lệ khi restore sau này.
+                deleteBackupFile(outputFile);
+
+                throw new IllegalStateException(
+                        databaseName
+                                + " backup failed with exit code "
+                                + exitCode
+                                + (errorOutput.length() > 0 ? ": " + errorOutput : ""));
             }
 
-            logger.info("{} backup completed: {}", databaseName, outputFile);
+            logger.info(
+                    "{} backup completed: {}",
+                    databaseName,
+                    outputFile.toAbsolutePath());
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+
+            deleteBackupFile(outputFile);
+
+            throw new IllegalStateException(
+                    databaseName + " backup was interrupted",
+                    e);
 
         } catch (Exception e) {
+            deleteBackupFile(outputFile);
+
             throw new IllegalStateException(
-                    "Error during " + databaseName + " backup, output file: " +
+                    databaseName + " backup failed",
+                    e);
+        }
+    }
+
+    private void deleteBackupFile(Path outputFile) {
+        try {
+            Files.deleteIfExists(outputFile);
+        } catch (Exception e) {
+            logger.error(
+            "Cannot delete failed backup file: {}",
             outputFile, e);
         }
     }
 
- 
     private void cleanupOldBackups() throws Exception {
         Instant cutoff = Instant.now().minus(backupProperties.retentionDays(), ChronoUnit.DAYS);
 
