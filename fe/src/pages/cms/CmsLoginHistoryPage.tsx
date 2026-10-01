@@ -46,23 +46,35 @@ const columns: ColumnsType<LoginHistoryItem> = [
   {
     title: 'Thiết bị',
     key: 'device',
+    width: 280,
     render: (_, record) => (
-      <div>
+      <div className="min-w-0">
         <Text strong>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
-        <div><Text type="secondary">{record.userAgent ?? '—'}</Text></div>
+        <div>
+          <Text type="secondary" className="block truncate" title={record.userAgent ?? undefined}>
+            {record.userAgent ?? '—'}
+          </Text>
+        </div>
       </div>
     ),
   },
   {
     title: 'Địa chỉ IP',
     key: 'ip',
+    width: 160,
     render: (_, record) => <Text code>{record.ipAddress ?? '—'}</Text>,
   },
   {
     title: 'Lý do thất bại',
     dataIndex: 'failureReason',
     key: 'failureReason',
-    render: (val: string | null) => (val ? <Text type="danger">{val}</Text> : <Text type="secondary">—</Text>),
+    width: 220,
+    render: (val: string | null) =>
+      val ? (
+        <Text type="danger" className="block truncate" title={val}>{val}</Text>
+      ) : (
+        <Text type="secondary">—</Text>
+      ),
   },
   {
     title: 'Trạng thái',
@@ -130,7 +142,8 @@ export default function CmsLoginHistoryPage() {
             dataSource={items}
             rowKey="id"
             pagination={false}
-            scroll={{ x: 720 }}
+            scroll={{ x: 970 }}
+            tableLayout="fixed"
             locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
           />
         </Spin>
