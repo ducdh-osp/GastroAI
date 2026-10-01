@@ -23,6 +23,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
 import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
+import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
 
 export const router = createBrowserRouter([
   {
@@ -162,6 +163,14 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsLoginHistoryPage />
+              </CmsProtectedRoute>
+            ),
+          },
+           {
+            path: '/cms/triage-alerts',
+            element: (
+              <CmsProtectedRoute>
+                <CmsTriageAlertsPage />
               </CmsProtectedRoute>
             ),
           },
