@@ -1,4 +1,3 @@
-ư
 CREATE TABLE triage_alerts (
     id               BIGSERIAL PRIMARY KEY,
     patient_id       BIGINT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
