@@ -6,16 +6,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * UC0057 - Backup định kỳ 2 cơ sở dữ liệu bằng pg_dump/mysqldump (không dùng Docker theo
- * đúng phạm vi đề cương). Chạy lệnh CLI thật qua ProcessBuilder — máy chạy app bắt buộc
- * phải cài sẵn pg_dump và mysqldump trong PATH.
- */
+
 @Component
 public class BackupScheduler {
 
@@ -47,6 +45,15 @@ public class BackupScheduler {
         } catch (Exception e) {
             logger.error("MySQL backup failed:", e);
             e.printStackTrace();
+        }
+
+        // Bug fix (audit) - bo sung buoc don file backup cu, tranh tich luy vo han theo thoi
+        // gian co the lam day o dia neu chay lau dai. Chay rieng try/catch - loi khi don dep
+        // khong duoc anh huong toi backup vua tao thanh cong o tren.
+        try {
+            cleanupOldBackups();
+        } catch (Exception e) {
+            logger.error("Backup cleanup failed:", e);
         }
 
         logger.info("Database backup process completed.");
@@ -126,12 +133,7 @@ public class BackupScheduler {
                 "MySQL");
     }
 
-    /**
-     * pg_dump/mysqldump ghi kết quả ra stdout — đọc trực tiếp stdout rồi copy vào file,
-     * không cần bước trung gian. Đồng thời phải đọc stderr song song trên thread riêng
-     * (không đọc tuần tự sau stdout) — nếu không, khi buffer stderr của OS đầy mà không ai
-     * đọc, process con bị treo (deadlock) chờ ai đó đọc bớt stderr trước khi ghi tiếp stdout.
-     */
+   
     private void runBackupProcess(
             ProcessBuilder processBuilder,
             Path outputFile,
@@ -204,6 +206,28 @@ public class BackupScheduler {
             logger.error(
             "Cannot delete failed backup file: {}",
             outputFile, e);
+        }
+    }
+
+ 
+    private void cleanupOldBackups() throws Exception {
+        Instant cutoff = Instant.now().minus(backupProperties.retentionDays(), ChronoUnit.DAYS);
+
+        try (var files = Files.list(getBackupDir())) {
+            files
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".sql"))
+                    .forEach(path -> {
+                        try {
+                            Instant lastModified = Files.getLastModifiedTime(path).toInstant();
+                            if (lastModified.isBefore(cutoff)) {
+                                Files.delete(path);
+                                logger.info("Deleted old backup file: {}", path.toAbsolutePath());
+                            }
+                        } catch (Exception e) {
+                            logger.error("Cannot check/delete old backup file: {}", path, e);
+                        }
+                    });
         }
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
+import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
 import java.util.Optional;
@@ -14,9 +15,11 @@ import java.util.Optional;
 public class DocumentStatusService {
 
     private final DocumentRepository documentRepository;
+    private final ChunkRepository chunkRepository;
 
-    public DocumentStatusService(DocumentRepository documentRepository) {
+    public DocumentStatusService(DocumentRepository documentRepository, ChunkRepository chunkRepository) {
         this.documentRepository = documentRepository;
+        this.chunkRepository = chunkRepository;
     }
 
     @Transactional(readOnly = true)
@@ -69,6 +72,7 @@ public class DocumentStatusService {
         document.setErrorMessage(errorMessage);
 
         documentRepository.save(document);
+        chunkRepository.deleteByDocumentId(documentId);
     }
 
     private Document getDocument(Long documentId) {

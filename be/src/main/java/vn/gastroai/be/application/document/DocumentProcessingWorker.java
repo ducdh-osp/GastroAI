@@ -7,7 +7,8 @@ import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.infrastructure.ai.GeminiEmbeddingClient;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 import vn.gastroai.be.infrastructure.rag.EmbeddingStore;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -16,7 +17,7 @@ public class DocumentProcessingWorker {
 
     // UC0033 - ten model dung khi luu embedding, khop voi model GeminiEmbeddingClient dang goi.
     private static final String EMBEDDING_MODEL = "gemini-embedding-2";
-
+    private static final Logger log = LoggerFactory.getLogger(DocumentProcessingWorker.class);
     private final DocumentStatusService documentStatusService;
     private final DocumentExtractionService documentExtractionService;
     private final DocumentRepository documentRepository;
@@ -39,7 +40,7 @@ public class DocumentProcessingWorker {
         this.embeddingStore = embeddingStore;
     }
 
-    @Async
+    @Async("documentProcessingExecutor")
     public void processAsync(Long documentId, String source) {
 
         try {
@@ -74,7 +75,7 @@ public class DocumentProcessingWorker {
             documentStatusService.markDone(documentId);
 
         } catch (Exception e) {
-
+            log.error("Loi xu ly document id={}", documentId, e);
             documentStatusService.markError(
                     documentId,
                     getErrorMessage(e));

@@ -6,7 +6,7 @@ import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
@@ -102,5 +102,17 @@ public class DocumentUploadService {
         }
 
         return url;
+    }
+    @Transactional
+    public void delete(Long documentId) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Không tìm thấy document: " + documentId));
+
+        documentRepository.delete(document);
+
+        if (document.getSource() != null) {
+            fileStorageService.delete(Path.of(document.getSource()));
+        }
     }
 }

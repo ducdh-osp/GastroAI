@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import vn.gastroai.be.application.auth.AccountLockedException;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Map;
 
@@ -118,5 +119,10 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .orElse("Du lieu khong hop le");
         return ResponseEntity.badRequest().body(Map.of("message", message));
+    }
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleUploadTooLarge(MaxUploadSizeExceededException exception) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(Map.of("message", "File vuot qua gioi han 20MB cho phep"));
     }
 }

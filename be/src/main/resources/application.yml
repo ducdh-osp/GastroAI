@@ -22,7 +22,10 @@ spring:
     properties:
       mail.smtp.auth: ${SMTP_AUTH:false}
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
-
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
 server:
   # 1 cổng HTTP duy nhất phục vụ cả API Bệnh nhân (JWT, api/v1/auth/**, api/v1/me/**) lẫn
   # API CMS (session, api/v1/cms/**) — không phải 2 server riêng.
@@ -95,7 +98,7 @@ app:
   # dùng trực tiếp DataSourceProperties.
   backup:
     directory: ./backups
-
+    retention-days: ${BACKUP_RETENTION_DAYS:14}
     postgres:
       username: gastroai
       password: gastroai

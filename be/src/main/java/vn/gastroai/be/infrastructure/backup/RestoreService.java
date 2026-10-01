@@ -9,11 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * UC0058 - Khôi phục dữ liệu từ bản backup mới nhất do BackupScheduler tạo ra. Có backup
- * mà chưa từng thử restore thì không chắc backup đó dùng được — service này tồn tại để
- * kiểm chứng, không chỉ chạy 1 chiều "cứ dump ra rồi thôi".
- */
+
 @Service
 public class RestoreService {
 
@@ -42,9 +38,7 @@ public class RestoreService {
         log.info("Database restore process completed.");
     }
 
-    // psql có sẵn flag -f để chạy trực tiếp 1 file .sql, và -v ON_ERROR_STOP=1 để dừng ngay
-    // nếu 1 câu lệnh trong file lỗi (mặc định psql chạy tiếp các câu sau, dễ restore dở dang
-    // mà không ai biết).
+
     private void restorePostgres() {
         Path backupFile = findLatestBackup("postgres_");
 
@@ -83,9 +77,6 @@ public class RestoreService {
         );
     }
 
-    // mysql CLI không có flag "-f file.sql" như psql — cách chạy 1 script SQL là pipe nội
-    // dung file vào stdin của process, nên phải đọc file vào bộ nhớ rồi ghi qua
-    // process.getOutputStream() (đây là stdin của process con) thay vì dùng runProcess() chung.
     private void restoreMysql() {
         Path backupFile = findLatestBackup("mysql_");
 
@@ -109,8 +100,7 @@ public class RestoreService {
 
         processBuilder.environment().put(
                 "MYSQL_PWD",
-                mysql.password()
-        );
+                mysql.password());
 
         try {
             String sql = Files.readString(
@@ -124,6 +114,19 @@ public class RestoreService {
 
             Process process = processBuilder.start();
 
+            
+            StringBuilder errorOutput = new StringBuilder();
+            Thread errorReader = new Thread(() -> {
+                try {
+                    errorOutput.append(new String(
+                            process.getErrorStream().readAllBytes(),
+                            StandardCharsets.UTF_8));
+                } catch (Exception ignored) {
+                    
+                }
+            });
+            errorReader.start();
+
             process.getOutputStream().write(
                     sql.getBytes(StandardCharsets.UTF_8)
             );
@@ -131,15 +134,11 @@ public class RestoreService {
             process.getOutputStream().close();
 
             int exitCode = process.waitFor();
-
-            String error = new String(
-                    process.getErrorStream().readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+            errorReader.join();
 
             if (exitCode != 0) {
                 throw new IllegalStateException(
-                        "MySQL restore failed: " + error
+                        "MySQL restore failed: " + errorOutput
                 );
             }
 
@@ -164,9 +163,6 @@ public class RestoreService {
         }
     }
 
-    // Tên file backup có dạng "postgres_yyyyMMdd_HHmmss.sql" (xem BackupScheduler) nên so
-    // sánh chuỗi tên file theo thứ tự chữ cái cũng chính là so sánh theo thời gian — không
-    // cần đọc timestamp thật của file trên đĩa.
     private Path findLatestBackup(String prefix) {
         try (var files = Files.list(
                 Path.of(backupProperties.directory())
@@ -209,18 +205,27 @@ public class RestoreService {
         try {
             Process process = processBuilder.start();
 
-            int exitCode = process.waitFor();
+            StringBuilder errorOutput = new StringBuilder();
+            Thread errorReader = new Thread(() -> {
+                try {
+                    errorOutput.append(new String(
+                            process.getErrorStream().readAllBytes(),
+                            StandardCharsets.UTF_8));
+                } catch (Exception ignored) {
+                    // Bo qua loi doc stderr - loi restore that (neu co) van duoc phat hien
+                    // qua exitCode ben duoi.
+                }
+            });
+            errorReader.start();
 
-            String error = new String(
-                    process.getErrorStream().readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+            int exitCode = process.waitFor();
+            errorReader.join();
 
             if (exitCode != 0) {
                 throw new IllegalStateException(
                         databaseName
                                 + " restore failed: "
-                                + error
+                                + errorOutput
                 );
             }
 

@@ -14,6 +14,7 @@ import vn.gastroai.be.infrastructure.security.JwtAuthenticationFilter;
 import vn.gastroai.be.infrastructure.security.AdminSessionFilter;
 import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 import java.util.List;
 
 /**
@@ -32,6 +33,10 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
     }
 
     @Bean
@@ -68,6 +73,20 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
+                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/documents")
+                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
+                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
+                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/documents")
+                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
+                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/backup/**")
+                        .hasRole("ADMIN")
                         // Mọi endpoint còn lại (vd /api/v1/me/**, /api/v1/auth/change-password)
                         // bắt buộc phải có Authentication hợp lệ do JwtAuthenticationFilter set.
                         .anyRequest().authenticated())
