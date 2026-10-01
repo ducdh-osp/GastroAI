@@ -60,8 +60,8 @@ public class PdfTextExtractor implements TextExtractor {
                 linesByPage.add(stripper.getCollectedLines());
             }
 
-            List<String> boilerplateLines = findBoilerplateLines(linesByPage, pageCount);
             float bodyFontSize = computeBodyFontSizeBaseline(linesByPage);
+            List<String> boilerplateLines = findBoilerplateLines(linesByPage, pageCount, bodyFontSize);
 
             List<PositionedLine> survivingLines = new ArrayList<>();
             for (List<PositionedLine> pageLines : linesByPage) {
@@ -105,11 +105,15 @@ public class PdfTextExtractor implements TextExtractor {
         }
     }
 
-    private List<String> findBoilerplateLines(List<List<PositionedLine>> linesByPage, int pageCount) {
+    private List<String> findBoilerplateLines(
+            List<List<PositionedLine>> linesByPage, int pageCount, float bodyFontSize) {
+
         Map<String, Integer> zoneCountByLine = new HashMap<>();
+        Map<String, Boolean> headingStyledByLine = new HashMap<>();
 
         for (List<PositionedLine> pageLines : linesByPage) {
             LinkedHashSet<String> distinctInZoneOnPage = new LinkedHashSet<>();
+            Map<String, Boolean> headingOnThisPageByLine = new HashMap<>();
 
             for (PositionedLine line : pageLines) {
                 String trimmed = line.text().trim();
@@ -117,16 +121,33 @@ public class PdfTextExtractor implements TextExtractor {
                     continue;
                 }
                 distinctInZoneOnPage.add(trimmed);
+
+                if (isHeadingCandidate(line, bodyFontSize)) {
+                    headingOnThisPageByLine.put(trimmed, true);
+                }
             }
 
             // dung Set trong 1 trang de khong dem 2 lan neu 1 dong lap trong cung 1 trang
-            distinctInZoneOnPage.forEach(l -> zoneCountByLine.merge(l, 1, Integer::sum));
+            distinctInZoneOnPage.forEach(l -> {
+                zoneCountByLine.merge(l, 1, Integer::sum);
+                if (headingOnThisPageByLine.getOrDefault(l, false)) {
+                    headingStyledByLine.put(l, true);
+                }
+            });
         }
+
+        // Dong mang dang tieu de (to/dam) chi bi coi la boilerplate khi lap lai
+        // o vung dau/cuoi cua it nhat mot nua so trang - tranh nham voi tieu de
+        // muc tinh co trung vi tri dau trang o vai trang khac nhau.
+        int headingThreshold = Math.max(POSITIONAL_REPEAT_MIN_COUNT, (int) Math.ceil(pageCount / 2.0));
 
         List<String> boilerplate = new ArrayList<>();
 
         zoneCountByLine.forEach((line, zoneCount) -> {
-            boolean positionalRepeat = zoneCount >= POSITIONAL_REPEAT_MIN_COUNT;
+            boolean isHeadingStyled = headingStyledByLine.getOrDefault(line, false);
+            int threshold = isHeadingStyled ? headingThreshold : POSITIONAL_REPEAT_MIN_COUNT;
+
+            boolean positionalRepeat = zoneCount >= threshold;
             boolean lonePageNumberInZone = LONE_PAGE_NUMBER.matcher(line).matches();
 
             if (positionalRepeat || lonePageNumberInZone) {

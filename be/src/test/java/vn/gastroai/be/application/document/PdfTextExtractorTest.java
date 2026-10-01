@@ -157,6 +157,38 @@ class PdfTextExtractorTest {
     }
 
     @Test
+    void keepsHeadingStyledLineThatOnlyCoincidentallyRepeatsInZoneOnAFewPages(@TempDir Path tempDir)
+            throws IOException {
+        Path pdfPath = tempDir.resolve("phac-do-tieu-de-trung-vi-tri-test.pdf");
+
+        try (PDDocument document = new PDDocument()) {
+            for (int pageNumber = 1; pageNumber <= 6; pageNumber++) {
+                PDPage page = new PDPage();
+                document.addPage(page);
+
+                boolean hasCoincidentalHeading = pageNumber == 1 || pageNumber == 2;
+
+                try (PDPageContentStream stream = new PDPageContentStream(document, page)) {
+                    if (hasCoincidentalHeading) {
+                        writeLine(stream, "DIEU TRI NGOAI KHOA", 50, 750, 18, true);
+                    }
+
+                    writeLine(stream, "Noi dung that cua trang " + pageNumber
+                            + " khong lien quan den tieu de o tren", 50, 400);
+                }
+            }
+
+            document.save(pdfPath.toFile());
+        }
+
+        String text = extractor.extract(pdfPath);
+
+        assertTrue(text.contains("DIEU TRI NGOAI KHOA"));
+        assertTrue(text.contains("Noi dung that cua trang 1"));
+        assertTrue(text.contains("Noi dung that cua trang 6"));
+    }
+
+    @Test
     void doesNotStripStandaloneNumericTableValuesOutsideHeaderFooterZone(@TempDir Path tempDir) throws IOException {
         Path pdfPath = tempDir.resolve("phac-do-so-lieu-test.pdf");
 
