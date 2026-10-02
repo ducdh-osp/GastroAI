@@ -44,6 +44,10 @@ public class DocumentProcessingWorker {
     public void processAsync(Long documentId, String source) {
 
         try {
+            if (documentRepository.findById(documentId).isEmpty()) {
+                log.warn("Document id={} da bi xoa truoc khi xu ly bat dau - bo qua", documentId);
+                return;
+            }
 
             documentStatusService.markProcessing(documentId);
 

@@ -1,5 +1,7 @@
 package vn.gastroai.be.application.document;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +15,8 @@ import java.util.Optional;
 
 @Service
 public class DocumentStatusService {
+
+    private static final Logger log = LoggerFactory.getLogger(DocumentStatusService.class);
 
     private final DocumentRepository documentRepository;
     private final ChunkRepository chunkRepository;
@@ -65,7 +69,14 @@ public class DocumentStatusService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markError(Long documentId, String errorMessage) {
-        Document document = getDocument(documentId);
+        Optional<Document> maybeDocument = documentRepository.findById(documentId);
+
+        if (maybeDocument.isEmpty()) {
+            log.warn("Document id={} khong con ton tai (co the da bi xoa) - bo qua markError", documentId);
+            return;
+        }
+
+        Document document = maybeDocument.get();
 
         document.setStatus(DocumentStatus.ERROR);
         document.setProcessingStage(DocumentProcessingStage.ERROR);

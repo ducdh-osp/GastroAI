@@ -57,6 +57,9 @@ public class Document {
     @Column(name = "source_url", length = 2000)
     private String sourceUrl;
 
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
+
     @PreUpdate
     void touch() {
         updatedAt = Instant.now();

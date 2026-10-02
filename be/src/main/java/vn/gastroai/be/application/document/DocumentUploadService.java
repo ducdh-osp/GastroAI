@@ -7,9 +7,13 @@ import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 import org.springframework.transaction.annotation.Transactional;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @Service
 public class DocumentUploadService {
@@ -39,6 +43,16 @@ public class DocumentUploadService {
         Path storedPath = fileStorageService.store(file);
 
         try {
+            // 1b. Tính mã băm nội dung rồi chặn trùng - tài liệu cũ đã ERROR vẫn cho
+            // upload lại (thường là thử lại sau khi sửa lỗi nguồn).
+            String contentHash = computeContentHash(storedPath);
+
+            documentRepository.findFirstByContentHashAndStatusNot(contentHash, DocumentStatus.ERROR)
+                    .ifPresent(existing -> {
+                        throw new IllegalStateException(
+                                "Tài liệu này đã tồn tại (id = " + existing.getId() + ")");
+                    });
+
             // 2. Tạo document với trạng thái PENDING
             Document document = new Document();
 
@@ -46,6 +60,7 @@ public class DocumentUploadService {
             document.setSource(storedPath.toString());
             document.setSourceUrl(normalizedSourceUrl);
             document.setStatus(DocumentStatus.PENDING);
+            document.setContentHash(contentHash);
 
             // 3. Lưu document vào database
             document = documentRepository.save(document);
@@ -61,10 +76,29 @@ public class DocumentUploadService {
 
         } catch (RuntimeException e) {
 
-            // DB insert thất bại → xóa file vừa lưu
+            // DB insert thất bại, hoặc phát hiện trùng → xóa file vừa lưu
             fileStorageService.delete(storedPath);
 
             throw e;
+        }
+    }
+
+    /** Mã băm SHA-256 (dạng hex, 64 ký tự) của nội dung file đã lưu - dùng để phát hiện upload trùng. */
+    private static String computeContentHash(Path storedPath) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(Files.readAllBytes(storedPath));
+
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+
+        } catch (IOException e) {
+            throw new IllegalStateException("Không thể đọc nội dung file để tính mã băm", e);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Lỗi hệ thống: không hỗ trợ thuật toán SHA-256", e);
         }
     }
 
@@ -108,6 +142,12 @@ public class DocumentUploadService {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Không tìm thấy document: " + documentId));
+
+        if (document.getStatus() == DocumentStatus.PENDING
+                || document.getStatus() == DocumentStatus.PROCESSING) {
+            throw new IllegalStateException(
+                    "Tài liệu đang được xử lý, vui lòng thử lại sau");
+        }
 
         documentRepository.delete(document);
 
