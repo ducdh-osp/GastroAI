@@ -147,9 +147,6 @@ export function ChatContainer() {
             updateMessage(patientMessage.id, { status: 'sent' })
           },
           onError: (message) => {
-            // Xoa tin nhan AI tam (khong danh dau failed cho no) - MessageBubble gio chi hien
-            // nut "Gui lai" cho tin cua benh nhan (isPatient && isFailed), nhung van khong can
-            // 1 bong bong AI dang do, trong tren man hinh lam gi.
             setMessages((current) => current.filter((item) => item.id !== assistantMessageId))
             updateMessage(patientMessage.id, { status: 'failed' })
             setNetworkError(message)

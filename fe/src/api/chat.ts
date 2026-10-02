@@ -202,7 +202,7 @@ export async function streamMessage(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  let receivedDone = false
+  let finished = false
 
   try {
     while (true) {
@@ -219,14 +219,19 @@ export async function streamMessage(
           const { eventName, data } = parseSseEvent(rawEvent)
 
           if (eventName === 'done') {
-            receivedDone = true
+            finished = true
             try {
               onDone(JSON.parse(data) as StreamingDone)
             } catch {
               onError('Không đọc được phản hồi từ AI. Vui lòng thử lại.')
             }
           } else if (eventName === 'error') {
+            // BE da bao loi ro rang (vd Gemini loi that) - danh dau ket thuc va thoat
+            // ngay, khong de doan kiem tra "mat ket noi" ben duoi ghi de bang thong
+            // bao sai (lam nguoi dung tuong la loi mang cua ho).
+            finished = true
             onError(data || 'Không thể nhận được câu trả lời từ AI. Vui lòng thử lại.')
+            return
           } else {
             onToken(data)
           }
@@ -241,7 +246,7 @@ export async function streamMessage(
     return
   }
 
-  if (!receivedDone) {
+  if (!finished) {
     onError('Mất kết nối trước khi nhận được câu trả lời đầy đủ. Vui lòng thử lại.')
   }
 }
