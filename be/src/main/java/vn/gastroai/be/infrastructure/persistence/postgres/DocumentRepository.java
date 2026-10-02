@@ -26,14 +26,17 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
      */
     @Modifying
     @Transactional
-    @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PROCESSING "
+    @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PROCESSING, "
+            + "d.updatedAt = CURRENT_TIMESTAMP "
             + "WHERE d.id = :id AND d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING")
     int claimForProcessing(@Param("id") Long id);
 
     /** Tra 1 document da gianh duoc ve lai PENDING - dung khi dispatch that bai (vd pool day cho). */
     @Modifying
     @Transactional
-    @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING WHERE d.id = :id")
+    @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING, "
+            + "d.updatedAt = CURRENT_TIMESTAMP "
+            + "WHERE d.id = :id")
     int revertToPending(@Param("id") Long id);
 
     /**
@@ -42,7 +45,8 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
      */
     @Modifying
     @Transactional
-    @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING "
+    @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING, "
+            + "d.updatedAt = CURRENT_TIMESTAMP "
             + "WHERE d.status = vn.gastroai.be.domain.rag.DocumentStatus.PROCESSING")
     int requeueStuckProcessing();
 }

@@ -19,6 +19,8 @@ public class DocumentProcessingScheduler {
     private final DocumentRepository documentRepository;
     private final DocumentProcessingWorker documentProcessingWorker;
 
+    private boolean recovered = false;
+
     public DocumentProcessingScheduler(
             DocumentRepository documentRepository,
             DocumentProcessingWorker documentProcessingWorker) {
@@ -28,6 +30,16 @@ public class DocumentProcessingScheduler {
 
     @Scheduled(fixedDelay = 5000)
     public void dispatchPendingDocuments() {
+
+        if (!recovered) {
+            int requeuedCount = documentRepository.requeueStuckProcessing();
+            if (requeuedCount > 0) {
+                log.info("Da doi {} document tu PROCESSING ve PENDING sau khi server khoi dong lai",
+                        requeuedCount);
+            }
+            recovered = true;
+        }
+
         List<Document> pendingDocuments = documentRepository.findByStatusIn(
                 List.of(DocumentStatus.PENDING));
 
