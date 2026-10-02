@@ -64,6 +64,12 @@ public class TriageAlert {
     @Column(name = "resolved_at")
     private Instant resolvedAt;
 
+    @Column(name = "resolved_by_type", length = 20)
+    private String resolvedByType;
+
+    @Column(name = "resolved_by_id")
+    private Long resolvedById;
+
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 

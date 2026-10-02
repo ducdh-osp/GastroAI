@@ -91,6 +91,7 @@ public class TriageAlertService {
 
         return alert.getId();
     }
+
     @Transactional
     public void linkConversation(Long alertId, Long sessionId, Long messageId) {
         Optional<TriageAlert> maybeAlert = triageAlertRepository.findById(alertId);
@@ -135,7 +136,7 @@ public class TriageAlertService {
 
         if (claimedRows == 1) {
             TriageAlert alert = findAlertOrThrow(alertId);
-            broadcastStatusChange(alert, now);
+            broadcastStatusChange(alert, now, null, null);
             return toResponse(alert);
         }
 
@@ -158,13 +159,13 @@ public class TriageAlertService {
     }
 
     @Transactional
-    public TriageAlertResponse resolve(Long alertId) {
+    public TriageAlertResponse resolve(Long alertId, Long resolverId, String resolverType) {
         Instant now = Instant.now();
-        int resolvedRows = triageAlertRepository.resolveIfInProgress(alertId, now);
+        int resolvedRows = triageAlertRepository.resolveIfInProgress(alertId, resolverId, resolverType, now);
 
         if (resolvedRows == 1) {
             TriageAlert alert = findAlertOrThrow(alertId);
-            broadcastStatusChange(alert, now);
+            broadcastStatusChange(alert, now, resolverId, resolverType);
             return toResponse(alert);
         }
 
@@ -185,12 +186,15 @@ public class TriageAlertService {
                         "Không tìm thấy cảnh báo Triage id=" + alertId));
     }
 
-    private void broadcastStatusChange(TriageAlert alert, Instant changedAt) {
+    private void broadcastStatusChange(
+            TriageAlert alert, Instant changedAt, Long resolvedById, String resolvedByType) {
         eventPublisher.publishEvent(new TriageAlertStatusChangedEvent(
                 alert.getId(),
                 alert.getStatus().name(),
                 alert.getClaimedById(),
                 alert.getClaimedByType(),
+                resolvedById,
+                resolvedByType,
                 changedAt));
     }
 
@@ -209,6 +213,8 @@ public class TriageAlertService {
                 alert.getClaimedByType(),
                 alert.getClaimedAt(),
                 alert.getResolvedAt(),
+                alert.getResolvedById(),
+                alert.getResolvedByType(),
                 alert.getOccurredAt());
     }
 

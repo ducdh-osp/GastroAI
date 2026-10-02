@@ -54,6 +54,8 @@ function upsertAlert(alerts: TriageAlert[], event: TriageAlertSocketEvent): Tria
     claimedByType: alerts.find((a) => a.id === event.id)?.claimedByType ?? null,
     claimedAt: alerts.find((a) => a.id === event.id)?.claimedAt ?? null,
     resolvedAt: alerts.find((a) => a.id === event.id)?.resolvedAt ?? null,
+    resolvedById: alerts.find((a) => a.id === event.id)?.resolvedById ?? null,
+    resolvedByType: alerts.find((a) => a.id === event.id)?.resolvedByType ?? null,
     occurredAt: event.occurredAt,
   }
   const withoutIncoming = alerts.filter((a) => a.id !== event.id)
@@ -73,6 +75,8 @@ function applyStatusChange(alerts: TriageAlert[], event: TriageAlertStatusChange
           claimedByType: event.claimedByType,
           claimedAt: event.status === 'IN_PROGRESS' ? event.statusChangedAt : alert.claimedAt,
           resolvedAt: event.status === 'RESOLVED' ? event.statusChangedAt : alert.resolvedAt,
+          resolvedById: event.status === 'RESOLVED' ? event.resolvedById : alert.resolvedById,
+          resolvedByType: event.status === 'RESOLVED' ? event.resolvedByType : alert.resolvedByType,
         }
       : alert,
   )
@@ -203,6 +207,13 @@ export default function CmsTriageAlertsPage() {
             <div>
               <Text type="secondary" className="text-xs">
                 {CLAIMER_TYPE_LABELS[record.claimedByType] ?? record.claimedByType} tiếp nhận
+              </Text>
+            </div>
+          )}
+          {record.resolvedByType && (
+            <div>
+              <Text type="secondary" className="text-xs">
+                Đã xử lý bởi {CLAIMER_TYPE_LABELS[record.resolvedByType] ?? record.resolvedByType} #{record.resolvedById}
               </Text>
             </div>
           )}

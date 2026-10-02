@@ -198,11 +198,15 @@ class TriageAlertServiceTest {
         assertEquals("ADMIN", response.claimedByType());
         assertEquals(List.of("DAU_BUNG_CAP_TINH"), response.matchedGroups());
 
+        // UC0067(va) - claim() khong resolve gi ca, nen resolvedById/resolvedByType trong
+        // event phai la null.
         verify(eventPublisher).publishEvent(argThat((TriageAlertStatusChangedEvent event) ->
                 event.id().equals(10L)
                         && event.status().equals("IN_PROGRESS")
                         && event.claimedById().equals(5L)
                         && event.claimedByType().equals("ADMIN")
+                        && event.resolvedById() == null
+                        && event.resolvedByType() == null
                         && event.statusChangedAt().equals(alert.getClaimedAt())));
     }
 
@@ -269,19 +273,26 @@ class TriageAlertServiceTest {
         alert.setClaimedById(5L);
         alert.setClaimedByType("ADMIN");
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        when(triageAlertRepository.resolveIfInProgress(eq(10L), any())).thenAnswer(invocation -> {
-            Instant now = invocation.getArgument(1);
-            alert.setStatus(TriageAlertStatus.RESOLVED);
-            alert.setResolvedAt(now);
-            return 1;
-        });
+        when(triageAlertRepository.resolveIfInProgress(eq(10L), eq(7L), eq("ADMIN"), any()))
+                .thenAnswer(invocation -> {
+                    Instant now = invocation.getArgument(3);
+                    alert.setStatus(TriageAlertStatus.RESOLVED);
+                    alert.setResolvedAt(now);
+                    alert.setResolvedById(7L);
+                    alert.setResolvedByType("ADMIN");
+                    return 1;
+                });
 
-        TriageAlertResponse response = service.resolve(10L);
+        TriageAlertResponse response = service.resolve(10L, 7L, "ADMIN");
 
         assertEquals("RESOLVED", response.status());
+        assertEquals(7L, response.resolvedById());
+        assertEquals("ADMIN", response.resolvedByType());
         verify(eventPublisher).publishEvent(argThat((TriageAlertStatusChangedEvent event) ->
                 event.id().equals(10L)
                         && event.status().equals("RESOLVED")
+                        && event.resolvedById().equals(7L)
+                        && event.resolvedByType().equals("ADMIN")
                         && event.statusChangedAt().equals(alert.getResolvedAt())));
     }
 
@@ -293,9 +304,9 @@ class TriageAlertServiceTest {
         alert.setId(10L);
         alert.setStatus(TriageAlertStatus.RESOLVED);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        when(triageAlertRepository.resolveIfInProgress(eq(10L), any())).thenReturn(0);
+        when(triageAlertRepository.resolveIfInProgress(eq(10L), any(), any(), any())).thenReturn(0);
 
-        assertThrows(IllegalStateException.class, () -> service.resolve(10L));
+        assertThrows(IllegalStateException.class, () -> service.resolve(10L, 7L, "ADMIN"));
 
         verify(eventPublisher, never()).publishEvent(any(TriageAlertStatusChangedEvent.class));
     }
@@ -307,10 +318,10 @@ class TriageAlertServiceTest {
                 null, Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        when(triageAlertRepository.resolveIfInProgress(eq(10L), any())).thenReturn(0);
+        when(triageAlertRepository.resolveIfInProgress(eq(10L), any(), any(), any())).thenReturn(0);
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> service.resolve(10L));
+                () -> service.resolve(10L, 7L, "ADMIN"));
 
         assertEquals("Cảnh báo id=10 phải được tiếp nhận trước khi đánh dấu đã xử lý",
                 exception.getMessage());

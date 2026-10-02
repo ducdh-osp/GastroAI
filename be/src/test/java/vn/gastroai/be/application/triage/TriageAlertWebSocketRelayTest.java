@@ -30,7 +30,7 @@ class TriageAlertWebSocketRelayTest {
     @Test
     void onStatusChangeForwardsEventToPublisher() {
         TriageAlertStatusChangedEvent event = new TriageAlertStatusChangedEvent(
-                10L, "IN_PROGRESS", 5L, "ADMIN", Instant.parse("2026-09-30T00:05:00Z"));
+                10L, "IN_PROGRESS", 5L, "ADMIN", null, null, Instant.parse("2026-09-30T00:05:00Z"));
 
         relay.onStatusChange(event);
 

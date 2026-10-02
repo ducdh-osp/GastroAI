@@ -17,6 +17,8 @@ export interface TriageAlert {
   claimedByType: 'ADMIN' | 'DOCTOR' | null
   claimedAt: string | null
   resolvedAt: string | null
+  resolvedById: number | null
+  resolvedByType: 'ADMIN' | 'DOCTOR' | null
   occurredAt: string
 }
 
@@ -32,7 +34,7 @@ export async function claimTriageAlert(alertId: number): Promise<TriageAlert> {
   return data
 }
 
-/** Đánh dấu đã xử lý xong - không giới hạn ai được resolve (BE chưa kiểm tra claimedById). */
+/** Đánh dấu đã xử lý xong - chủ ý không bắt buộc đúng người đã tiếp nhận (ca trực có thể đổi người đóng). */
 export async function resolveTriageAlert(alertId: number): Promise<TriageAlert> {
   const { data } = await cmsApiClient.post<TriageAlert>(`/cms/triage-alerts/${alertId}/resolve`)
   return data

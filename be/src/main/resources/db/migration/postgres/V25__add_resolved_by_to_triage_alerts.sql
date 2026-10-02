@@ -1,0 +1,1 @@
+ALTER TABLE triage_alerts ADD COLUMN resolved_by_type VARCHAR(20), ADD COLUMN resolved_by_id BIGINT;

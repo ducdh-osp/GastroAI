@@ -30,7 +30,12 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query("UPDATE TriageAlert a SET a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.RESOLVED, "
-            + "a.resolvedAt = :now, a.updatedAt = :now "
+            + "a.resolvedAt = :now, a.resolvedById = :resolverId, a.resolvedByType = :resolverType, "
+            + "a.updatedAt = :now "
             + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS")
-    int resolveIfInProgress(@Param("id") Long id, @Param("now") Instant now);
+    int resolveIfInProgress(
+            @Param("id") Long id,
+            @Param("resolverId") Long resolverId,
+            @Param("resolverType") String resolverType,
+            @Param("now") Instant now);
 }
