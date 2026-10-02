@@ -78,6 +78,19 @@ function applyStatusChange(alerts: TriageAlert[], event: TriageAlertStatusChange
   )
 }
 
+/**
+ * Gop danh sach tu API (nguon su that - DB) voi danh sach dang hien tren man hinh: uu tien
+ * ban tu API, nhung giu lai nhung canh bao dang co tren man hinh ma API chua kip tra ve (vi
+ * du vua nhan qua WebSocket trong luc cho API phan hoi) - tranh bi ghi de mat boi ban cu hon.
+ */
+function mergeAlerts(fromApi: TriageAlert[], current: TriageAlert[]): TriageAlert[] {
+  const apiIds = new Set(fromApi.map((a) => a.id))
+  const onlyOnScreen = current.filter((a) => !apiIds.has(a.id))
+  return [...fromApi, ...onlyOnScreen].sort(
+    (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+  )
+}
+
 export default function CmsTriageAlertsPage() {
   const { isAuthenticated } = useCmsAuth()
   const [alerts, setAlerts] = useState<TriageAlert[]>([])
@@ -85,13 +98,13 @@ export default function CmsTriageAlertsPage() {
   const [error, setError] = useState<string | null>(null)
   const actionGuard = useInFlightGuard<number>()
 
-  const loadAlerts = useCallback(() => {
-    setLoading(true)
+  const loadAlerts = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
     setError(null)
     listTriageAlerts()
-      .then(setAlerts)
+      .then((fromApi) => setAlerts((current) => mergeAlerts(fromApi, current)))
       .catch((err: unknown) => setError(extractTriageErrorMessage(err, 'Không thể tải danh sách cảnh báo.')))
-      .finally(() => setLoading(false))
+      .finally(() => { if (!silent) setLoading(false) })
   }, [])
 
   useEffect(() => { loadAlerts() }, [loadAlerts])
@@ -103,7 +116,13 @@ export default function CmsTriageAlertsPage() {
       (event: TriageAlertStatusChangedSocketEvent) => setAlerts((prev) => applyStatusChange(prev, event)),
       [],
     ),
+    onConnected: useCallback(() => loadAlerts(true), [loadAlerts]),
   })
+  useEffect(() => {
+    if (connectionState === 'connected') return
+    const intervalId = setInterval(() => loadAlerts(true), 30000)
+    return () => clearInterval(intervalId)
+  }, [connectionState, loadAlerts])
 
   async function handleClaim(alertId: number) {
     await actionGuard.run(alertId, async () => {

@@ -32,6 +32,12 @@ interface UseTriageAlertSocketOptions {
   enabled: boolean
   onAlert: (event: TriageAlertSocketEvent) => void
   onStatusChange: (event: TriageAlertStatusChangedSocketEvent) => void
+  /**
+   * Goi moi khi ket noi THANH CONG - ca lan dau lan @stomp/stompjs tu dong noi lai sau khi
+   * roi mang. Dung de dong bo lai danh sach tu API, bu lai nhung canh bao phat sinh trong
+   * luc mat ket noi (WebSocket khong luu lai tin de gui bu).
+   */
+  onConnected?: () => void
 }
 
 const ALERTS_DESTINATION = '/topic/triage-alerts'
@@ -48,15 +54,18 @@ export function useTriageAlertSocket({
   enabled,
   onAlert,
   onStatusChange,
+  onConnected,
 }: UseTriageAlertSocketOptions): { connectionState: TriageSocketConnectionState } {
   const [connectionState, setConnectionState] = useState<TriageSocketConnectionState>('disconnected')
 
   // Callback moi nhat qua ref de khong phai tao lai STOMP client (va reconnect) moi khi
-  // component cha re-render voi closure moi cua onAlert/onStatusChange.
+  // component cha re-render voi closure moi cua onAlert/onStatusChange/onConnected.
   const onAlertRef = useRef(onAlert)
   onAlertRef.current = onAlert
   const onStatusChangeRef = useRef(onStatusChange)
   onStatusChangeRef.current = onStatusChange
+  const onConnectedRef = useRef(onConnected)
+  onConnectedRef.current = onConnected
 
   useEffect(() => {
     if (!enabled) {
@@ -89,6 +98,11 @@ export function useTriageAlertSocket({
           // Bo qua ban tin khong parse duoc.
         }
       })
+
+      // Dang ky 2 kenh xong roi moi dong bo lai danh sach - neu dong bo truoc, canh bao
+      // den dung giua luc dang tai se lot vao khe ho va mat (@stomp/stompjs goi onConnect
+      // ca lan dau lan moi lan tu dong noi lai, nen 1 cho nay la du cho ca 2 truong hop).
+      onConnectedRef.current?.()
     }
 
 
