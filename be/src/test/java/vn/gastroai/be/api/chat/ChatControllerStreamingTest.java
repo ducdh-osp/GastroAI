@@ -23,9 +23,10 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -68,6 +69,8 @@ class ChatControllerStreamingTest {
     @WithMockUser(username = "1", roles = "PATIENT")
     void streamMessagePublishesTriageAlertWhenEmergencyDetected() throws Exception {
         stubStreamAnswer(true, List.of("DAU_BUNG_CAP_TINH"));
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
+                .thenReturn(new ChatHistoryService.SavedExchange(5L, 9L));
 
         MvcResult mvcResult = mockMvc.perform(post("/api/v1/chat/messages/stream")
                         .with(csrf())
@@ -81,11 +84,10 @@ class ChatControllerStreamingTest {
         mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk());
 
-        // UC0036/067(vá) - ChatController gio goi TriageAlertService.createAndPublish() thay vi
-        // tu dung TriageAlertPublisher - sessionId/messageId van la null (chua doi
-        // saveExchange() chay xong).
+        // UC0067(va) - sessionId/messageId gio phai la id THAT lay tu saveExchange(), vi
+        // ChatController da doi thu tu: luu lich su truoc, tao canh bao Triage sau.
         verify(triageAlertService, timeout(2000)).createAndPublish(
-                eq(1L), isNull(), isNull(),
+                eq(1L), eq(5L), eq(9L),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
     }
 

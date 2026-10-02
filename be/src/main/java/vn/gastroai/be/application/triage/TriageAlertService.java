@@ -63,6 +63,8 @@ public class TriageAlertService {
         TriageAlert alert;
         if (existingAlert.isPresent()) {
             alert = existingAlert.get();
+            alert.setSessionId(sessionId);
+            alert.setMessageId(messageId);
             alert.setMessageContent(messageContent);
             alert.setMatchedGroups(toJson(matchedGroups));
             alert.setOccurredAt(occurredAt);

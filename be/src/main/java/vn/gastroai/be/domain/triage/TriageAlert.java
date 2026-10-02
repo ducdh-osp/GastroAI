@@ -35,8 +35,6 @@ public class TriageAlert {
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
 
-    // Nullable - canh bao duoc luu NGAY sau TriageService.check(), TRUOC KHI
-    // ChatHistoryService.saveExchange() luu tin nhan that (xem ChatController).
     @Column(name = "session_id")
     private Long sessionId;
 

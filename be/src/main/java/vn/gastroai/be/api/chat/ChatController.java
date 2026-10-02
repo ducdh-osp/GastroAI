@@ -58,21 +58,7 @@ public class ChatController {
 
         Long patientId = AuthenticatedRequest.patientId(principal, authentication);
 
-        ChatAnswer chatAnswer = chatService.ask(request.content(), triageResult -> {
-            if (triageResult.emergency()) {
-                try {
-                    triageAlertService.createAndPublish(
-                            patientId,
-                            null,
-                            null,
-                            request.content(),
-                            triageResult.matchedGroups());
-                } catch (Exception exception) {
-                    log.error("Khong the tao/gui canh bao Triage cho patientId={}: {}",
-                            patientId, exception.getMessage(), exception);
-                }
-            }
-        });
+        ChatAnswer chatAnswer = chatService.ask(request.content(), triageResult -> { });
 
         RagAnswer ragAnswer = chatAnswer.ragAnswer();
 
@@ -91,6 +77,20 @@ public class ChatController {
                 ragAnswer,
                 chatAnswer.emergency(),
                 chatAnswer.matchedGroups());
+
+        if (chatAnswer.emergency()) {
+            try {
+                triageAlertService.createAndPublish(
+                        patientId,
+                        saved.sessionId(),
+                        saved.assistantMessageId(),
+                        request.content(),
+                        chatAnswer.matchedGroups());
+            } catch (Exception exception) {
+                log.error("Khong the tao/gui canh bao Triage cho patientId={}: {}",
+                        patientId, exception.getMessage(), exception);
+            }
+        }
 
         return ChatMessageResponse.assistantReply(
                 ragAnswer.answer(),
@@ -150,22 +150,7 @@ public class ChatController {
                                         exception);
                             }
                         },
-                        triageResult -> {
-                            if (triageResult.emergency()) {
-                                try {
-                                    triageAlertService.createAndPublish(
-                                            patientId,
-                                            null,
-                                            null,
-                                            request.content(),
-                                            triageResult.matchedGroups());
-                                } catch (Exception exception) {
-                                    log.error(
-                                            "Khong the tao/gui canh bao Triage (streaming) cho patientId={}: {}",
-                                            patientId, exception.getMessage(), exception);
-                                }
-                            }
-                        });
+                        triageResult -> { });
 
                 ChatHistoryService.SavedExchange saved = null;
                 try {
@@ -179,6 +164,21 @@ public class ChatController {
                 } catch (Exception exception) {
                     log.error("Khong the luu lich su chat cho luong streaming, patientId={}: {}",
                             patientId, exception.getMessage(), exception);
+                }
+
+                if (result.emergency()) {
+                    try {
+                        triageAlertService.createAndPublish(
+                                patientId,
+                                saved != null ? saved.sessionId() : request.sessionId(),
+                                saved != null ? saved.assistantMessageId() : null,
+                                request.content(),
+                                result.matchedGroups());
+                    } catch (Exception exception) {
+                        log.error(
+                                "Khong the tao/gui canh bao Triage (streaming) cho patientId={}: {}",
+                                patientId, exception.getMessage(), exception);
+                    }
                 }
 
                 emitter.send(
