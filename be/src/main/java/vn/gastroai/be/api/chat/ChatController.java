@@ -1,5 +1,6 @@
 package vn.gastroai.be.api.chat;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,7 @@ import vn.gastroai.be.application.triage.TriageAlertService;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @RestController
 @RequestMapping("/api/v1/chat")
@@ -138,12 +140,25 @@ public class ChatController {
     @PostMapping(value = "/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamMessage(
             @Valid @RequestBody ChatMessageRequest request,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletResponse response) {
 
         AuthenticatedRequest.requireAuthenticated(authentication);
 
+        // Tat bo dem cua nginx cho rieng response nay - khong anh huong gi khi chay local
+        // (Vite), nhung can thiet neu sau nay deploy sau nginx thi streaming van chay dung.
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
+
         Long patientId = Long.valueOf(authentication.getName());
         SseEmitter emitter = new SseEmitter(120_000L);
+
+        // Bat len khi client ngat ket noi giua chung (dong tab, mat mang...). Dung
+        // AtomicBoolean vi co nay duoc ghi tu thread cua Tomcat (qua onError/onTimeout, hoac
+        // luc gui token that bai) nhung duoc doc trong virtual thread dang sinh cau tra loi.
+        AtomicBoolean clientGone = new AtomicBoolean(false);
+        emitter.onError(exception -> clientGone.set(true));
+        emitter.onTimeout(() -> clientGone.set(true));
 
         Thread.startVirtualThread(() -> {
             Long[] alertIdHolder = new Long[1];
@@ -151,16 +166,15 @@ public class ChatController {
                 StreamingRagQueryService.StreamingResult result = streamingRagQueryService.streamAnswer(
                         request.content(),
                         token -> {
+                            if (clientGone.get()) {
+                                return;
+                            }
                             try {
                                 emitter.send(
                                         SseEmitter.event()
                                                 .data(token));
                             } catch (Exception exception) {
-                                emitter.completeWithError(
-                                        exception);
-
-                                throw new RuntimeException(
-                                        exception);
+                                clientGone.set(true);
                             }
                         },
                         triageResult -> {
@@ -205,30 +219,41 @@ public class ChatController {
                     }
                 }
 
-                emitter.send(
-                        SseEmitter.event()
-                                .name("done")
-                                .data(
-                                        new StreamingDoneEvent(
-                                                result.sources(),
-                                                result.relatedQuestions(),
-                                                result.emergency(),
-                                                result.matchedGroups(),
-                                                saved != null ? saved.sessionId() : request.sessionId(),
-                                                saved != null ? saved.assistantMessageId() : null)));
-
-                emitter.complete();
+                if (!clientGone.get()) {
+                    try {
+                        emitter.send(
+                                SseEmitter.event()
+                                        .name("done")
+                                        .data(
+                                                new StreamingDoneEvent(
+                                                        result.sources(),
+                                                        result.relatedQuestions(),
+                                                        result.emergency(),
+                                                        result.matchedGroups(),
+                                                        saved != null ? saved.sessionId() : request.sessionId(),
+                                                        saved != null ? saved.assistantMessageId() : null)));
+                    } catch (Exception exception) {
+                        // Client vua ngat dung luc gui done - bo qua.
+                    }
+                    try {
+                        emitter.complete();
+                    } catch (Exception exception) {
+                        // Emitter co the da dong.
+                    }
+                }
 
             } catch (Exception exception) {
-                try {
-                    emitter.send(
-                            SseEmitter.event()
-                                    .name("error")
-                                    .data("Khong the nhan duoc cau tra loi tu AI. Vui long thu lai."));
-                } catch (Exception sendException) {
-                    // Emitter co the da dong (client ngat ket noi) - bo qua.
+                if (!clientGone.get()) {
+                    try {
+                        emitter.send(
+                                SseEmitter.event()
+                                        .name("error")
+                                        .data("Khong the nhan duoc cau tra loi tu AI. Vui long thu lai."));
+                    } catch (Exception sendException) {
+                        // Emitter co the da dong (client ngat ket noi) - bo qua.
+                    }
+                    emitter.completeWithError(exception);
                 }
-                emitter.completeWithError(exception);
             }
         });
 

@@ -1,5 +1,6 @@
 package vn.gastroai.be.config;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -50,6 +51,7 @@ public class SecurityConfig {
                 // STATELESS sẽ chặn Spring Security lưu session cho nhánh đó.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         // Các endpoint không cần đăng nhập trước: đăng ký, xác thực email,
                         // quên/đặt lại mật khẩu, login, logout (token không hợp lệ vẫn cho qua
                         // để logoutSafely tự xử lý êm), và toàn bộ cổng CMS (có luồng auth riêng).
