@@ -22,16 +22,13 @@ public class DocumentUploadService {
 
     private final FileStorageService fileStorageService;
     private final DocumentRepository documentRepository;
-    private final DocumentProcessingWorker documentProcessingWorker;
 
     public DocumentUploadService(
             FileStorageService fileStorageService,
-            DocumentRepository documentRepository,
-            DocumentProcessingWorker documentProcessingWorker
+            DocumentRepository documentRepository
     ) {
         this.fileStorageService = fileStorageService;
         this.documentRepository = documentRepository;
-        this.documentProcessingWorker = documentProcessingWorker;
     }
 
     public Document upload(MultipartFile file, String sourceUrl) {
@@ -62,16 +59,12 @@ public class DocumentUploadService {
             document.setStatus(DocumentStatus.PENDING);
             document.setContentHash(contentHash);
 
-            // 3. Lưu document vào database
+            // 3. Lưu document vào database với trạng thái PENDING - không tự gọi
+            // worker xử lý ở đây nữa. DocumentProcessingScheduler sẽ định kỳ quét và
+            // giành lấy document này để xử lý (xem file DocumentProcessingScheduler).
             document = documentRepository.save(document);
 
-            // 4. Chạy xử lý document ở background
-            documentProcessingWorker.processAsync(
-                    document.getId(),
-                    document.getSource()
-            );
-
-            // 5. Trả document cho Controller
+            // 4. Trả document cho Controller
             return document;
 
         } catch (RuntimeException e) {
