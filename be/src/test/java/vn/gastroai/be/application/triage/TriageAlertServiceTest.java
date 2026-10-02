@@ -265,7 +265,7 @@ class TriageAlertServiceTest {
 
         // UC0067(va) - thong bao phai neu ro ai da tiep nhan, giup admin khac biet lien he
         // ai thay vi chi bao chung chung "da co nguoi tiep nhan".
-        assertEquals("Canh bao da duoc Bac si #9 tiep nhan", exception.getMessage());
+        assertEquals("Cảnh báo đã được Bác sĩ #9 tiếp nhận", exception.getMessage());
         verify(triageAlertPublisher, never()).publishStatusChange(any());
     }
 
@@ -322,8 +322,8 @@ class TriageAlertServiceTest {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> service.resolve(10L));
 
-        assertEquals("Canh bao id=10 phai duoc tiep nhan truoc khi danh dau da xu ly",
-                exception.getMessage());
+        assertEquals("Cảnh báo id=10 phải được tiếp nhận trước khi đánh dấu đã xử lý",
+        exception.getMessage());
         verify(triageAlertPublisher, never()).publishStatusChange(any());
     }
 
