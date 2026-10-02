@@ -62,10 +62,7 @@ class ChatControllerTest {
 
     @MockitoBean
     private StreamingRagQueryService streamingRagQueryService;
-
-    // UC0036/067(vá) - ChatController gio goi TriageAlertService.createAndPublish() (thay vi
-    // tu dung TriageAlertPublisher truc tiep) khi emergency=true - can mock de context load
-    // duoc va de xac nhan hanh vi goi/khong goi.
+    
     @MockitoBean
     private TriageAlertService triageAlertService;
 
@@ -108,9 +105,9 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.dbMessageId").value(1))
                 .andExpect(jsonPath("$.sessionId").value(1));
 
-        // UC0036 - khong co dau hieu khan cap thi KHONG duoc day canh bao sang admin, tranh
-        // lam nhieu dashboard voi nhung tin nhan binh thuong.
+        // UC0036 - khong co dau hieu khan cap thi KHONG duoc tao/gan canh bao nao ca.
         verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), any());
+        verify(triageAlertService, never()).linkConversation(any(), any(), any());
     }
 
     @Test
@@ -130,6 +127,10 @@ class ChatControllerTest {
         stubChatServiceAsk(
                 new ChatAnswer(ragAnswer, true, List.of("DAU_BUNG_CAP_TINH")),
                 new TriageResult(true, List.of("DAU_BUNG_CAP_TINH")));
+        when(triageAlertService.createAndPublish(
+                eq(1L), isNull(), isNull(),
+                eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
+                .thenReturn(42L);
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
                 .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L, 1L));
 
@@ -142,12 +143,10 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.emergency").value(true))
                 .andExpect(jsonPath("$.matchedGroups[0]").value("DAU_BUNG_CAP_TINH"));
 
-        // UC0036/067(vá) - co dau hieu khan cap thi PHAI goi TriageAlertService.createAndPublish()
-        // voi dung patientId/noi dung/nhom trieu chung da khop - sessionId/messageId la null vi
-        // goi TRUOC khi chatHistoryService.saveExchange() luu tin nhan that (xem ChatController).
         verify(triageAlertService).createAndPublish(
                 eq(1L), isNull(), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
+        verify(triageAlertService).linkConversation(eq(42L), eq(1L), eq(1L));
     }
 
     @Test

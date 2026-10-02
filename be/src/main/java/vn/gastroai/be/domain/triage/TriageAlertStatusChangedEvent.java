@@ -7,5 +7,7 @@ public record TriageAlertStatusChangedEvent(
         String status,
         Long claimedById,
         String claimedByType,
+        Long resolvedById,
+        String resolvedByType,
         Instant statusChangedAt) {
 }

@@ -1,4 +1,4 @@
-import { apiClient } from '../lib/axios'
+import { apiClient, getAuthToken } from '../lib/axios'
 
 export type SenderType = 'patient' | 'assistant' | 'system'
 
@@ -176,6 +176,136 @@ export async function loadAttachmentsForDisplay(dtos: ChatAttachmentDto[]): Prom
 
 /** Gọi thật BE (UC0017): BE gọi RagQueryService.answer() (Gemini/RAG thật), không còn là mock. */
 export const chatService: ChatService = { sendMessage }
+
+// ─────────────────────────── Streaming (SSE qua fetch) ────────────────────────────────
+
+/** Khớp với StreamingDoneEvent của BE — gửi kèm sự kiện "done", báo kết thúc luồng. */
+export interface StreamingDone {
+  sources: SourceRef[]
+  relatedQuestions: string[]
+  emergency: boolean
+  matchedGroups: string[]
+  sessionId: number | null
+  assistantMessageId: number | null
+}
+
+export interface StreamMessageCallbacks {
+  onToken: (text: string) => void
+  onDone: (done: StreamingDone) => void
+  onError: (message: string) => void
+}
+
+/** Tách 1 sự kiện SSE trọn vẹn (đã bỏ \n\n cuối) thành tên sự kiện + nội dung data đã nối dòng. */
+function parseSseEvent(rawEvent: string): { eventName: string; data: string } {
+  let eventName = ''
+  const dataLines: string[] = []
+
+  for (const line of rawEvent.split('\n')) {
+    if (line.startsWith('event:')) {
+      eventName = line.slice('event:'.length)
+    } else if (line.startsWith('data:')) {
+      // Khong trim(): Spring ghi "data:" khong co dau cach phia sau, va token Gemini
+      // thuong bat dau bang dau cach (vd " bung") - trim se lam chu dinh lien vao nhau.
+      dataLines.push(line.slice('data:'.length))
+    }
+  }
+
+  // Cau tra loi co markdown nen co xuong dong - Spring tach 1 token co xuong dong thanh
+  // nhieu dong "data:" rieng, phai noi lai bang \n de khong lam dinh danh sach/doan van.
+  return { eventName, data: dataLines.join('\n') }
+}
+
+/**
+ * Gửi câu hỏi và nhận câu trả lời AI theo kiểu streaming (SSE) qua `fetch` +
+ * `response.body.getReader()`. Không dùng EventSource (chỉ GET, không gắn được header
+ * Authorization) hay axios (đợi nhận hết mới trả, không đọc từng phần được).
+ */
+export async function streamMessage(
+  request: SendMessageRequest,
+  { onToken, onDone, onError }: StreamMessageCallbacks,
+  signal?: AbortSignal,
+): Promise<void> {
+  const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1'
+  const token = getAuthToken()
+
+  let response: Response
+  try {
+    response = await fetch(`${baseURL}/chat/messages/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ content: request.content, sessionId: request.sessionId ?? null }),
+      signal,
+    })
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'AbortError') return
+    onError('Không thể kết nối mạng. Vui lòng kiểm tra kết nối và thử lại.')
+    return
+  }
+
+  if (!response.ok || !response.body) {
+    onError(
+      response.status === 401
+        ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+        : 'Không thể nhận câu trả lời từ AI. Vui lòng thử lại.',
+    )
+    return
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let finished = false
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+
+      let separatorIndex = buffer.indexOf('\n\n')
+      while (separatorIndex !== -1) {
+        const rawEvent = buffer.slice(0, separatorIndex)
+        buffer = buffer.slice(separatorIndex + 2)
+
+        if (rawEvent) {
+          const { eventName, data } = parseSseEvent(rawEvent)
+
+          if (eventName === 'done') {
+            finished = true
+            try {
+              onDone(JSON.parse(data) as StreamingDone)
+            } catch {
+              onError('Không đọc được phản hồi từ AI. Vui lòng thử lại.')
+            }
+          } else if (eventName === 'error') {
+            // BE da bao loi ro rang (vd Gemini loi that) - danh dau ket thuc va thoat
+            // ngay, khong de doan kiem tra "mat ket noi" ben duoi ghi de bang thong
+            // bao sai (lam nguoi dung tuong la loi mang cua ho).
+            finished = true
+            onError(data || 'Không thể nhận được câu trả lời từ AI. Vui lòng thử lại.')
+            return
+          } else {
+            onToken(data)
+          }
+        }
+
+        separatorIndex = buffer.indexOf('\n\n')
+      }
+    }
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'AbortError') return
+    onError('Mất kết nối trong lúc nhận câu trả lời. Vui lòng thử lại.')
+    return
+  }
+
+  if (!finished) {
+    onError('Mất kết nối trước khi nhận được câu trả lời đầy đủ. Vui lòng thử lại.')
+  }
+}
 
 // ─────────────────────────── Chat History API ────────────────────────────────
 

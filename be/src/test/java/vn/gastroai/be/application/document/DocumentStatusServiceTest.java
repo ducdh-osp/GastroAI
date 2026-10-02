@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
+import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
 import java.util.Optional;
@@ -21,6 +22,9 @@ class DocumentStatusServiceTest {
 
     @Mock
     private DocumentRepository documentRepository;
+
+    @Mock
+    private ChunkRepository chunkRepository;
 
     @InjectMocks
     private DocumentStatusService documentStatusService;

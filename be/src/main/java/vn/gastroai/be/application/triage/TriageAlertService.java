@@ -3,6 +3,9 @@ package vn.gastroai.be.application.triage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.auth.Patient;
@@ -18,31 +21,31 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-
 @Service
 public class TriageAlertService {
+
+    private static final Logger log = LoggerFactory.getLogger(TriageAlertService.class);
 
     private static final Duration DEDUPE_WINDOW = Duration.ofMinutes(5);
 
     private final TriageAlertRepository triageAlertRepository;
     private final PatientRepository patientRepository;
-    private final TriageAlertPublisher triageAlertPublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
     public TriageAlertService(
             TriageAlertRepository triageAlertRepository,
             PatientRepository patientRepository,
-            TriageAlertPublisher triageAlertPublisher,
+            ApplicationEventPublisher eventPublisher,
             ObjectMapper objectMapper) {
         this.triageAlertRepository = triageAlertRepository;
         this.patientRepository = patientRepository;
-        this.triageAlertPublisher = triageAlertPublisher;
+        this.eventPublisher = eventPublisher;
         this.objectMapper = objectMapper;
     }
 
-   
     @Transactional
-    public void createAndPublish(
+    public Long createAndPublish(
             Long patientId,
             Long sessionId,
             Long messageId,
@@ -51,11 +54,10 @@ public class TriageAlertService {
 
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Khong tim thay benh nhan id=" + patientId));
+                        "Không tìm thấy bệnh nhân id=" + patientId));
 
         Instant occurredAt = Instant.now();
 
-      
         Optional<TriageAlert> existingAlert = triageAlertRepository
                 .findFirstByPatient_IdAndStatusNotAndOccurredAtAfterOrderByOccurredAtDesc(
                         patientId, TriageAlertStatus.RESOLVED, occurredAt.minus(DEDUPE_WINDOW));
@@ -85,7 +87,39 @@ public class TriageAlertService {
                 alert.getStatus().name(),
                 occurredAt);
 
-        triageAlertPublisher.publish(event);
+        eventPublisher.publishEvent(event);
+
+        return alert.getId();
+    }
+
+    @Transactional
+    public void linkConversation(Long alertId, Long sessionId, Long messageId) {
+        Optional<TriageAlert> maybeAlert = triageAlertRepository.findById(alertId);
+
+        if (maybeAlert.isEmpty()) {
+            log.warn("Khong the gan sessionId/messageId: canh bao Triage id={} khong con ton tai",
+                    alertId);
+            return;
+        }
+
+        TriageAlert alert = maybeAlert.get();
+        alert.setSessionId(sessionId);
+        alert.setMessageId(messageId);
+        triageAlertRepository.save(alert);
+
+        TriageAlertEvent event = new TriageAlertEvent(
+                alert.getId(),
+                alert.getPatient().getId(),
+                alert.getPatient().getFullName(),
+                alert.getPatient().getPhone(),
+                sessionId,
+                messageId,
+                alert.getMessageContent(),
+                fromJson(alert.getMatchedGroups()),
+                alert.getStatus().name(),
+                alert.getOccurredAt());
+
+        eventPublisher.publishEvent(event);
     }
 
     @Transactional(readOnly = true)
@@ -95,51 +129,73 @@ public class TriageAlertService {
                 .toList();
     }
 
-    
     @Transactional
     public TriageAlertResponse claim(Long alertId, Long claimerId, String claimerType) {
+        Instant now = Instant.now();
+        int claimedRows = triageAlertRepository.claimIfNew(alertId, claimerId, claimerType, now);
+
+        if (claimedRows == 1) {
+            TriageAlert alert = findAlertOrThrow(alertId);
+            broadcastStatusChange(alert, now, null, null);
+            return toResponse(alert);
+        }
+
         TriageAlert alert = findAlertOrThrow(alertId);
 
         if (alert.getStatus() == TriageAlertStatus.RESOLVED) {
             throw new IllegalStateException(
-                    "Canh bao id=" + alertId + " da duoc xu ly xong, khong the tiep nhan lai");
+                    "Cảnh báo id=" + alertId + " đã được xử lý xong, không thể tiếp nhận lại");
         }
 
-        alert.setStatus(TriageAlertStatus.IN_PROGRESS);
-        alert.setClaimedById(claimerId);
-        alert.setClaimedByType(claimerType);
-        alert.setClaimedAt(Instant.now());
-        triageAlertRepository.save(alert);
+        if (alert.getStatus() == TriageAlertStatus.IN_PROGRESS
+                && claimerId.equals(alert.getClaimedById())
+                && claimerType.equals(alert.getClaimedByType())) {
+            return toResponse(alert);
+        }
 
-        broadcastStatusChange(alert);
-        return toResponse(alert);
+        String claimerLabel = "DOCTOR".equals(alert.getClaimedByType()) ? "Bác sĩ" : "Admin";
+        throw new IllegalStateException(
+                "Cảnh báo đã được " + claimerLabel + " #" + alert.getClaimedById() + " tiếp nhận");
     }
 
     @Transactional
-    public TriageAlertResponse resolve(Long alertId) {
+    public TriageAlertResponse resolve(Long alertId, Long resolverId, String resolverType) {
+        Instant now = Instant.now();
+        int resolvedRows = triageAlertRepository.resolveIfInProgress(alertId, resolverId, resolverType, now);
+
+        if (resolvedRows == 1) {
+            TriageAlert alert = findAlertOrThrow(alertId);
+            broadcastStatusChange(alert, now, resolverId, resolverType);
+            return toResponse(alert);
+        }
+
         TriageAlert alert = findAlertOrThrow(alertId);
 
-        alert.setStatus(TriageAlertStatus.RESOLVED);
-        alert.setResolvedAt(Instant.now());
-        triageAlertRepository.save(alert);
+        if (alert.getStatus() == TriageAlertStatus.RESOLVED) {
+            throw new IllegalStateException(
+                    "Cảnh báo id=" + alertId + " đã được xử lý xong trước đó");
+        }
 
-        broadcastStatusChange(alert);
-        return toResponse(alert);
+        throw new IllegalStateException(
+                "Cảnh báo id=" + alertId + " phải được tiếp nhận trước khi đánh dấu đã xử lý");
     }
 
     private TriageAlert findAlertOrThrow(Long alertId) {
         return triageAlertRepository.findById(alertId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Khong tim thay canh bao Triage id=" + alertId));
+                        "Không tìm thấy cảnh báo Triage id=" + alertId));
     }
 
-    private void broadcastStatusChange(TriageAlert alert) {
-        triageAlertPublisher.publishStatusChange(new TriageAlertStatusChangedEvent(
+    private void broadcastStatusChange(
+            TriageAlert alert, Instant changedAt, Long resolvedById, String resolvedByType) {
+        eventPublisher.publishEvent(new TriageAlertStatusChangedEvent(
                 alert.getId(),
                 alert.getStatus().name(),
                 alert.getClaimedById(),
                 alert.getClaimedByType(),
-                alert.getUpdatedAt()));
+                resolvedById,
+                resolvedByType,
+                changedAt));
     }
 
     private TriageAlertResponse toResponse(TriageAlert alert) {
@@ -157,6 +213,8 @@ public class TriageAlertService {
                 alert.getClaimedByType(),
                 alert.getClaimedAt(),
                 alert.getResolvedAt(),
+                alert.getResolvedById(),
+                alert.getResolvedByType(),
                 alert.getOccurredAt());
     }
 

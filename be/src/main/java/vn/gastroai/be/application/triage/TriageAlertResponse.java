@@ -18,5 +18,7 @@ public record TriageAlertResponse(
         String claimedByType,
         Instant claimedAt,
         Instant resolvedAt,
+        Long resolvedById,
+        String resolvedByType,
         Instant occurredAt) {
 }

@@ -1,11 +1,14 @@
 package vn.gastroai.be.application.document;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
+import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
 import java.util.Optional;
@@ -13,10 +16,14 @@ import java.util.Optional;
 @Service
 public class DocumentStatusService {
 
-    private final DocumentRepository documentRepository;
+    private static final Logger log = LoggerFactory.getLogger(DocumentStatusService.class);
 
-    public DocumentStatusService(DocumentRepository documentRepository) {
+    private final DocumentRepository documentRepository;
+    private final ChunkRepository chunkRepository;
+
+    public DocumentStatusService(DocumentRepository documentRepository, ChunkRepository chunkRepository) {
         this.documentRepository = documentRepository;
+        this.chunkRepository = chunkRepository;
     }
 
     @Transactional(readOnly = true)
@@ -62,13 +69,21 @@ public class DocumentStatusService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markError(Long documentId, String errorMessage) {
-        Document document = getDocument(documentId);
+        Optional<Document> maybeDocument = documentRepository.findById(documentId);
+
+        if (maybeDocument.isEmpty()) {
+            log.warn("Document id={} khong con ton tai (co the da bi xoa) - bo qua markError", documentId);
+            return;
+        }
+
+        Document document = maybeDocument.get();
 
         document.setStatus(DocumentStatus.ERROR);
         document.setProcessingStage(DocumentProcessingStage.ERROR);
         document.setErrorMessage(errorMessage);
 
         documentRepository.save(document);
+        chunkRepository.deleteByDocumentId(documentId);
     }
 
     private Document getDocument(Long documentId) {

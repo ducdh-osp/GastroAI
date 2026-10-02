@@ -19,7 +19,9 @@ export function MessageList({ messages, isReplying, isLoadingHistory, onQuickPro
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [messages, isReplying])
-
+  const lastMessage = messages[messages.length - 1]
+  const hasStreamingAssistantBubble =
+  lastMessage?.sender === 'assistant' && lastMessage?.status === 'replying'
   return (
     <section className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6" aria-label="Nội dung hội thoại" aria-live="polite">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
@@ -55,7 +57,7 @@ export function MessageList({ messages, isReplying, isLoadingHistory, onQuickPro
           />
         ))}
 
-        {isReplying && (
+        {isReplying && !hasStreamingAssistantBubble &&(
           <div className="flex items-start gap-2.5" role="status">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-700" aria-hidden="true"><RobotOutlined /></span>
             <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-slate-100 px-4 py-4">

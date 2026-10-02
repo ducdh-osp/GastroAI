@@ -22,6 +22,11 @@ spring:
     properties:
       mail.smtp.auth: ${SMTP_AUTH:false}
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+
+  task:
+    scheduling:
+      pool:
+        size: 2
   # Spring tu choi multipart request vuot qua gioi han nay TRUOC KHI request toi duoc
   # controller/FileStorageService.validate() - truoc day khong khai nen roi ve default 1MB
   # cua Spring Boot, khien app.storage.max-file-size=20MB ben duoi khong co tac dung thuc te
@@ -104,7 +109,7 @@ app:
   # dùng trực tiếp DataSourceProperties.
   backup:
     directory: ./backups
-
+    retention-days: ${BACKUP_RETENTION_DAYS:14}
     postgres:
       username: gastroai
       password: gastroai

@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -72,6 +74,12 @@ class ChatControllerStreamingTest {
     @WithMockUser(username = "1", roles = "PATIENT")
     void streamMessagePublishesTriageAlertWhenEmergencyDetected() throws Exception {
         stubStreamAnswer(true, List.of("DAU_BUNG_CAP_TINH"));
+        when(triageAlertService.createAndPublish(
+                eq(1L), isNull(), isNull(),
+                eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
+                .thenReturn(42L);
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
+                .thenReturn(new ChatHistoryService.SavedExchange(5L, 8L, 9L));
 
         MvcResult mvcResult = mockMvc.perform(post("/api/v1/chat/messages/stream")
                         .with(csrf())
@@ -85,12 +93,12 @@ class ChatControllerStreamingTest {
         mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk());
 
-        // UC0036/067(vá) - ChatController gio goi TriageAlertService.createAndPublish() thay vi
-        // tu dung TriageAlertPublisher - sessionId/messageId van la null (chua doi
-        // saveExchange() chay xong).
+        // UC0067(va) - canh bao phai duoc gui NGAY (sessionId/messageId van null luc nay),
+        // roi linkConversation() gan id that (42) voi sessionId/messageId tu SavedExchange.
         verify(triageAlertService, timeout(2000)).createAndPublish(
                 eq(1L), isNull(), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
+        verify(triageAlertService, timeout(2000)).linkConversation(eq(42L), eq(5L), eq(9L));
     }
 
     @Test
@@ -111,6 +119,7 @@ class ChatControllerStreamingTest {
                 .andExpect(status().isOk());
 
         verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), any());
+        verify(triageAlertService, never()).linkConversation(any(), any(), any());
     }
 
 
