@@ -1,7 +1,7 @@
 import { CheckOutlined, SafetyOutlined } from '@ant-design/icons'
 import { Alert, Badge, Button, Card, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   claimTriageAlert,
   extractTriageErrorMessage,
@@ -78,15 +78,14 @@ function applyStatusChange(alerts: TriageAlert[], event: TriageAlertStatusChange
   )
 }
 
-/**
- * Gop danh sach tu API (nguon su that - DB) voi danh sach dang hien tren man hinh: uu tien
- * ban tu API, nhung giu lai nhung canh bao dang co tren man hinh ma API chua kip tra ve (vi
- * du vua nhan qua WebSocket trong luc cho API phan hoi) - tranh bi ghi de mat boi ban cu hon.
- */
-function mergeAlerts(fromApi: TriageAlert[], current: TriageAlert[]): TriageAlert[] {
+function mergeAlerts(fromApi: TriageAlert[], current: TriageAlert[], touchedIds: Set<number>): TriageAlert[] {
+  const currentById = new Map(current.map((a) => [a.id, a]))
+  const merged = fromApi.map((apiAlert) =>
+    touchedIds.has(apiAlert.id) ? (currentById.get(apiAlert.id) ?? apiAlert) : apiAlert,
+  )
   const apiIds = new Set(fromApi.map((a) => a.id))
   const onlyOnScreen = current.filter((a) => !apiIds.has(a.id))
-  return [...fromApi, ...onlyOnScreen].sort(
+  return [...merged, ...onlyOnScreen].sort(
     (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
   )
 }
@@ -95,15 +94,26 @@ export default function CmsTriageAlertsPage() {
   const { isAuthenticated } = useCmsAuth()
   const [alerts, setAlerts] = useState<TriageAlert[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const actionGuard = useInFlightGuard<number>()
+  const touchedDuringLoad = useRef(new Set<number>())
 
   const loadAlerts = useCallback((silent = false) => {
     if (!silent) setLoading(true)
-    setError(null)
+    touchedDuringLoad.current.clear()
     listTriageAlerts()
-      .then((fromApi) => setAlerts((current) => mergeAlerts(fromApi, current)))
-      .catch((err: unknown) => setError(extractTriageErrorMessage(err, 'Không thể tải danh sách cảnh báo.')))
+      .then((fromApi) => {
+        setAlerts((current) => mergeAlerts(fromApi, current, touchedDuringLoad.current))
+        setLoadError(null)
+      })
+      .catch((err: unknown) => {
+        // Lan tai im lang that bai thi khong bao loi - cham trang thai "mat ket noi
+        // realtime" da bao cho admin biet roi, khong can bat/tat Alert moi 30s.
+        if (!silent) {
+          setLoadError(extractTriageErrorMessage(err, 'Không thể tải danh sách cảnh báo.'))
+        }
+      })
       .finally(() => { if (!silent) setLoading(false) })
   }, [])
 
@@ -111,11 +121,14 @@ export default function CmsTriageAlertsPage() {
 
   const { connectionState } = useTriageAlertSocket({
     enabled: isAuthenticated,
-    onAlert: useCallback((event: TriageAlertSocketEvent) => setAlerts((prev) => upsertAlert(prev, event)), []),
-    onStatusChange: useCallback(
-      (event: TriageAlertStatusChangedSocketEvent) => setAlerts((prev) => applyStatusChange(prev, event)),
-      [],
-    ),
+    onAlert: useCallback((event: TriageAlertSocketEvent) => {
+      touchedDuringLoad.current.add(event.id)
+      setAlerts((prev) => upsertAlert(prev, event))
+    }, []),
+    onStatusChange: useCallback((event: TriageAlertStatusChangedSocketEvent) => {
+      touchedDuringLoad.current.add(event.id)
+      setAlerts((prev) => applyStatusChange(prev, event))
+    }, []),
     onConnected: useCallback(() => loadAlerts(true), [loadAlerts]),
   })
   useEffect(() => {
@@ -129,8 +142,9 @@ export default function CmsTriageAlertsPage() {
       try {
         const updated = await claimTriageAlert(alertId)
         setAlerts((prev) => prev.map((a) => (a.id === alertId ? updated : a)))
+        setActionError(null)
       } catch (err) {
-        setError(extractTriageErrorMessage(err, 'Không thể tiếp nhận cảnh báo này.'))
+        setActionError(extractTriageErrorMessage(err, 'Không thể tiếp nhận cảnh báo này.'))
       }
     })
   }
@@ -140,8 +154,9 @@ export default function CmsTriageAlertsPage() {
       try {
         const updated = await resolveTriageAlert(alertId)
         setAlerts((prev) => prev.map((a) => (a.id === alertId ? updated : a)))
+        setActionError(null)
       } catch (err) {
-        setError(extractTriageErrorMessage(err, 'Không thể đánh dấu đã xử lý.'))
+        setActionError(extractTriageErrorMessage(err, 'Không thể đánh dấu đã xử lý.'))
       }
     })
   }
@@ -238,9 +253,19 @@ export default function CmsTriageAlertsPage() {
           </div>
         </div>
 
-        {error && <Alert type="error" showIcon message={error} className="shrink-0" />}
+        {loadError && <Alert type="error" showIcon message={loadError} className="shrink-0" />}
+        {actionError && (
+          <Alert
+            type="error"
+            showIcon
+            closable
+            onClose={() => setActionError(null)}
+            message={actionError}
+            className="shrink-0"
+          />
+        )}
 
-        {!error && !loading && unresolvedCount > 0 && (
+        {!loadError && !loading && unresolvedCount > 0 && (
           <Alert
             className="shrink-0"
             type="warning"
@@ -262,7 +287,7 @@ export default function CmsTriageAlertsPage() {
               pagination={false}
               scroll={{ x: 900 }}
               tableLayout="fixed"
-              locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có cảnh báo khẩn cấp nào' }}
+              locale={{ emptyText: loadError ? 'Lỗi tải dữ liệu' : 'Chưa có cảnh báo khẩn cấp nào' }}
             />
           </Spin>
         </Card>
