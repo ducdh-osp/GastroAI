@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { chatService, getChatSessionMessages, rateMessage } from '../../api/chat'
+import { chatService, getChatSessionMessages, loadAttachmentsForDisplay, rateMessage } from '../../api/chat'
 import type { Attachment, Message, RatingValue, SendMessageRequest } from '../../api/chat'
 
 const { Text, Title } = Typography
@@ -38,9 +38,9 @@ export function ChatContainer() {
 
     setIsLoadingHistory(true)
     getChatSessionMessages(resumeSessionId)
-      .then((history) => {
+      .then(async (history) => {
         if (cancelled) return
-        setMessages(history.map((message) => ({
+        const mapped = await Promise.all(history.map(async (message) => ({
           id: `history-${message.id}`,
           dbMessageId: message.id,
           sender: message.sender,
@@ -52,7 +52,11 @@ export function ChatContainer() {
           emergency: message.emergency,
           matchedGroups: message.matchedGroups,
           rating: message.rating,
+          // Tải lại thành blob URL vì URL gốc cần header Authorization (xem loadAttachmentsForDisplay).
+          // Lỗi tải 1 đính kèm không chặn hiển thị toàn bộ tin nhắn - chỉ mất phần preview đó.
+          attachments: await loadAttachmentsForDisplay(message.attachments).catch(() => []),
         })))
+        if (!cancelled) setMessages(mapped)
       })
       .catch((error: unknown) => {
         if (cancelled) return

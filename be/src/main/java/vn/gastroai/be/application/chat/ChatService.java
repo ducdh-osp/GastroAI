@@ -4,6 +4,9 @@ import org.springframework.stereotype.Service;
 import vn.gastroai.be.application.rag.RagQueryService;
 import vn.gastroai.be.application.triage.TriageService;
 import vn.gastroai.be.domain.triage.TriageResult;
+import vn.gastroai.be.infrastructure.ai.ImagePart;
+
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -27,8 +30,15 @@ public class ChatService {
     }
 
     public ChatAnswer ask(String question, Consumer<TriageResult> onTriageChecked) {
+        return ask(question, List.of(), null, onTriageChecked);
+    }
+
+    /** images/attachedDocumentText: file benh nhan dinh kem tin nhan (UC chat dinh kem) - xem RagQueryService. */
+    public ChatAnswer ask(String question, List<ImagePart> images, String attachedDocumentText,
+                           Consumer<TriageResult> onTriageChecked) {
         TriageResult triageResult = triageService.check(question);
         onTriageChecked.accept(triageResult);
-        return new ChatAnswer(ragQueryService.answerWithSources(question), triageResult.emergency(), triageResult.matchedGroups());
+        return new ChatAnswer(ragQueryService.answerWithSources(question, images, attachedDocumentText),
+                triageResult.emergency(), triageResult.matchedGroups());
     }
 }
