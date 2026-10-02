@@ -1,10 +1,10 @@
 import { HeartOutlined, PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
 import { Alert, Button, Card, Typography } from 'antd'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { chatService, getChatSessionMessages, rateMessage } from '../../api/chat'
+import { getChatSessionMessages, rateMessage, streamMessage } from '../../api/chat'
 import type { Attachment, Message, RatingValue, SendMessageRequest } from '../../api/chat'
 
 const { Text, Title } = Typography
@@ -22,6 +22,11 @@ export function ChatContainer() {
   const [networkError, setNetworkError] = useState<string | null>(null)
   /** ID phiên hiện tại — null = chưa có phiên (câu đầu tiên sẽ tạo phiên mới). */
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(resumeSessionId)
+
+  // Huy request streaming dang chay (component unmount hoac gui cau hoi moi de chong) - khong
+  // cap nhat state cua 1 trang da dong/da chuyen sang luot hoi khac.
+  const abortControllerRef = useRef<AbortController | null>(null)
+  useEffect(() => () => abortControllerRef.current?.abort(), [])
 
   const hasEmergencyInSession = messages.some((message) => message.emergency)
 
@@ -74,24 +79,84 @@ export function ChatContainer() {
       ? { ...existingMessage, status: 'sending', createdAt: new Date().toISOString() }
       : { id: crypto.randomUUID(), sender: 'patient', content: request.content, attachments: request.attachments, createdAt: new Date().toISOString(), status: 'sending' }
 
+    const assistantMessageId = crypto.randomUUID()
+
     setNetworkError(null)
     if (existingMessage) updateMessage(patientMessage.id, { status: 'sending', createdAt: patientMessage.createdAt })
     else setMessages((current) => [...current, patientMessage])
     setIsReplying(true)
 
+    abortControllerRef.current?.abort()
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
     try {
-      const response = await chatService.sendMessage({
-        ...request,
-        // Tiếp tục phiên hiện tại (hoặc null để tạo phiên mới ở câu đầu tiên)
-        sessionId: currentSessionId,
-      })
-      updateMessage(patientMessage.id, { status: 'sent' })
-      // Giữ sessionId từ response cho các lượt sau
-      if (response.sessionId) setCurrentSessionId(response.sessionId)
-      setMessages((current) => [...current, response])
-    } catch (error) {
-      updateMessage(patientMessage.id, { status: 'failed' })
-      setNetworkError(error instanceof Error ? error.message : 'Không thể kết nối mạng. Vui lòng thử lại.')
+      await streamMessage(
+        { ...request, sessionId: currentSessionId },
+        {
+          onToken: (text) => {
+            // Them tin AI vao danh sach o lan goi DAU TIEN (chua co bong bong rong tu truoc -
+            // vay nen khong con canh 3 cham "dang tra loi" de len bong bong rong). Cac lan
+            // sau chi noi chu. Phai dung dang ham setMessages(current => ...) vi token ve
+            // lien tuc - neu doc bien messages truc tiep se doc phai ban cu va mat chu.
+            setMessages((current) => {
+              const exists = current.some((message) => message.id === assistantMessageId)
+              if (!exists) {
+                return [...current, {
+                  id: assistantMessageId,
+                  sender: 'assistant',
+                  content: text,
+                  createdAt: new Date().toISOString(),
+                  status: 'replying',
+                }]
+              }
+              return current.map((message) =>
+                message.id === assistantMessageId
+                  ? { ...message, content: message.content + text }
+                  : message,
+              )
+            })
+          },
+          onDone: (doneData) => {
+            // Tin AI co the chua ton tai (truong hop hiem: cau tra loi rong, done den truoc
+            // ca token dau tien) - neu vay them moi thay vi chi update, tranh mat cau tra loi.
+            setMessages((current) => {
+              const exists = current.some((message) => message.id === assistantMessageId)
+              const resolvedFields = {
+                sources: doneData.sources,
+                relatedQuestions: doneData.relatedQuestions,
+                emergency: doneData.emergency,
+                matchedGroups: doneData.matchedGroups,
+                dbMessageId: doneData.assistantMessageId,
+                status: 'sent' as const,
+              }
+              if (!exists) {
+                return [...current, {
+                  id: assistantMessageId,
+                  sender: 'assistant',
+                  content: '',
+                  createdAt: new Date().toISOString(),
+                  ...resolvedFields,
+                }]
+              }
+              return current.map((message) =>
+                message.id === assistantMessageId ? { ...message, ...resolvedFields } : message,
+              )
+            })
+            if (doneData.sessionId) setCurrentSessionId(doneData.sessionId)
+            updateMessage(patientMessage.id, { status: 'sent' })
+          },
+          onError: (message) => {
+            // Xoa tin nhan AI tam (khong danh dau failed cho no) - MessageBubble gio chi hien
+            // nut "Gui lai" cho tin cua benh nhan (isPatient && isFailed), nhung van khong can
+            // 1 bong bong AI dang do, trong tren man hinh lam gi.
+            setMessages((current) => current.filter((item) => item.id !== assistantMessageId))
+            updateMessage(patientMessage.id, { status: 'failed' })
+            setNetworkError(message)
+          },
+        },
+        abortController.signal,
+      )
     } finally {
       setIsReplying(false)
     }

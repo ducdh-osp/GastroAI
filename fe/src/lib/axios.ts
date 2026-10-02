@@ -9,18 +9,23 @@ export const apiClient = axios.create({
   timeout: 60000,
 })
 
-// Tự động gắn Authorization header từ token đang lưu trong localStorage
-apiClient.interceptors.request.use((config) => {
+/** Đọc JWT hiện tại từ localStorage — dùng chung cho interceptor axios và fetch streaming. */
+export function getAuthToken(): string | null {
   try {
     const raw = localStorage.getItem('gastroai.auth')
-    if (raw) {
-      const { token } = JSON.parse(raw) as { token?: string }
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-    }
+    if (!raw) return null
+    const { token } = JSON.parse(raw) as { token?: string }
+    return token ?? null
   } catch {
-    // bỏ qua nếu parse lỗi
+    return null
+  }
+}
+
+// Tự động gắn Authorization header từ token đang lưu trong localStorage
+apiClient.interceptors.request.use((config) => {
+  const token = getAuthToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
