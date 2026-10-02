@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.auth.Patient;
@@ -20,7 +21,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-
 @Service
 public class TriageAlertService {
 
@@ -30,17 +30,17 @@ public class TriageAlertService {
 
     private final TriageAlertRepository triageAlertRepository;
     private final PatientRepository patientRepository;
-    private final TriageAlertPublisher triageAlertPublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
     public TriageAlertService(
             TriageAlertRepository triageAlertRepository,
             PatientRepository patientRepository,
-            TriageAlertPublisher triageAlertPublisher,
+            ApplicationEventPublisher eventPublisher,
             ObjectMapper objectMapper) {
         this.triageAlertRepository = triageAlertRepository;
         this.patientRepository = patientRepository;
-        this.triageAlertPublisher = triageAlertPublisher;
+        this.eventPublisher = eventPublisher;
         this.objectMapper = objectMapper;
     }
 
@@ -58,7 +58,6 @@ public class TriageAlertService {
 
         Instant occurredAt = Instant.now();
 
-      
         Optional<TriageAlert> existingAlert = triageAlertRepository
                 .findFirstByPatient_IdAndStatusNotAndOccurredAtAfterOrderByOccurredAtDesc(
                         patientId, TriageAlertStatus.RESOLVED, occurredAt.minus(DEDUPE_WINDOW));
@@ -88,11 +87,10 @@ public class TriageAlertService {
                 alert.getStatus().name(),
                 occurredAt);
 
-        triageAlertPublisher.publish(event);
+        eventPublisher.publishEvent(event);
 
         return alert.getId();
     }
-
     @Transactional
     public void linkConversation(Long alertId, Long sessionId, Long messageId) {
         Optional<TriageAlert> maybeAlert = triageAlertRepository.findById(alertId);
@@ -120,7 +118,7 @@ public class TriageAlertService {
                 alert.getStatus().name(),
                 alert.getOccurredAt());
 
-        triageAlertPublisher.publish(event);
+        eventPublisher.publishEvent(event);
     }
 
     @Transactional(readOnly = true)
@@ -188,7 +186,7 @@ public class TriageAlertService {
     }
 
     private void broadcastStatusChange(TriageAlert alert, Instant changedAt) {
-        triageAlertPublisher.publishStatusChange(new TriageAlertStatusChangedEvent(
+        eventPublisher.publishEvent(new TriageAlertStatusChangedEvent(
                 alert.getId(),
                 alert.getStatus().name(),
                 alert.getClaimedById(),

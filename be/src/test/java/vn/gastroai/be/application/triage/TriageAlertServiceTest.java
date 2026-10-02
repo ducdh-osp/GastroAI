@@ -2,6 +2,7 @@ package vn.gastroai.be.application.triage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.triage.TriageAlert;
 import vn.gastroai.be.domain.triage.TriageAlertEvent;
@@ -29,11 +30,11 @@ class TriageAlertServiceTest {
 
     private final TriageAlertRepository triageAlertRepository = mock(TriageAlertRepository.class);
     private final PatientRepository patientRepository = mock(PatientRepository.class);
-    private final TriageAlertPublisher triageAlertPublisher = mock(TriageAlertPublisher.class);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final TriageAlertService service = new TriageAlertService(
-            triageAlertRepository, patientRepository, triageAlertPublisher, objectMapper);
+            triageAlertRepository, patientRepository, eventPublisher, objectMapper);
 
     private Patient patient(Long id, String fullName, String phone) {
         Patient patient = new Patient();
@@ -67,7 +68,7 @@ class TriageAlertServiceTest {
                         && alert.getSessionId() == null
                         && alert.getMessageId() == null));
 
-        verify(triageAlertPublisher).publish(argThat((TriageAlertEvent event) ->
+        verify(eventPublisher).publishEvent(argThat((TriageAlertEvent event) ->
                 event.id().equals(100L)
                         && event.patientId().equals(1L)
                         && event.patientFullName().equals("Nguyen Van A")
@@ -84,12 +85,12 @@ class TriageAlertServiceTest {
                 99L, null, null, "Cau hoi", List.of()));
 
         verify(triageAlertRepository, never()).save(any());
-        verify(triageAlertPublisher, never()).publish(any());
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertEvent.class));
     }
 
     @Test
     void createAndPublishMergesIntoExistingUnresolvedAlertWithinDedupeWindow() {
-      
+
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
         when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
 
@@ -112,7 +113,7 @@ class TriageAlertServiceTest {
                 alert.getId().equals(50L)
                         && alert.getMessageContent().equals("Toi bi dau bung du doi hon nhieu roi")));
 
-        verify(triageAlertPublisher).publish(argThat((TriageAlertEvent event) ->
+        verify(eventPublisher).publishEvent(argThat((TriageAlertEvent event) ->
                 event.id().equals(50L)
                         && event.messageContent().equals("Toi bi dau bung du doi hon nhieu roi")));
     }
@@ -138,7 +139,7 @@ class TriageAlertServiceTest {
         verify(triageAlertRepository).save(argThat(alert ->
                 alert.getPatient().equals(patient)
                         && alert.getMessageContent().equals("Dau bung cap tinh lan dau")));
-        verify(triageAlertPublisher).publish(argThat((TriageAlertEvent event) -> event.id().equals(100L)));
+        verify(eventPublisher).publishEvent(argThat((TriageAlertEvent event) -> event.id().equals(100L)));
     }
 
     @Test
@@ -157,7 +158,7 @@ class TriageAlertServiceTest {
                         && saved.getSessionId().equals(7L)
                         && saved.getMessageId().equals(9L)));
 
-        verify(triageAlertPublisher).publish(argThat((TriageAlertEvent event) ->
+        verify(eventPublisher).publishEvent(argThat((TriageAlertEvent event) ->
                 event.id().equals(100L)
                         && event.sessionId().equals(7L)
                         && event.messageId().equals(9L)
@@ -171,7 +172,7 @@ class TriageAlertServiceTest {
         service.linkConversation(999L, 7L, 9L);
 
         verify(triageAlertRepository, never()).save(any());
-        verify(triageAlertPublisher, never()).publish(any());
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertEvent.class));
     }
 
     @Test
@@ -181,9 +182,6 @@ class TriageAlertServiceTest {
                 "[\"DAU_BUNG_CAP_TINH\"]", Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        // UC0067(va) - mo phong hieu ung cua UPDATE nguyen tu that trong DB: sua truc tiep
-        // len CUNG 1 instance ma findById() tra ve, dung CHINH gia tri Instant "now" ma
-        // service truyen vao - de kiem tra duoc lỗi 4 (statusChangedAt phai TRUNG claimedAt).
         when(triageAlertRepository.claimIfNew(eq(10L), eq(5L), eq("ADMIN"), any())).thenAnswer(invocation -> {
             Instant now = invocation.getArgument(3);
             alert.setStatus(TriageAlertStatus.IN_PROGRESS);
@@ -200,14 +198,11 @@ class TriageAlertServiceTest {
         assertEquals("ADMIN", response.claimedByType());
         assertEquals(List.of("DAU_BUNG_CAP_TINH"), response.matchedGroups());
 
-        verify(triageAlertPublisher).publishStatusChange(argThat((TriageAlertStatusChangedEvent event) ->
+        verify(eventPublisher).publishEvent(argThat((TriageAlertStatusChangedEvent event) ->
                 event.id().equals(10L)
                         && event.status().equals("IN_PROGRESS")
                         && event.claimedById().equals(5L)
                         && event.claimedByType().equals("ADMIN")
-                        // UC0067(va) - lỗi 4: statusChangedAt gui cho FE phai CUNG gia tri
-                        // voi claimedAt vua ghi vao DB, khong duoc lay tu updatedAt (chi
-                        // duoc Hibernate cap nhat luc flush, tuc la SAU khi da broadcast).
                         && event.statusChangedAt().equals(alert.getClaimedAt())));
     }
 
@@ -223,7 +218,7 @@ class TriageAlertServiceTest {
 
         assertThrows(IllegalStateException.class, () -> service.claim(10L, 5L, "ADMIN"));
 
-        verify(triageAlertPublisher, never()).publishStatusChange(any());
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertStatusChangedEvent.class));
     }
 
     @Test
@@ -236,16 +231,13 @@ class TriageAlertServiceTest {
         alert.setClaimedById(5L);
         alert.setClaimedByType("ADMIN");
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        // UC0067(va) - canh bao da la IN_PROGRESS boi CHINH nguoi nay (vd bam dup, hoac
-        // mang gui lai request) nen UPDATE ... WHERE status = NEW khong con khop, tra ve 0 -
-        // nhung day KHONG phai loi, phai tra ve binh thuong.
         when(triageAlertRepository.claimIfNew(eq(10L), eq(5L), eq("ADMIN"), any())).thenReturn(0);
 
         TriageAlertResponse response = service.claim(10L, 5L, "ADMIN");
 
         assertEquals("IN_PROGRESS", response.status());
         assertEquals(5L, response.claimedById());
-        verify(triageAlertPublisher, never()).publishStatusChange(any());
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertStatusChangedEvent.class));
     }
 
     @Test
@@ -263,10 +255,8 @@ class TriageAlertServiceTest {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> service.claim(10L, 5L, "ADMIN"));
 
-        // UC0067(va) - thong bao phai neu ro ai da tiep nhan, giup admin khac biet lien he
-        // ai thay vi chi bao chung chung "da co nguoi tiep nhan".
         assertEquals("Cảnh báo đã được Bác sĩ #9 tiếp nhận", exception.getMessage());
-        verify(triageAlertPublisher, never()).publishStatusChange(any());
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertStatusChangedEvent.class));
     }
 
     @Test
@@ -289,7 +279,7 @@ class TriageAlertServiceTest {
         TriageAlertResponse response = service.resolve(10L);
 
         assertEquals("RESOLVED", response.status());
-        verify(triageAlertPublisher).publishStatusChange(argThat((TriageAlertStatusChangedEvent event) ->
+        verify(eventPublisher).publishEvent(argThat((TriageAlertStatusChangedEvent event) ->
                 event.id().equals(10L)
                         && event.status().equals("RESOLVED")
                         && event.statusChangedAt().equals(alert.getResolvedAt())));
@@ -307,7 +297,7 @@ class TriageAlertServiceTest {
 
         assertThrows(IllegalStateException.class, () -> service.resolve(10L));
 
-        verify(triageAlertPublisher, never()).publishStatusChange(any());
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertStatusChangedEvent.class));
     }
 
     @Test
@@ -323,8 +313,8 @@ class TriageAlertServiceTest {
                 () -> service.resolve(10L));
 
         assertEquals("Cảnh báo id=10 phải được tiếp nhận trước khi đánh dấu đã xử lý",
-        exception.getMessage());
-        verify(triageAlertPublisher, never()).publishStatusChange(any());
+                exception.getMessage());
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertStatusChangedEvent.class));
     }
 
     @Test
