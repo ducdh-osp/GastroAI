@@ -53,10 +53,14 @@ class TriageAlertServiceTest {
             return saved;
         });
 
-        service.createAndPublish(
+        Long alertId = service.createAndPublish(
                 1L, null, null,
                 "Toi bi dau bung du doi va non ra mau",
                 List.of("XUAT_HUYET_TIEU_HOA"));
+
+        // UC0067(va) - tra ve dung id cua canh bao vua tao, de ChatController dung lai goi
+        // linkConversation() sau khi saveExchange() xong.
+        assertEquals(100L, alertId);
 
         // Phai luu vao DB voi status NEW, dung noi dung/nhom trieu chung.
         verify(triageAlertRepository).save(argThat(alert ->
@@ -101,10 +105,14 @@ class TriageAlertServiceTest {
                 .thenReturn(Optional.of(existingAlert));
         when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.createAndPublish(
+        Long alertId = service.createAndPublish(
                 1L, null, null,
                 "Toi bi dau bung du doi hon nhieu roi",
                 List.of("DAU_BUNG_CAP_TINH"));
+
+        // UC0067(va) - phai tra ve id CUA CANH BAO CU (50), de linkConversation() sau nay
+        // gan dung vao canh bao dang hien thi tren man hinh admin, khong tao canh bao moi.
+        assertEquals(50L, alertId);
 
         // Phai cap nhat CHINH canh bao cu (id=50) voi noi dung moi, khong tao ban ghi moi.
         verify(triageAlertRepository).save(argThat(alert ->
@@ -140,6 +148,42 @@ class TriageAlertServiceTest {
                 alert.getPatient().equals(patient)
                         && alert.getMessageContent().equals("Dau bung cap tinh lan dau")));
         verify(triageAlertPublisher).publish(argThat((TriageAlertEvent event) -> event.id().equals(100L)));
+    }
+
+    @Test
+    void linkConversationSetsRealIdsAndRepublishesEvent() {
+        Patient patient = patient(1L, "Nguyen Van A", "0901234567");
+        TriageAlert alert = new TriageAlert(patient, null, null, "Toi bi dau bung du doi qua",
+                "[\"DAU_BUNG_CAP_TINH\"]", Instant.parse("2026-09-30T00:00:00Z"));
+        alert.setId(100L);
+        when(triageAlertRepository.findById(100L)).thenReturn(Optional.of(alert));
+        when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.linkConversation(100L, 7L, 9L);
+
+        // UC0067(va) - sau linkConversation(), canh bao phai mang dung sessionId/messageId
+        // that, va phai gui lai event qua WebSocket de FE upsert dong da co san.
+        verify(triageAlertRepository).save(argThat(saved ->
+                saved.getId().equals(100L)
+                        && saved.getSessionId().equals(7L)
+                        && saved.getMessageId().equals(9L)));
+
+        verify(triageAlertPublisher).publish(argThat((TriageAlertEvent event) ->
+                event.id().equals(100L)
+                        && event.sessionId().equals(7L)
+                        && event.messageId().equals(9L)
+                        && event.messageContent().equals("Toi bi dau bung du doi qua")));
+    }
+
+    @Test
+    void linkConversationDoesNothingWhenAlertNoLongerExists() {
+        when(triageAlertRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Khong duoc nem ngoai le - canh bao co the da bi xoa/khong con, chi bo qua.
+        service.linkConversation(999L, 7L, 9L);
+
+        verify(triageAlertRepository, never()).save(any());
+        verify(triageAlertPublisher, never()).publish(any());
     }
 
     @Test

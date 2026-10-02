@@ -58,7 +58,23 @@ public class ChatController {
 
         Long patientId = AuthenticatedRequest.patientId(principal, authentication);
 
-        ChatAnswer chatAnswer = chatService.ask(request.content(), triageResult -> { });
+        Long[] alertIdHolder = new Long[1];
+
+        ChatAnswer chatAnswer = chatService.ask(request.content(), triageResult -> {
+            if (triageResult.emergency()) {
+                try {
+                    alertIdHolder[0] = triageAlertService.createAndPublish(
+                            patientId,
+                            null,
+                            null,
+                            request.content(),
+                            triageResult.matchedGroups());
+                } catch (Exception exception) {
+                    log.error("Khong the tao/gui canh bao Triage cho patientId={}: {}",
+                            patientId, exception.getMessage(), exception);
+                }
+            }
+        });
 
         RagAnswer ragAnswer = chatAnswer.ragAnswer();
 
@@ -78,17 +94,13 @@ public class ChatController {
                 chatAnswer.emergency(),
                 chatAnswer.matchedGroups());
 
-        if (chatAnswer.emergency()) {
+        if (alertIdHolder[0] != null) {
             try {
-                triageAlertService.createAndPublish(
-                        patientId,
-                        saved.sessionId(),
-                        saved.assistantMessageId(),
-                        request.content(),
-                        chatAnswer.matchedGroups());
+                triageAlertService.linkConversation(
+                        alertIdHolder[0], saved.sessionId(), saved.assistantMessageId());
             } catch (Exception exception) {
-                log.error("Khong the tao/gui canh bao Triage cho patientId={}: {}",
-                        patientId, exception.getMessage(), exception);
+                log.error("Khong the gan sessionId/messageId vao canh bao Triage id={}: {}",
+                        alertIdHolder[0], exception.getMessage(), exception);
             }
         }
 
@@ -134,6 +146,7 @@ public class ChatController {
         SseEmitter emitter = new SseEmitter(120_000L);
 
         Thread.startVirtualThread(() -> {
+            Long[] alertIdHolder = new Long[1];
             try {
                 StreamingRagQueryService.StreamingResult result = streamingRagQueryService.streamAnswer(
                         request.content(),
@@ -150,7 +163,22 @@ public class ChatController {
                                         exception);
                             }
                         },
-                        triageResult -> { });
+                        triageResult -> {
+                            if (triageResult.emergency()) {
+                                try {
+                                    alertIdHolder[0] = triageAlertService.createAndPublish(
+                                            patientId,
+                                            null,
+                                            null,
+                                            request.content(),
+                                            triageResult.matchedGroups());
+                                } catch (Exception exception) {
+                                    log.error(
+                                            "Khong the tao/gui canh bao Triage (streaming) cho patientId={}: {}",
+                                            patientId, exception.getMessage(), exception);
+                                }
+                            }
+                        });
 
                 ChatHistoryService.SavedExchange saved = null;
                 try {
@@ -166,18 +194,14 @@ public class ChatController {
                             patientId, exception.getMessage(), exception);
                 }
 
-                if (result.emergency()) {
+                if (alertIdHolder[0] != null && saved != null) {
                     try {
-                        triageAlertService.createAndPublish(
-                                patientId,
-                                saved != null ? saved.sessionId() : request.sessionId(),
-                                saved != null ? saved.assistantMessageId() : null,
-                                request.content(),
-                                result.matchedGroups());
+                        triageAlertService.linkConversation(
+                                alertIdHolder[0], saved.sessionId(), saved.assistantMessageId());
                     } catch (Exception exception) {
                         log.error(
-                                "Khong the tao/gui canh bao Triage (streaming) cho patientId={}: {}",
-                                patientId, exception.getMessage(), exception);
+                                "Khong the gan sessionId/messageId vao canh bao Triage (streaming) id={}: {}",
+                                alertIdHolder[0], exception.getMessage(), exception);
                     }
                 }
 

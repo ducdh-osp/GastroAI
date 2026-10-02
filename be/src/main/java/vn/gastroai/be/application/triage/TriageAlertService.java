@@ -3,6 +3,8 @@ package vn.gastroai.be.application.triage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.auth.Patient;
@@ -22,6 +24,8 @@ import java.util.Optional;
 @Service
 public class TriageAlertService {
 
+    private static final Logger log = LoggerFactory.getLogger(TriageAlertService.class);
+
     private static final Duration DEDUPE_WINDOW = Duration.ofMinutes(5);
 
     private final TriageAlertRepository triageAlertRepository;
@@ -40,9 +44,15 @@ public class TriageAlertService {
         this.objectMapper = objectMapper;
     }
 
-   
+    /**
+     * Tao (hoac gop vao) canh bao va gui ngay qua WebSocket - goi NGAY sau khi Triage phat
+     * hien khan cap, TRUOC khi goi Gemini, de admin nhan duoc canh bao nhanh nhat va chac
+     * chan nhan duoc ke ca khi Gemini loi/qua tai sau do. sessionId/messageId luc nay chua
+     * co (chua saveExchange()) nen luon la null - goi linkConversation() sau de gan id that.
+     * Tra ve id cua canh bao (moi tao hoac da gop) de ChatController dung lai cho buoc do.
+     */
     @Transactional
-    public void createAndPublish(
+    public Long createAndPublish(
             Long patientId,
             Long sessionId,
             Long messageId,
@@ -63,8 +73,6 @@ public class TriageAlertService {
         TriageAlert alert;
         if (existingAlert.isPresent()) {
             alert = existingAlert.get();
-            alert.setSessionId(sessionId);
-            alert.setMessageId(messageId);
             alert.setMessageContent(messageContent);
             alert.setMatchedGroups(toJson(matchedGroups));
             alert.setOccurredAt(occurredAt);
@@ -86,6 +94,44 @@ public class TriageAlertService {
                 matchedGroups,
                 alert.getStatus().name(),
                 occurredAt);
+
+        triageAlertPublisher.publish(event);
+
+        return alert.getId();
+    }
+
+    /**
+     * Gan sessionId/messageId that vao canh bao da gui truoc do, sau khi
+     * ChatHistoryService.saveExchange() luu xong tin nhan that (xem ChatController). Gui lai
+     * su kien qua WebSocket voi cung id canh bao - FE cap nhat (upsert) dong da co san theo
+     * id, khong tao dong moi.
+     */
+    @Transactional
+    public void linkConversation(Long alertId, Long sessionId, Long messageId) {
+        Optional<TriageAlert> maybeAlert = triageAlertRepository.findById(alertId);
+
+        if (maybeAlert.isEmpty()) {
+            log.warn("Khong the gan sessionId/messageId: canh bao Triage id={} khong con ton tai",
+                    alertId);
+            return;
+        }
+
+        TriageAlert alert = maybeAlert.get();
+        alert.setSessionId(sessionId);
+        alert.setMessageId(messageId);
+        triageAlertRepository.save(alert);
+
+        TriageAlertEvent event = new TriageAlertEvent(
+                alert.getId(),
+                alert.getPatient().getId(),
+                alert.getPatient().getFullName(),
+                alert.getPatient().getPhone(),
+                sessionId,
+                messageId,
+                alert.getMessageContent(),
+                fromJson(alert.getMatchedGroups()),
+                alert.getStatus().name(),
+                alert.getOccurredAt());
 
         triageAlertPublisher.publish(event);
     }

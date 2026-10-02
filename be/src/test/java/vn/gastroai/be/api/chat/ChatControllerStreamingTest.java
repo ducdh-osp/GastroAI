@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -69,6 +70,10 @@ class ChatControllerStreamingTest {
     @WithMockUser(username = "1", roles = "PATIENT")
     void streamMessagePublishesTriageAlertWhenEmergencyDetected() throws Exception {
         stubStreamAnswer(true, List.of("DAU_BUNG_CAP_TINH"));
+        when(triageAlertService.createAndPublish(
+                eq(1L), isNull(), isNull(),
+                eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
+                .thenReturn(42L);
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
                 .thenReturn(new ChatHistoryService.SavedExchange(5L, 9L));
 
@@ -84,11 +89,12 @@ class ChatControllerStreamingTest {
         mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk());
 
-        // UC0067(va) - sessionId/messageId gio phai la id THAT lay tu saveExchange(), vi
-        // ChatController da doi thu tu: luu lich su truoc, tao canh bao Triage sau.
+        // UC0067(va) - canh bao phai duoc gui NGAY (sessionId/messageId van null luc nay),
+        // roi linkConversation() gan id that (42) voi sessionId/messageId tu SavedExchange.
         verify(triageAlertService, timeout(2000)).createAndPublish(
-                eq(1L), eq(5L), eq(9L),
+                eq(1L), isNull(), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
+        verify(triageAlertService, timeout(2000)).linkConversation(eq(42L), eq(5L), eq(9L));
     }
 
     @Test
@@ -109,6 +115,7 @@ class ChatControllerStreamingTest {
                 .andExpect(status().isOk());
 
         verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), any());
+        verify(triageAlertService, never()).linkConversation(any(), any(), any());
     }
 
 
