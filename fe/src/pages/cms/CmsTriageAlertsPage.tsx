@@ -117,7 +117,7 @@ export default function CmsTriageAlertsPage() {
         }
       })
       .finally(() => {
-        if (!silent && mySeq === loadSeq.current) setLoading(false)
+         if (mySeq === loadSeq.current) setLoading(false)
       })
   }, [])
 
