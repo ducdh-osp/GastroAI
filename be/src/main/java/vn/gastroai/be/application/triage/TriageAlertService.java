@@ -54,7 +54,7 @@ public class TriageAlertService {
 
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Khong tim thay benh nhan id=" + patientId));
+                        "Không tìm thấy bệnh nhân id=" + patientId));
 
         Instant occurredAt = Instant.now();
 
@@ -130,12 +130,6 @@ public class TriageAlertService {
                 .toList();
     }
 
-    /**
-     * Tiep nhan canh bao bang UPDATE nguyen tu (chi thanh cong neu dang NEW). Neu 0 dong bi
-     * doi, doc lai de biet chinh xac ly do: da RESOLVED (409); chinh nguoi nay vua bam lai
-     * (bam dup/mang gui lai - tra ve binh thuong, khong phai loi); hoac nguoi khac da gianh
-     * mat (409, neu ro ten).
-     */
     @Transactional
     public TriageAlertResponse claim(Long alertId, Long claimerId, String claimerType) {
         Instant now = Instant.now();
@@ -151,27 +145,20 @@ public class TriageAlertService {
 
         if (alert.getStatus() == TriageAlertStatus.RESOLVED) {
             throw new IllegalStateException(
-                    "Canh bao id=" + alertId + " da duoc xu ly xong, khong the tiep nhan lai");
+                    "Cảnh báo id=" + alertId + " đã được xử lý xong, không thể tiếp nhận lại");
         }
 
         if (alert.getStatus() == TriageAlertStatus.IN_PROGRESS
                 && claimerId.equals(alert.getClaimedById())
                 && claimerType.equals(alert.getClaimedByType())) {
-            // Chinh nguoi dang bam lai canh bao minh da tiep nhan (bam dup, mang gui lai
-            // request) - khong coi la loi, tra ve trang thai hien tai nhu binh thuong.
             return toResponse(alert);
         }
 
-        String claimerLabel = "DOCTOR".equals(alert.getClaimedByType()) ? "Bac si" : "Admin";
+        String claimerLabel = "DOCTOR".equals(alert.getClaimedByType()) ? "Bác sĩ" : "Admin";
         throw new IllegalStateException(
-                "Canh bao da duoc " + claimerLabel + " #" + alert.getClaimedById() + " tiep nhan");
+                "Cảnh báo đã được " + claimerLabel + " #" + alert.getClaimedById() + " tiếp nhận");
     }
 
-    /**
-     * Danh dau da xu ly xong bang UPDATE nguyen tu (chi thanh cong neu dang IN_PROGRESS - ep
-     * dung quy trinh NEW -> IN_PROGRESS -> RESOLVED). Neu 0 dong bi doi, doc lai de bao dung
-     * ly do: da RESOLVED truoc do, hoac chua duoc ai tiep nhan (van con NEW).
-     */
     @Transactional
     public TriageAlertResponse resolve(Long alertId) {
         Instant now = Instant.now();
@@ -187,17 +174,17 @@ public class TriageAlertService {
 
         if (alert.getStatus() == TriageAlertStatus.RESOLVED) {
             throw new IllegalStateException(
-                    "Canh bao id=" + alertId + " da duoc xu ly xong truoc do");
+                    "Cảnh báo id=" + alertId + " đã được xử lý xong trước đó");
         }
 
         throw new IllegalStateException(
-                "Canh bao id=" + alertId + " phai duoc tiep nhan truoc khi danh dau da xu ly");
+                "Cảnh báo id=" + alertId + " phải được tiếp nhận trước khi đánh dấu đã xử lý");
     }
 
     private TriageAlert findAlertOrThrow(Long alertId) {
         return triageAlertRepository.findById(alertId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Khong tim thay canh bao Triage id=" + alertId));
+                        "Không tìm thấy cảnh báo Triage id=" + alertId));
     }
 
     private void broadcastStatusChange(TriageAlert alert, Instant changedAt) {
