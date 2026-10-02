@@ -1,6 +1,5 @@
 package vn.gastroai.be.infrastructure.security;
 
-import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageDeliveryException;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
-
 @Component
 public class StompClientSendBlockingInterceptor implements ChannelInterceptor {
 
@@ -20,7 +18,7 @@ public class StompClientSendBlockingInterceptor implements ChannelInterceptor {
             "/topic/triage-alerts", "/topic/triage-alerts-status");
 
     @Override
-    public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
+    public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor == null) {
