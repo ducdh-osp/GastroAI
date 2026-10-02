@@ -167,20 +167,9 @@ public class ChatController {
                             }
                         });
 
-                emitter.send(
-                        SseEmitter.event()
-                                .name("done")
-                                .data(
-                                        new StreamingDoneEvent(
-                                                result.sources(),
-                                                result.relatedQuestions(),
-                                                result.emergency(),
-                                                result.matchedGroups())));
-
-                emitter.complete();
-
+                ChatHistoryService.SavedExchange saved = null;
                 try {
-                    chatHistoryService.saveExchange(
+                    saved = chatHistoryService.saveExchange(
                             patientId,
                             request.sessionId(),
                             request.content(),
@@ -192,7 +181,29 @@ public class ChatController {
                             patientId, exception.getMessage(), exception);
                 }
 
+                emitter.send(
+                        SseEmitter.event()
+                                .name("done")
+                                .data(
+                                        new StreamingDoneEvent(
+                                                result.sources(),
+                                                result.relatedQuestions(),
+                                                result.emergency(),
+                                                result.matchedGroups(),
+                                                saved != null ? saved.sessionId() : request.sessionId(),
+                                                saved != null ? saved.assistantMessageId() : null)));
+
+                emitter.complete();
+
             } catch (Exception exception) {
+                try {
+                    emitter.send(
+                            SseEmitter.event()
+                                    .name("error")
+                                    .data("Khong the nhan duoc cau tra loi tu AI. Vui long thu lai."));
+                } catch (Exception sendException) {
+                    // Emitter co the da dong (client ngat ket noi) - bo qua.
+                }
                 emitter.completeWithError(exception);
             }
         });

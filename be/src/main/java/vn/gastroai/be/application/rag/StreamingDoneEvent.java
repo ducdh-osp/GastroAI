@@ -6,6 +6,8 @@ public record StreamingDoneEvent(
         List<RagSource> sources,
         List<String> relatedQuestions,
         boolean emergency,
-        List<String> matchedGroups
+        List<String> matchedGroups,
+        Long sessionId,
+        Long assistantMessageId
 ) {
 }
