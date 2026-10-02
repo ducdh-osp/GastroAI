@@ -1,6 +1,6 @@
 import { Alert, Card, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getBristolTrend, listBristolLogs } from '../../api/bristol'
 import type { BristolLog, BristolLogPoint } from '../../api/bristol'
 import { AppShell } from '../../components/layout/AppShell'
@@ -23,17 +23,25 @@ export default function BristolHistoryPage() {
   const [recentLogs, setRecentLogs] = useState<BristolLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const requestId = useRef(0)
 
   useEffect(() => {
+    const currentRequestId = ++requestId.current
     setLoading(true)
     setError(null)
     Promise.all([getBristolTrend(30), listBristolLogs(0, 10)])
       .then(([trendPoints, recent]) => {
+        if (currentRequestId !== requestId.current) return
         setPoints(trendPoints)
         setRecentLogs(recent.items)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải xu hướng Bristol.'))
-      .finally(() => setLoading(false))
+      .catch((err: unknown) => {
+        if (currentRequestId !== requestId.current) return
+        setError(err instanceof Error ? err.message : 'Không thể tải xu hướng Bristol.')
+      })
+      .finally(() => {
+        if (currentRequestId === requestId.current) setLoading(false)
+      })
   }, [])
 
   return (

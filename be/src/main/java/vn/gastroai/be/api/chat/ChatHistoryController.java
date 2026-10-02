@@ -15,6 +15,9 @@ import vn.gastroai.be.infrastructure.persistence.postgres.MessageRatingRepositor
 import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import vn.gastroai.be.domain.chat.MessageRating;
 
 /**
  * Lịch sử phiên chat của bệnh nhân:
@@ -60,7 +63,10 @@ public class ChatHistoryController {
             Principal principal, Authentication authentication) {
         Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         List<ChatMessage> messages = chatHistoryService.listMessages(patientId, sessionId);
-        return messages.stream().map(this::toDetail).toList();
+        List<Long> messageIds = messages.stream().map(ChatMessage::getId).toList();
+        Map<Long, String> ratingsByMessageId = ratingRepository.findByMessageIdIn(messageIds).stream()
+                .collect(Collectors.toMap(r -> r.getMessage().getId(), MessageRating::getRating));
+        return messages.stream().map(msg -> toDetail(msg, ratingsByMessageId)).toList();
     }
 
     /** Xóa phiên chat và toàn bộ tin nhắn/đánh giá đi kèm của bệnh nhân hiện tại. */
@@ -75,16 +81,14 @@ public class ChatHistoryController {
 
     // ─────────────────────────────── helpers ────────────────────────────────
 
-    private ChatMessageDetail toDetail(ChatMessage msg) {
+    private ChatMessageDetail toDetail(ChatMessage msg, Map<Long, String> ratingsByMessageId) {
         List<ChatSourceResponse> sources = parseJson(msg.getSources(),
                 new TypeReference<List<ChatSourceResponse>>() {});
         List<String> related = parseJson(msg.getRelatedQuestions(),
                 new TypeReference<List<String>>() {});
         List<String> matchedGroups = parseJson(msg.getMatchedGroups(),
                 new TypeReference<List<String>>() {});
-        String rating = ratingRepository.findByMessageId(msg.getId())
-                .map(r -> r.getRating())
-                .orElse(null);
+        String rating = ratingsByMessageId.get(msg.getId());
         return new ChatMessageDetail(msg.getId(), msg.getSender(), msg.getContent(),
                 msg.getCreatedAt(), msg.isEmergency(), sources, related, matchedGroups, rating);
     }
