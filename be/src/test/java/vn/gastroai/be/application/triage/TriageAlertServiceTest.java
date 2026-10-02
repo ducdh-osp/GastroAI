@@ -58,11 +58,8 @@ class TriageAlertServiceTest {
                 "Toi bi dau bung du doi va non ra mau",
                 List.of("XUAT_HUYET_TIEU_HOA"));
 
-        // UC0067(va) - tra ve dung id cua canh bao vua tao, de ChatController dung lai goi
-        // linkConversation() sau khi saveExchange() xong.
         assertEquals(100L, alertId);
 
-        // Phai luu vao DB voi status NEW, dung noi dung/nhom trieu chung.
         verify(triageAlertRepository).save(argThat(alert ->
                 alert.getPatient().equals(patient)
                         && alert.getStatus() == TriageAlertStatus.NEW
@@ -70,7 +67,6 @@ class TriageAlertServiceTest {
                         && alert.getSessionId() == null
                         && alert.getMessageId() == null));
 
-        // Phai phat su kien da lam giau ten/SDT benh nhan + id vua luu DB.
         verify(triageAlertPublisher).publish(argThat((TriageAlertEvent event) ->
                 event.id().equals(100L)
                         && event.patientId().equals(1L)
@@ -110,17 +106,12 @@ class TriageAlertServiceTest {
                 "Toi bi dau bung du doi hon nhieu roi",
                 List.of("DAU_BUNG_CAP_TINH"));
 
-        // UC0067(va) - phai tra ve id CUA CANH BAO CU (50), de linkConversation() sau nay
-        // gan dung vao canh bao dang hien thi tren man hinh admin, khong tao canh bao moi.
         assertEquals(50L, alertId);
 
-        // Phai cap nhat CHINH canh bao cu (id=50) voi noi dung moi, khong tao ban ghi moi.
         verify(triageAlertRepository).save(argThat(alert ->
                 alert.getId().equals(50L)
                         && alert.getMessageContent().equals("Toi bi dau bung du doi hon nhieu roi")));
 
-        // Event phat ra phai mang DUNG id cua canh bao cu, de FE cap nhat tai cho thay vi
-        // hien them 1 dong trung lap.
         verify(triageAlertPublisher).publish(argThat((TriageAlertEvent event) ->
                 event.id().equals(50L)
                         && event.messageContent().equals("Toi bi dau bung du doi hon nhieu roi")));
@@ -161,8 +152,6 @@ class TriageAlertServiceTest {
 
         service.linkConversation(100L, 7L, 9L);
 
-        // UC0067(va) - sau linkConversation(), canh bao phai mang dung sessionId/messageId
-        // that, va phai gui lai event qua WebSocket de FE upsert dong da co san.
         verify(triageAlertRepository).save(argThat(saved ->
                 saved.getId().equals(100L)
                         && saved.getSessionId().equals(7L)
@@ -179,7 +168,6 @@ class TriageAlertServiceTest {
     void linkConversationDoesNothingWhenAlertNoLongerExists() {
         when(triageAlertRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // Khong duoc nem ngoai le - canh bao co the da bi xoa/khong con, chi bo qua.
         service.linkConversation(999L, 7L, 9L);
 
         verify(triageAlertRepository, never()).save(any());
@@ -187,13 +175,23 @@ class TriageAlertServiceTest {
     }
 
     @Test
-    void claimTransitionsToInProgressAndBroadcastsStatusChange() {
+    void claimTransitionsToInProgressAndBroadcastsSameTimestampUsedInDb() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
         TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
                 "[\"DAU_BUNG_CAP_TINH\"]", Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        // UC0067(va) - mo phong hieu ung cua UPDATE nguyen tu that trong DB: sua truc tiep
+        // len CUNG 1 instance ma findById() tra ve, dung CHINH gia tri Instant "now" ma
+        // service truyen vao - de kiem tra duoc lỗi 4 (statusChangedAt phai TRUNG claimedAt).
+        when(triageAlertRepository.claimIfNew(eq(10L), eq(5L), eq("ADMIN"), any())).thenAnswer(invocation -> {
+            Instant now = invocation.getArgument(3);
+            alert.setStatus(TriageAlertStatus.IN_PROGRESS);
+            alert.setClaimedById(5L);
+            alert.setClaimedByType("ADMIN");
+            alert.setClaimedAt(now);
+            return 1;
+        });
 
         TriageAlertResponse response = service.claim(10L, 5L, "ADMIN");
 
@@ -206,7 +204,11 @@ class TriageAlertServiceTest {
                 event.id().equals(10L)
                         && event.status().equals("IN_PROGRESS")
                         && event.claimedById().equals(5L)
-                        && event.claimedByType().equals("ADMIN")));
+                        && event.claimedByType().equals("ADMIN")
+                        // UC0067(va) - lỗi 4: statusChangedAt gui cho FE phai CUNG gia tri
+                        // voi claimedAt vua ghi vao DB, khong duoc lay tu updatedAt (chi
+                        // duoc Hibernate cap nhat luc flush, tuc la SAU khi da broadcast).
+                        && event.statusChangedAt().equals(alert.getClaimedAt())));
     }
 
     @Test
@@ -217,15 +219,58 @@ class TriageAlertServiceTest {
         alert.setId(10L);
         alert.setStatus(TriageAlertStatus.RESOLVED);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
+        when(triageAlertRepository.claimIfNew(eq(10L), any(), any(), any())).thenReturn(0);
 
         assertThrows(IllegalStateException.class, () -> service.claim(10L, 5L, "ADMIN"));
 
-        verify(triageAlertRepository, never()).save(any());
         verify(triageAlertPublisher, never()).publishStatusChange(any());
     }
 
     @Test
-    void resolveTransitionsToResolvedAndBroadcastsStatusChange() {
+    void claimReturnsCurrentStateWhenSameClaimerRepeatsRequest() {
+        Patient patient = patient(1L, "Nguyen Van A", "0901234567");
+        TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
+                "[\"DAU_BUNG_CAP_TINH\"]", Instant.parse("2026-09-30T00:00:00Z"));
+        alert.setId(10L);
+        alert.setStatus(TriageAlertStatus.IN_PROGRESS);
+        alert.setClaimedById(5L);
+        alert.setClaimedByType("ADMIN");
+        when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
+        // UC0067(va) - canh bao da la IN_PROGRESS boi CHINH nguoi nay (vd bam dup, hoac
+        // mang gui lai request) nen UPDATE ... WHERE status = NEW khong con khop, tra ve 0 -
+        // nhung day KHONG phai loi, phai tra ve binh thuong.
+        when(triageAlertRepository.claimIfNew(eq(10L), eq(5L), eq("ADMIN"), any())).thenReturn(0);
+
+        TriageAlertResponse response = service.claim(10L, 5L, "ADMIN");
+
+        assertEquals("IN_PROGRESS", response.status());
+        assertEquals(5L, response.claimedById());
+        verify(triageAlertPublisher, never()).publishStatusChange(any());
+    }
+
+    @Test
+    void claimThrowsWhenAnotherStaffAlreadyClaimedConcurrently() {
+        Patient patient = patient(1L, "Nguyen Van A", "0901234567");
+        TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
+                null, Instant.parse("2026-09-30T00:00:00Z"));
+        alert.setId(10L);
+        alert.setStatus(TriageAlertStatus.IN_PROGRESS);
+        alert.setClaimedById(9L);
+        alert.setClaimedByType("DOCTOR");
+        when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
+        when(triageAlertRepository.claimIfNew(eq(10L), eq(5L), eq("ADMIN"), any())).thenReturn(0);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.claim(10L, 5L, "ADMIN"));
+
+        // UC0067(va) - thong bao phai neu ro ai da tiep nhan, giup admin khac biet lien he
+        // ai thay vi chi bao chung chung "da co nguoi tiep nhan".
+        assertEquals("Canh bao da duoc Bac si #9 tiep nhan", exception.getMessage());
+        verify(triageAlertPublisher, never()).publishStatusChange(any());
+    }
+
+    @Test
+    void resolveTransitionsToResolvedAndBroadcastsSameTimestampUsedInDb() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
         TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
                 null, Instant.parse("2026-09-30T00:00:00Z"));
@@ -234,13 +279,52 @@ class TriageAlertServiceTest {
         alert.setClaimedById(5L);
         alert.setClaimedByType("ADMIN");
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(triageAlertRepository.resolveIfInProgress(eq(10L), any())).thenAnswer(invocation -> {
+            Instant now = invocation.getArgument(1);
+            alert.setStatus(TriageAlertStatus.RESOLVED);
+            alert.setResolvedAt(now);
+            return 1;
+        });
 
         TriageAlertResponse response = service.resolve(10L);
 
         assertEquals("RESOLVED", response.status());
         verify(triageAlertPublisher).publishStatusChange(argThat((TriageAlertStatusChangedEvent event) ->
-                event.id().equals(10L) && event.status().equals("RESOLVED")));
+                event.id().equals(10L)
+                        && event.status().equals("RESOLVED")
+                        && event.statusChangedAt().equals(alert.getResolvedAt())));
+    }
+
+    @Test
+    void resolveThrowsWhenAlertAlreadyResolved() {
+        Patient patient = patient(1L, "Nguyen Van A", "0901234567");
+        TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
+                null, Instant.parse("2026-09-30T00:00:00Z"));
+        alert.setId(10L);
+        alert.setStatus(TriageAlertStatus.RESOLVED);
+        when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
+        when(triageAlertRepository.resolveIfInProgress(eq(10L), any())).thenReturn(0);
+
+        assertThrows(IllegalStateException.class, () -> service.resolve(10L));
+
+        verify(triageAlertPublisher, never()).publishStatusChange(any());
+    }
+
+    @Test
+    void resolveThrowsWhenAlertStillNewAndNotYetClaimed() {
+        Patient patient = patient(1L, "Nguyen Van A", "0901234567");
+        TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
+                null, Instant.parse("2026-09-30T00:00:00Z"));
+        alert.setId(10L);
+        when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
+        when(triageAlertRepository.resolveIfInProgress(eq(10L), any())).thenReturn(0);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.resolve(10L));
+
+        assertEquals("Canh bao id=10 phai duoc tiep nhan truoc khi danh dau da xu ly",
+                exception.getMessage());
+        verify(triageAlertPublisher, never()).publishStatusChange(any());
     }
 
     @Test

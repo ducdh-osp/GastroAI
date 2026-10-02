@@ -44,13 +44,6 @@ public class TriageAlertService {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Tao (hoac gop vao) canh bao va gui ngay qua WebSocket - goi NGAY sau khi Triage phat
-     * hien khan cap, TRUOC khi goi Gemini, de admin nhan duoc canh bao nhanh nhat va chac
-     * chan nhan duoc ke ca khi Gemini loi/qua tai sau do. sessionId/messageId luc nay chua
-     * co (chua saveExchange()) nen luon la null - goi linkConversation() sau de gan id that.
-     * Tra ve id cua canh bao (moi tao hoac da gop) de ChatController dung lai cho buoc do.
-     */
     @Transactional
     public Long createAndPublish(
             Long patientId,
@@ -100,12 +93,6 @@ public class TriageAlertService {
         return alert.getId();
     }
 
-    /**
-     * Gan sessionId/messageId that vao canh bao da gui truoc do, sau khi
-     * ChatHistoryService.saveExchange() luu xong tin nhan that (xem ChatController). Gui lai
-     * su kien qua WebSocket voi cung id canh bao - FE cap nhat (upsert) dong da co san theo
-     * id, khong tao dong moi.
-     */
     @Transactional
     public void linkConversation(Long alertId, Long sessionId, Long messageId) {
         Optional<TriageAlert> maybeAlert = triageAlertRepository.findById(alertId);
@@ -143,9 +130,23 @@ public class TriageAlertService {
                 .toList();
     }
 
-    
+    /**
+     * Tiep nhan canh bao bang UPDATE nguyen tu (chi thanh cong neu dang NEW). Neu 0 dong bi
+     * doi, doc lai de biet chinh xac ly do: da RESOLVED (409); chinh nguoi nay vua bam lai
+     * (bam dup/mang gui lai - tra ve binh thuong, khong phai loi); hoac nguoi khac da gianh
+     * mat (409, neu ro ten).
+     */
     @Transactional
     public TriageAlertResponse claim(Long alertId, Long claimerId, String claimerType) {
+        Instant now = Instant.now();
+        int claimedRows = triageAlertRepository.claimIfNew(alertId, claimerId, claimerType, now);
+
+        if (claimedRows == 1) {
+            TriageAlert alert = findAlertOrThrow(alertId);
+            broadcastStatusChange(alert, now);
+            return toResponse(alert);
+        }
+
         TriageAlert alert = findAlertOrThrow(alertId);
 
         if (alert.getStatus() == TriageAlertStatus.RESOLVED) {
@@ -153,26 +154,44 @@ public class TriageAlertService {
                     "Canh bao id=" + alertId + " da duoc xu ly xong, khong the tiep nhan lai");
         }
 
-        alert.setStatus(TriageAlertStatus.IN_PROGRESS);
-        alert.setClaimedById(claimerId);
-        alert.setClaimedByType(claimerType);
-        alert.setClaimedAt(Instant.now());
-        triageAlertRepository.save(alert);
+        if (alert.getStatus() == TriageAlertStatus.IN_PROGRESS
+                && claimerId.equals(alert.getClaimedById())
+                && claimerType.equals(alert.getClaimedByType())) {
+            // Chinh nguoi dang bam lai canh bao minh da tiep nhan (bam dup, mang gui lai
+            // request) - khong coi la loi, tra ve trang thai hien tai nhu binh thuong.
+            return toResponse(alert);
+        }
 
-        broadcastStatusChange(alert);
-        return toResponse(alert);
+        String claimerLabel = "DOCTOR".equals(alert.getClaimedByType()) ? "Bac si" : "Admin";
+        throw new IllegalStateException(
+                "Canh bao da duoc " + claimerLabel + " #" + alert.getClaimedById() + " tiep nhan");
     }
 
+    /**
+     * Danh dau da xu ly xong bang UPDATE nguyen tu (chi thanh cong neu dang IN_PROGRESS - ep
+     * dung quy trinh NEW -> IN_PROGRESS -> RESOLVED). Neu 0 dong bi doi, doc lai de bao dung
+     * ly do: da RESOLVED truoc do, hoac chua duoc ai tiep nhan (van con NEW).
+     */
     @Transactional
     public TriageAlertResponse resolve(Long alertId) {
+        Instant now = Instant.now();
+        int resolvedRows = triageAlertRepository.resolveIfInProgress(alertId, now);
+
+        if (resolvedRows == 1) {
+            TriageAlert alert = findAlertOrThrow(alertId);
+            broadcastStatusChange(alert, now);
+            return toResponse(alert);
+        }
+
         TriageAlert alert = findAlertOrThrow(alertId);
 
-        alert.setStatus(TriageAlertStatus.RESOLVED);
-        alert.setResolvedAt(Instant.now());
-        triageAlertRepository.save(alert);
+        if (alert.getStatus() == TriageAlertStatus.RESOLVED) {
+            throw new IllegalStateException(
+                    "Canh bao id=" + alertId + " da duoc xu ly xong truoc do");
+        }
 
-        broadcastStatusChange(alert);
-        return toResponse(alert);
+        throw new IllegalStateException(
+                "Canh bao id=" + alertId + " phai duoc tiep nhan truoc khi danh dau da xu ly");
     }
 
     private TriageAlert findAlertOrThrow(Long alertId) {
@@ -181,13 +200,13 @@ public class TriageAlertService {
                         "Khong tim thay canh bao Triage id=" + alertId));
     }
 
-    private void broadcastStatusChange(TriageAlert alert) {
+    private void broadcastStatusChange(TriageAlert alert, Instant changedAt) {
         triageAlertPublisher.publishStatusChange(new TriageAlertStatusChangedEvent(
                 alert.getId(),
                 alert.getStatus().name(),
                 alert.getClaimedById(),
                 alert.getClaimedByType(),
-                alert.getUpdatedAt()));
+                changedAt));
     }
 
     private TriageAlertResponse toResponse(TriageAlert alert) {
