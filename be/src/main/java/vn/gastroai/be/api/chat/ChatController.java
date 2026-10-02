@@ -10,10 +10,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import vn.gastroai.be.api.support.AuthenticatedRequest;
 import vn.gastroai.be.application.chat.ChatAnswer;
+import vn.gastroai.be.application.chat.ChatAttachmentProcessor;
 import vn.gastroai.be.application.chat.ChatHistoryService;
 import vn.gastroai.be.application.chat.ChatService;
 import vn.gastroai.be.application.rag.RagAnswer;
@@ -24,6 +27,8 @@ import vn.gastroai.be.application.triage.TriageAlertService;
 import java.security.Principal;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
+
 
 @RestController
 @RequestMapping("/api/v1/chat")
@@ -35,17 +40,20 @@ public class ChatController {
     private final ChatHistoryService chatHistoryService;
     private final StreamingRagQueryService streamingRagQueryService;
     private final TriageAlertService triageAlertService;
+    private final ChatAttachmentProcessor attachmentProcessor;
 
     public ChatController(
             ChatService chatService,
             ChatHistoryService chatHistoryService,
             StreamingRagQueryService streamingRagQueryService,
-            TriageAlertService triageAlertService) {
+            TriageAlertService triageAlertService,
+            ChatAttachmentProcessor attachmentProcessor) {
 
         this.chatService = chatService;
         this.chatHistoryService = chatHistoryService;
         this.streamingRagQueryService = streamingRagQueryService;
         this.triageAlertService = triageAlertService;
+        this.attachmentProcessor = attachmentProcessor;
     }
 
     /**
@@ -105,6 +113,65 @@ public class ChatController {
                         alertIdHolder[0], exception.getMessage(), exception);
             }
         }
+
+        return ChatMessageResponse.assistantReply(
+                ragAnswer.answer(),
+                sources,
+                ragAnswer.relatedQuestions(),
+                chatAnswer.emergency(),
+                chatAnswer.matchedGroups(),
+                saved.assistantMessageId(),
+                saved.sessionId());
+    }
+
+    /**
+     * Nhu sendMessage(), nhung nhan them file/anh dinh kem (UC chat dinh kem) - endpoint rieng
+     * (khong doi sendMessage() hien co) de khong phai sua lai toan bo test/contract JSON dang
+     * dung cho truong hop khong co dinh kem (van la da so request). files rong hoac thieu van
+     * hoat dong binh thuong, giong het sendMessage().
+     */
+    @PostMapping(value = "/messages/with-attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ChatMessageResponse sendMessageWithAttachments(
+            @Valid @RequestPart("request") ChatMessageRequest request,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            Principal principal,
+            Authentication authentication) {
+
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
+        List<MultipartFile> attachedFiles = files == null ? List.of() : files.stream().filter(Objects::nonNull).toList();
+        ChatAttachmentProcessor.ProcessedAttachments processed = attachmentProcessor.process(attachedFiles);
+
+        ChatAnswer chatAnswer = chatService.ask(request.content(), processed.images(), processed.documentText(),
+                triageResult -> {
+                    if (triageResult.emergency()) {
+                        triageAlertService.createAndPublish(
+                                patientId,
+                                null,
+                                null,
+                                request.content(),
+                                triageResult.matchedGroups());
+                    }
+                });
+
+        RagAnswer ragAnswer = chatAnswer.ragAnswer();
+
+        List<ChatSourceResponse> sources = ragAnswer.sources()
+                .stream()
+                .map(source -> new ChatSourceResponse(
+                        source.documentTitle(),
+                        source.snippet(),
+                        source.sourceUrl()))
+                .toList();
+
+        ChatHistoryService.SavedExchange saved = chatHistoryService.saveExchange(
+                patientId,
+                request.sessionId(),
+                request.content(),
+                ragAnswer,
+                chatAnswer.emergency(),
+                chatAnswer.matchedGroups());
+
+        chatHistoryService.saveAttachments(saved.patientMessageId(), processed.attachments());
 
         return ChatMessageResponse.assistantReply(
                 ragAnswer.answer(),

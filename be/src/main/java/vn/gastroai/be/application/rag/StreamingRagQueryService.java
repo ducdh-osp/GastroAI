@@ -57,7 +57,7 @@ public class StreamingRagQueryService {
 
         List<RagSource> sources = context.stream()
                 .limit(MAX_DISPLAYED_SOURCES)
-                .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content(), chunk.sourceUrl()))
+                .map(chunk -> new RagSource(chunk.documentTitle(), DosageRedactor.redact(chunk.content()), chunk.sourceUrl()))
                 .toList();
 
         String systemPrompt;
@@ -66,7 +66,7 @@ public class StreamingRagQueryService {
             systemPrompt = SYSTEM_PROMPT_NO_CONTEXT;
         } else {
             String contextText = context.stream()
-                    .map(chunk -> "- " + chunk.content())
+                    .map(chunk -> "- " + DosageRedactor.redact(chunk.content()))
                     .collect(Collectors.joining("\n"));
             systemPrompt = SYSTEM_PROMPT_PREFIX + contextText;
         }
@@ -115,6 +115,12 @@ public class StreamingRagQueryService {
             tren ngu canh duoc cung cap ben duoi, khong tu bia them thong tin y khoa. Neu ngu \
             canh khong du de tra loi, hay noi ro dieu do va khuyen nguoi dung gap bac si. Luon \
             nhac nguoi dung day chi la thong tin tham khao, khong thay the chan doan y te.
+
+            Ngu canh co the trich tu tai lieu chuyen mon danh cho bac si (phac do dieu tri), \
+            KHONG danh cho benh nhan tu ap dung. Neu ngu canh co lieu luong thuoc cu the (so mg, \
+            so vien/ngay, so lan/ngay...), TUYET DOI khong doc lai nguyen lieu do cho nguoi dung. \
+            Chi noi chung la can dung thuoc theo dung chi dinh cua bac si/duoc si, va khuyen \
+            nguoi dung hoi truc tiep bac si/duoc si de biet lieu luong chinh xac phu hop voi ho.
 
             Ngu canh:
             """;

@@ -22,14 +22,21 @@ spring:
     properties:
       mail.smtp.auth: ${SMTP_AUTH:false}
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
-  servlet:
-    multipart:
-      max-file-size: 20MB
-      max-request-size: 21MB
+
   task:
     scheduling:
       pool:
         size: 2
+  # Spring tu choi multipart request vuot qua gioi han nay TRUOC KHI request toi duoc
+  # controller/FileStorageService.validate() - truoc day khong khai nen roi ve default 1MB
+  # cua Spring Boot, khien app.storage.max-file-size=20MB ben duoi khong co tac dung thuc te
+  # (file >1MB bi tu choi som hon, loi chung khong ro nguyen nhan). max-request-size > max-file-size
+  # mot chut de con cho phan JSON + nhieu file dinh kem nho trong 1 request (chat attachments).
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
 server:
   # 1 cổng HTTP duy nhất phục vụ cả API Bệnh nhân (JWT, api/v1/auth/**, api/v1/me/**) lẫn
   # API CMS (session, api/v1/cms/**) — không phải 2 server riêng.

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { getChatSessionMessages, rateMessage, streamMessage } from '../../api/chat'
+import { chatService, getChatSessionMessages, loadAttachmentsForDisplay, rateMessage, streamMessage } from '../../api/chat'
 import type { Attachment, Message, RatingValue, SendMessageRequest } from '../../api/chat'
 
 const { Text, Title } = Typography
@@ -43,9 +43,9 @@ export function ChatContainer() {
 
     setIsLoadingHistory(true)
     getChatSessionMessages(resumeSessionId)
-      .then((history) => {
+      .then(async (history) => {
         if (cancelled) return
-        setMessages(history.map((message) => ({
+        const mapped = await Promise.all(history.map(async (message) => ({
           id: `history-${message.id}`,
           dbMessageId: message.id,
           sender: message.sender,
@@ -57,7 +57,11 @@ export function ChatContainer() {
           emergency: message.emergency,
           matchedGroups: message.matchedGroups,
           rating: message.rating,
+          // Tải lại thành blob URL vì URL gốc cần header Authorization (xem loadAttachmentsForDisplay).
+          // Lỗi tải 1 đính kèm không chặn hiển thị toàn bộ tin nhắn - chỉ mất phần preview đó.
+          attachments: await loadAttachmentsForDisplay(message.attachments).catch(() => []),
         })))
+        if (!cancelled) setMessages(mapped)
       })
       .catch((error: unknown) => {
         if (cancelled) return
@@ -85,6 +89,24 @@ export function ChatContainer() {
     if (existingMessage) updateMessage(patientMessage.id, { status: 'sending', createdAt: patientMessage.createdAt })
     else setMessages((current) => [...current, patientMessage])
     setIsReplying(true)
+
+    // Endpoint stream chi nhan JSON, khong nhan file - tin co dinh kem phai di luong thuong
+    // (/chat/messages/with-attachments qua chatService.sendMessage), neu khong file bi bo mat.
+    const hasFiles = (request.attachments ?? []).some((attachment) => attachment.file != null)
+    if (hasFiles) {
+      try {
+        const response = await chatService.sendMessage({ ...request, sessionId: currentSessionId })
+        updateMessage(patientMessage.id, { status: 'sent' })
+        if (response.sessionId) setCurrentSessionId(response.sessionId)
+        setMessages((current) => [...current, response])
+      } catch (error) {
+        updateMessage(patientMessage.id, { status: 'failed' })
+        setNetworkError(error instanceof Error ? error.message : 'Không thể kết nối mạng. Vui lòng thử lại.')
+      } finally {
+        setIsReplying(false)
+      }
+      return
+    }
 
     abortControllerRef.current?.abort()
     const abortController = new AbortController()

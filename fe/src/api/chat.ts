@@ -13,6 +13,18 @@ export interface Attachment {
   size: number
   url: string
   previewUrl?: string
+  /** File gốc, chỉ có khi vừa chọn trong phiên này (chưa gửi/chưa tải lại từ lịch sử) - dùng để gửi bytes thật lên BE. */
+  file?: File
+}
+
+/** Khớp ChatAttachmentResponse bên BE (ChatHistoryController). */
+export interface ChatAttachmentDto {
+  id: number
+  originalFilename: string
+  contentType: string
+  sizeBytes: number
+  /** Đường dẫn tương đối API (không có domain) - phải gọi qua apiClient để có header Authorization, không dùng trực tiếp làm <img src>. */
+  url: string
 }
 
 export interface SourceRef {
@@ -75,6 +87,7 @@ export interface ChatMessageDetail {
   relatedQuestions: string[]
   matchedGroups: string[]
   rating: RatingValue | null
+  attachments: ChatAttachmentDto[]
 }
 
 const TRIAGE_GROUP_LABELS: Record<string, string> = {
@@ -105,10 +118,29 @@ export const QUICK_PROMPTS = [
 
 async function sendMessage(request: SendMessageRequest): Promise<Message & { sessionId?: number | null }> {
   try {
-    const { data } = await apiClient.post<Message & { sessionId?: number | null }>('/chat/messages', {
-      content: request.content,
-      sessionId: request.sessionId ?? null,
-    })
+    const filesToSend = (request.attachments ?? []).map((a) => a.file).filter((f): f is File => f != null)
+
+    if (filesToSend.length === 0) {
+      const { data } = await apiClient.post<Message & { sessionId?: number | null }>('/chat/messages', {
+        content: request.content,
+        sessionId: request.sessionId ?? null,
+      })
+      return data
+    }
+
+    const formData = new FormData()
+    formData.append(
+      'request',
+      new Blob([JSON.stringify({ content: request.content, sessionId: request.sessionId ?? null })], {
+        type: 'application/json',
+      }),
+    )
+    filesToSend.forEach((file) => formData.append('files', file))
+
+    const { data } = await apiClient.post<Message & { sessionId?: number | null }>(
+      '/chat/messages/with-attachments',
+      formData,
+    )
     return data
   } catch (error) {
     const message =
@@ -116,6 +148,30 @@ async function sendMessage(request: SendMessageRequest): Promise<Message & { ses
       'Không thể kết nối mạng. Vui lòng kiểm tra kết nối và thử lại.'
     throw new Error(message)
   }
+}
+
+/**
+ * Tải lại 1 file đính kèm từ lịch sử thành blob URL dùng được cho <img>/<a> - không dùng
+ * attachment.url (đường dẫn API) trực tiếp vì endpoint đó cần header Authorization mà
+ * browser không tự gắn khi load ảnh/mở link thường (xem ChatHistoryController.downloadAttachment).
+ */
+async function loadAttachmentForDisplay(dto: ChatAttachmentDto): Promise<Attachment> {
+  const { data: blob } = await apiClient.get<Blob>(dto.url, { responseType: 'blob' })
+  const objectUrl = URL.createObjectURL(blob)
+  return {
+    id: String(dto.id),
+    name: dto.originalFilename,
+    type: dto.contentType,
+    size: dto.sizeBytes,
+    url: objectUrl,
+    previewUrl: dto.contentType.startsWith('image/') ? objectUrl : undefined,
+  }
+}
+
+/** Tải lại toàn bộ đính kèm của 1 tin nhắn - rỗng trả về nhanh, không gọi API nào. */
+export async function loadAttachmentsForDisplay(dtos: ChatAttachmentDto[]): Promise<Attachment[]> {
+  if (dtos.length === 0) return []
+  return Promise.all(dtos.map(loadAttachmentForDisplay))
 }
 
 /** Gọi thật BE (UC0017): BE gọi RagQueryService.answer() (Gemini/RAG thật), không còn là mock. */

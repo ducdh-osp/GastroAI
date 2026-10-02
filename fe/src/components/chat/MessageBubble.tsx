@@ -66,6 +66,20 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
           </div>
         )}
 
+        {!isPatient && !message.emergency && matchedGroupsText && (
+          <div
+            className="mb-2 flex items-start gap-2.5 rounded-xl border-2 border-amber-300 bg-amber-50 px-3.5 py-3 text-sm leading-5 text-amber-900 shadow-sm"
+            role="status"
+          >
+            <WarningFilled className="mt-0.5 shrink-0 text-lg text-amber-500" />
+            <span>
+              <strong className="block">Có dấu hiệu nên lưu ý</strong>
+              Chưa phải tình huống cấp cứu, nhưng bạn nên đi khám bác sĩ để kiểm tra sớm.
+              <span className="mt-1 block text-amber-800">Dấu hiệu phát hiện: {matchedGroupsText}</span>
+            </span>
+          </div>
+        )}
+
         <div
           className={`rounded-2xl px-4 py-3 text-[15px] leading-6 shadow-sm ${
             isPatient

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import vn.gastroai.be.config.GeminiProperties;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,11 +28,27 @@ public class GeminiChatClient {
      * prompt sau này mà không phải sửa logic gọi API.
      */
     public String generate(String systemPrompt, String userPrompt) {
+        return generate(systemPrompt, userPrompt, List.of());
+    }
+
+    /**
+     * images: anh benh nhan dinh kem (UC chat dinh kem) - Gemini doc truc tiep qua inlineData
+     * (base64), khong qua OCR/mo ta trung gian. Danh sach rong = giong generate() 2 tham so.
+     */
+    public String generate(String systemPrompt, String userPrompt, List<ImagePart> images) {
+        List<Map<String, Object>> parts = new ArrayList<>();
+        parts.add(Map.of("text", userPrompt));
+        for (ImagePart image : images) {
+            parts.add(Map.of("inlineData", Map.of(
+                    "mimeType", image.mimeType(),
+                    "data", image.base64Data())));
+        }
+
         Map<String, Object> body = Map.of(
                 "systemInstruction", Map.of("parts", List.of(Map.of("text", systemPrompt))),
                 "contents", List.of(Map.of(
                         "role", "user",
-                        "parts", List.of(Map.of("text", userPrompt)))));
+                        "parts", parts)));
 
         GenerateResponse response = retryTemplate.withRetry(() -> restClient.post()
                 .uri("/models/{model}:generateContent", model)

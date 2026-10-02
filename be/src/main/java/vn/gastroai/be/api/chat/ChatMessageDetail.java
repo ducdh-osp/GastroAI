@@ -14,5 +14,7 @@ public record ChatMessageDetail(
         List<String> relatedQuestions,
         List<String> matchedGroups,
         /** Đánh giá hiện tại của người dùng: "HELPFUL", "UNHELPFUL", hoặc null nếu chưa đánh giá. */
-        String rating
+        String rating,
+        /** File/ảnh bệnh nhân đã đính kèm - rỗng khi sender='assistant' hoặc không có đính kèm. */
+        List<ChatAttachmentResponse> attachments
 ) {}

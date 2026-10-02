@@ -9,6 +9,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import vn.gastroai.be.application.chat.ChatAttachmentProcessor;
 import vn.gastroai.be.application.chat.ChatHistoryService;
 import vn.gastroai.be.application.chat.ChatService;
 import vn.gastroai.be.application.rag.StreamingRagQueryService;
@@ -66,6 +67,9 @@ class ChatControllerStreamingTest {
     @MockitoBean
     private RevokedTokenRepository revokedTokenRepository;
 
+    @MockitoBean
+    private ChatAttachmentProcessor attachmentProcessor;
+
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void streamMessagePublishesTriageAlertWhenEmergencyDetected() throws Exception {
@@ -75,7 +79,7 @@ class ChatControllerStreamingTest {
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
                 .thenReturn(42L);
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
-                .thenReturn(new ChatHistoryService.SavedExchange(5L, 9L));
+                .thenReturn(new ChatHistoryService.SavedExchange(5L, 8L, 9L));
 
         MvcResult mvcResult = mockMvc.perform(post("/api/v1/chat/messages/stream")
                         .with(csrf())
