@@ -99,22 +99,26 @@ export default function CmsTriageAlertsPage() {
   const actionGuard = useInFlightGuard<number>()
   const touchedDuringLoad = useRef(new Set<number>())
 
+  const loadSeq = useRef(0)
   const loadAlerts = useCallback((silent = false) => {
+    const mySeq = ++loadSeq.current
     if (!silent) setLoading(true)
     touchedDuringLoad.current.clear()
     listTriageAlerts()
       .then((fromApi) => {
+        if (mySeq !== loadSeq.current) return
         setAlerts((current) => mergeAlerts(fromApi, current, touchedDuringLoad.current))
         setLoadError(null)
       })
       .catch((err: unknown) => {
-        // Lan tai im lang that bai thi khong bao loi - cham trang thai "mat ket noi
-        // realtime" da bao cho admin biet roi, khong can bat/tat Alert moi 30s.
+        if (mySeq !== loadSeq.current) return
         if (!silent) {
           setLoadError(extractTriageErrorMessage(err, 'Không thể tải danh sách cảnh báo.'))
         }
       })
-      .finally(() => { if (!silent) setLoading(false) })
+      .finally(() => {
+        if (!silent && mySeq === loadSeq.current) setLoading(false)
+      })
   }, [])
 
   useEffect(() => { loadAlerts() }, [loadAlerts])
