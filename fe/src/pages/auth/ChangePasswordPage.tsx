@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { changePassword } from '../../api/auth'
 import { AppShell } from '../../components/layout/AppShell'
 import { useAuth } from '../../stores/authStore'
+import { isAtMostUtf8Bytes } from '../../lib/validation'
 
 const { Title, Text } = Typography
 
@@ -57,11 +58,11 @@ export default function ChangePasswordPage() {
           {error && <Alert type="error" message={error} showIcon className="my-4" />}
           {success && <Alert type="success" message={success} showIcon className="my-4" />}
           <Form<ChangePasswordFormValues> layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4">
-            <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: 'Nhập mật khẩu hiện tại' }]}>
-              <Input.Password autoComplete="current-password" />
+            <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: 'Nhập mật khẩu hiện tại' }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}>
+              <Input.Password maxLength={72} autoComplete="current-password" />
             </Form.Item>
-            <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
-              <Input.Password autoComplete="new-password" />
+            <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}>
+              <Input.Password maxLength={72} autoComplete="new-password" />
             </Form.Item>
             <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu mới' }]}>
               <Input.Password autoComplete="new-password" />

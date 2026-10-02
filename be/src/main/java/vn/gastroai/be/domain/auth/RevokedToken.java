@@ -16,8 +16,7 @@ import java.time.Instant;
  * "xoá" — cách duy nhất để làm 1 token cụ thể hết hiệu lực trước hạn là ghi jti của nó
  * vào đây, JwtAuthenticationFilter check existsById(jti) trên mỗi request.
  * expiresAt lưu lại để biết bản ghi nào đã hết hạn tự nhiên (token hết hạn thì tự vô hiệu,
- * không cần tra bảng này nữa) — hiện chưa có job dọn định kỳ riêng cho bảng này như
- * PatientLoginHistory (xem LoginHistoryCleanupService), bảng sẽ phình dần theo số lần logout.
+ * không cần tra bảng này nữa). RevokedTokenCleanupScheduler dọn các bản ghi đó hằng đêm.
  */
 @Entity
 @Table(name = "revoked_tokens")

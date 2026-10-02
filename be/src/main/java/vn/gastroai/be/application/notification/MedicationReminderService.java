@@ -60,12 +60,16 @@ public class MedicationReminderService {
         MedicationReminder reminder = new MedicationReminder(
                 patient, request.medicineName(), request.dosage(), normalizedTimes(request),
                 request.startDate(), request.endDate(), request.instructions(), request.active());
-        return toResponse(medicationReminderRepository.save(reminder), Set.of());
+        // Flush so the generated id/version are available in the response immediately.
+        return toResponse(medicationReminderRepository.saveAndFlush(reminder), Set.of());
     }
 
     @Transactional("postgresTransactionManager")
     public MedicationReminderResponse update(Long patientId, Long reminderId, MedicationReminderRequest request) {
         MedicationReminder reminder = loadOwnedReminder(patientId, reminderId);
+        if (request.version() == null || !request.version().equals(reminder.getVersion())) {
+            throw new IllegalStateException("Lich nhac da duoc cap nhat o noi khac. Vui long tai lai truoc khi luu.");
+        }
         validateRequest(request);
         reminder.setMedicineName(request.medicineName());
         reminder.setDosage(request.dosage());
@@ -81,16 +85,19 @@ public class MedicationReminderService {
                 .map(MedicationConfirmation::getScheduledTime)
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toSet());
-        return toResponse(medicationReminderRepository.save(reminder), confirmedTimes);
+        return toResponse(medicationReminderRepository.saveAndFlush(reminder), confirmedTimes);
     }
 
     @Transactional("postgresTransactionManager")
-    public void delete(Long patientId, Long reminderId) {
+    public void delete(Long patientId, Long reminderId, Long version) {
         // A DELETE request means stop future reminders. Keep the row so its confirmation
         // history remains intact and can still be shown to the patient.
         MedicationReminder reminder = loadOwnedReminder(patientId, reminderId);
+        if (version == null || !version.equals(reminder.getVersion())) {
+            throw new IllegalStateException("Lich nhac da duoc cap nhat o noi khac. Vui long tai lai truoc khi tat.");
+        }
         reminder.setActive(false);
-        medicationReminderRepository.save(reminder);
+        medicationReminderRepository.saveAndFlush(reminder);
     }
 
     // Khong phan trang - 1 benh nhan thuc te khong co hang tram lich nhac thuoc, giong
@@ -163,7 +170,7 @@ public class MedicationReminderService {
     private MedicationReminderResponse toResponse(
             MedicationReminder reminder, Set<LocalTime> confirmedTimesToday) {
         return new MedicationReminderResponse(
-                reminder.getId(), reminder.getMedicineName(), reminder.getDosage(),
+                reminder.getId(), reminder.getVersion(), reminder.getMedicineName(), reminder.getDosage(),
                 reminder.getTimesOfDay(), reminder.getStartDate(), reminder.getEndDate(),
                 reminder.getInstructions(), reminder.isActive(), confirmedTimesToday);
     }

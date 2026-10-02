@@ -21,7 +21,9 @@ import java.util.List;
 
 /**
  * UC0009 (khai bao) + UC0010 (cap nhat) - ca 2 UC dung chung 1 thao tac UPSERT vao cung
- * 1 ban ghi medical_profiles/1 benh nhan, khong tach rieng endpoint tao/sua.
+ * 1 ban ghi medical_profiles/1 benh nhan, khong tach rieng endpoint tao/sua. currentMedications
+ * duoc luu nguyen dang text tu do cho cac thuoc khong can nhac; service khong tao hoac cap
+ * nhat MedicationReminder tu gia tri nay de tranh suy dien ten thuoc khong chac chan.
  * Nhan thang MedicalProfileRequest (thay vi no ra tung tham so) vi ho so co toi 10 field -
  * no ra se lam chu ky method qua dai, kho doc.
  */

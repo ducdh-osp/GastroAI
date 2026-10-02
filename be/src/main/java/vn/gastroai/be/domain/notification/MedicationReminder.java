@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import vn.gastroai.be.domain.auth.Patient;
 
 import java.time.Instant;
@@ -12,7 +14,9 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/** UC0015 - lich nhac uong 1 loai thuoc, lap lai hang ngay vao 1 khung gio co dinh. */
+/** UC0015 - lich nhac uong 1 loai thuoc, lap lai hang ngay vao 1 khung gio co dinh.
+ * Day la nguon du lieu cho cac lieu can nhac trong app, doc lap voi danh sach thuoc tu khai
+ * khong can nhac trong MedicalProfile.currentMedications. */
 @Entity
 @Table(name = "medication_reminders")
 @Getter
@@ -23,6 +27,11 @@ public class MedicationReminder {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** Reject stale updates from a second browser tab instead of silently losing changes. */
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "patient_id", nullable = false)
@@ -35,6 +44,7 @@ public class MedicationReminder {
     private String dosage;
 
     @ElementCollection(fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SUBSELECT)
     @CollectionTable(name = "medication_reminder_times", joinColumns = @JoinColumn(name = "reminder_id"))
     @Column(name = "time_of_day", nullable = false)
     @OrderColumn(name = "sort_order")

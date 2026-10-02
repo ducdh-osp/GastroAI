@@ -41,7 +41,9 @@ Không mở rộng schema trong lần này để tránh thay đổi phạm vi l�
 
 ### Ranh giới giữa hai khái niệm thuốc
 
-- `MedicalProfile.currentMedications`: bệnh nhân tự khai danh sách thuốc dài hạn/đang dùng để tham khảo khi tư vấn; không phải nguồn tạo nhắc uống thuốc.
-- `MedicationReminder`: lịch hành động cụ thể mà bệnh nhân chủ động bật để nhắc và xác nhận liều.
+- `MedicalProfile.currentMedications`: danh sách text tự do do bệnh nhân tự khai cho thuốc **không cần lịch nhắc trong ứng dụng** (ví dụ thuốc dùng một lần, không thường xuyên hoặc được quản lý ngoài ứng dụng). Đây không phải nguồn tạo lịch nhắc.
+- `MedicationReminder`: nguồn chuẩn cho **liều cần nhắc trong ứng dụng**: tên thuốc, liều lượng, giờ uống, liệu trình, hướng dẫn và xác nhận đã uống.
 
-Hai nguồn dữ liệu không tự đồng bộ. Giao diện/hướng dẫn nên nêu rõ ranh giới trên. Nếu sản phẩm cần một nguồn thuốc duy nhất trong tương lai, cần migration và luồng xác nhận dữ liệu trước khi hợp nhất, không nên tự động suy diễn từ text tự do trong hồ sơ.
+Hai nguồn dữ liệu độc lập và không tự đồng bộ: tạo/sửa/tắt lịch nhắc không làm thay đổi hồ sơ, và ngược lại. Giao diện phải hướng bệnh nhân chỉ nhập một thuốc vào một nơi theo mục đích trên, để không phải nhập trùng.
+
+Khi AI bắt đầu dùng dữ liệu thuốc, phải đọc từng nguồn với nhãn nguồn gốc rõ ràng; chỉ lấy lịch còn hiệu lực từ `MedicationReminder` và không tự coi hai chuỗi tên thuốc giống/gần giống nhau là cùng một thuốc. Nếu sản phẩm sau này cần một nguồn thuốc duy nhất, cần migration cùng luồng người dùng xác nhận dữ liệu trước khi hợp nhất.

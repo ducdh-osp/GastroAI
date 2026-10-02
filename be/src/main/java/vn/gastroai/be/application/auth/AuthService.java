@@ -71,6 +71,7 @@ public class AuthService {
      */
     @Transactional("postgresTransactionManager")
     public void register(String email, String password, String name) {
+        validatePasswordLength(password);
         String normalizedEmail = normalize(email);
         if (patients.findByEmail(normalizedEmail).isPresent()) {
             throw new IllegalStateException("Email da duoc su dung");
@@ -142,6 +143,7 @@ public class AuthService {
 
     @Transactional("postgresTransactionManager")
     public void resetPassword(String token, String newPassword) {
+        validatePasswordLength(newPassword);
         Patient patient = patients.findByPasswordResetTokenHash(hash(token))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Token dat lai mat khau khong hop le"));
@@ -170,6 +172,7 @@ public class AuthService {
             BadCredentialsException.class, AccountLockedException.class, IllegalStateException.class
     })
     public AuthResult login(LoginCommand command, ClientRequestInfo requestInfo) {
+        validatePasswordLength(command.password());
         Optional<Patient> found = patients.findByEmailForUpdate(normalize(command.email()));
         if (found.isEmpty()) {
             // Không tìm thấy tài khoản: vẫn chạy BCrypt giả để thời gian phản hồi
@@ -246,6 +249,8 @@ public class AuthService {
     /** UC0005 - Đổi mật khẩu khi đã đăng nhập. Tăng tokenVersion để JWT cũ hết hiệu lực. */
     @Transactional("postgresTransactionManager")
     public void changePassword(Long id, String oldPassword, String newPassword) {
+        validatePasswordLength(oldPassword);
+        validatePasswordLength(newPassword);
         Patient patient = patients.findById(id)
                 .orElseThrow(() -> new BadCredentialsException("Tai khoan khong ton tai"));
         if (!encoder.matches(oldPassword, patient.getPasswordHash())) {
@@ -282,6 +287,12 @@ public class AuthService {
 
     private static String normalize(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static void validatePasswordLength(String password) {
+        if (password == null || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalArgumentException("Mat khau khong duoc vuot qua 72 byte UTF-8");
+        }
     }
 
     private static String hash(String value) {

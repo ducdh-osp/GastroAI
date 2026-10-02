@@ -1,4 +1,4 @@
-import { DatePicker, Form, Input, Modal, Select, Switch } from 'antd'
+import { Alert, DatePicker, Form, Input, Modal, Select, Switch } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect } from 'react'
 import type { MedicationReminder, MedicationReminderRequest } from '../../api/medication'
@@ -48,6 +48,7 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
         endDate: values.treatmentDates?.[1].format('YYYY-MM-DD') ?? null,
         instructions: values.instructions || null,
         active: values.active,
+        version: reminder?.version ?? null,
       })
     })
   }
@@ -63,6 +64,13 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
       cancelText="Huỷ"
     >
       <Form<MedicationReminderFormValues> form={form} layout="vertical" className="mt-4">
+        <Alert
+          className="mb-4"
+          type="info"
+          showIcon
+          message="Chỉ tạo lịch cho thuốc/liều cần được nhắc"
+          description="Lịch này được quản lý độc lập với danh sách thuốc không cần lịch nhắc trong Hồ sơ bệnh lý."
+        />
         <Form.Item label="Tên thuốc" name="medicineName" rules={[{ required: true, message: 'Nhập tên thuốc' }, { max: 200, message: 'Tên thuốc tối đa 200 ký tự' }]}>
           <Input maxLength={200} showCount placeholder="Vd: Omeprazole" />
         </Form.Item>

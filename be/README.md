@@ -90,6 +90,18 @@ Nếu máy đã có Postgres/MySQL chạy port khác 5432/3306 (vd trùng port v
 
 ### Chạy app
 
+#### MailHog/Mailpit cho luồng đăng ký
+
+Đăng ký và quên mật khẩu gửi email xác thực qua SMTP. Khi chạy local, backend mặc định dùng
+MailHog/Mailpit tại `localhost:1025` (không cần tài khoản hoặc TLS), nên cần bật MailHog/Mailpit
+trước khi thử các luồng này. Mở giao diện MailHog mặc định tại `http://localhost:8025` để lấy link
+xác thực hoặc đặt lại mật khẩu.
+
+Nếu dùng SMTP khác, đặt `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`,
+`SMTP_AUTH` và `SMTP_STARTTLS`. Timeout mặc định là 3 giây kết nối, 5 giây đọc/ghi; có thể đổi
+qua `SMTP_CONNECTION_TIMEOUT`, `SMTP_TIMEOUT`, `SMTP_WRITE_TIMEOUT` để request đăng ký không bị
+treo lâu khi SMTP chưa chạy.
+
 ```bash
 # Nếu Postgres/MySQL máy m không ở cổng mặc định (vd bị app khác chiếm cổng):
 POSTGRES_PORT=5433 MYSQL_PORT=3307 mvn spring-boot:run

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { register as registerApi } from '../../api/auth'
 import { AuthShell } from '../../components/auth/AuthShell'
+import { isAtMostUtf8Bytes } from '../../lib/validation'
 
 const { Text } = Typography
 
@@ -56,11 +57,11 @@ export default function RegisterPage() {
         <Form.Item label="Họ và tên" name="fullName" rules={[{ required: true, message: 'Nhập họ và tên' }]}>
           <Input placeholder="Nguyễn Văn A" />
         </Form.Item>
-        <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}>
-          <Input placeholder="ban@example.com" />
+        <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 255, message: 'Email tối đa 255 ký tự' }]}>
+          <Input maxLength={255} placeholder="ban@example.com" />
         </Form.Item>
-        <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, message: 'Nhập mật khẩu' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
-          <Input.Password />
+        <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, message: 'Nhập mật khẩu' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}>
+          <Input.Password maxLength={72} />
         </Form.Item>
         <Form.Item label="Xác nhận mật khẩu" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu' }]}>
           <Input.Password />

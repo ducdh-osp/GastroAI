@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { useAuth } from '../../stores/authStore'
+import { isAtMostUtf8Bytes } from '../../lib/validation'
 
 interface LoginFormValues {
   email: string
@@ -82,16 +83,17 @@ export default function LoginPage() {
           rules={[
             { required: true, message: 'Nhập email' },
             { type: 'email', message: 'Email không hợp lệ' },
+            { max: 255, message: 'Email tối đa 255 ký tự' },
           ]}
         >
-          <Input placeholder="ban@example.com" />
+          <Input maxLength={255} placeholder="ban@example.com" />
         </Form.Item>
         <Form.Item
           label="Mật khẩu"
           name="password"
-          rules={[{ required: true, message: 'Nhập mật khẩu' }]}
+          rules={[{ required: true, message: 'Nhập mật khẩu' }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}
         >
-          <Input.Password />
+          <Input.Password maxLength={72} />
         </Form.Item>
         <Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>

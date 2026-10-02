@@ -59,6 +59,10 @@ public class SecurityConfig {
                                 "/api/v1/cms/auth/**",
                                 "/error")
                         .permitAll()
+                        // Patient endpoints must never accept a CMS HttpSession. MySQL CMS ids
+                        // and PostgreSQL patient ids are independent sequences and may collide.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").hasRole("PATIENT")
+                        .requestMatchers("/api/v1/me/**").hasRole("PATIENT")
                         .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
                         .requestMatchers("/api/v1/chat/**").hasRole("PATIENT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
@@ -68,8 +72,8 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
-                        // Mọi endpoint còn lại (vd /api/v1/me/**, /api/v1/auth/change-password)
-                        // bắt buộc phải có Authentication hợp lệ do JwtAuthenticationFilter set.
+                        // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng
+                        // của từng nhóm API ở trên.
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(adminSessionFilter, JwtAuthenticationFilter.class);

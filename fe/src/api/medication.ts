@@ -3,6 +3,7 @@ import { extractErrorMessage } from '../lib/errors'
 
 export interface MedicationReminder {
   id: number
+  version: number
   medicineName: string
   dosage: string | null
   timesOfDay: string[]
@@ -21,6 +22,7 @@ export interface MedicationReminderRequest {
   endDate: string | null
   instructions: string | null
   active: boolean
+  version: number | null
 }
 
 export interface MedicationConfirmation {
@@ -73,9 +75,9 @@ export async function updateMedicationReminder(id: number, payload: MedicationRe
   }
 }
 
-export async function deleteMedicationReminder(id: number): Promise<void> {
+export async function deleteMedicationReminder(id: number, version: number): Promise<void> {
   try {
-    await apiClient.delete(`/patient/medications/${id}`)
+    await apiClient.delete(`/patient/medications/${id}`, { params: { version } })
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể xoá lịch nhắc thuốc. Vui lòng thử lại.')
   }

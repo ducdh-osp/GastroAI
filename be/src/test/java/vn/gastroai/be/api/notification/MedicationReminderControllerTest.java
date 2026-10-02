@@ -7,7 +7,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockHttpSession;
 import vn.gastroai.be.application.notification.MedicationReminderService;
+import vn.gastroai.be.application.auth.CmsAuthService;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
@@ -52,5 +54,32 @@ class MedicationReminderControllerTest {
     void listConfirmationsRejectsSizeAboveHundred() throws Exception {
         mockMvc.perform(get("/api/v1/patient/medications/confirmations").with(csrf()).param("size", "999"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminSessionCannotReadPatientLoginHistory() throws Exception {
+        MockHttpSession cmsSession = cmsSession("ADMIN", 1L);
+
+        mockMvc.perform(get("/api/v1/me/login-history").session(cmsSession))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void doctorSessionCannotChangePatientPassword() throws Exception {
+        MockHttpSession cmsSession = cmsSession("DOCTOR", 1L);
+
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .with(csrf())
+                        .session(cmsSession)
+                        .contentType("application/json")
+                        .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"new-password\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    private MockHttpSession cmsSession(String role, Long id) {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(CmsAuthService.AUTH_USER_ID, id);
+        session.setAttribute(CmsAuthService.AUTH_USER_TYPE, role);
+        return session;
     }
 }

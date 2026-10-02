@@ -50,8 +50,9 @@ public class MedicationReminderController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
             @PathVariable Long id,
+            @RequestParam Long version,
             Principal principal, Authentication authentication) {
-        medicationReminderService.delete(AuthenticatedRequest.patientId(principal, authentication), id);
+        medicationReminderService.delete(AuthenticatedRequest.patientId(principal, authentication), id, version);
     }
 
     @PostMapping("/{id}/confirmations")

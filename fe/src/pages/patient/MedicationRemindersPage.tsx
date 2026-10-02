@@ -1,7 +1,8 @@
 import { CheckCircleOutlined, EditOutlined, PlusOutlined, StopOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Pagination, Popconfirm, Spin, Switch, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   confirmMedicationDose,
   createMedicationReminder,
@@ -18,6 +19,7 @@ import type {
 import { AppShell } from '../../components/layout/AppShell'
 import { MedicationReminderModal } from '../../components/medication/MedicationReminderModal'
 import { useInFlightGuard } from '../../hooks/useInFlightGuard'
+import { usePagedList } from '../../hooks/usePagedList'
 import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
@@ -38,6 +40,7 @@ function reminderToRequest(reminder: MedicationReminder): MedicationReminderRequ
     endDate: reminder.endDate,
     instructions: reminder.instructions,
     active: reminder.active,
+    version: reminder.version,
   }
 }
 
@@ -54,12 +57,16 @@ export default function MedicationRemindersPage() {
   const confirmGuard = useInFlightGuard<string>()
   const deleteGuard = useInFlightGuard<number>()
 
-  const [confirmations, setConfirmations] = useState<MedicationConfirmationDetail[]>([])
-  const [confirmationsPage, setConfirmationsPage] = useState(0)
-  const [confirmationsTotal, setConfirmationsTotal] = useState(0)
-  const [loadingConfirmations, setLoadingConfirmations] = useState(true)
-  const confirmationsRequestId = useRef(0)
   const confirmationsPageSize = 10
+  const fetchConfirmations = useCallback(
+    (page: number, size: number) => listMedicationConfirmations(page, size),
+    [],
+  )
+  const confirmationsList = usePagedList({
+    fetchPage: fetchConfirmations,
+    pageSize: confirmationsPageSize,
+    loadErrorMessage: 'Không thể tải lịch sử xác nhận đã uống.',
+  })
 
   function reloadReminders() {
     setLoadingReminders(true)
@@ -69,23 +76,7 @@ export default function MedicationRemindersPage() {
       .finally(() => setLoadingReminders(false))
   }
 
-  function reloadConfirmations() {
-    const currentRequestId = ++confirmationsRequestId.current
-    setLoadingConfirmations(true)
-    listMedicationConfirmations(confirmationsPage, confirmationsPageSize)
-      .then((res) => {
-        if (currentRequestId !== confirmationsRequestId.current) return
-        setConfirmations(res.items)
-        setConfirmationsTotal(res.totalElements)
-      })
-      .catch((err: unknown) => {
-        if (currentRequestId === confirmationsRequestId.current) setError(err instanceof Error ? err.message : 'Không thể tải lịch sử xác nhận đã uống.')
-      })
-      .finally(() => { if (currentRequestId === confirmationsRequestId.current) setLoadingConfirmations(false) })
-  }
-
   useEffect(reloadReminders, [])
-  useEffect(reloadConfirmations, [confirmationsPage])
 
   function openCreate() {
     setEditingReminder(null)
@@ -126,10 +117,10 @@ export default function MedicationRemindersPage() {
     })
   }
 
-  async function handleDelete(id: number) {
-    await deleteGuard.run(id, async () => {
+  async function handleDelete(reminder: MedicationReminder) {
+    await deleteGuard.run(reminder.id, async () => {
       try {
-        await deleteMedicationReminder(id)
+        await deleteMedicationReminder(reminder.id, reminder.version)
         reloadReminders()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Không thể xoá lịch nhắc thuốc.')
@@ -151,11 +142,8 @@ export default function MedicationRemindersPage() {
         ))
         setSuccess(`Đã ghi nhận uống ${reminder.medicineName}.`)
         // Chỉ gọi một trong hai: đổi về trang 0 sẽ để useEffect tải lại lịch sử.
-        if (confirmationsPage === 0) {
-          reloadConfirmations()
-        } else {
-          setConfirmationsPage(0)
-        }
+        if (confirmationsList.page === 0) confirmationsList.reload()
+        else confirmationsList.setPage(0)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Không thể ghi nhận đã uống thuốc.')
       }
@@ -219,7 +207,7 @@ export default function MedicationRemindersPage() {
             description="Lịch sử xác nhận đã uống trước đây vẫn được giữ lại."
             okText="Tắt nhắc"
             cancelText="Huỷ"
-            onConfirm={() => handleDelete(record.id)}
+            onConfirm={() => handleDelete(record)}
           >
             <Button
               size="small"
@@ -249,13 +237,14 @@ export default function MedicationRemindersPage() {
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhắc uống thuốc</Title>
             <Text type="secondary">
-              Thiết lập liệu trình, nhiều giờ uống mỗi ngày và hướng dẫn trước/sau ăn. Danh sách này dành cho các liều cần nhắc, tách biệt với thuốc dài hạn tự khai trong hồ sơ.
+              Đây là nơi quản lý thuốc có liều cần nhắc: liệu trình, giờ uống, hướng dẫn và xác nhận đã uống. Thêm, sửa hoặc tắt lịch ở đây không thay đổi danh sách thuốc tự khai không cần nhắc trong{' '}
+              <Link to="/medical-profile">Hồ sơ bệnh lý</Link>.
             </Text>
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm lịch nhắc</Button>
         </div>
 
-        {error && <Alert type="error" message={error} showIcon className="mb-4" closable onClose={() => setError(null)} />}
+        {(error || confirmationsList.error) && <Alert type="error" message={error ?? confirmationsList.error} showIcon className="mb-4" closable onClose={() => { setError(null); confirmationsList.setError(null) }} />}
         {success && <Alert type="success" message={success} showIcon className="mb-4" closable onClose={() => setSuccess(null)} />}
 
         <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Lịch nhắc thuốc">
@@ -274,25 +263,25 @@ export default function MedicationRemindersPage() {
         <Card
           className="rounded-2xl border-black/5 shadow-sm"
           title="Lịch sử xác nhận đã uống"
-          extra={<Tag color="blue">{confirmationsTotal} lần</Tag>}
+          extra={<Tag color="blue">{confirmationsList.totalElements} lần</Tag>}
         >
-          <Spin spinning={loadingConfirmations}>
+          <Spin spinning={confirmationsList.loading}>
             <Table<MedicationConfirmationDetail>
               columns={confirmationColumns}
-              dataSource={confirmations}
+              dataSource={confirmationsList.items}
               rowKey="id"
               size="small"
               pagination={false}
               locale={{ emptyText: 'Chưa có lần xác nhận nào' }}
             />
           </Spin>
-          {confirmationsTotal > confirmationsPageSize && (
+          {confirmationsList.totalElements > confirmationsPageSize && (
             <div className="mt-4 flex justify-end">
               <Pagination
-                current={confirmationsPage + 1}
+                current={confirmationsList.page + 1}
                 pageSize={confirmationsPageSize}
-                total={confirmationsTotal}
-                onChange={(p) => setConfirmationsPage(p - 1)}
+                total={confirmationsList.totalElements}
+                onChange={(p) => confirmationsList.setPage(p - 1)}
                 showSizeChanger={false}
               />
             </div>

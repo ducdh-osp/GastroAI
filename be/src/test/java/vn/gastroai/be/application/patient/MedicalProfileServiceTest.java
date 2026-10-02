@@ -70,6 +70,7 @@ class MedicalProfileServiceTest {
         assertEquals(65, response.weightKg());
         assertEquals(List.of("Viem dai trang man"), response.chronicConditions());
         assertEquals(List.of("Cat ruot thua 2020"), response.pastSurgeries());
+        assertEquals(List.of("Omeprazole 20mg"), response.currentMedications());
         assertEquals(List.of("Khong dung nap lactose"), response.dietaryRestrictions());
     }
 

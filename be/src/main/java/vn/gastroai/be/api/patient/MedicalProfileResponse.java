@@ -7,6 +7,8 @@ import java.util.List;
 /**
  * UC0009/UC0010 - response cua GET/PUT /api/v1/patient/medical-profile.
  * exists=false khi benh nhan chua khai bao ho so lan nao ca - cac field con lai se rong/null.
+ * currentMedications chi la thuoc tu khai khong can lich nhac; khong phai danh sach
+ * MedicationReminder va khong duoc tu dong gop voi danh sach do.
  */
 public record MedicalProfileResponse(
         Long id,

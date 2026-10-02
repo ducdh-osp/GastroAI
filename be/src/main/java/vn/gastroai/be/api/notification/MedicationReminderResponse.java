@@ -8,6 +8,7 @@ import java.util.Set;
 /** UC0015 - 1 lich nhac uong thuoc. */
 public record MedicationReminderResponse(
         Long id,
+        Long version,
         String medicineName,
         String dosage,
         List<LocalTime> timesOfDay,

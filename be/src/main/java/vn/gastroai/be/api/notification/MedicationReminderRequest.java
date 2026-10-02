@@ -17,9 +17,17 @@ public record MedicationReminderRequest(
         LocalDate startDate,
         LocalDate endDate,
         @Size(max = 1000, message = "huong dan toi da 1000 ky tu") String instructions,
-        boolean active
+        boolean active,
+        // Bat buoc khi PUT; null khi POST lan dau.
+        Long version
 ) {
     public MedicationReminderRequest(String medicineName, String dosage, LocalTime timeOfDay, boolean active) {
-        this(medicineName, dosage, List.of(timeOfDay), null, null, null, active);
+        this(medicineName, dosage, List.of(timeOfDay), null, null, null, active, null);
+    }
+
+    public MedicationReminderRequest(String medicineName, String dosage, List<LocalTime> timesOfDay,
+                                     LocalDate startDate, LocalDate endDate, String instructions,
+                                     boolean active) {
+        this(medicineName, dosage, timesOfDay, startDate, endDate, instructions, active, null);
     }
 }

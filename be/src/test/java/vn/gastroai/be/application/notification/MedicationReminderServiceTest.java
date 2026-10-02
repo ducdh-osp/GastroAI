@@ -87,12 +87,13 @@ class MedicationReminderServiceTest {
         patient.setId(1L);
         MedicationReminder reminder = new MedicationReminder(patient, "Omeprazole", "20mg", LocalTime.of(8, 0), true);
         reminder.setId(5L);
+        reminder.setVersion(0L);
         when(medicationReminderRepository.findById(5L)).thenReturn(Optional.of(reminder));
 
-        service.delete(1L, 5L);
+        service.delete(1L, 5L, 0L);
 
         assertEquals(false, reminder.isActive());
-        verify(medicationReminderRepository).save(reminder);
+        verify(medicationReminderRepository).saveAndFlush(reminder);
         verify(medicationReminderRepository, never()).delete(any());
     }
 
@@ -115,13 +116,33 @@ class MedicationReminderServiceTest {
         Patient patient = new Patient();
         patient.setId(1L);
         MedicationReminder reminder = new MedicationReminder(patient, "Omeprazole", "20mg", LocalTime.of(8, 0), true);
+        reminder.setVersion(0L);
         when(medicationReminderRepository.findById(5L)).thenReturn(Optional.of(reminder));
-        when(medicationReminderRepository.save(any(MedicationReminder.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(medicationReminderRepository.saveAndFlush(any(MedicationReminder.class))).thenAnswer(inv -> inv.getArgument(0));
 
         MedicationReminderResponse response = service.update(1L, 5L,
-                new MedicationReminderRequest("Omeprazole", "20mg", LocalTime.of(8, 0), false));
+                new MedicationReminderRequest("Omeprazole", "20mg", List.of(LocalTime.of(8, 0)),
+                        null, null, null, false, 0L));
 
         assertEquals(false, response.active());
+    }
+
+    @Test
+    void updateRejectsStaleVersionWithoutChangingReminder() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        MedicationReminder reminder = new MedicationReminder(patient, "Omeprazole", "20mg", LocalTime.of(8, 0), true);
+        reminder.setId(5L);
+        reminder.setVersion(2L);
+        when(medicationReminderRepository.findById(5L)).thenReturn(Optional.of(reminder));
+
+        assertThrows(IllegalStateException.class, () -> service.update(1L, 5L,
+                new MedicationReminderRequest("Esomeprazole", "40mg", List.of(LocalTime.of(8, 0)),
+                        null, null, null, false, 1L)));
+
+        assertEquals("Omeprazole", reminder.getMedicineName());
+        assertEquals(true, reminder.isActive());
+        verify(medicationReminderRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -129,7 +150,7 @@ class MedicationReminderServiceTest {
         Patient patient = new Patient();
         patient.setId(1L);
         when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
-        when(medicationReminderRepository.save(any(MedicationReminder.class))).thenAnswer(inv -> {
+        when(medicationReminderRepository.saveAndFlush(any(MedicationReminder.class))).thenAnswer(inv -> {
             MedicationReminder saved = inv.getArgument(0);
             saved.setId(8L);
             return saved;

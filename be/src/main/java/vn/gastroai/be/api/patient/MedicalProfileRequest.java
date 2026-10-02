@@ -10,7 +10,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 /** UC0009/UC0010 - body cua PUT /api/v1/patient/medical-profile. Tat ca field duoc phep
- * de trong/null (benh nhan co the chua khai bao het). */
+ * de trong/null (benh nhan co the chua khai bao het). currentMedications la danh sach
+ * text tu khai cho thuoc khong can lich nhac trong app; lich thuoc co gio/dose dung
+ * MedicationReminder. Hai danh sach khong tu dong dong bo. */
 public record MedicalProfileRequest(
         // null only when creating a profile for the first time
         Long version,

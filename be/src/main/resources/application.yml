@@ -22,6 +22,10 @@ spring:
     properties:
       mail.smtp.auth: ${SMTP_AUTH:false}
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      # Fail quickly when MailHog/Mailpit is not running instead of blocking registration.
+      mail.smtp.connectiontimeout: ${SMTP_CONNECTION_TIMEOUT:3000}
+      mail.smtp.timeout: ${SMTP_TIMEOUT:5000}
+      mail.smtp.writetimeout: ${SMTP_WRITE_TIMEOUT:5000}
 
 server:
   # 1 cổng HTTP duy nhất phục vụ cả API Bệnh nhân (JWT, api/v1/auth/**, api/v1/me/**) lẫn
@@ -70,6 +74,9 @@ app:
       # Bệnh nhân hiện tại — Admin/Bác sĩ chưa có job dọn tương ứng, xem ghi chú trong
       # AdminLoginHistoryRepository).
       history-retention-days: ${LOGIN_HISTORY_RETENTION_DAYS:90}
+    revoked-token:
+      # Runs after the login-history cleanup by default; override in production if needed.
+      cleanup-cron: ${REVOKED_TOKEN_CLEANUP_CRON:0 30 3 * * *}
     # Đọc bởi ClientRequestInfoResolver — danh sách IP reverse proxy tin cậy, CHỈ các IP này
     # mới được phép "khai" IP thật qua header X-Forwarded-For (chống giả mạo IP trong log).
     # Để trống nếu chạy local không qua proxy nào.

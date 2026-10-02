@@ -14,7 +14,8 @@ import java.time.LocalDate;
  * column patient_id).
  * allergies/chronicConditions/pastSurgeries/currentMedications/dietaryRestrictions luu
  * JSON array of strings dang TEXT (serialize/deserialize o tang service, giong cach
- * ChatHistoryService lam voi sources/relatedQuestions).
+ * ChatHistoryService lam voi sources/relatedQuestions). currentMedications chi la thuoc
+ * benh nhan tu khai khong can lich nhac trong app; no khong dong bo voi MedicationReminder.
  */
 @Entity
 @Table(name = "medical_profiles")

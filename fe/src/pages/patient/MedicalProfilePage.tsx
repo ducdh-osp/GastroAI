@@ -2,6 +2,7 @@ import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Select, Spin
 import { LoadingOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getMedicalProfile, updateMedicalProfile } from '../../api/medicalProfile'
 import type { Gender } from '../../api/medicalProfile'
 import { AppShell } from '../../components/layout/AppShell'
@@ -137,7 +138,7 @@ export default function MedicalProfilePage() {
           <Text type="secondary">Thông tin sức khỏe</Text>
           <Title level={2} className="mb-1! mt-1!">Hồ sơ bệnh lý cá nhân</Title>
           <Text type="secondary">
-            Khai báo thông tin cơ bản, tiền sử bệnh, dị ứng và thuốc đang dùng để trợ lý AI tư vấn chính xác hơn. Đây là thông tin tham khảo, không thay thế chẩn đoán y tế.
+            Khai báo thông tin cơ bản, tiền sử bệnh, dị ứng và thuốc không cần lịch nhắc để trợ lý AI tham khảo trong tương lai. Đây là thông tin tham khảo, không thay thế chẩn đoán y tế.
           </Text>
         </div>
 
@@ -194,11 +195,16 @@ export default function MedicalProfilePage() {
                   <Input.TextArea rows={2} placeholder="Nhập các dị ứng, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
                 </Form.Item>
                 <Form.Item
-                  label="Thuốc đang dùng dài hạn / tự khai"
+                  label="Thuốc không cần lịch nhắc (tự khai)"
                   name="currentMedications"
-                  extra="Danh sách này chỉ để tham khảo trong hồ sơ; lịch bật/tắt và xác nhận liều được quản lý ở trang Nhắc uống thuốc."
+                  extra={
+                    <>
+                      Chỉ nhập thuốc không cần nhắc trong ứng dụng, ví dụ thuốc dùng một lần hoặc không thường xuyên. Mục này độc lập, không tự tạo/cập nhật/tắt lịch nhắc. Với thuốc có liều cần nhắc, hãy quản lý tại{' '}
+                      <Link to="/medications">Nhắc uống thuốc</Link>.
+                    </>
+                  }
                 >
-                  <Input.TextArea rows={2} placeholder="Nhập các thuốc đang dùng, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
+                  <Input.TextArea rows={2} placeholder="Vd: thuốc bác sĩ khác kê, dùng khi cần; mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
                 </Form.Item>
                 <Form.Item label="Chế độ ăn đặc biệt / không dung nạp" name="dietaryRestrictions">
                   <Input.TextArea rows={2} placeholder="Vd: không dung nạp lactose, ăn chay..." />
