@@ -9,10 +9,13 @@ import vn.gastroai.be.infrastructure.rag.SimilarChunk;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class RagQueryServiceTest {
@@ -37,6 +40,27 @@ class RagQueryServiceTest {
         assertEquals(1, result.sources().size());
         assertEquals("Cam nang tieu hoa", result.sources().get(0).documentTitle());
         assertEquals("Uong nhieu nuoc va an nhieu chat xo.", result.sources().get(0).snippet());
+    }
+
+    @Test
+    void answerWithSourcesRedactsDosageFromSourceSnippetAndPromptContext() {
+        GeminiEmbeddingClient embeddingClient = mock(GeminiEmbeddingClient.class);
+        EmbeddingStore embeddingStore = mock(EmbeddingStore.class);
+        GeminiChatClient chatClient = mock(GeminiChatClient.class);
+
+        float[] queryVector = {0.1f, 0.2f};
+        when(embeddingClient.embed(anyString())).thenReturn(queryVector);
+        when(embeddingStore.findTopK(queryVector, 5)).thenReturn(List.of(
+                new SimilarChunk(1L, 10L, "Phac do dieu tri", "Amitriptyline 25mg/ngay vao buoi toi.", 0.05, null)));
+        when(chatClient.generate(anyString(), anyString())).thenReturn("Ban nen di kham de duoc ke don phu hop.");
+
+        RagQueryService ragQueryService = new RagQueryService(embeddingClient, embeddingStore, chatClient, 5);
+
+        RagAnswer result = ragQueryService.answerWithSources("Thuoc nay uong lieu bao nhieu?");
+
+        assertFalse(result.sources().get(0).snippet().contains("25mg"));
+        // Prompt gui Gemini cung phai duoc loc, khong chi snippet hien thi cho benh nhan.
+        verify(chatClient).generate(argThat(prompt -> !prompt.contains("25mg")), eq("Thuoc nay uong lieu bao nhieu?"));
     }
 
     @Test
