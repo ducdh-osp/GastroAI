@@ -7,8 +7,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockHttpSession;
 import vn.gastroai.be.application.auth.AuthService;
 import vn.gastroai.be.application.auth.ClientRequestInfoResolver;
+import vn.gastroai.be.application.auth.CmsAuthService;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
@@ -16,6 +18,7 @@ import vn.gastroai.be.infrastructure.security.JwtService;
 
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -97,5 +100,27 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(authService);
+    }
+
+    @Test
+    void adminSessionCannotReadPatientLoginHistory() throws Exception {
+        mockMvc.perform(get("/api/v1/me/login-history").session(cmsSession("ADMIN", 1L)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void doctorSessionCannotChangePatientPassword() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/change-password")
+                        .session(cmsSession("DOCTOR", 1L))
+                        .contentType("application/json")
+                        .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"new-password\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    private MockHttpSession cmsSession(String role, Long id) {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(CmsAuthService.AUTH_USER_ID, id);
+        session.setAttribute(CmsAuthService.AUTH_USER_TYPE, role);
+        return session;
     }
 }

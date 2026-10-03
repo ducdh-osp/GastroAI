@@ -24,4 +24,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Patient p where p.email = :email")
     Optional<Patient> findByEmailForUpdate(@Param("email") String email);
+
+    /** Khoá row theo id khi đổi mật khẩu, tránh các lần thử đồng thời làm mất lượt sai. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Patient p where p.id = :id")
+    Optional<Patient> findByIdForUpdate(@Param("id") Long id);
 }

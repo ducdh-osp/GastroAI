@@ -91,11 +91,13 @@ public class AuthController {
     // của JWT (chính là patientId), do JwtAuthenticationFilter set vào SecurityContext.
     @PostMapping("/change-password")
     public ResponseEntity<Void> change(@Valid @RequestBody ChangePasswordRequest request,
-                                       java.security.Principal principal) {
+                                       java.security.Principal principal,
+                                       HttpServletRequest servletRequest) {
         authService.changePassword(
                 Long.valueOf(principal.getName()),
                 request.currentPassword(),
-                request.newPassword());
+                request.newPassword(),
+                requestInfoResolver.resolve(servletRequest));
         return ResponseEntity.noContent().build();
     }
 }
