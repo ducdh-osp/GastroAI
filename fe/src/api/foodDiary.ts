@@ -30,18 +30,6 @@ export interface FoodDiaryEntryRequest {
   notes: string | null
 }
 
-export interface DigestiveTimelineItem {
-  type: 'MEAL' | 'BRISTOL'
-  id: number
-  occurredAt: string
-  mealType: MealType | null
-  description: string | null
-  symptomsAfterMeal: string | null
-  symptomOnsetMinutes: number | null
-  bristolType: number | null
-  notes: string | null
-}
-
 export interface DailyCountPoint {
   date: string
   count: number
@@ -62,15 +50,6 @@ export async function getFoodDiaryTrend(days = 30): Promise<DailyCountPoint[]> {
     return data.points
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể tải xu hướng ăn uống. Vui lòng thử lại.')
-  }
-}
-
-export async function getDigestiveTimeline(days = 30): Promise<DigestiveTimelineItem[]> {
-  try {
-    const { data } = await apiClient.get<{ items: DigestiveTimelineItem[] }>('/patient/food-diary/timeline', { params: { days } })
-    return data.items
-  } catch (error) {
-    throw extractErrorMessage(error, 'Không thể tải timeline tiêu hóa. Vui lòng thử lại.')
   }
 }
 

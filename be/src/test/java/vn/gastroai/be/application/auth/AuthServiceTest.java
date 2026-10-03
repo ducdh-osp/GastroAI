@@ -163,7 +163,7 @@ class AuthServiceTest {
     void changePasswordInvalidatesExistingTokens() {
         Patient patient = patient();
         patient.setTokenVersion(2);
-        when(patients.findById(1L)).thenReturn(Optional.of(patient));
+        when(patients.findByIdForUpdate(1L)).thenReturn(Optional.of(patient));
         when(encoder.matches("OldPassword1!", "old-bcrypt")).thenReturn(true);
         when(encoder.matches("NewPassword1!", "old-bcrypt")).thenReturn(false);
         when(encoder.encode("NewPassword1!")).thenReturn("new-bcrypt");
@@ -172,6 +172,55 @@ class AuthServiceTest {
 
         assertEquals("new-bcrypt", patient.getPasswordHash());
         assertEquals(3, patient.getTokenVersion());
+    }
+
+    @Test
+    void changePasswordLocksAfterConfiguredFailedAttempts() {
+        Patient patient = patient();
+        when(patients.findByIdForUpdate(1L)).thenReturn(Optional.of(patient));
+        when(encoder.matches("wrong", "old-bcrypt")).thenReturn(false);
+
+        for (int attempt = 1; attempt < policy.maxFailedAttempts(); attempt++) {
+            assertThrows(BadCredentialsException.class,
+                    () -> service.changePassword(1L, "wrong", "NewPassword1!"));
+        }
+        assertThrows(AccountLockedException.class,
+                () -> service.changePassword(1L, "wrong", "NewPassword1!"));
+
+        assertEquals(policy.maxFailedAttempts(), patient.getFailedLoginAttempts());
+        assertNotNull(patient.getLockedUntil());
+        verify(history, times(policy.maxFailedAttempts())).save(any(PatientLoginHistory.class));
+    }
+
+    @Test
+    void changePasswordRejectsCorrectPasswordWhileLocked() {
+        Patient patient = patient();
+        patient.setLockedUntil(Instant.now().plusSeconds(60));
+        when(patients.findByIdForUpdate(1L)).thenReturn(Optional.of(patient));
+
+        assertThrows(AccountLockedException.class,
+                () -> service.changePassword(1L, "OldPassword1!", "NewPassword1!"));
+
+        verifyNoInteractions(encoder);
+        verify(history).save(argThat(item -> item.getOutcome() == vn.gastroai.be.domain.auth.LoginOutcome.BLOCKED));
+    }
+
+    @Test
+    void successfulChangePasswordResetsFailureCounterAndLock() {
+        Patient patient = patient();
+        patient.setFailedLoginAttempts(2);
+        patient.setLockedUntil(Instant.now().minusSeconds(1));
+        patient.setTokenVersion(2);
+        when(patients.findByIdForUpdate(1L)).thenReturn(Optional.of(patient));
+        when(encoder.matches("OldPassword1!", "old-bcrypt")).thenReturn(true);
+        when(encoder.matches("NewPassword1!", "old-bcrypt")).thenReturn(false);
+        when(encoder.encode("NewPassword1!")).thenReturn("new-bcrypt");
+
+        service.changePassword(1L, "OldPassword1!", "NewPassword1!");
+
+        assertEquals(0, patient.getFailedLoginAttempts());
+        assertNull(patient.getLockedUntil());
+        assertEquals("new-bcrypt", patient.getPasswordHash());
     }
 
     @Test
