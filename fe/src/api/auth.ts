@@ -23,6 +23,12 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
   return data
 }
 
+/** Huỷ token hiện tại phía server (ghi vào revoked_tokens) - BE đọc token từ header
+ * Authorization do apiClient tự gắn, không cần truyền gì thêm. */
+export async function logout(): Promise<void> {
+  await apiClient.post('/auth/logout')
+}
+
 export async function register(payload: RegisterPayload): Promise<{ message: string }> {
   const { data } = await apiClient.post<{ message: string }>('/auth/register', payload)
   return data
@@ -30,6 +36,70 @@ export async function register(payload: RegisterPayload): Promise<{ message: str
 
 export async function verifyEmail(token: string): Promise<void> {
   await apiClient.post('/auth/verify-email', { token })
+}
+
+const verificationRequests = new Map<string, Promise<void>>()
+const verifiedTokenHashes = new Set<string>()
+const VERIFIED_TOKEN_STORAGE_PREFIX = 'gastroai:verified-email-token:'
+
+async function hashVerificationToken(token: string): Promise<string | null> {
+  if (!globalThis.crypto?.subtle) return null
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/** Make verification idempotent in the browser while the BE token remains single-use. */
+export async function verifyEmailOnce(token: string): Promise<void> {
+  const tokenHash = await hashVerificationToken(token)
+  if (tokenHash) {
+    if (verifiedTokenHashes.has(tokenHash)) return
+    try {
+      if (localStorage.getItem(`${VERIFIED_TOKEN_STORAGE_PREFIX}${tokenHash}`) === '1') {
+        verifiedTokenHashes.add(tokenHash)
+        return
+      }
+    } catch {
+      // Storage can be unavailable in private/restricted browser contexts; in-flight
+      // requests are still de-duplicated below for React StrictMode.
+    }
+    const existingRequest = verificationRequests.get(tokenHash)
+    if (existingRequest) return existingRequest
+
+    const request = verifyEmail(token).then(() => {
+      verifiedTokenHashes.add(tokenHash)
+      try {
+        localStorage.setItem(`${VERIFIED_TOKEN_STORAGE_PREFIX}${tokenHash}`, '1')
+      } catch {
+        // The in-memory marker still covers navigation in this page session.
+      }
+    })
+    verificationRequests.set(tokenHash, request)
+    try {
+      await request
+    } catch (error) {
+      verificationRequests.delete(tokenHash)
+      throw error
+    }
+    return
+  }
+
+  // Web Crypto is unavailable on some non-secure origins. Prevent duplicate in-flight
+  // requests using the token only in memory; never persist the raw verification token.
+  const existingRequest = verificationRequests.get(token)
+  if (existingRequest) return existingRequest
+  const request = verifyEmail(token)
+  verificationRequests.set(token, request)
+  try {
+    await request
+  } catch (error) {
+    verificationRequests.delete(token)
+    throw error
+  }
+}
+
+export async function resendVerification(email: string): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>('/auth/resend-verification', { email })
+  return data
 }
 
 export async function requestPasswordReset(payload: { email: string }): Promise<{ message: string }> {

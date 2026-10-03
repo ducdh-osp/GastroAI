@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import { login as loginApi, type LoginPayload } from '../api/auth'
+import { login as loginApi, logout as logoutApi, type LoginPayload } from '../api/auth'
 
 interface AuthState {
   token: string | null
@@ -7,7 +7,7 @@ interface AuthState {
   fullName: string | null
   isAuthenticated: boolean
   login: (payload: LoginPayload) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const STORAGE_KEY = 'gastroai.auth'
@@ -34,7 +34,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(next)
   }
 
-  function logout() {
+  async function logout() {
+    // Goi BE truoc de huy token hien tai phia server (ghi vao revoked_tokens) - PHAI await
+    // xong request nay truoc khi xoa localStorage, vi interceptor cua apiClient doc token tu
+    // localStorage luc gui request (chay bat dong qua microtask) - xoa truoc se lam request
+    // logout bay di voi token rong, khong huy duoc gi ca. Loi mang/token da het han thi bo
+    // qua, van cho dang xuat phia client binh thuong.
+    try {
+      await logoutApi()
+    } catch {
+      // best-effort
+    }
     localStorage.removeItem(STORAGE_KEY)
     setState({ token: null, email: null, fullName: null })
   }

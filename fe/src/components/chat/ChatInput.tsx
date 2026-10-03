@@ -80,6 +80,7 @@ export function ChatInput({ disabled = false, onSend }: ChatInputProps) {
           size: file.size,
           url,
           previewUrl: file.type.startsWith('image/') ? url : undefined,
+          file,
         }
       }),
     ])

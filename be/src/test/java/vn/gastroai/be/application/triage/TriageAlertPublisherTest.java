@@ -69,6 +69,8 @@ class TriageAlertPublisherTest {
                 "IN_PROGRESS",
                 5L,
                 "ADMIN",
+                null,
+                null,
                 Instant.parse("2026-09-30T00:05:00Z"));
 
         publisher.publishStatusChange(event);

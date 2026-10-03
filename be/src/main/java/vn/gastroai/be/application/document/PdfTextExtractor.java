@@ -27,7 +27,6 @@ public class PdfTextExtractor implements TextExtractor {
 
     private static final int MIN_TEXT_LENGTH = 50;
 
-    private static final double REPEATED_LINE_THRESHOLD_RATIO = 0.4;
     private static final Pattern LONE_PAGE_NUMBER = Pattern.compile("^\\d{1,4}$");
 
     private static final double HEADER_FOOTER_ZONE_RATIO = 0.1;
@@ -61,8 +60,8 @@ public class PdfTextExtractor implements TextExtractor {
                 linesByPage.add(stripper.getCollectedLines());
             }
 
-            List<String> boilerplateLines = findBoilerplateLines(linesByPage, pageCount);
             float bodyFontSize = computeBodyFontSizeBaseline(linesByPage);
+            List<String> boilerplateLines = findBoilerplateLines(linesByPage, pageCount, bodyFontSize);
 
             List<PositionedLine> survivingLines = new ArrayList<>();
             for (List<PositionedLine> pageLines : linesByPage) {
@@ -106,38 +105,52 @@ public class PdfTextExtractor implements TextExtractor {
         }
     }
 
-    private List<String> findBoilerplateLines(List<List<PositionedLine>> linesByPage, int pageCount) {
-        Map<String, Integer> countByLine = new HashMap<>();
+    private List<String> findBoilerplateLines(
+            List<List<PositionedLine>> linesByPage, int pageCount, float bodyFontSize) {
+
         Map<String, Integer> zoneCountByLine = new HashMap<>();
+        Map<String, Boolean> headingStyledByLine = new HashMap<>();
 
         for (List<PositionedLine> pageLines : linesByPage) {
-            LinkedHashSet<String> distinctOnPage = new LinkedHashSet<>();
             LinkedHashSet<String> distinctInZoneOnPage = new LinkedHashSet<>();
+            Map<String, Boolean> headingOnThisPageByLine = new HashMap<>();
 
             for (PositionedLine line : pageLines) {
                 String trimmed = line.text().trim();
-                if (trimmed.isEmpty()) {
+                if (trimmed.isEmpty() || !line.inHeaderOrFooterZone()) {
                     continue;
                 }
-                distinctOnPage.add(trimmed);
-                if (line.inHeaderOrFooterZone()) {
-                    distinctInZoneOnPage.add(trimmed);
+                distinctInZoneOnPage.add(trimmed);
+
+                if (isHeadingCandidate(line, bodyFontSize)) {
+                    headingOnThisPageByLine.put(trimmed, true);
                 }
             }
 
             // dung Set trong 1 trang de khong dem 2 lan neu 1 dong lap trong cung 1 trang
-            distinctOnPage.forEach(l -> countByLine.merge(l, 1, Integer::sum));
-            distinctInZoneOnPage.forEach(l -> zoneCountByLine.merge(l, 1, Integer::sum));
+            distinctInZoneOnPage.forEach(l -> {
+                zoneCountByLine.merge(l, 1, Integer::sum);
+                if (headingOnThisPageByLine.getOrDefault(l, false)) {
+                    headingStyledByLine.put(l, true);
+                }
+            });
         }
 
-        int threshold = Math.max(2, (int) Math.ceil(pageCount * REPEATED_LINE_THRESHOLD_RATIO));
+        // Dong mang dang tieu de (to/dam) chi bi coi la boilerplate khi lap lai
+        // o vung dau/cuoi cua it nhat mot nua so trang - tranh nham voi tieu de
+        // muc tinh co trung vi tri dau trang o vai trang khac nhau.
+        int headingThreshold = Math.max(POSITIONAL_REPEAT_MIN_COUNT, (int) Math.ceil(pageCount / 2.0));
+
         List<String> boilerplate = new ArrayList<>();
 
-        countByLine.forEach((line, count) -> {
-            boolean repeatedEnough = count >= threshold;
-            boolean positionalRepeat = zoneCountByLine.getOrDefault(line, 0) >= POSITIONAL_REPEAT_MIN_COUNT;
+        zoneCountByLine.forEach((line, zoneCount) -> {
+            boolean isHeadingStyled = headingStyledByLine.getOrDefault(line, false);
+            int threshold = isHeadingStyled ? headingThreshold : POSITIONAL_REPEAT_MIN_COUNT;
 
-            if (LONE_PAGE_NUMBER.matcher(line).matches() || repeatedEnough || positionalRepeat) {
+            boolean positionalRepeat = zoneCount >= threshold;
+            boolean lonePageNumberInZone = LONE_PAGE_NUMBER.matcher(line).matches();
+
+            if (positionalRepeat || lonePageNumberInZone) {
                 boilerplate.add(line);
             }
         });

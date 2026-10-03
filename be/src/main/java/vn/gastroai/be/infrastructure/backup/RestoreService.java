@@ -9,11 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * UC0058 - Khôi phục dữ liệu từ bản backup mới nhất do BackupScheduler tạo ra. Có backup
- * mà chưa từng thử restore thì không chắc backup đó dùng được — service này tồn tại để
- * kiểm chứng, không chỉ chạy 1 chiều "cứ dump ra rồi thôi".
- */
+
 @Service
 public class RestoreService {
 
@@ -26,25 +22,33 @@ public class RestoreService {
         this.backupProperties = backupProperties;
     }
 
-    public void restoreAll() {
+    public RestoreResult restoreAll() {
+        boolean postgresOk = true;
+        String postgresError = null;
         try {
             restorePostgres();
         } catch (Exception e) {
             log.error("PostgreSQL restore failed", e);
+            postgresOk = false;
+            postgresError = e.getMessage();
         }
 
+        boolean mysqlOk = true;
+        String mysqlError = null;
         try {
             restoreMysql();
         } catch (Exception e) {
             log.error("MySQL restore failed", e);
+            mysqlOk = false;
+            mysqlError = e.getMessage();
         }
 
         log.info("Database restore process completed.");
+
+        return new RestoreResult(postgresOk, postgresError, mysqlOk, mysqlError);
     }
 
-    // psql có sẵn flag -f để chạy trực tiếp 1 file .sql, và -v ON_ERROR_STOP=1 để dừng ngay
-    // nếu 1 câu lệnh trong file lỗi (mặc định psql chạy tiếp các câu sau, dễ restore dở dang
-    // mà không ai biết).
+
     private void restorePostgres() {
         Path backupFile = findLatestBackup("postgres_");
 
@@ -57,20 +61,13 @@ public class RestoreService {
 
         ProcessBuilder processBuilder = new ProcessBuilder(
                 "psql",
-                "-h",
-                "localhost",
-                "-p",
-                String.valueOf(postgres.port()),
-                "-U",
-                postgres.username(),
-                "-d",
-                postgres.database(),
-                "-v",
-                "ON_ERROR_STOP=1",
-                "-f",
-                backupFile.toString()
+                "-h", "localhost",
+                "-p", postgres.port() + "",
+                "-U", postgres.username(),
+                "-d", postgres.database(),
+                "-v", "ON_ERROR_STOP=1",
+                "-f", backupFile.toString()
         );
-
         processBuilder.environment().put(
                 "PGPASSWORD",
                 postgres.password()
@@ -78,14 +75,11 @@ public class RestoreService {
 
         runProcess(
                 processBuilder,
-                "PostgreSQL",
-                backupFile
+                "PostgreSQL"
         );
     }
 
-    // mysql CLI không có flag "-f file.sql" như psql — cách chạy 1 script SQL là pipe nội
-    // dung file vào stdin của process, nên phải đọc file vào bộ nhớ rồi ghi qua
-    // process.getOutputStream() (đây là stdin của process con) thay vì dùng runProcess() chung.
+
     private void restoreMysql() {
         Path backupFile = findLatestBackup("mysql_");
 
@@ -98,19 +92,15 @@ public class RestoreService {
 
         ProcessBuilder processBuilder = new ProcessBuilder(
                 "mysql",
-                "-h",
-                "localhost",
-                "-P",
-                String.valueOf(mysql.port()),
-                "-u",
-                mysql.username(),
+                "-h", "localhost",
+                "-P", mysql.port() + "",
+                "-u", mysql.username(),
                 mysql.database()
         );
 
         processBuilder.environment().put(
                 "MYSQL_PWD",
-                mysql.password()
-        );
+                mysql.password());
 
         try {
             String sql = Files.readString(
@@ -118,11 +108,22 @@ public class RestoreService {
                     StandardCharsets.UTF_8
             );
 
-            processBuilder.redirectError(
-                    ProcessBuilder.Redirect.PIPE
-            );
+            processBuilder.redirectErrorStream(false);
 
             Process process = processBuilder.start();
+
+            StringBuilder errorOutput = new StringBuilder();
+            Thread errorReader = new Thread(() -> {
+                try {
+                    errorOutput.append(new String(
+                            process.getErrorStream().readAllBytes(),
+                            StandardCharsets.UTF_8));
+                } catch (Exception ignored) {
+                    // Bo qua loi doc stderr - loi restore that (neu co) van duoc phat hien
+                    // qua exitCode ben duoi.
+                }
+            });
+            errorReader.start();
 
             process.getOutputStream().write(
                     sql.getBytes(StandardCharsets.UTF_8)
@@ -131,26 +132,18 @@ public class RestoreService {
             process.getOutputStream().close();
 
             int exitCode = process.waitFor();
-
-            String error = new String(
-                    process.getErrorStream().readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+            errorReader.join();
 
             if (exitCode != 0) {
                 throw new IllegalStateException(
-                        "MySQL restore failed: " + error
+                        "MySQL restore failed: " + errorOutput
                 );
             }
 
-            log.info(
-                    "MySQL restore completed from: {}",
-                    backupFile.toAbsolutePath()
-            );
+            log.info("MySQL restore completed from {}", backupFile.getFileName());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-
             throw new IllegalStateException(
                     "MySQL restore was interrupted",
                     e
@@ -164,75 +157,63 @@ public class RestoreService {
         }
     }
 
-    // Tên file backup có dạng "postgres_yyyyMMdd_HHmmss.sql" (xem BackupScheduler) nên so
-    // sánh chuỗi tên file theo thứ tự chữ cái cũng chính là so sánh theo thời gian — không
-    // cần đọc timestamp thật của file trên đĩa.
+
     private Path findLatestBackup(String prefix) {
         try (var files = Files.list(
                 Path.of(backupProperties.directory())
         )) {
-
             return files
                     .filter(Files::isRegularFile)
-                    .filter(path ->
-                            path.getFileName()
-                                    .toString()
-                                    .startsWith(prefix)
-                    )
-                    .filter(path ->
-                            path.getFileName()
-                                    .toString()
-                                    .endsWith(".sql")
-                    )
-                    .max((a, b) ->
-                            a.getFileName()
-                                    .toString()
-                                    .compareTo(
-                                            b.getFileName().toString()
-                                    )
-                    )
+                    .filter(path -> path.getFileName().toString().startsWith(prefix))
+                    .filter(path -> path.getFileName().toString().endsWith(".sql"))
+                    .max(Path::compareTo)
                     .orElse(null);
-
         } catch (Exception e) {
             throw new IllegalStateException(
-                    "Cannot find latest backup",
+                    "Cannot list backup directory",
                     e
             );
         }
     }
 
+
     private void runProcess(
             ProcessBuilder processBuilder,
-            String databaseName,
-            Path backupFile) {
+            String databaseName
+    ) {
+        processBuilder.redirectErrorStream(false);
 
         try {
             Process process = processBuilder.start();
 
-            int exitCode = process.waitFor();
+            StringBuilder errorOutput = new StringBuilder();
+            Thread errorReader = new Thread(() -> {
+                try {
+                    errorOutput.append(new String(
+                            process.getErrorStream().readAllBytes(),
+                            StandardCharsets.UTF_8));
+                } catch (Exception ignored) {
+                    // Bo qua loi doc stderr - loi restore that (neu co) van duoc phat hien
+                    // qua exitCode ben duoi.
+                }
+            });
+            errorReader.start();
 
-            String error = new String(
-                    process.getErrorStream().readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+            int exitCode = process.waitFor();
+            errorReader.join();
 
             if (exitCode != 0) {
                 throw new IllegalStateException(
                         databaseName
                                 + " restore failed: "
-                                + error
+                                + errorOutput
                 );
             }
 
-            log.info(
-                    "{} restore completed from: {}",
-                    databaseName,
-                    backupFile.toAbsolutePath()
-            );
+            log.info("{} restore completed.", databaseName);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-
             throw new IllegalStateException(
                     databaseName + " restore was interrupted",
                     e

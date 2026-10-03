@@ -39,8 +39,13 @@ public class TriageAlertAdminController {
     }
 
     @PostMapping("/{alertId}/resolve")
-    public TriageAlertResponse resolve(@PathVariable Long alertId) {
-        return triageAlertService.resolve(alertId);
+    public TriageAlertResponse resolve(
+            @PathVariable Long alertId,
+            Authentication authentication) {
+
+        Long resolverId = Long.valueOf(authentication.getName());
+        String resolverType = resolveRole(authentication);
+        return triageAlertService.resolve(alertId, resolverId, resolverType);
     }
 
     private String resolveRole(Authentication authentication) {

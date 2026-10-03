@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import vn.gastroai.be.application.chat.ChatAnswer;
+import vn.gastroai.be.application.chat.ChatAttachmentProcessor;
 import vn.gastroai.be.application.chat.ChatHistoryService;
 import vn.gastroai.be.application.chat.ChatService;
 import vn.gastroai.be.application.rag.RagAnswer;
@@ -21,10 +23,12 @@ import vn.gastroai.be.application.rag.StreamingRagQueryService;
 import vn.gastroai.be.application.triage.TriageAlertService;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.domain.triage.TriageResult;
+import vn.gastroai.be.infrastructure.ai.ImagePart;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -38,6 +42,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,10 +62,7 @@ class ChatControllerTest {
 
     @MockitoBean
     private StreamingRagQueryService streamingRagQueryService;
-
-    // UC0036/067(vá) - ChatController gio goi TriageAlertService.createAndPublish() (thay vi
-    // tu dung TriageAlertPublisher truc tiep) khi emergency=true - can mock de context load
-    // duoc va de xac nhan hanh vi goi/khong goi.
+    
     @MockitoBean
     private TriageAlertService triageAlertService;
 
@@ -73,6 +75,9 @@ class ChatControllerTest {
     @MockitoBean
     private RevokedTokenRepository revokedTokenRepository;
 
+    @MockitoBean
+    private ChatAttachmentProcessor attachmentProcessor;
+
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void sendMessageReturnsAssistantReplyMatchingFrontendContract() throws Exception {
@@ -82,7 +87,7 @@ class ChatControllerTest {
                 List.of("Trieu chung nay co nguy hiem khong?", "Khi nao nen di kham?"));
         stubChatServiceAsk(new ChatAnswer(ragAnswer, false, List.of()), TriageResult.safe());
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
-                .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L));
+                .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L, 1L));
 
         mockMvc.perform(post("/api/v1/chat/messages")
                         .with(csrf())
@@ -100,9 +105,9 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.dbMessageId").value(1))
                 .andExpect(jsonPath("$.sessionId").value(1));
 
-        // UC0036 - khong co dau hieu khan cap thi KHONG duoc day canh bao sang admin, tranh
-        // lam nhieu dashboard voi nhung tin nhan binh thuong.
+        // UC0036 - khong co dau hieu khan cap thi KHONG duoc tao/gan canh bao nao ca.
         verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), any());
+        verify(triageAlertService, never()).linkConversation(any(), any(), any());
     }
 
     @Test
@@ -122,8 +127,12 @@ class ChatControllerTest {
         stubChatServiceAsk(
                 new ChatAnswer(ragAnswer, true, List.of("DAU_BUNG_CAP_TINH")),
                 new TriageResult(true, List.of("DAU_BUNG_CAP_TINH")));
+        when(triageAlertService.createAndPublish(
+                eq(1L), isNull(), isNull(),
+                eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
+                .thenReturn(42L);
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
-                .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L));
+                .thenReturn(new ChatHistoryService.SavedExchange(1L, 1L, 1L));
 
         mockMvc.perform(post("/api/v1/chat/messages")
                         .with(csrf())
@@ -134,12 +143,10 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.emergency").value(true))
                 .andExpect(jsonPath("$.matchedGroups[0]").value("DAU_BUNG_CAP_TINH"));
 
-        // UC0036/067(vá) - co dau hieu khan cap thi PHAI goi TriageAlertService.createAndPublish()
-        // voi dung patientId/noi dung/nhom trieu chung da khop - sessionId/messageId la null vi
-        // goi TRUOC khi chatHistoryService.saveExchange() luu tin nhan that (xem ChatController).
         verify(triageAlertService).createAndPublish(
                 eq(1L), isNull(), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
+        verify(triageAlertService).linkConversation(eq(42L), eq(1L), eq(1L));
     }
 
     @Test
@@ -172,10 +179,67 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.code").value("AI_SERVICE_UNAVAILABLE"));
     }
 
- 
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void sendMessageWithAttachmentsProcessesFilesAndSavesThem() throws Exception {
+        RagAnswer ragAnswer = new RagAnswer("Ban nen theo doi them.", List.of(), List.of());
+        stubChatServiceAskWithAttachments(new ChatAnswer(ragAnswer, false, List.of()), TriageResult.safe());
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
+                .thenReturn(new ChatHistoryService.SavedExchange(1L, 5L, 2L));
+        ChatAttachmentProcessor.AttachmentResult attachmentResult =
+                new ChatAttachmentProcessor.AttachmentResult("uuid.jpg", "anh.jpg", "image/jpeg", 3L);
+        when(attachmentProcessor.process(any())).thenReturn(new ChatAttachmentProcessor.ProcessedAttachments(
+                List.of(attachmentResult), List.of(new ImagePart("image/jpeg", "AQID")), ""));
+
+        MockMultipartFile requestPart = new MockMultipartFile("request", "", "application/json",
+                "{\"content\":\"Day la anh gi?\"}".getBytes(StandardCharsets.UTF_8));
+        MockMultipartFile filePart = new MockMultipartFile("files", "anh.jpg", "image/jpeg", new byte[]{1, 2, 3});
+
+        mockMvc.perform(multipart("/api/v1/chat/messages/with-attachments")
+                        .file(requestPart)
+                        .file(filePart)
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value("Ban nen theo doi them."));
+
+        // Dinh kem phai duoc gan vao DUNG patientMessageId (5L) tra ve tu saveExchange(), khong
+        // phai assistantMessageId (2L) - 2 id nay khac nhau, de nham la bug co san du khong co
+        // dinh kem nao duoc luu that.
+        verify(chatHistoryService).saveAttachments(eq(5L), eq(List.of(attachmentResult)));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void sendMessageWithAttachmentsWorksWithNoFilesAttached() throws Exception {
+        RagAnswer ragAnswer = new RagAnswer("OK.", List.of(), List.of());
+        stubChatServiceAskWithAttachments(new ChatAnswer(ragAnswer, false, List.of()), TriageResult.safe());
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
+                .thenReturn(new ChatHistoryService.SavedExchange(1L, 5L, 2L));
+        when(attachmentProcessor.process(List.of()))
+                .thenReturn(new ChatAttachmentProcessor.ProcessedAttachments(List.of(), List.of(), ""));
+
+        MockMultipartFile requestPart = new MockMultipartFile("request", "", "application/json",
+                "{\"content\":\"Chi hoi thoi, khong co file\"}".getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/v1/chat/messages/with-attachments")
+                        .file(requestPart)
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(chatHistoryService).saveAttachments(eq(5L), eq(List.of()));
+    }
+
     private void stubChatServiceAsk(ChatAnswer chatAnswer, TriageResult triageResult) {
         when(chatService.ask(anyString(), any())).thenAnswer(invocation -> {
             Consumer<TriageResult> onTriageChecked = invocation.getArgument(1);
+            onTriageChecked.accept(triageResult);
+            return chatAnswer;
+        });
+    }
+
+    private void stubChatServiceAskWithAttachments(ChatAnswer chatAnswer, TriageResult triageResult) {
+        when(chatService.ask(anyString(), any(), any(), any())).thenAnswer(invocation -> {
+            Consumer<TriageResult> onTriageChecked = invocation.getArgument(3);
             onTriageChecked.accept(triageResult);
             return chatAnswer;
         });

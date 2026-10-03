@@ -44,6 +44,11 @@ public class DocumentUploadController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @DeleteMapping("/{documentId}")
+    public ResponseEntity<Void> delete(@PathVariable Long documentId) {
+        documentUploadService.delete(documentId);
+        return ResponseEntity.noContent().build();
+    }
     private DocumentStatusResponse toResponse(Document document) {
         return new DocumentStatusResponse(
                 document.getId(),

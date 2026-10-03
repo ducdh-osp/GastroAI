@@ -56,6 +56,29 @@ class TriageServiceTest {
     }
 
     @Test
+    void alarmFeatureGroupMatchesButDoesNotFlagEmergency() {
+        TriageResult result = triageService.check("Gần đây tôi tự nhiên sụt cân không rõ nguyên nhân");
+        assertFalse(result.emergency());
+        assertTrue(result.matchedGroups().contains("SUT_CAN_KHONG_RO_NGUYEN_NHAN"));
+    }
+
+    @Test
+    void difficultSwallowingAlarmGroupDoesNotFlagEmergencyEither() {
+        TriageResult result = triageService.check("Tôi bị khó nuốt mấy ngày nay");
+        assertFalse(result.emergency());
+        assertTrue(result.matchedGroups().contains("KHO_NUOT_DAU_KHI_NUOT"));
+    }
+
+    @Test
+    void emergencyGroupStillWinsWhenMixedWithAlarmFeatureGroup() {
+        TriageResult result = triageService.check(
+                "Tôi khó nuốt vài ngày nay và hôm nay thì đau bụng dữ dội dột ngột");
+        assertTrue(result.emergency());
+        assertTrue(result.matchedGroups().contains("KHO_NUOT_DAU_KHI_NUOT"));
+        assertTrue(result.matchedGroups().contains("DAU_BUNG_CAP_TINH"));
+    }
+
+    @Test
     void emergencyWarningOverridesEveryPatientGroupAndReportedSeverity() {
         for (PatientGroup group : PatientGroup.values()) {
             SymptomAssessmentInput input = input(SeverityLevel.MILD, ActivityImpact.NONE,

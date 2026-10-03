@@ -1,6 +1,6 @@
 import { Alert, Card, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getFoodDiaryTrend, listFoodDiary } from '../../api/foodDiary'
 import type { DailyCountPoint, FoodDiaryEntry } from '../../api/foodDiary'
 import { AppShell } from '../../components/layout/AppShell'
@@ -19,17 +19,25 @@ export default function FoodDiaryHistoryPage() {
   const [recentEntries, setRecentEntries] = useState<FoodDiaryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const requestId = useRef(0)
 
   useEffect(() => {
+    const currentRequestId = ++requestId.current
     setLoading(true)
     setError(null)
     Promise.all([getFoodDiaryTrend(30), listFoodDiary(0, 10)])
       .then(([trendPoints, recent]) => {
+        if (currentRequestId !== requestId.current) return
         setPoints(trendPoints)
         setRecentEntries(recent.items)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải lịch sử ăn uống.'))
-      .finally(() => setLoading(false))
+      .catch((err: unknown) => {
+        if (currentRequestId !== requestId.current) return
+        setError(err instanceof Error ? err.message : 'Không thể tải lịch sử ăn uống.')
+      })
+      .finally(() => {
+        if (currentRequestId === requestId.current) setLoading(false)
+      })
   }, [])
 
   return (

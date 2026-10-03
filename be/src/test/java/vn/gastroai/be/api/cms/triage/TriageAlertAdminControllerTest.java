@@ -51,7 +51,7 @@ class TriageAlertAdminControllerTest {
         when(triageAlertService.listRecent()).thenReturn(List.of(new TriageAlertResponse(
                 10L, 1L, "Nguyen Van A", "0901234567", null, null,
                 "Toi bi dau bung du doi", List.of("DAU_BUNG_CAP_TINH"), "NEW",
-                null, null, null, null, Instant.parse("2026-09-30T00:00:00Z"))));
+                null, null, null, null, null, null, Instant.parse("2026-09-30T00:00:00Z"))));
 
         mockMvc.perform(get("/api/v1/cms/triage-alerts"))
                 .andExpect(status().isOk())
@@ -73,7 +73,7 @@ class TriageAlertAdminControllerTest {
         when(triageAlertService.claim(10L, 7L, "ADMIN")).thenReturn(new TriageAlertResponse(
                 10L, 1L, "Nguyen Van A", "0901234567", null, null,
                 "Toi bi dau bung du doi", List.of("DAU_BUNG_CAP_TINH"), "IN_PROGRESS",
-                7L, "ADMIN", Instant.parse("2026-09-30T00:05:00Z"), null,
+                7L, "ADMIN", Instant.parse("2026-09-30T00:05:00Z"), null, null, null,
                 Instant.parse("2026-09-30T00:00:00Z")));
 
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/claim").with(csrf()))
@@ -91,7 +91,7 @@ class TriageAlertAdminControllerTest {
         when(triageAlertService.claim(10L, 9L, "DOCTOR")).thenReturn(new TriageAlertResponse(
                 10L, 1L, "Nguyen Van A", "0901234567", null, null,
                 "Toi bi dau bung du doi", List.of("DAU_BUNG_CAP_TINH"), "IN_PROGRESS",
-                9L, "DOCTOR", Instant.parse("2026-09-30T00:05:00Z"), null,
+                9L, "DOCTOR", Instant.parse("2026-09-30T00:05:00Z"), null, null, null,
                 Instant.parse("2026-09-30T00:00:00Z")));
 
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/claim").with(csrf()))
@@ -102,17 +102,20 @@ class TriageAlertAdminControllerTest {
 
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
-    void resolveMarksAlertResolved() throws Exception {
-        when(triageAlertService.resolve(10L)).thenReturn(new TriageAlertResponse(
+    void resolveMarksAlertResolvedByAuthenticatedAdmin() throws Exception {
+        when(triageAlertService.resolve(10L, 7L, "ADMIN")).thenReturn(new TriageAlertResponse(
                 10L, 1L, "Nguyen Van A", "0901234567", null, null,
                 "Toi bi dau bung du doi", List.of("DAU_BUNG_CAP_TINH"), "RESOLVED",
                 7L, "ADMIN", Instant.parse("2026-09-30T00:05:00Z"),
-                Instant.parse("2026-09-30T00:10:00Z"), Instant.parse("2026-09-30T00:00:00Z")));
+                Instant.parse("2026-09-30T00:10:00Z"), 7L, "ADMIN",
+                Instant.parse("2026-09-30T00:00:00Z")));
 
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/resolve").with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("RESOLVED"));
+                .andExpect(jsonPath("$.status").value("RESOLVED"))
+                .andExpect(jsonPath("$.resolvedById").value(7))
+                .andExpect(jsonPath("$.resolvedByType").value("ADMIN"));
 
-        verify(triageAlertService).resolve(10L);
+        verify(triageAlertService).resolve(eq(10L), eq(7L), eq("ADMIN"));
     }
 }

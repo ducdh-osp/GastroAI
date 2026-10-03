@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import vn.gastroai.be.infrastructure.ai.GeminiChatClient;
 import vn.gastroai.be.infrastructure.ai.GeminiEmbeddingClient;
+import vn.gastroai.be.infrastructure.ai.ImagePart;
 import vn.gastroai.be.infrastructure.rag.EmbeddingStore;
 import vn.gastroai.be.infrastructure.rag.SimilarChunk;
 
@@ -54,8 +55,23 @@ public class RagQueryService {
      * de sinh cau tra loi.
      */
     public RagAnswer answerWithSources(String question) {
+        return answerWithSources(question, List.of(), null);
+    }
+
+    /**
+     * images/attachedDocumentText: anh/tai lieu benh nhan dinh kem tin nhan chat (khac tai
+     * lieu trong kho tri thuc RAG o tren) - images di thang vao Gemini qua inlineData,
+     * attachedDocumentText la text da trich xuat san (PdfTextExtractor/DocxTextExtractor) tu
+     * file dinh kem dang pdf/docx, duoc noi them vao cuoi prompt nhu 1 doan ngu canh nua.
+     */
+    public RagAnswer answerWithSources(String question, List<ImagePart> images, String attachedDocumentText) {
         float[] queryVector = embeddingClient.embed(question);
         List<SimilarChunk> context = embeddingStore.findTopK(queryVector, topK);
+
+        String attachmentContext = (attachedDocumentText == null || attachedDocumentText.isBlank())
+                ? ""
+                : "\n\nNoi dung tai lieu benh nhan vua gui kem (co the chua lieu luong - van ap " +
+                  "dung dung chi dan ve lieu luong o tren):\n" + DosageRedactor.redact(attachedDocumentText);
 
         if (context.isEmpty()) {
             // Chưa có tài liệu nào trong kho tri thức (hoặc UC0031/032 của Thăng chưa xong)
@@ -63,19 +79,20 @@ public class RagQueryService {
             // vẫn trả lời được nhưng phải nói rõ KHÔNG có nguồn, tránh Gemini tự bịa thông
             // tin
             // y tế mà không có căn cứ.
-            String noContextAnswer = chatClient.generate(SYSTEM_PROMPT_NO_CONTEXT, question);
+            String noContextPrompt = SYSTEM_PROMPT_NO_CONTEXT + attachmentContext;
+            String noContextAnswer = chatClient.generate(noContextPrompt, question, images);
             return new RagAnswer(noContextAnswer, List.of(), generateRelatedQuestions(question, noContextAnswer));
         }
 
         String contextText = context.stream()
-                .map(chunk -> "- " + chunk.content())
+                .map(chunk -> "- " + DosageRedactor.redact(chunk.content()))
                 .collect(Collectors.joining("\n"));
-        String systemPrompt = SYSTEM_PROMPT_PREFIX + contextText;
-        String generatedAnswer = chatClient.generate(systemPrompt, question);
+        String systemPrompt = SYSTEM_PROMPT_PREFIX + contextText + attachmentContext;
+        String generatedAnswer = chatClient.generate(systemPrompt, question, images);
 
         List<RagSource> sources = context.stream()
                 .limit(MAX_DISPLAYED_SOURCES)
-                .map(chunk -> new RagSource(chunk.documentTitle(), chunk.content(), chunk.sourceUrl()))
+                .map(chunk -> new RagSource(chunk.documentTitle(), DosageRedactor.redact(chunk.content()), chunk.sourceUrl()))
                 .toList();
         return new RagAnswer(generatedAnswer, sources, generateRelatedQuestions(question, generatedAnswer));
     }
@@ -110,6 +127,12 @@ public class RagQueryService {
             tren ngu canh duoc cung cap ben duoi, khong tu bia them thong tin y khoa. Neu ngu \
             canh khong du de tra loi, hay noi ro dieu do va khuyen nguoi dung gap bac si. Luon \
             nhac nguoi dung day chi la thong tin tham khao, khong thay the chan doan y te.
+
+            Ngu canh co the trich tu tai lieu chuyen mon danh cho bac si (phac do dieu tri), \
+            KHONG danh cho benh nhan tu ap dung. Neu ngu canh co lieu luong thuoc cu the (so mg, \
+            so vien/ngay, so lan/ngay...), TUYET DOI khong doc lai nguyen lieu do cho nguoi dung. \
+            Chi noi chung la can dung thuoc theo dung chi dinh cua bac si/duoc si, va khuyen \
+            nguoi dung hoi truc tiep bac si/duoc si de biet lieu luong chinh xac phu hop voi ho.
 
             Ngu canh:
             """;

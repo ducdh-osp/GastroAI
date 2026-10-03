@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * UC0034 - sàng lọc an toàn tầng 1: đối sánh từ khóa dấu hiệu cấp cứu trên câu hỏi/tin nhắn
@@ -60,10 +61,28 @@ public class TriageService {
             WarningSign.DIABETES_WITH_VOMITING,
             WarningSign.SEVERE_DEHYDRATION);
 
+    /**
+     * Mã nhóm từ khóa (vd "XUAT_HUYET_TIEU_HOA") tương ứng các WarningSign trong
+     * EMERGENCY_SIGNS - suy ra từ WARNING_GROUPS để check() (chat tự do, chỉ có mã nhóm string,
+     * không có WarningSign) và assess() (form có cấu trúc) luôn dùng CHUNG 1 định nghĩa "khẩn
+     * cấp thật". Trước đây check() coi MỌI nhóm khớp là khẩn cấp ngang nhau (kể cả nhóm ALARM
+     * như sụt cân/khó nuốt, vốn ở assess() chỉ lên MODERATE) - suy ra tự động từ đây để nếu
+     * EMERGENCY_SIGNS đổi thì check() tự đổi theo, không bị lệch lại lần nữa.
+     */
+    private static final Set<String> EMERGENCY_GROUP_CODES = WARNING_GROUPS.entrySet().stream()
+            .filter(entry -> EMERGENCY_SIGNS.contains(entry.getKey()))
+            .map(Map.Entry::getValue)
+            .collect(Collectors.toUnmodifiableSet());
+
     public TriageService(TriageKeywordSource keywordSource) {
         this.keywordSource = keywordSource;
     }
 
+    /**
+     * matchedGroups khác rỗng không còn đồng nghĩa với emergency=true: nhóm ALARM (sụt cân,
+     * khó nuốt...) vẫn được trả về trong matchedGroups để FE nhắc bệnh nhân nên đi khám, nhưng
+     * chỉ nhóm nằm trong EMERGENCY_GROUP_CODES mới set emergency=true (gọi 115/bắn alert CMS).
+     */
     public TriageResult check(String message) {
         String normalized = normalize(message);
         List<String> matchedGroups = new ArrayList<>();
@@ -75,7 +94,11 @@ public class TriageService {
             }
         }
 
-        return matchedGroups.isEmpty() ? TriageResult.safe() : new TriageResult(true, matchedGroups);
+        if (matchedGroups.isEmpty()) {
+            return TriageResult.safe();
+        }
+        boolean emergency = matchedGroups.stream().anyMatch(EMERGENCY_GROUP_CODES::contains);
+        return new TriageResult(emergency, matchedGroups);
     }
 
     /**

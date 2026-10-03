@@ -27,8 +27,8 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  function handleLogout() {
-    logout()
+  async function handleLogout() {
+    await logout()
     navigate('/login')
   }
 
