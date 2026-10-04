@@ -26,8 +26,10 @@ import static org.mockito.Mockito.when;
 class SymptomAssessmentHistoryServiceTest {
     private final SymptomAssessmentRecordRepository recordRepository = mock(SymptomAssessmentRecordRepository.class);
     private final PatientRepository patientRepository = mock(PatientRepository.class);
+    private final TriageAlertService triageAlertService = mock(TriageAlertService.class);
     private final SymptomAssessmentHistoryService service = new SymptomAssessmentHistoryService(
-            recordRepository, patientRepository, new TriageService(new HardcodedTriageKeywordSource()), new ObjectMapper());
+            recordRepository, patientRepository, new TriageService(new HardcodedTriageKeywordSource()),
+            triageAlertService, new ObjectMapper());
 
     @Test
     void assessmentIsSavedWithPatientAndOtherSymptomDetails() {

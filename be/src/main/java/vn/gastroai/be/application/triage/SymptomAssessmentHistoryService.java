@@ -21,13 +21,16 @@ public class SymptomAssessmentHistoryService {
     private final SymptomAssessmentRecordRepository recordRepository;
     private final PatientRepository patientRepository;
     private final TriageService triageService;
+    private final TriageAlertService triageAlertService;
     private final ObjectMapper objectMapper;
 
     public SymptomAssessmentHistoryService(SymptomAssessmentRecordRepository recordRepository,
-            PatientRepository patientRepository, TriageService triageService, ObjectMapper objectMapper) {
+            PatientRepository patientRepository, TriageService triageService,
+            TriageAlertService triageAlertService, ObjectMapper objectMapper) {
         this.recordRepository = recordRepository;
         this.patientRepository = patientRepository;
         this.triageService = triageService;
+        this.triageAlertService = triageAlertService;
         this.objectMapper = objectMapper;
     }
 
@@ -55,6 +58,14 @@ public class SymptomAssessmentHistoryService {
         record.setRequiresClinicianReview(result.requiresClinicianReview());
 
         SymptomAssessmentRecord saved = recordRepository.save(record);
+        if (result.emergency()) {
+            String messageContent = "Đánh giá triệu chứng có cấu trúc: "
+                    + (input.primarySymptomDetail() == null || input.primarySymptomDetail().isBlank()
+                    ? input.primarySymptom().name() : input.primarySymptomDetail())
+                    + "; dấu hiệu cảnh báo: " + String.join(", ", result.matchedGroups());
+            triageAlertService.createAndPublish(
+                    patientId, null, null, messageContent, result.matchedGroups());
+        }
         return new SymptomAssessmentResponse(saved.getId(), saved.getAssessedAt(), result.severityLevel(),
                 result.emergency(), result.matchedGroups(), result.reasonCodes(), result.requiresClinicianReview());
     }
