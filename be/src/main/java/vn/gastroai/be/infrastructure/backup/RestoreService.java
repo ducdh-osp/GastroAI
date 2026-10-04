@@ -5,10 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import vn.gastroai.be.config.BackupProperties;
 
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 
 @Service
 public class RestoreService {
@@ -17,9 +16,11 @@ public class RestoreService {
             LoggerFactory.getLogger(RestoreService.class);
 
     private final BackupProperties backupProperties;
+    private final ProcessExecutor processExecutor;
 
-    public RestoreService(BackupProperties backupProperties) {
+    public RestoreService(BackupProperties backupProperties, ProcessExecutor processExecutor) {
         this.backupProperties = backupProperties;
+        this.processExecutor = processExecutor;
     }
 
     public RestoreResult restoreAll() {
@@ -65,6 +66,7 @@ public class RestoreService {
                 "-p", postgres.port() + "",
                 "-U", postgres.username(),
                 "-d", postgres.database(),
+                "-q",
                 "-v", "ON_ERROR_STOP=1",
                 "-f", backupFile.toString()
         );
@@ -73,10 +75,8 @@ public class RestoreService {
                 postgres.password()
         );
 
-        runProcess(
-                processBuilder,
-                "PostgreSQL"
-        );
+        processExecutor.run(processBuilder, "PostgreSQL restore", null);
+        log.info("PostgreSQL restore completed from {}", backupFile.getFileName());
     }
 
 
@@ -97,64 +97,19 @@ public class RestoreService {
                 "-u", mysql.username(),
                 mysql.database()
         );
-
         processBuilder.environment().put(
                 "MYSQL_PWD",
                 mysql.password());
 
+        byte[] sql;
         try {
-            String sql = Files.readString(
-                    backupFile,
-                    StandardCharsets.UTF_8
-            );
-
-            processBuilder.redirectErrorStream(false);
-
-            Process process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            Thread errorReader = new Thread(() -> {
-                try {
-                    errorOutput.append(new String(
-                            process.getErrorStream().readAllBytes(),
-                            StandardCharsets.UTF_8));
-                } catch (Exception ignored) {
-                    // Bo qua loi doc stderr - loi restore that (neu co) van duoc phat hien
-                    // qua exitCode ben duoi.
-                }
-            });
-            errorReader.start();
-
-            process.getOutputStream().write(
-                    sql.getBytes(StandardCharsets.UTF_8)
-            );
-
-            process.getOutputStream().close();
-
-            int exitCode = process.waitFor();
-            errorReader.join();
-
-            if (exitCode != 0) {
-                throw new IllegalStateException(
-                        "MySQL restore failed: " + errorOutput
-                );
-            }
-
-            log.info("MySQL restore completed from {}", backupFile.getFileName());
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(
-                    "MySQL restore was interrupted",
-                    e
-            );
-
-        } catch (Exception e) {
-            throw new IllegalStateException(
-                    "MySQL restore failed",
-                    e
-            );
+            sql = Files.readAllBytes(backupFile);
+        } catch (IOException e) {
+            throw new IllegalStateException("Khong doc duoc file backup MySQL: " + backupFile, e);
         }
+
+        processExecutor.run(processBuilder, "MySQL restore", sql);
+        log.info("MySQL restore completed from {}", backupFile.getFileName());
     }
 
 
@@ -171,57 +126,6 @@ public class RestoreService {
         } catch (Exception e) {
             throw new IllegalStateException(
                     "Cannot list backup directory",
-                    e
-            );
-        }
-    }
-
-
-    private void runProcess(
-            ProcessBuilder processBuilder,
-            String databaseName
-    ) {
-        processBuilder.redirectErrorStream(false);
-
-        try {
-            Process process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            Thread errorReader = new Thread(() -> {
-                try {
-                    errorOutput.append(new String(
-                            process.getErrorStream().readAllBytes(),
-                            StandardCharsets.UTF_8));
-                } catch (Exception ignored) {
-                    // Bo qua loi doc stderr - loi restore that (neu co) van duoc phat hien
-                    // qua exitCode ben duoi.
-                }
-            });
-            errorReader.start();
-
-            int exitCode = process.waitFor();
-            errorReader.join();
-
-            if (exitCode != 0) {
-                throw new IllegalStateException(
-                        databaseName
-                                + " restore failed: "
-                                + errorOutput
-                );
-            }
-
-            log.info("{} restore completed.", databaseName);
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(
-                    databaseName + " restore was interrupted",
-                    e
-            );
-
-        } catch (Exception e) {
-            throw new IllegalStateException(
-                    databaseName + " restore failed",
                     e
             );
         }
