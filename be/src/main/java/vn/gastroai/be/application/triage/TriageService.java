@@ -58,7 +58,10 @@ public class TriageService {
             WarningSign.UNABLE_TO_URINATE,
             WarningSign.BREATHING_DIFFICULTY_OR_CHEST_PAIN,
             WarningSign.FAINTING_OR_CONFUSION,
+            WarningSign.HIGH_FEVER_WITH_ABDOMINAL_PAIN,
+            WarningSign.PAIN_RADIATING_TO_BACK_OR_SHOULDER,
             WarningSign.DIABETES_WITH_VOMITING,
+            WarningSign.JAUNDICE_WITH_ABDOMINAL_PAIN,
             WarningSign.SEVERE_DEHYDRATION);
 
     /**

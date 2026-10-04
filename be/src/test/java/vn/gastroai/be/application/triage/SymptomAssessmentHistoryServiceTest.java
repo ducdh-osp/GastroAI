@@ -19,7 +19,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,8 +62,32 @@ class SymptomAssessmentHistoryServiceTest {
 
         assertEquals(7L, response.id());
         assertNotNull(response.assessedAt());
-        assertTrue(response.requiresClinicianReview());
+        assertTrue(response.emergency());
+        assertFalse(response.requiresClinicianReview());
         verify(recordRepository).save(any(SymptomAssessmentRecord.class));
+    }
+
+    @Test
+    void emergencyAssessmentCreatesAndPublishesTriageAlert() {
+        prepareAssessmentSave();
+        SymptomAssessmentInput input = assessmentInput(
+                Set.of(SymptomAssessmentInput.WarningSign.BLOOD_IN_VOMIT));
+
+        SymptomAssessmentResponse response = service.assessAndSave(42L, input);
+
+        assertTrue(response.emergency());
+        verify(triageAlertService).createAndPublish(eq(42L), isNull(), isNull(),
+                contains("Nôn ra máu"), eq(List.of("XUAT_HUYET_TIEU_HOA")));
+    }
+
+    @Test
+    void nonEmergencyAssessmentDoesNotCreateTriageAlert() {
+        prepareAssessmentSave();
+
+        SymptomAssessmentResponse response = service.assessAndSave(42L, assessmentInput(Set.of()));
+
+        assertFalse(response.emergency());
+        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), anyList());
     }
 
     @Test
@@ -89,5 +118,29 @@ class SymptomAssessmentHistoryServiceTest {
         assertEquals("MODERATE", history.getFirst().severityLevel());
         assertFalse(history.getFirst().emergency());
         verify(recordRepository).findTop100ByPatientIdOrderByAssessedAtDesc(42L);
+    }
+
+    private void prepareAssessmentSave() {
+        Patient patient = new Patient();
+        patient.setId(42L);
+        when(patientRepository.findById(42L)).thenReturn(Optional.of(patient));
+        when(recordRepository.save(any(SymptomAssessmentRecord.class))).thenAnswer(invocation -> {
+            SymptomAssessmentRecord record = invocation.getArgument(0);
+            record.setId(8L);
+            record.setAssessedAt(Instant.parse("2026-10-01T10:00:00Z"));
+            return record;
+        });
+    }
+
+    private SymptomAssessmentInput assessmentInput(Set<SymptomAssessmentInput.WarningSign> warningSigns) {
+        return new SymptomAssessmentInput(
+                SymptomAssessmentInput.PrimarySymptom.VOMITING,
+                "Nôn ra máu",
+                SymptomAssessmentInput.Duration.LESS_THAN_24_HOURS,
+                SymptomAssessmentInput.SeverityLevel.MILD,
+                SymptomAssessmentInput.ActivityImpact.NONE,
+                SymptomAssessmentInput.Progression.WORSENING,
+                SymptomAssessmentInput.PatientGroup.ADULT,
+                warningSigns);
     }
 }

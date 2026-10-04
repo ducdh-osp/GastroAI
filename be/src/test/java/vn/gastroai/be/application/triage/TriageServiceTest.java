@@ -70,6 +70,17 @@ class TriageServiceTest {
     }
 
     @Test
+    void newlyElevatedAbdominalWarningGroupsAreEmergencyInFreeTextToo() {
+        for (String message : Set.of("Tôi sốt cao kèm đau bụng",
+                "Đau bụng lan ra sau lưng", "Vàng da kèm đau bụng")) {
+            TriageResult result = triageService.check(message);
+
+            assertTrue(result.emergency(), message);
+            assertFalse(result.matchedGroups().isEmpty(), message);
+        }
+    }
+
+    @Test
     void emergencyGroupStillWinsWhenMixedWithAlarmFeatureGroup() {
         TriageResult result = triageService.check(
                 "Tôi khó nuốt vài ngày nay và hôm nay thì đau bụng dữ dội dột ngột");
@@ -128,15 +139,19 @@ class TriageServiceTest {
     }
 
     @Test
-    void nonEmergencyWarningSignRequiresClinicianReviewAndEscalatesMild() {
-        StructuredTriageResult result = triageService.assess(input(SeverityLevel.MILD,
-                ActivityImpact.NONE, Progression.STABLE, Duration.ONE_TO_THREE_DAYS,
-                PatientGroup.ADULT, Set.of(WarningSign.HIGH_FEVER_WITH_ABDOMINAL_PAIN)));
+    void highRiskAbdominalWarningSignsTriggerEmergencyTriage() {
+        for (WarningSign warningSign : Set.of(WarningSign.HIGH_FEVER_WITH_ABDOMINAL_PAIN,
+                WarningSign.PAIN_RADIATING_TO_BACK_OR_SHOULDER,
+                WarningSign.JAUNDICE_WITH_ABDOMINAL_PAIN)) {
+            StructuredTriageResult result = triageService.assess(input(SeverityLevel.MILD,
+                    ActivityImpact.NONE, Progression.STABLE, Duration.ONE_TO_THREE_DAYS,
+                    PatientGroup.ADULT, Set.of(warningSign)));
 
-        assertFalse(result.emergency());
-        assertEquals(SeverityLevel.MODERATE, result.severityLevel());
-        assertTrue(result.requiresClinicianReview());
-        assertTrue(result.reasonCodes().contains("NON_EMERGENCY_WARNING_SIGNS_PRESENT"));
+            assertTrue(result.emergency(), warningSign.name());
+            assertEquals(SeverityLevel.SEVERE, result.severityLevel(), warningSign.name());
+            assertFalse(result.requiresClinicianReview(), warningSign.name());
+            assertTrue(result.reasonCodes().contains("WARNING_SIGNS_PRESENT"), warningSign.name());
+        }
     }
 
     @Test

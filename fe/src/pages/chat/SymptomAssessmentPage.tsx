@@ -72,14 +72,14 @@ const emergencyWarningOptions: { value: WarningSign; label: string }[] = [
   { value: 'UNABLE_TO_URINATE', label: 'Không thể đi tiểu' },
   { value: 'BREATHING_DIFFICULTY_OR_CHEST_PAIN', label: 'Khó thở hoặc đau/tức ngực' },
   { value: 'FAINTING_OR_CONFUSION', label: 'Ngất, lú lẫn hoặc khó đánh thức' },
+  { value: 'HIGH_FEVER_WITH_ABDOMINAL_PAIN', label: 'Sốt cao kèm đau bụng' },
+  { value: 'PAIN_RADIATING_TO_BACK_OR_SHOULDER', label: 'Đau bụng lan ra lưng hoặc vai' },
   { value: 'DIABETES_WITH_VOMITING', label: 'Đang mắc tiểu đường và bị nôn' },
+  { value: 'JAUNDICE_WITH_ABDOMINAL_PAIN', label: 'Vàng da/vàng mắt kèm đau bụng' },
   { value: 'SEVERE_DEHYDRATION', label: 'Tiểu rất ít kèm lả, lơ mơ hoặc khó đánh thức' },
 ]
 
 const clinicianReviewWarningOptions: { value: WarningSign; label: string }[] = [
-  { value: 'HIGH_FEVER_WITH_ABDOMINAL_PAIN', label: 'Sốt cao kèm đau bụng' },
-  { value: 'PAIN_RADIATING_TO_BACK_OR_SHOULDER', label: 'Đau bụng lan ra lưng hoặc vai' },
-  { value: 'JAUNDICE_WITH_ABDOMINAL_PAIN', label: 'Vàng da/vàng mắt kèm đau bụng' },
   { value: 'UNEXPLAINED_WEIGHT_LOSS', label: 'Sụt cân không rõ nguyên nhân' },
   { value: 'DIFFICULT_OR_PAINFUL_SWALLOWING', label: 'Khó nuốt hoặc đau khi nuốt' },
 ]
