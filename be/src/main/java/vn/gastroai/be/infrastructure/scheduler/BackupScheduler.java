@@ -48,7 +48,7 @@ public class BackupScheduler {
         }
 
         try {
-            cleanupOldBackups();
+            cleanupOldBackups(Instant.now());
         } catch (Exception e) {
             logger.error("Backup cleanup failed:", e);
         }
@@ -207,13 +207,29 @@ public class BackupScheduler {
         }
     }
 
-    private void cleanupOldBackups() throws Exception {
-        Instant cutoff = Instant.now().minus(backupProperties.retentionDays(), ChronoUnit.DAYS);
+    // package-private (bo "private") de test tu truyen moc thoi gian "now" vao, khong phai luc
+    // nao cung phu thuoc Instant.now() thuc te - xem BackupSchedulerTest.
+    void cleanupOldBackups(Instant now) throws Exception {
+        if (!Files.isDirectory(getBackupDir())) {
+            // Thu muc backup chua ton tai (chua backup lan nao) - khong co gi de don.
+            return;
+        }
+
+        if (backupProperties.retentionDays() <= 0) {
+            // Khong chan truong hop nay thi ai do set BACKUP_RETENTION_DAYS=0 (hoac am) se xoa
+            // sach toan bo backup hien co - do la cau hinh sai, khong phai y dinh "giu 0 ngay".
+            logger.warn(
+                    "retention-days={} khong hop le (phai > 0) - bo qua don backup cu.",
+                    backupProperties.retentionDays());
+            return;
+        }
+
+        Instant cutoff = now.minus(backupProperties.retentionDays(), ChronoUnit.DAYS);
 
         try (var files = Files.list(getBackupDir())) {
             files
                     .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".sql"))
+                    .filter(BackupScheduler::isBackupFile)
                     .forEach(path -> {
                         try {
                             Instant lastModified = Files.getLastModifiedTime(path).toInstant();
@@ -226,5 +242,12 @@ public class BackupScheduler {
                         }
                     });
         }
+    }
+
+    // Chi xoa dung file backup do chinh BackupScheduler tao ra (postgres_*.sql, mysql_*.sql),
+    // khong xoa nham file .sql khac ai do de tam trong cung thu muc.
+    private static boolean isBackupFile(Path path) {
+        String name = path.getFileName().toString();
+        return (name.startsWith("postgres_") || name.startsWith("mysql_")) && name.endsWith(".sql");
     }
 }
