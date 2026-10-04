@@ -5,7 +5,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import vn.gastroai.be.config.BackupProperties;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -60,23 +63,54 @@ public class RestoreService {
 
         var postgres = backupProperties.postgres();
 
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                "psql",
-                "-h", "localhost",
-                "-p", postgres.port() + "",
-                "-U", postgres.username(),
-                "-d", postgres.database(),
-                "-q",
-                "-v", "ON_ERROR_STOP=1",
-                "-f", backupFile.toString()
-        );
-        processBuilder.environment().put(
-                "PGPASSWORD",
-                postgres.password()
-        );
+        Path filteredFile = filterExtensionStatements(backupFile);
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder(
+                    "psql",
+                    "-h", "localhost",
+                    "-p", postgres.port() + "",
+                    "-U", postgres.username(),
+                    "-d", postgres.database(),
+                    "-q",
+                    "-v", "ON_ERROR_STOP=1",
+                    "-f", filteredFile.toString()
+            );
+            processBuilder.environment().put(
+                    "PGPASSWORD",
+                    postgres.password()
+            );
 
-        processExecutor.run(processBuilder, "PostgreSQL restore", null);
-        log.info("PostgreSQL restore completed from {}", backupFile.getFileName());
+            processExecutor.run(processBuilder, "PostgreSQL restore", null);
+            log.info("PostgreSQL restore completed from {}", backupFile.getFileName());
+        } finally {
+            try {
+                Files.deleteIfExists(filteredFile);
+            } catch (IOException e) {
+                log.warn("Khong xoa duoc file backup tam {}: {}", filteredFile, e.getMessage());
+            }
+        }
+    }
+    private Path filterExtensionStatements(Path backupFile) {
+        try {
+            Path tempFile = Files.createTempFile("postgres-restore-", ".sql");
+            try (BufferedReader reader = Files.newBufferedReader(backupFile, StandardCharsets.UTF_8);
+                 BufferedWriter writer = Files.newBufferedWriter(tempFile, StandardCharsets.UTF_8)) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String trimmed = line.stripLeading();
+                    if (trimmed.startsWith("DROP EXTENSION")
+                            || trimmed.startsWith("CREATE EXTENSION")
+                            || trimmed.startsWith("COMMENT ON EXTENSION")) {
+                        continue;
+                    }
+                    writer.write(line);
+                    writer.newLine();
+                }
+            }
+            return tempFile;
+        } catch (IOException e) {
+            throw new IllegalStateException("Khong the loc file backup Postgres truoc khi restore", e);
+        }
     }
 
 
