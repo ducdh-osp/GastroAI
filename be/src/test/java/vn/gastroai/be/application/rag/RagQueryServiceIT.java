@@ -31,7 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * đó thuộc UC0031/032 của Thăng, chưa có entity Java, chỉ cần tồn tại đúng schema để test).
  */
 @SpringBootTest
-@EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "RUN_DB_IT", matches = "true")
+@EnabledIfEnvironmentVariable(named = "RUN_GEMINI_IT", matches = "true")
 class RagQueryServiceIT {
 
     private static final String TEST_DOCUMENT_TITLE = "RagQueryServiceIT - tai lieu test tam";
