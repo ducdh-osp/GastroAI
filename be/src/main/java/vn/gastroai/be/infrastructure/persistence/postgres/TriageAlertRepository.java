@@ -27,15 +27,38 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
             @Param("claimerId") Long claimerId,
             @Param("claimerType") String claimerType,
             @Param("now") Instant now);
+
+    /**
+     * Danh dau RESOLVED chi khi nguoi goi (resolverId/resolverType) dung la nguoi da
+     * tiep nhan canh bao nay (claimedById/claimedByType) VA canh bao dang IN_PROGRESS.
+     * Day la duong di thuong, danh cho Bac si/Admin tu dong ho canh bao minh tiep nhan.
+     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query("UPDATE TriageAlert a SET a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.RESOLVED, "
             + "a.resolvedAt = :now, a.resolvedById = :resolverId, a.resolvedByType = :resolverType, "
             + "a.updatedAt = :now "
-            + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS")
-    int resolveIfInProgress(
+            + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS "
+            + "AND a.claimedById = :resolverId AND a.claimedByType = :resolverType")
+    int resolveIfClaimedBy(
             @Param("id") Long id,
             @Param("resolverId") Long resolverId,
             @Param("resolverType") String resolverType,
+            @Param("now") Instant now);
+
+    /**
+     * Quyen "dong ho" rieng cho ADMIN: khong can la nguoi da tiep nhan, chi can canh bao
+     * dang IN_PROGRESS. claimedById/claimedByType giu nguyen de van biet ai thuc su xu ly,
+     * chi resolvedByType duoc ghi cung la 'ADMIN'.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE TriageAlert a SET a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.RESOLVED, "
+            + "a.resolvedAt = :now, a.resolvedById = :adminId, a.resolvedByType = 'ADMIN', "
+            + "a.updatedAt = :now "
+            + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS")
+    int resolveAsAdminOverride(
+            @Param("id") Long id,
+            @Param("adminId") Long adminId,
             @Param("now") Instant now);
 }

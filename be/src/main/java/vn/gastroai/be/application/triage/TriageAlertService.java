@@ -158,15 +158,32 @@ public class TriageAlertService {
                 "Cảnh báo đã được " + claimerLabel + " #" + alert.getClaimedById() + " tiếp nhận");
     }
 
+    /**
+     * Danh dau xu ly xong. Duong thuong: nguoi goi phai dung la nguoi da tiep nhan
+     * (resolveIfClaimedBy). Rieng ADMIN co quyen "dong ho" canh bao dang IN_PROGRESS
+     * cua nguoi khac (resolveAsAdminOverride) - van giu nguyen claimedById/claimedByType
+     * de biet ai thuc su xu ly, chi resolvedByType ghi la ADMIN.
+     */
     @Transactional
     public TriageAlertResponse resolve(Long alertId, Long resolverId, String resolverType) {
         Instant now = Instant.now();
-        int resolvedRows = triageAlertRepository.resolveIfInProgress(alertId, resolverId, resolverType, now);
+        int resolvedRows = triageAlertRepository.resolveIfClaimedBy(alertId, resolverId, resolverType, now);
 
         if (resolvedRows == 1) {
             TriageAlert alert = findAlertOrThrow(alertId);
             broadcastStatusChange(alert, now, resolverId, resolverType);
             return toResponse(alert);
+        }
+
+        if ("ADMIN".equals(resolverType)) {
+            int overrideRows = triageAlertRepository.resolveAsAdminOverride(alertId, resolverId, now);
+            if (overrideRows == 1) {
+                TriageAlert alert = findAlertOrThrow(alertId);
+                log.warn("Admin #{} dong ho canh bao #{} dang do {} #{} tiep nhan",
+                        resolverId, alertId, alert.getClaimedByType(), alert.getClaimedById());
+                broadcastStatusChange(alert, now, resolverId, "ADMIN");
+                return toResponse(alert);
+            }
         }
 
         TriageAlert alert = findAlertOrThrow(alertId);
@@ -176,8 +193,17 @@ public class TriageAlertService {
                     "Cảnh báo id=" + alertId + " đã được xử lý xong trước đó");
         }
 
+        if (alert.getStatus() == TriageAlertStatus.NEW) {
+            throw new IllegalStateException(
+                    "Cảnh báo id=" + alertId + " phải được tiếp nhận trước khi đánh dấu đã xử lý");
+        }
+
+        // Con lai: dang IN_PROGRESS nhung cua nguoi khac (va nguoi goi khong phai ADMIN,
+        // hoac la ADMIN nhung override van 0 dong do co race condition hiem gap).
+        String claimerLabel = "DOCTOR".equals(alert.getClaimedByType()) ? "Bác sĩ" : "Admin";
         throw new IllegalStateException(
-                "Cảnh báo id=" + alertId + " phải được tiếp nhận trước khi đánh dấu đã xử lý");
+                "Chỉ " + claimerLabel + " #" + alert.getClaimedById()
+                        + " (người đã tiếp nhận) mới được đánh dấu xử lý xong cảnh báo này");
     }
 
     private TriageAlert findAlertOrThrow(Long alertId) {

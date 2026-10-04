@@ -95,7 +95,7 @@ function mergeAlerts(fromApi: TriageAlert[], current: TriageAlert[], touchedIds:
 }
 
 export default function CmsTriageAlertsPage() {
-  const { isAuthenticated } = useCmsAuth()
+  const { isAuthenticated, user } = useCmsAuth()
   const [alerts, setAlerts] = useState<TriageAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -225,7 +225,9 @@ export default function CmsTriageAlertsPage() {
       render: (_, record) => {
         const busy = actionGuard.inFlightId === record.id
         const disabled = actionGuard.inFlightId !== null && actionGuard.inFlightId !== record.id
+
         if (record.status === 'RESOLVED') return null
+
         if (record.status === 'NEW') {
           return (
             <Button size="small" type="primary" loading={busy} disabled={disabled} onClick={() => handleClaim(record.id)}>
@@ -233,10 +235,34 @@ export default function CmsTriageAlertsPage() {
             </Button>
           )
         }
+
+        // IN_PROGRESS - phan biet 3 truong hop: dung nguoi tiep nhan, ADMIN dong ho,
+        // hoac nguoi khac (chi xem, khong co nut bam).
+        const isClaimer = user?.userId === record.claimedById && user?.userType === record.claimedByType
+
+        if (isClaimer) {
+          return (
+            <Button size="small" icon={<CheckOutlined />} loading={busy} disabled={disabled} onClick={() => handleResolve(record.id)}>
+              Đánh dấu xong
+            </Button>
+          )
+        }
+
+        if (user?.userType === 'ADMIN') {
+          return (
+            <Button size="small" icon={<CheckOutlined />} loading={busy} disabled={disabled} onClick={() => handleResolve(record.id)}>
+              Đóng hộ
+            </Button>
+          )
+        }
+
+        const claimerLabel = record.claimedByType
+          ? CLAIMER_TYPE_LABELS[record.claimedByType] ?? record.claimedByType
+          : '—'
         return (
-          <Button size="small" icon={<CheckOutlined />} loading={busy} disabled={disabled} onClick={() => handleResolve(record.id)}>
-            Đánh dấu xong
-          </Button>
+          <Text type="secondary" className="text-xs">
+            Chỉ {claimerLabel} #{record.claimedById} được đóng
+          </Text>
         )
       },
     },
