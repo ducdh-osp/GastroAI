@@ -23,6 +23,7 @@ import vn.gastroai.be.application.rag.RagAnswer;
 import vn.gastroai.be.application.rag.StreamingDoneEvent;
 import vn.gastroai.be.application.rag.StreamingRagQueryService;
 import vn.gastroai.be.application.triage.TriageAlertService;
+import vn.gastroai.be.infrastructure.ai.ImagePart;
 
 import java.security.Principal;
 import java.util.List;
@@ -129,6 +130,9 @@ public class ChatController {
      * (khong doi sendMessage() hien co) de khong phai sua lai toan bo test/contract JSON dang
      * dung cho truong hop khong co dinh kem (van la da so request). files rong hoac thieu van
      * hoat dong binh thuong, giong het sendMessage().
+     *
+     * Day la duong khong streaming - ca cau tra loi tra ve 1 lan. Muon stream va co dinh kem
+     * thi goi /messages/stream-with-attachments.
      */
     @PostMapping(value = "/messages/with-attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ChatMessageResponse sendMessageWithAttachments(
@@ -202,7 +206,8 @@ public class ChatController {
     }
 
     /**
-     * Streaming câu trả lời từ Gemini thông qua SSE.
+     * Streaming câu trả lời từ Gemini thông qua SSE. Tin nhắn KHÔNG có file đính kèm - có
+     * đính kèm thì gọi /messages/stream-with-attachments.
      */
     @PostMapping(value = "/messages/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamMessage(
@@ -211,13 +216,64 @@ public class ChatController {
             HttpServletResponse response) {
 
         AuthenticatedRequest.requireAuthenticated(authentication);
+        Long patientId = Long.valueOf(authentication.getName());
+
+        return startStreaming(request, patientId, response, List.of(), null, List.of());
+    }
+
+    /**
+     * Nhu streamMessage(), nhung nhan them file/anh dinh kem va stream cau tra loi qua SSE -
+     * gop ca 2 dac diem cua sendMessageWithAttachments() (nhan multipart) va streamMessage()
+     * (tra loi dan qua SSE).
+     *
+     * QUAN TRONG: attachmentProcessor.process(files) PHAI duoc goi NGAY TAI DAY, trong thread
+     * cua controller, TRUOC KHI return SseEmitter. Spring se xoa file tam cua multipart request
+     * ngay khi method controller return, du luong sinh cau tra loi van con chay tiep tren
+     * virtual thread sau do - doc file dinh kem trong virtual thread luc nay co the gap file
+     * da bi xoa mat.
+     */
+    @PostMapping(value = "/messages/stream-with-attachments",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamMessageWithAttachments(
+            @Valid @RequestPart("request") ChatMessageRequest request,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            Authentication authentication,
+            HttpServletResponse response) {
+
+        AuthenticatedRequest.requireAuthenticated(authentication);
+        Long patientId = Long.valueOf(authentication.getName());
+
+        List<MultipartFile> attachedFiles = files == null ? List.of() : files.stream().filter(Objects::nonNull).toList();
+        ChatAttachmentProcessor.ProcessedAttachments processed = attachmentProcessor.process(attachedFiles);
+
+        return startStreaming(request, patientId, response, processed.images(), processed.documentText(), processed.attachments());
+    }
+
+    /**
+     * Phan than chung cho ca streamMessage() va streamMessageWithAttachments() - tranh chep
+     * lai toan bo logic SSE/virtual thread 2 lan.
+     *
+     * Chan file mo coi: attachmentsLinked bat dau la true neu khong co file dinh kem (khong
+     * co gi can lien ket). Neu co file, chi thanh true SAU KHI saveAttachments() thanh cong -
+     * bat ke duong loi nao xay ra truoc do (Gemini loi, saveExchange loi, hay chinh
+     * saveAttachments loi), finally se goi attachmentProcessor.discard(attachments) de xoa
+     * file da luu tren dia, tranh mo coi vinh vien. Client ngat ket noi giua chung KHONG anh
+     * huong - BE van sinh tiep va luu binh thuong nen attachmentsLinked van len true.
+     */
+    private SseEmitter startStreaming(
+            ChatMessageRequest request,
+            Long patientId,
+            HttpServletResponse response,
+            List<ImagePart> images,
+            String documentText,
+            List<ChatAttachmentProcessor.AttachmentResult> attachments) {
 
         // Tat bo dem cua nginx cho rieng response nay - khong anh huong gi khi chay local
         // (Vite), nhung can thiet neu sau nay deploy sau nginx thi streaming van chay dung.
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
 
-        Long patientId = Long.valueOf(authentication.getName());
         SseEmitter emitter = new SseEmitter(120_000L);
 
         // Bat len khi client ngat ket noi giua chung (dong tab, mat mang...). Dung
@@ -229,9 +285,12 @@ public class ChatController {
 
         Thread.startVirtualThread(() -> {
             Long[] alertIdHolder = new Long[1];
+            boolean attachmentsLinked = attachments.isEmpty();
             try {
                 StreamingRagQueryService.StreamingResult result = streamingRagQueryService.streamAnswer(
                         request.content(),
+                        images,
+                        documentText,
                         token -> {
                             if (clientGone.get()) {
                                 return;
@@ -273,6 +332,16 @@ public class ChatController {
                 } catch (Exception exception) {
                     log.error("Khong the luu lich su chat cho luong streaming, patientId={}: {}",
                             patientId, exception.getMessage(), exception);
+                }
+
+                if (saved != null && !attachments.isEmpty()) {
+                    try {
+                        chatHistoryService.saveAttachments(saved.patientMessageId(), attachments);
+                        attachmentsLinked = true;
+                    } catch (Exception exception) {
+                        log.error("Khong the luu danh sach file dinh kem cho patientMessageId={}: {}",
+                                saved.patientMessageId(), exception.getMessage(), exception);
+                    }
                 }
 
                 if (alertIdHolder[0] != null && saved != null) {
@@ -320,6 +389,10 @@ public class ChatController {
                         // Emitter co the da dong (client ngat ket noi) - bo qua.
                     }
                     emitter.completeWithError(exception);
+                }
+            } finally {
+                if (!attachmentsLinked) {
+                    attachmentProcessor.discard(attachments);
                 }
             }
         });

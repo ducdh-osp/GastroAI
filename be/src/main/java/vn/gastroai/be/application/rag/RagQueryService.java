@@ -68,10 +68,7 @@ public class RagQueryService {
         float[] queryVector = embeddingClient.embed(question);
         List<SimilarChunk> context = embeddingStore.findTopK(queryVector, topK);
 
-        String attachmentContext = (attachedDocumentText == null || attachedDocumentText.isBlank())
-                ? ""
-                : "\n\nNoi dung tai lieu benh nhan vua gui kem (co the chua lieu luong - van ap " +
-                  "dung dung chi dan ve lieu luong o tren):\n" + DosageRedactor.redact(attachedDocumentText);
+        String attachmentContext = buildAttachmentContext(attachedDocumentText);
 
         if (context.isEmpty()) {
             // Chưa có tài liệu nào trong kho tri thức (hoặc UC0031/032 của Thăng chưa xong)
@@ -96,7 +93,17 @@ public class RagQueryService {
                 .toList();
         return new RagAnswer(generatedAnswer, sources, generateRelatedQuestions(question, generatedAnswer));
     }
-
+     /**
+     * Tach rieng de StreamingRagQueryService dung lai y het - dam bao luong
+     * stream va luong thuong xu ly tai lieu dinh kem (ke ca buoc che lieu
+     * thuoc qua DosageRedactor) giong nhau tuyet doi, khong lech nhau.
+     */
+    public static String buildAttachmentContext(String attachedDocumentText) {
+        return (attachedDocumentText == null || attachedDocumentText.isBlank())
+                ? ""
+                : "\n\nNoi dung tai lieu benh nhan vua gui kem (co the chua lieu luong - van ap " +
+                  "dung dung chi dan ve lieu luong o tren):\n" + DosageRedactor.redact(attachedDocumentText);
+    }
     /**
      * Goi y cau hoi lien quan la tinh nang phu (khong phai ly do chinh nguoi dung
      * hoi) - goi

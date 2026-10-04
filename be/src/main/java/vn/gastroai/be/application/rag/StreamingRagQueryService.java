@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import vn.gastroai.be.infrastructure.ai.GeminiChatClient;
 import vn.gastroai.be.infrastructure.ai.GeminiEmbeddingClient;
 import vn.gastroai.be.infrastructure.ai.GeminiStreamingChatClient;
+import vn.gastroai.be.infrastructure.ai.ImagePart;
 import vn.gastroai.be.infrastructure.rag.EmbeddingStore;
 import vn.gastroai.be.infrastructure.rag.SimilarChunk;
 import vn.gastroai.be.application.triage.TriageService;
@@ -47,6 +48,16 @@ public class StreamingRagQueryService {
             Consumer<String> onToken,
             Consumer<TriageResult> onTriageChecked
     ) {
+        return streamAnswer(question, List.of(), null, onToken, onTriageChecked);
+    }
+
+    public StreamingResult streamAnswer(
+            String question,
+            List<ImagePart> images,
+            String attachedDocumentText,
+            Consumer<String> onToken,
+            Consumer<TriageResult> onTriageChecked
+    ) {
         TriageResult triageResult = triageService.check(question);
 
         onTriageChecked.accept(triageResult);
@@ -60,15 +71,17 @@ public class StreamingRagQueryService {
                 .map(chunk -> new RagSource(chunk.documentTitle(), DosageRedactor.redact(chunk.content()), chunk.sourceUrl()))
                 .toList();
 
+        String attachmentContext = RagQueryService.buildAttachmentContext(attachedDocumentText);
+
         String systemPrompt;
 
         if (context.isEmpty()) {
-            systemPrompt = SYSTEM_PROMPT_NO_CONTEXT;
+            systemPrompt = SYSTEM_PROMPT_NO_CONTEXT + attachmentContext;
         } else {
             String contextText = context.stream()
                     .map(chunk -> "- " + DosageRedactor.redact(chunk.content()))
                     .collect(Collectors.joining("\n"));
-            systemPrompt = SYSTEM_PROMPT_PREFIX + contextText;
+            systemPrompt = SYSTEM_PROMPT_PREFIX + contextText + attachmentContext;
         }
 
         StringBuilder answer = new StringBuilder();
@@ -76,6 +89,7 @@ public class StreamingRagQueryService {
         streamingChatClient.generateStream(
                 systemPrompt,
                 question,
+                images,
                 token -> {
                     answer.append(token);
                     onToken.accept(token);

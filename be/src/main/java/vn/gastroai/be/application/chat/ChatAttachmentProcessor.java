@@ -74,6 +74,17 @@ public class ChatAttachmentProcessor {
         return new ProcessedAttachments(results, images, documentText.toString());
     }
 
+    /**
+     * Don cac file da luu tren dia khi tin nhan that bai SAU KHI file da duoc luu (Gemini loi,
+     * saveExchange loi, saveAttachments loi...) - goi tu ChatController de tranh file mo coi
+     * vinh vien trong storage/chat-attachments.
+     */
+    public void discard(List<AttachmentResult> attachments) {
+        for (AttachmentResult attachment : attachments) {
+            storage.delete(attachment.storedName());
+        }
+    }
+
     private String truncate(String filename) {
         String safe = (filename == null || filename.isBlank()) ? "tep-dinh-kem" : filename;
         return safe.length() > 255 ? safe.substring(0, 255) : safe;
