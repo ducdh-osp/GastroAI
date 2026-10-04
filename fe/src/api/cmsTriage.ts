@@ -34,7 +34,11 @@ export async function claimTriageAlert(alertId: number): Promise<TriageAlert> {
   return data
 }
 
-/** Đánh dấu đã xử lý xong - chủ ý không bắt buộc đúng người đã tiếp nhận (ca trực có thể đổi người đóng). */
+/**
+ * Đánh dấu đã xử lý xong - chỉ người đã tiếp nhận (claimedById/claimedByType) mới gọi được;
+ * ADMIN có thêm quyền riêng "đóng hộ" cảnh báo đang IN_PROGRESS của người khác.
+ * 409 nếu không phải người tiếp nhận và không phải ADMIN (xem GlobalExceptionHandler).
+ */
 export async function resolveTriageAlert(alertId: number): Promise<TriageAlert> {
   const { data } = await cmsApiClient.post<TriageAlert>(`/cms/triage-alerts/${alertId}/resolve`)
   return data

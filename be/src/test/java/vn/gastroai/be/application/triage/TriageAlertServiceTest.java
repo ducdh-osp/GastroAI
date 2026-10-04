@@ -270,10 +270,10 @@ class TriageAlertServiceTest {
                 null, Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
         alert.setStatus(TriageAlertStatus.IN_PROGRESS);
-        alert.setClaimedById(5L);
+        alert.setClaimedById(7L);
         alert.setClaimedByType("ADMIN");
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        when(triageAlertRepository.resolveIfInProgress(eq(10L), eq(7L), eq("ADMIN"), any()))
+        when(triageAlertRepository.resolveIfClaimedBy(eq(10L), eq(7L), eq("ADMIN"), any()))
                 .thenAnswer(invocation -> {
                     Instant now = invocation.getArgument(3);
                     alert.setStatus(TriageAlertStatus.RESOLVED);
@@ -294,6 +294,8 @@ class TriageAlertServiceTest {
                         && event.resolvedById().equals(7L)
                         && event.resolvedByType().equals("ADMIN")
                         && event.statusChangedAt().equals(alert.getResolvedAt())));
+        // Dung nguoi tiep nhan thi khong can dung den quyen "dong ho" cua ADMIN.
+        verify(triageAlertRepository, never()).resolveAsAdminOverride(any(), any(), any());
     }
 
     @Test
@@ -304,7 +306,7 @@ class TriageAlertServiceTest {
         alert.setId(10L);
         alert.setStatus(TriageAlertStatus.RESOLVED);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        when(triageAlertRepository.resolveIfInProgress(eq(10L), any(), any(), any())).thenReturn(0);
+        when(triageAlertRepository.resolveIfClaimedBy(eq(10L), any(), any(), any())).thenReturn(0);
 
         assertThrows(IllegalStateException.class, () -> service.resolve(10L, 7L, "ADMIN"));
 
@@ -318,7 +320,7 @@ class TriageAlertServiceTest {
                 null, Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
-        when(triageAlertRepository.resolveIfInProgress(eq(10L), any(), any(), any())).thenReturn(0);
+        when(triageAlertRepository.resolveIfClaimedBy(eq(10L), any(), any(), any())).thenReturn(0);
 
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> service.resolve(10L, 7L, "ADMIN"));
@@ -326,6 +328,68 @@ class TriageAlertServiceTest {
         assertEquals("Cảnh báo id=10 phải được tiếp nhận trước khi đánh dấu đã xử lý",
                 exception.getMessage());
         verify(eventPublisher, never()).publishEvent(any(TriageAlertStatusChangedEvent.class));
+    }
+
+    @Test
+    void resolveThrowsWhenAnotherDoctorWhoDidNotClaimTriesToResolve() {
+        Patient patient = patient(1L, "Nguyen Van A", "0901234567");
+        TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
+                null, Instant.parse("2026-09-30T00:00:00Z"));
+        alert.setId(10L);
+        alert.setStatus(TriageAlertStatus.IN_PROGRESS);
+        alert.setClaimedById(9L);
+        alert.setClaimedByType("DOCTOR");
+        when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
+        when(triageAlertRepository.resolveIfClaimedBy(eq(10L), eq(5L), eq("DOCTOR"), any())).thenReturn(0);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.resolve(10L, 5L, "DOCTOR"));
+
+        assertEquals("Chỉ Bác sĩ #9 (người đã tiếp nhận) mới được đánh dấu xử lý xong cảnh báo này",
+                exception.getMessage());
+        // Khong phai ADMIN nen khong duoc thu quyen "dong ho".
+        verify(triageAlertRepository, never()).resolveAsAdminOverride(any(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertStatusChangedEvent.class));
+    }
+
+    @Test
+    void resolveAsAdminOverrideKeepsOriginalClaimerButMarksResolvedByAdmin() {
+        Patient patient = patient(1L, "Nguyen Van A", "0901234567");
+        TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
+                null, Instant.parse("2026-09-30T00:00:00Z"));
+        alert.setId(10L);
+        alert.setStatus(TriageAlertStatus.IN_PROGRESS);
+        alert.setClaimedById(9L);
+        alert.setClaimedByType("DOCTOR");
+        when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
+        // ADMIN #1 khong phai nguoi tiep nhan (Bac si #9) nen resolveIfClaimedBy tra ve 0.
+        when(triageAlertRepository.resolveIfClaimedBy(eq(10L), eq(1L), eq("ADMIN"), any())).thenReturn(0);
+        when(triageAlertRepository.resolveAsAdminOverride(eq(10L), eq(1L), any()))
+                .thenAnswer(invocation -> {
+                    Instant now = invocation.getArgument(2);
+                    alert.setStatus(TriageAlertStatus.RESOLVED);
+                    alert.setResolvedAt(now);
+                    alert.setResolvedById(1L);
+                    alert.setResolvedByType("ADMIN");
+                    return 1;
+                });
+
+        TriageAlertResponse response = service.resolve(10L, 1L, "ADMIN");
+
+        assertEquals("RESOLVED", response.status());
+        assertEquals(1L, response.resolvedById());
+        assertEquals("ADMIN", response.resolvedByType());
+        // claimedById/claimedByType phai giu nguyen la Bac si #9 - do la nguoi thuc su xu ly.
+        assertEquals(9L, response.claimedById());
+        assertEquals("DOCTOR", response.claimedByType());
+
+        verify(eventPublisher).publishEvent(argThat((TriageAlertStatusChangedEvent event) ->
+                event.id().equals(10L)
+                        && event.status().equals("RESOLVED")
+                        && event.resolvedById().equals(1L)
+                        && event.resolvedByType().equals("ADMIN")
+                        && event.claimedById().equals(9L)
+                        && event.claimedByType().equals("DOCTOR")));
     }
 
     @Test

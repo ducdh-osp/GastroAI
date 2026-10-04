@@ -109,23 +109,18 @@ app:
   # Đọc bởi RagQueryService (@Value) — số chunk truy xuất tối đa cho mỗi câu hỏi (UC0028).
   rag:
     top-k: ${RAG_TOP_K:5}
-  # UC0057/58 - đọc bởi BackupProperties. directory là nơi lưu file .sql backup trên đĩa cục
-  # bộ (không dùng Docker/S3 theo đúng phạm vi đề cương) — BackupScheduler ghi vào, RestoreService
-  # đọc ra. username/password/database/port của 2 mục dưới đây trỏ vào ĐÚNG 2 CSDL ở
-  # app.datasource phía trên, khai riêng vì BackupProperties là record độc lập, không tái
-  # dùng trực tiếp DataSourceProperties.
   backup:
-    directory: ./backups
+    directory: ${BACKUP_DIRECTORY:./backups}
     retention-days: ${BACKUP_RETENTION_DAYS:14}
     postgres:
-      username: gastroai
-      password: gastroai
-      database: gastroai
+      username: ${POSTGRES_USERNAME:gastroai}
+      password: ${POSTGRES_PASSWORD:gastroai}
+      database: ${BACKUP_POSTGRES_DATABASE:gastroai}
       port: ${POSTGRES_PORT:5432}
     mysql:
-      username: gastroai
-      password: gastroai
-      database: gastroai_admin
+      username: ${MYSQL_USERNAME:gastroai}
+      password: ${MYSQL_PASSWORD:gastroai}
+      database: ${BACKUP_MYSQL_DATABASE:gastroai_admin}
       port: ${MYSQL_PORT:3306}
   storage:
     dir: ./storage

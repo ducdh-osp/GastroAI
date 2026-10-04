@@ -227,17 +227,40 @@ export async function streamMessage(
 ): Promise<void> {
   const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1'
   const token = getAuthToken()
+  const filesToSend = (request.attachments ?? []).map((a) => a.file).filter((f): f is File => f != null)
+
+  let url: string
+  let body: BodyInit
+  const headers: Record<string, string> = {
+    Accept: 'text/event-stream',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+
+  if (filesToSend.length === 0) {
+    url = `${baseURL}/chat/messages/stream`
+    headers['Content-Type'] = 'application/json'
+    body = JSON.stringify({ content: request.content, sessionId: request.sessionId ?? null })
+  } else {
+    url = `${baseURL}/chat/messages/stream-with-attachments`
+    // KHONG tu dat Content-Type: trinh duyet tu sinh "multipart/form-data; boundary=..."
+    // dung - dat tay se mat boundary va BE khong doc duoc.
+    const formData = new FormData()
+    formData.append(
+      'request',
+      new Blob([JSON.stringify({ content: request.content, sessionId: request.sessionId ?? null })], {
+        type: 'application/json',
+      }),
+    )
+    filesToSend.forEach((file) => formData.append('files', file))
+    body = formData
+  }
 
   let response: Response
   try {
-    response = await fetch(`${baseURL}/chat/messages/stream`, {
+    response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ content: request.content, sessionId: request.sessionId ?? null }),
+      headers,
+      body,
       signal,
     })
   } catch (error) {
@@ -247,14 +270,20 @@ export async function streamMessage(
   }
 
   if (!response.ok || !response.body) {
-    onError(
-      response.status === 401
-        ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
-        : 'Không thể nhận câu trả lời từ AI. Vui lòng thử lại.',
-    )
+    if (response.status === 401) {
+      onError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+      return
+    }
+    // File sai dinh dang/qua lon bi tu choi truoc khi mo SSE (xem ChatAttachmentProcessor) -
+    // BE tra JSON binh thuong (400/413) voi message cu the, uu tien hien thi message do.
+    try {
+      const errorBody = (await response.json()) as { message?: string }
+      onError(errorBody.message || 'Không thể nhận câu trả lời từ AI. Vui lòng thử lại.')
+    } catch {
+      onError('Không thể nhận câu trả lời từ AI. Vui lòng thử lại.')
+    }
     return
   }
-
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''

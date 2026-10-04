@@ -1,5 +1,7 @@
 package vn.gastroai.be.infrastructure.filestorage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +26,8 @@ import java.util.UUID;
  */
 @Service
 public class ChatAttachmentStorage {
+
+    private static final Logger log = LoggerFactory.getLogger(ChatAttachmentStorage.class);
 
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
     private static final int MAX_FILES_PER_MESSAGE = 5;
@@ -77,6 +81,24 @@ public class ChatAttachmentStorage {
 
     public Path resolve(String storedName) {
         return storageDirectory.resolve(storedName);
+    }
+
+    /**
+     * Dung de don file mo coi (vd Gemini loi, luu tin nhan loi SAU KHI file da luu xong).
+     * storedName phai la ten da tu store() sinh ra (UUID + extension) - khong tin bat ky
+     * nguon nao khac, luon chan truot thu muc truoc khi xoa thuc su tren dia.
+     */
+    public void delete(String storedName) {
+        if (storedName == null || storedName.isBlank()
+                || storedName.contains("/") || storedName.contains("\\") || storedName.contains("..")) {
+            log.warn("Bo qua xoa file dinh kem voi ten khong hop le: {}", storedName);
+            return;
+        }
+        try {
+            Files.deleteIfExists(storageDirectory.resolve(storedName));
+        } catch (IOException e) {
+            log.warn("Khong xoa duoc file dinh kem mo coi {}: {}", storedName, e.getMessage());
+        }
     }
 
     private String normalize(String contentType) {

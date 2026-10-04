@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -39,6 +40,23 @@ public class GeminiStreamingChatClient {
             String userPrompt,
             Consumer<String> onToken
     ) {
+        generateStream(systemPrompt, userPrompt, List.of(), onToken);
+    }
+
+    public void generateStream(
+            String systemPrompt,
+            String userPrompt,
+            List<ImagePart> images,
+            Consumer<String> onToken
+    ) {
+        List<Map<String, Object>> parts = new ArrayList<>();
+        parts.add(Map.of("text", userPrompt));
+        for (ImagePart image : images) {
+            parts.add(Map.of("inlineData", Map.of(
+                    "mimeType", image.mimeType(),
+                    "data", image.base64Data())));
+        }
+
         Map<String, Object> body = Map.of(
                 "systemInstruction", Map.of(
                         "parts", List.of(
@@ -48,9 +66,7 @@ public class GeminiStreamingChatClient {
                 "contents", List.of(
                         Map.of(
                                 "role", "user",
-                                "parts", List.of(
-                                        Map.of("text", userPrompt)
-                                )
+                                "parts", parts
                         )
                 )
         );

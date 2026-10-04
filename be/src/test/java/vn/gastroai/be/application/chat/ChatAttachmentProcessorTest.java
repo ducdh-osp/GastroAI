@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ChatAttachmentProcessorTest {
@@ -86,5 +88,17 @@ class ChatAttachmentProcessorTest {
 
         assertTrue(result.attachments().isEmpty());
         assertTrue(result.images().isEmpty());
+    }
+
+    @Test
+    void discardCallsDeleteForEachAttachment() {
+        List<ChatAttachmentProcessor.AttachmentResult> attachments = List.of(
+                new ChatAttachmentProcessor.AttachmentResult("uuid1.jpg", "anh1.jpg", "image/jpeg", 4),
+                new ChatAttachmentProcessor.AttachmentResult("uuid2.pdf", "ho-so.pdf", "application/pdf", 10));
+
+        processor.discard(attachments);
+
+        verify(storage, times(1)).delete("uuid1.jpg");
+        verify(storage, times(1)).delete("uuid2.pdf");
     }
 }
