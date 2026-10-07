@@ -8,8 +8,9 @@ import vn.gastroai.be.application.patient.BristolLogService;
 import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
+import java.util.List;
 
-/** UC0013 (ghi nhan Bristol) + UC0014 (xem xu huong theo thoi gian). */
+/** UC0013 (ghi nhan Bristol) + UC0014 (xem xu huong theo thoi gian) + UC0020 (thung rac). */
 @RestController
 @RequestMapping("/api/v1/patient/bristol-logs")
 public class BristolLogController {
@@ -64,5 +65,18 @@ public class BristolLogController {
             @PathVariable Long id,
             Principal principal, Authentication authentication) {
         bristolLogService.delete(AuthenticatedRequest.patientId(principal, authentication), id);
+    }
+
+    @GetMapping("/trash")
+    public List<BristolTrashItem> trash(
+            Principal principal, Authentication authentication) {
+        return bristolLogService.listTrash(AuthenticatedRequest.patientId(principal, authentication));
+    }
+
+    @PostMapping("/{id}/restore")
+    public BristolLogResponse restore(
+            @PathVariable Long id,
+            Principal principal, Authentication authentication) {
+        return bristolLogService.restore(AuthenticatedRequest.patientId(principal, authentication), id);
     }
 }

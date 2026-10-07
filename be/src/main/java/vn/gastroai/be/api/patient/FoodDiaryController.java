@@ -8,8 +8,9 @@ import vn.gastroai.be.application.patient.FoodDiaryService;
 import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
+import java.util.List;
 
-/** UC0011 (CRUD nhat ky an uong) + UC0012 (xem lich su/bieu do). */
+/** UC0011 (CRUD nhat ky an uong) + UC0012 (xem lich su/bieu do) + UC0020 (thung rac). */
 @RestController
 @RequestMapping("/api/v1/patient/food-diary")
 public class FoodDiaryController {
@@ -68,5 +69,18 @@ public class FoodDiaryController {
             @PathVariable Long id,
             Principal principal, Authentication authentication) {
         foodDiaryService.delete(AuthenticatedRequest.patientId(principal, authentication), id);
+    }
+
+    @GetMapping("/trash")
+    public List<FoodDiaryTrashItem> trash(
+            Principal principal, Authentication authentication) {
+        return foodDiaryService.listTrash(AuthenticatedRequest.patientId(principal, authentication));
+    }
+
+    @PostMapping("/{id}/restore")
+    public FoodDiaryEntryResponse restore(
+            @PathVariable Long id,
+            Principal principal, Authentication authentication) {
+        return foodDiaryService.restore(AuthenticatedRequest.patientId(principal, authentication), id);
     }
 }
