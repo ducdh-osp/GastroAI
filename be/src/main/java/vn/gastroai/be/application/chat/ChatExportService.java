@@ -17,12 +17,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/** UC0027 - Xuat 1 phien chat (cau hoi + tra loi AI) ra PDF, dung lai PdfDocumentBuilder. */
+/**
+ * UC0027 - Xuat 1 phien chat (cau hoi + tra loi AI) ra PDF, dung lai
+ * PdfDocumentBuilder.
+ */
 @Service
 public class ChatExportService {
 
-    private static final DateTimeFormatter DATE_TIME_FORMAT =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(VietnamDateRange.ZONE);
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+            .withZone(VietnamDateRange.ZONE);
 
     private final ChatHistoryService chatHistoryService;
     private final ObjectMapper objectMapper;
@@ -35,7 +38,7 @@ public class ChatExportService {
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public byte[] exportSession(Long patientId, Long sessionId) {
         ChatSession session = chatHistoryService.getOwnedSession(patientId, sessionId);
-        List<ChatMessage> messages = chatHistoryService.listMessages(patientId, sessionId);
+        List<ChatMessage> messages = chatHistoryService.listMessagesForSession(session);
         List<Long> messageIds = messages.stream().map(ChatMessage::getId).toList();
         List<ChatAttachment> attachments = chatHistoryService.listAttachments(messageIds);
         Map<Long, List<String>> attachmentNamesByMessageId = attachments.stream()
@@ -63,7 +66,7 @@ public class ChatExportService {
     }
 
     private void appendMessage(PdfDocumentBuilder builder, ChatMessage message,
-                                Map<Long, List<String>> attachmentNamesByMessageId) {
+            Map<Long, List<String>> attachmentNamesByMessageId) {
         boolean isPatient = "patient".equals(message.getSender());
         String speaker = isPatient ? "Bạn" : "Trợ lý GastroAI";
         builder.messageHeader(speaker, DATE_TIME_FORMAT.format(message.getCreatedAt()));
@@ -87,14 +90,17 @@ public class ChatExportService {
     }
 
     private void appendSources(PdfDocumentBuilder builder, String sourcesJson) {
-        if (sourcesJson == null || sourcesJson.isBlank()) return;
+        if (sourcesJson == null || sourcesJson.isBlank())
+            return;
         List<ChatSourceResponse> sources;
         try {
-            sources = objectMapper.readValue(sourcesJson, new TypeReference<List<ChatSourceResponse>>() {});
+            sources = objectMapper.readValue(sourcesJson, new TypeReference<List<ChatSourceResponse>>() {
+            });
         } catch (Exception e) {
             return;
         }
-        if (sources.isEmpty()) return;
+        if (sources.isEmpty())
+            return;
         String joined = sources.stream()
                 .map(s -> s.sourceUrl() == null || s.sourceUrl().isBlank()
                         ? s.documentTitle()

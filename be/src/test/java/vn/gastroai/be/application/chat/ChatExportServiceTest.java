@@ -63,7 +63,7 @@ class ChatExportServiceTest {
         ChatMessage aiMsg = message(session, 101L, "assistant", "**Lưu ý:** uống nhiều nước", null, false);
 
         when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
-        when(chatHistoryService.listMessages(PATIENT_ID, SESSION_ID)).thenReturn(List.of(patientMsg, aiMsg));
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(patientMsg, aiMsg));
         when(chatHistoryService.listAttachments(List.of(100L, 101L))).thenReturn(List.of());
 
         String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
@@ -82,7 +82,7 @@ class ChatExportServiceTest {
         ChatMessage aiMsg = message(session, 101L, "assistant", "Bạn cần đi khám ngay", null, true);
 
         when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
-        when(chatHistoryService.listMessages(PATIENT_ID, SESSION_ID)).thenReturn(List.of(aiMsg));
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(aiMsg));
         when(chatHistoryService.listAttachments(List.of(101L))).thenReturn(List.of());
 
         String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
@@ -98,7 +98,7 @@ class ChatExportServiceTest {
         ChatAttachment attachment = new ChatAttachment(patientMsg, "stored-123.png", "anh-noi-soi.png", "image/png", 2048);
 
         when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
-        when(chatHistoryService.listMessages(PATIENT_ID, SESSION_ID)).thenReturn(List.of(patientMsg));
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(patientMsg));
         when(chatHistoryService.listAttachments(List.of(100L))).thenReturn(List.of(attachment));
 
         String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
@@ -115,7 +115,7 @@ class ChatExportServiceTest {
         ChatMessage aiMsg = message(session, 101L, "assistant", "Trả lời có nguồn", sourcesJson, false);
 
         when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
-        when(chatHistoryService.listMessages(PATIENT_ID, SESSION_ID)).thenReturn(List.of(aiMsg));
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(aiMsg));
         when(chatHistoryService.listAttachments(List.of(101L))).thenReturn(List.of());
 
         String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
@@ -131,7 +131,7 @@ class ChatExportServiceTest {
         ChatMessage aiMsg = message(session, 101L, "assistant", "Chúc bạn mau khỏe 😊", null, false);
 
         when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
-        when(chatHistoryService.listMessages(PATIENT_ID, SESSION_ID)).thenReturn(List.of(aiMsg));
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(aiMsg));
         when(chatHistoryService.listAttachments(List.of(101L))).thenReturn(List.of());
 
         String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
@@ -145,7 +145,7 @@ class ChatExportServiceTest {
         ChatSession session = session(patient);
 
         when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
-        when(chatHistoryService.listMessages(PATIENT_ID, SESSION_ID)).thenReturn(List.of());
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of());
         when(chatHistoryService.listAttachments(List.of())).thenReturn(List.of());
 
         String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));

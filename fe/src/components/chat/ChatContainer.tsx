@@ -220,7 +220,13 @@ export function ChatContainer() {
           </div>
           <div className="flex items-center gap-2">
             {currentSessionId !== null && (
-              <Button size="small" icon={<FilePdfOutlined />} loading={exportingPdf} onClick={handleExportPdf}>
+              <Button
+                size="small"
+                icon={<FilePdfOutlined />}
+                loading={exportingPdf}
+                disabled={isReplying}
+                onClick={handleExportPdf}
+              >
                 Xuất PDF
               </Button>
             )}

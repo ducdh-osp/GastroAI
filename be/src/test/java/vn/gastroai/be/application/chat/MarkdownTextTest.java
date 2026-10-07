@@ -36,4 +36,13 @@ class MarkdownTextTest {
     void nullBecomesEmptyString() {
         assertEquals("", MarkdownText.toPlain(null));
     }
+        @Test
+    void removesHorizontalRule() {
+        assertEquals("", MarkdownText.toPlain("---"));
+    }
+
+    @Test
+    void removesItalicMarkers() {
+        assertEquals("nghiêng", MarkdownText.toPlain("*nghiêng*"));
+    }
 }
