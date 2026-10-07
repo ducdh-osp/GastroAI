@@ -1,5 +1,5 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Tabs, Typography, notification } from 'antd'
+import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Tabs, Typography, message, notification } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useState } from 'react'
 import {
@@ -77,7 +77,7 @@ export default function BristolPage() {
           message: 'Đã chuyển vào thùng rác',
           description: 'Bạn có thể khôi phục mục này trong vòng 30 ngày.',
           duration: 6,
-          btn: (
+          actions: (
             <Button
               size="small"
               type="primary"
@@ -100,9 +100,8 @@ export default function BristolPage() {
     try {
       await restoreBristolLog(id)
       void reload()
-    } catch {
-      // Hoan tac la tinh nang phu - neu loi (vd da qua han job don dep chay truoc) thi
-      // bo qua lang le, nguoi dung van co the vao tab Thung rac de khoi phuc/xem ly do.
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Không thể hoàn tác.')
     }
   }
 
@@ -157,6 +156,7 @@ export default function BristolPage() {
         {error && <Alert type="error" message={error} showIcon className="mb-4" />}
 
         <Tabs
+          destroyOnHidden
           items={[
             {
               key: 'list',
