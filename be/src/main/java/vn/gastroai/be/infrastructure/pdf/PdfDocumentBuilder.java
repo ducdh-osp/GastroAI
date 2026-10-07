@@ -13,21 +13,28 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfWriter;
-
+import com.lowagie.text.Rectangle;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
 /**
- * Lớp dùng chung để dựng PDF tiếng Việt (UC0019 xuất nhật ký sức khỏe, UC0027 xuất phiên
- * chat sẽ dùng lại). KHÔNG phải @Component - mỗi lần xuất PDF thì new 1 cái mới, dùng
- * xong bỏ đi, giống 1 object Java bình thường (không giữ state giữa các lần xuất).
+ * Lớp dùng chung để dựng PDF tiếng Việt (UC0019 xuất nhật ký sức khỏe, UC0027
+ * xuất phiên
+ * chat sẽ dùng lại). KHÔNG phải @Component - mỗi lần xuất PDF thì new 1 cái
+ * mới, dùng
+ * xong bỏ đi, giống 1 object Java bình thường (không giữ state giữa các lần
+ * xuất).
  *
- * Những font mặc định của PDF (Helvetica...) không có chữ tiếng Việt có dấu, nên phải nhúng
- * (EMBEDDED) font Noto Sans vào file, dùng chế độ mã hóa IDENTITY_H (Unicode) thì mới hiện
- * đúng dấu tiếng Việt. Đọc font bằng getResourceAsStream (không dùng File trực tiếp) vì khi
- * đóng gói thành .jar, đường dẫn File trên đĩa không còn tồn tại, còn getResourceAsStream
+ * Những font mặc định của PDF (Helvetica...) không có chữ tiếng Việt có dấu,
+ * nên phải nhúng
+ * (EMBEDDED) font Noto Sans vào file, dùng chế độ mã hóa IDENTITY_H (Unicode)
+ * thì mới hiện
+ * đúng dấu tiếng Việt. Đọc font bằng getResourceAsStream (không dùng File trực
+ * tiếp) vì khi
+ * đóng gói thành .jar, đường dẫn File trên đĩa không còn tồn tại, còn
+ * getResourceAsStream
  * đọc được cả trong .jar.
  */
 public class PdfDocumentBuilder {
@@ -58,8 +65,10 @@ public class PdfDocumentBuilder {
             this.titleFont = new Font(boldBase, 18, Font.NORMAL);
             this.smallGrayFont = new Font(regularBaseFont, 8, Font.NORMAL, GRAY_TEXT);
             this.warningFont = new Font(boldBase, 10, Font.NORMAL, WARNING_RED);
-            // Font đánh số trang chỉ cần in số 0-9, dùng Helvetica mặc định (không tiếng Việt)
-            // là đủ, tạo 1 lần ở đây để PageNumberEvent dùng lại, tránh gọi lại createFont()
+            // Font đánh số trang chỉ cần in số 0-9, dùng Helvetica mặc định (không tiếng
+            // Việt)
+            // là đủ, tạo 1 lần ở đây để PageNumberEvent dùng lại, tránh gọi lại
+            // createFont()
             // (có khai báo throws) bên trong onEndPage.
             this.pageNumberBaseFont = BaseFont.createFont();
 
@@ -84,7 +93,8 @@ public class PdfDocumentBuilder {
     }
 
     private String sanitize(String text) {
-        if (text == null) return null;
+        if (text == null)
+            return null;
         StringBuilder result = new StringBuilder();
         text.codePoints().forEach(codePoint -> {
             if (codePoint == '\n' || regularBaseFont.charExists(codePoint)) {
@@ -143,24 +153,40 @@ public class PdfDocumentBuilder {
         }
     }
 
-     public PdfDocumentBuilder keyValueBlock(String heading, List<String[]> pairs) {
+    /**
+     * In tieu de + nhieu dong "nhan: gia tri" thanh 1 khoi KHONG bi cat sang 2
+     * trang.
+     */
+    public PdfDocumentBuilder keyValueBlock(String heading, List<String[]> pairs) {
         try {
-            Paragraph block = new Paragraph();
-            block.add(new Chunk(sanitize(heading), boldFont));
+            PdfPCell cell = new PdfPCell();
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setPadding(0);
+
+            Paragraph title = new Paragraph(sanitize(heading), boldFont);
+            title.setSpacingAfter(6);
+            cell.addElement(title);
+
             for (String[] pair : pairs) {
-                block.add(Chunk.NEWLINE);
-                block.add(new Chunk(sanitize(pair[0]) + ": ", boldFont));
-                block.add(new Chunk(blankToDash(sanitize(pair[1])), normalFont));
+                Paragraph line = new Paragraph();
+                line.add(new Chunk(sanitize(pair[0]) + ": ", boldFont));
+                line.add(new Chunk(blankToDash(sanitize(pair[1])), normalFont));
+                line.setSpacingAfter(2);
+                cell.addElement(line);
             }
+
+            PdfPTable block = new PdfPTable(1);
+            block.setWidthPercentage(100);
             block.setSpacingBefore(16);
             block.setKeepTogether(true);
+            block.addCell(cell);
             document.add(block);
             return this;
         } catch (DocumentException e) {
             throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
-    
+
     public PdfDocumentBuilder paragraph(String text) {
         try {
             Paragraph p = new Paragraph(sanitize(text), normalFont);
@@ -215,7 +241,9 @@ public class PdfDocumentBuilder {
         }
     }
 
-    /** Dòng mở đầu 1 tin nhắn chat: tên người nói (đậm) + " · " + giờ (chữ xám nhỏ). */
+    /**
+     * Dòng mở đầu 1 tin nhắn chat: tên người nói (đậm) + " · " + giờ (chữ xám nhỏ).
+     */
     public PdfDocumentBuilder messageHeader(String speaker, String time) {
         try {
             Paragraph p = new Paragraph();
@@ -230,7 +258,9 @@ public class PdfDocumentBuilder {
         }
     }
 
-    /** Đoạn cảnh báo khẩn cấp - chữ đậm màu đỏ, nổi bật giữa các tin nhắn thường. */
+    /**
+     * Đoạn cảnh báo khẩn cấp - chữ đậm màu đỏ, nổi bật giữa các tin nhắn thường.
+     */
     public PdfDocumentBuilder warning(String text) {
         try {
             Paragraph p = new Paragraph(sanitize(text), warningFont);
@@ -252,7 +282,10 @@ public class PdfDocumentBuilder {
         return (value == null || value.isBlank()) ? "—" : value;
     }
 
-    /** In "Trang N" ở chân mỗi trang. Không static để dùng lại pageNumberBaseFont của outer. */
+    /**
+     * In "Trang N" ở chân mỗi trang. Không static để dùng lại pageNumberBaseFont
+     * của outer.
+     */
     private class PageNumberEvent extends PdfPageEventHelper {
         @Override
         public void onEndPage(PdfWriter writer, Document document) {
@@ -269,5 +302,5 @@ public class PdfDocumentBuilder {
             cb.restoreState();
         }
     }
-    
+
 }
