@@ -108,7 +108,8 @@ public class HealthReportService {
         builder.keyValue("Họ tên", patient.getFullName());
         builder.keyValue("Số điện thoại", patient.getPhone());
         builder.keyValue("Ngày sinh", profile.dateOfBirth() == null ? null : DATE_FORMAT.format(profile.dateOfBirth()));
-        builder.keyValue("Giới tính", GENDER_LABELS.get(profile.gender()));
+        builder.keyValue("Giới tính",
+        profile.gender() == null ? null : GENDER_LABELS.get(profile.gender()));
         builder.keyValue("Chiều cao (cm)", profile.heightCm() == null ? null : profile.heightCm().toString());
         builder.keyValue("Cân nặng (kg)", profile.weightKg() == null ? null : profile.weightKg().toString());
 

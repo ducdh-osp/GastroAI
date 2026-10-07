@@ -20,15 +20,15 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Lop dung chung de dung PDF tieng Viet (UC0019 xuat nhat ky suc khoe, UC0027 xuat phien
- * chat se dung lai). KHONG phai @Component - moi lan xuat PDF thi new 1 cai moi, dung
- * xong bo di, giong 1 object Java binh thuong (khong giu state giua cac lan xuat).
+ * Lớp dùng chung để dựng PDF tiếng Việt (UC0019 xuất nhật ký sức khỏe, UC0027 xuất phiên
+ * chat sẽ dùng lại). KHÔNG phải @Component - mỗi lần xuất PDF thì new 1 cái mới, dùng
+ * xong bỏ đi, giống 1 object Java bình thường (không giữ state giữa các lần xuất).
  *
- * Nhung font mac dinh cua PDF (Helvetica...) khong co chu tieng Viet co dau, nen phai nhung
- * (EMBEDDED) font Noto Sans vao file, dung che do ma hoa IDENTITY_H (Unicode) thi moi hien
- * dung dau tieng Viet. Doc font bang getResourceAsStream (khong dung File truc tiep) vi khi
- * dong goi thanh .jar, duong dan File tren dia khong con ton tai, con getResourceAsStream
- * doc duoc ca trong .jar.
+ * Những font mặc định của PDF (Helvetica...) không có chữ tiếng Việt có dấu, nên phải nhúng
+ * (EMBEDDED) font Noto Sans vào file, dùng chế độ mã hóa IDENTITY_H (Unicode) thì mới hiện
+ * đúng dấu tiếng Việt. Đọc font bằng getResourceAsStream (không dùng File trực tiếp) vì khi
+ * đóng gói thành .jar, đường dẫn File trên đĩa không còn tồn tại, còn getResourceAsStream
+ * đọc được cả trong .jar.
  */
 public class PdfDocumentBuilder {
 
@@ -54,9 +54,9 @@ public class PdfDocumentBuilder {
             this.boldFont = new Font(boldBase, 10, Font.BOLD);
             this.titleFont = new Font(boldBase, 18, Font.BOLD);
             this.smallGrayFont = new Font(regularBase, 8, Font.NORMAL, GRAY_TEXT);
-            // Font danh so trang chi can in so 0-9, dung Helvetica mac dinh (khong tieng Viet)
-            // la du, tao 1 lan o day de PageNumberEvent dung lai, tranh goi lai createFont()
-            // (co khai bao throws) ben trong onEndPage.
+            // Font đánh số trang chỉ cần in số 0-9, dùng Helvetica mặc định (không tiếng Việt)
+            // là đủ, tạo 1 lần ở đây để PageNumberEvent dùng lại, tránh gọi lại createFont()
+            // (có khai báo throws) bên trong onEndPage.
             this.pageNumberBaseFont = BaseFont.createFont();
 
             PdfWriter writer = PdfWriter.getInstance(document, outputStream);
@@ -64,7 +64,7 @@ public class PdfDocumentBuilder {
 
             document.open();
         } catch (DocumentException | IOException e) {
-            throw new IllegalStateException("Khong tao duoc file PDF", e);
+            throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
 
@@ -72,7 +72,7 @@ public class PdfDocumentBuilder {
         byte[] bytes;
         try (var input = getClass().getResourceAsStream("/fonts/" + fileName)) {
             if (input == null) {
-                throw new IOException("Khong tim thay font " + fileName + " trong resources/fonts");
+                throw new IOException("Không tìm thấy font " + fileName + " trong resources/fonts");
             }
             bytes = input.readAllBytes();
         }
@@ -87,7 +87,7 @@ public class PdfDocumentBuilder {
             document.add(p);
             return this;
         } catch (DocumentException e) {
-            throw new IllegalStateException("Khong tao duoc file PDF", e);
+            throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
 
@@ -99,7 +99,7 @@ public class PdfDocumentBuilder {
             document.add(p);
             return this;
         } catch (DocumentException e) {
-            throw new IllegalStateException("Khong tao duoc file PDF", e);
+            throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
 
@@ -111,7 +111,7 @@ public class PdfDocumentBuilder {
             document.add(p);
             return this;
         } catch (DocumentException e) {
-            throw new IllegalStateException("Khong tao duoc file PDF", e);
+            throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
 
@@ -124,7 +124,7 @@ public class PdfDocumentBuilder {
             document.add(p);
             return this;
         } catch (DocumentException e) {
-            throw new IllegalStateException("Khong tao duoc file PDF", e);
+            throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
 
@@ -135,13 +135,13 @@ public class PdfDocumentBuilder {
             document.add(p);
             return this;
         } catch (DocumentException e) {
-            throw new IllegalStateException("Khong tao duoc file PDF", e);
+            throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
 
     public PdfDocumentBuilder table(String[] headers, float[] relativeWidths, List<String[]> rows) {
         if (rows == null || rows.isEmpty()) {
-            return paragraph("Khong co ghi nhan trong khoang thoi gian nay.");
+            return paragraph("Không có ghi nhận trong khoảng thời gian này.");
         }
         try {
             PdfPTable table = new PdfPTable(headers.length);
@@ -167,7 +167,7 @@ public class PdfDocumentBuilder {
             document.add(table);
             return this;
         } catch (DocumentException e) {
-            throw new IllegalStateException("Khong tao duoc file PDF", e);
+            throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
 
@@ -178,7 +178,7 @@ public class PdfDocumentBuilder {
             document.add(p);
             return this;
         } catch (DocumentException e) {
-            throw new IllegalStateException("Khong tao duoc file PDF", e);
+            throw new IllegalStateException("Không tạo được file PDF", e);
         }
     }
 
@@ -191,7 +191,7 @@ public class PdfDocumentBuilder {
         return (value == null || value.isBlank()) ? "—" : value;
     }
 
-    /** In "Trang N" o chan moi trang. Non-static de dung lai pageNumberBaseFont cua outer. */
+    /** In "Trang N" ở chân mỗi trang. Không static để dùng lại pageNumberBaseFont của outer. */
     private class PageNumberEvent extends PdfPageEventHelper {
         @Override
         public void onEndPage(PdfWriter writer, Document document) {
