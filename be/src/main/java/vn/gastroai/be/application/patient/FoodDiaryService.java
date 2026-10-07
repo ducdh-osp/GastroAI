@@ -94,7 +94,8 @@ public class FoodDiaryService {
                         "Khong tim thay muc nhat ky an uong trong thung rac hoac ban khong co quyen truy cap"));
         Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
         if (entry.getDeletedAt().isBefore(cutoff)) {
-            throw new IllegalStateException("Da qua 30 ngay, khong the khoi phuc");
+            throw new IllegalStateException(
+                    "Mục này đã nằm trong thùng rác quá " + retentionDays + " ngày nên không thể khôi phục.");
         }
         entry.setDeletedAt(null);
         return toResponse(foodDiaryEntryRepository.save(entry));

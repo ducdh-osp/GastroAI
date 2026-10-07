@@ -100,11 +100,11 @@ class FoodDiaryControllerTest {
     @WithMockUser(username = "1", roles = "PATIENT")
     void restoreReturnsConflictWhenPastRetentionWindow() throws Exception {
         when(foodDiaryService.restore(anyLong(), anyLong()))
-                .thenThrow(new IllegalStateException("Da qua 30 ngay, khong the khoi phuc"));
+                .thenThrow(new IllegalStateException("Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
 
         mockMvc.perform(post("/api/v1/patient/food-diary/99/restore").with(csrf()))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Da qua 30 ngay, khong the khoi phuc"));
+                .andExpect(jsonPath("$.message").value("Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
     }
 
     @Test

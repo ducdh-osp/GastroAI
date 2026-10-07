@@ -85,7 +85,8 @@ public class BristolLogService {
                         "Khong tim thay muc ghi nhan Bristol trong thung rac hoac ban khong co quyen truy cap"));
         Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
         if (log.getDeletedAt().isBefore(cutoff)) {
-            throw new IllegalStateException("Da qua 30 ngay, khong the khoi phuc");
+            throw new IllegalStateException(
+                    "Mục này đã nằm trong thùng rác quá " + retentionDays + " ngày nên không thể khôi phục.");
         }
         log.setDeletedAt(null);
         return toResponse(bristolLogRepository.save(log));
