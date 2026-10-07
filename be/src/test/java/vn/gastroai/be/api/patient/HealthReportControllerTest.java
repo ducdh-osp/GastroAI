@@ -13,7 +13,7 @@ import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
-
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
@@ -71,9 +71,9 @@ class HealthReportControllerTest {
                         .with(csrf())
                         .param("from", "2026-01-01")
                         .param("to", "2026-09-30"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Chỉ xuất tối đa 90 ngày mỗi lần"));
     }
-
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void exportPdfReturnsBadRequestWhenFromParamMissing() throws Exception {

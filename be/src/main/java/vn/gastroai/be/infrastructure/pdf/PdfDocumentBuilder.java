@@ -51,12 +51,9 @@ public class PdfDocumentBuilder {
             BaseFont boldBase = loadFont("NotoSans-Bold.ttf");
 
             this.normalFont = new Font(regularBase, 10, Font.NORMAL);
-            this.boldFont = new Font(boldBase, 10, Font.BOLD);
-            this.titleFont = new Font(boldBase, 18, Font.BOLD);
+            this.boldFont = new Font(boldBase, 10, Font.NORMAL);
+            this.titleFont = new Font(boldBase, 18, Font.NORMAL);
             this.smallGrayFont = new Font(regularBase, 8, Font.NORMAL, GRAY_TEXT);
-            // Font đánh số trang chỉ cần in số 0-9, dùng Helvetica mặc định (không tiếng Việt)
-            // là đủ, tạo 1 lần ở đây để PageNumberEvent dùng lại, tránh gọi lại createFont()
-            // (có khai báo throws) bên trong onEndPage.
             this.pageNumberBaseFont = BaseFont.createFont();
 
             PdfWriter writer = PdfWriter.getInstance(document, outputStream);

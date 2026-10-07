@@ -28,7 +28,7 @@ public class HealthReportController {
         this.healthReportService = healthReportService;
     }
 
-    @GetMapping(value = "/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping("/pdf")
     public ResponseEntity<byte[]> exportPdf(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,

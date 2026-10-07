@@ -14,7 +14,7 @@ export async function downloadHealthReport(from: string, to: string): Promise<vo
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    URL.revokeObjectURL(objectUrl)
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
   } catch (error) {
     throw await extractBlobErrorMessage(error, 'Không thể tải nhật ký sức khỏe. Vui lòng thử lại.')
   }
