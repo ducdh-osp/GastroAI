@@ -1,11 +1,12 @@
-import { HeartOutlined, PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
-import { Alert, Button, Card, Typography } from 'antd'
+import { FilePdfOutlined, HeartOutlined, PhoneOutlined, ReloadOutlined, SafetyOutlined, WarningFilled } from '@ant-design/icons'
+import { Alert, Button, Card, Typography, message } from 'antd'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
 import { MessageList } from './MessageList'
-import { getChatSessionMessages, loadAttachmentsForDisplay, rateMessage, streamMessage } from '../../api/chat'
+import { downloadChatSessionPdf, getChatSessionMessages, loadAttachmentsForDisplay, rateMessage, streamMessage } from '../../api/chat'
 import type { Attachment, Message, RatingValue, SendMessageRequest } from '../../api/chat'
+
 
 const { Text, Title } = Typography
 
@@ -22,7 +23,7 @@ export function ChatContainer() {
   const [networkError, setNetworkError] = useState<string | null>(null)
   /** ID phiên hiện tại — null = chưa có phiên (câu đầu tiên sẽ tạo phiên mới). */
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(resumeSessionId)
-
+  const [exportingPdf, setExportingPdf] = useState(false)
   // Huy request streaming dang chay (component unmount hoac gui cau hoi moi de chong) - khong
   // cap nhat state cua 1 trang da dong/da chuyen sang luot hoi khac.
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -183,6 +184,17 @@ export function ChatContainer() {
       // Silent fail — đây là tính năng phụ, không block người dùng
     }
   }
+  async function handleExportPdf() {
+    if (currentSessionId === null || exportingPdf) return
+    setExportingPdf(true)
+    try {
+      await downloadChatSessionPdf(currentSessionId)
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không thể xuất PDF phiên chat.')
+    } finally {
+      setExportingPdf(false)
+    }
+  }
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
@@ -206,9 +218,22 @@ export function ChatContainer() {
               <span className="mt-0.5 block text-xs font-medium text-emerald-600">Đang hoạt động</span>
             </div>
           </div>
-          <Button size="small" icon={<HeartOutlined />} onClick={() => navigate('/symptom-assessment')}>
-            Đánh giá triệu chứng
-          </Button>
+          <div className="flex items-center gap-2">
+            {currentSessionId !== null && (
+              <Button
+                size="small"
+                icon={<FilePdfOutlined />}
+                loading={exportingPdf}
+                disabled={isReplying}
+                onClick={handleExportPdf}
+              >
+                Xuất PDF
+              </Button>
+            )}
+            <Button size="small" icon={<HeartOutlined />} onClick={() => navigate('/symptom-assessment')}>
+              Đánh giá triệu chứng
+            </Button>
+          </div>
         </header>
 
         <div className="flex items-start gap-3 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3.5 text-sm leading-5 text-amber-900 sm:px-6" role="note">

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 import vn.gastroai.be.domain.auth.Patient;
 
 import java.time.Instant;
@@ -11,6 +12,7 @@ import java.time.Instant;
 /** UC0013/UC0014 - 1 lan ghi nhan tinh trang tieu hoa theo thang Bristol (1-7). */
 @Entity
 @Table(name = "bristol_logs")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -38,6 +40,9 @@ public class BristolLog {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @PreUpdate
     void touch() {

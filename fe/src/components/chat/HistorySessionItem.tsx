@@ -1,4 +1,4 @@
-import { CommentOutlined, DeleteOutlined } from '@ant-design/icons'
+import { CommentOutlined, DeleteOutlined, FilePdfOutlined } from '@ant-design/icons'
 import { Button, Popconfirm, Tooltip } from 'antd'
 import type { ChatSessionSummary } from '../../api/chat'
 
@@ -7,7 +7,9 @@ interface HistorySessionItemProps {
   isSelected: boolean
   onClick: () => void
   onDelete: () => void
+  onExport: () => void
   deleting?: boolean
+  exporting?: boolean
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -29,7 +31,9 @@ export function HistorySessionItem({
   isSelected,
   onClick,
   onDelete,
+  onExport,
   deleting = false,
+  exporting = false,
 }: HistorySessionItemProps) {
   return (
     <div
@@ -61,33 +65,51 @@ export function HistorySessionItem({
         </div>
       </div>
 
-      <Popconfirm
-        title="Xóa phiên chat này?"
-        description="Toàn bộ tin nhắn và đánh giá trong phiên sẽ bị xóa vĩnh viễn."
-        okText="Xóa phiên"
-        cancelText="Hủy"
-        okButtonProps={{ danger: true, loading: deleting }}
-        onConfirm={(event) => {
-          event?.stopPropagation()
-          onDelete()
-        }}
-        onCancel={(event) => event?.stopPropagation()}
-      >
-        <Tooltip title="Xóa phiên chat khỏi lịch sử">
+      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <Tooltip title="Xuất PDF">
           <Button
             type="text"
-            danger
             size="small"
-            icon={<DeleteOutlined />}
-            loading={deleting}
-            disabled={deleting}
-            aria-label={`Xóa phiên chat: ${session.title}`}
-            className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50!"
-            onClick={(event) => event.stopPropagation()}
+            icon={<FilePdfOutlined />}
+            loading={exporting}
+            disabled={exporting}
+            aria-label={`Xuất PDF phiên chat: ${session.title}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              onExport()
+            }}
             onKeyDown={(event) => event.stopPropagation()}
           />
         </Tooltip>
-      </Popconfirm>
+
+        <Popconfirm
+          title="Xóa phiên chat này?"
+          description="Toàn bộ tin nhắn và đánh giá trong phiên sẽ bị xóa vĩnh viễn."
+          okText="Xóa phiên"
+          cancelText="Hủy"
+          okButtonProps={{ danger: true, loading: deleting }}
+          onConfirm={(event) => {
+            event?.stopPropagation()
+            onDelete()
+          }}
+          onCancel={(event) => event?.stopPropagation()}
+        >
+          <Tooltip title="Xóa phiên chat khỏi lịch sử">
+            <Button
+              type="text"
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              loading={deleting}
+              disabled={deleting}
+              aria-label={`Xóa phiên chat: ${session.title}`}
+              className="hover:bg-red-50!"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            />
+          </Tooltip>
+        </Popconfirm>
+      </div>
     </div>
   )
 }

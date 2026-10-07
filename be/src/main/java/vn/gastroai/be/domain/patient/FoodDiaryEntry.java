@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 import vn.gastroai.be.domain.auth.Patient;
 
 import java.time.Instant;
@@ -11,6 +12,7 @@ import java.time.Instant;
 /** UC0011/UC0012 - 1 lan an duoc ghi nhan trong nhat ky an uong cua benh nhan. */
 @Entity
 @Table(name = "food_diary_entries")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -48,6 +50,9 @@ public class FoodDiaryEntry {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @PreUpdate
     void touch() {

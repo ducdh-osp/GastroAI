@@ -28,11 +28,14 @@ import java.util.List;
  * <p>
  * Luồng cơ bản:
  * <ol>
- *   <li>FE gửi câu hỏi → ChatController gọi ChatService.ask() như cũ.</li>
- *   <li>ChatController gọi thêm ChatHistoryService.saveExchange() để lưu cả tin nhắn
- *       patient lẫn câu trả lời assistant vào DB.</li>
- *   <li>FE hiển thị nút 👍/👎 dưới câu trả lời → gọi POST /api/v1/chat/messages/{id}/rating.</li>
- *   <li>ChatController gọi ChatHistoryService.rateMessage() để UPSERT đánh giá.</li>
+ * <li>FE gửi câu hỏi → ChatController gọi ChatService.ask() như cũ.</li>
+ * <li>ChatController gọi thêm ChatHistoryService.saveExchange() để lưu cả tin
+ * nhắn
+ * patient lẫn câu trả lời assistant vào DB.</li>
+ * <li>FE hiển thị nút 👍/👎 dưới câu trả lời → gọi POST
+ * /api/v1/chat/messages/{id}/rating.</li>
+ * <li>ChatController gọi ChatHistoryService.rateMessage() để UPSERT đánh
+ * giá.</li>
  * </ol>
  */
 @Service
@@ -46,11 +49,11 @@ public class ChatHistoryService {
     private final ObjectMapper objectMapper;
 
     public ChatHistoryService(ChatSessionRepository sessionRepository,
-                              ChatMessageRepository messageRepository,
-                              MessageRatingRepository ratingRepository,
-                              PatientRepository patientRepository,
-                              ChatAttachmentRepository attachmentRepository,
-                              ObjectMapper objectMapper) {
+            ChatMessageRepository messageRepository,
+            MessageRatingRepository ratingRepository,
+            PatientRepository patientRepository,
+            ChatAttachmentRepository attachmentRepository,
+            ObjectMapper objectMapper) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
         this.ratingRepository = ratingRepository;
@@ -69,8 +72,8 @@ public class ChatHistoryService {
      */
     @Transactional("postgresTransactionManager")
     public SavedExchange saveExchange(Long patientId, Long sessionId,
-                                     String question, RagAnswer ragAnswer, boolean emergency,
-                                     List<String> matchedGroups) {
+            String question, RagAnswer ragAnswer, boolean emergency,
+            List<String> matchedGroups) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay benh nhan"));
 
@@ -107,14 +110,18 @@ public class ChatHistoryService {
     }
 
     /**
-     * Gắn các file đính kèm (đã lưu xuống đĩa + xử lý xong bởi ChatAttachmentProcessor) vào
-     * đúng tin nhắn patient vừa tạo ở saveExchange(). Tách riêng vì cần patientMessageId trả
-     * về từ saveExchange() trước - gọi ngay sau saveExchange() trong cùng request, không có
+     * Gắn các file đính kèm (đã lưu xuống đĩa + xử lý xong bởi
+     * ChatAttachmentProcessor) vào
+     * đúng tin nhắn patient vừa tạo ở saveExchange(). Tách riêng vì cần
+     * patientMessageId trả
+     * về từ saveExchange() trước - gọi ngay sau saveExchange() trong cùng request,
+     * không có
      * khoảng hở giao dịch nào giữa 2 lệnh gọi vì cùng 1 thread xử lý tuần tự.
      */
     @Transactional("postgresTransactionManager")
     public void saveAttachments(Long patientMessageId, List<ChatAttachmentProcessor.AttachmentResult> attachments) {
-        if (attachments.isEmpty()) return;
+        if (attachments.isEmpty())
+            return;
         ChatMessage message = messageRepository.findById(patientMessageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tin nhan"));
         for (ChatAttachmentProcessor.AttachmentResult attachment : attachments) {
@@ -133,21 +140,36 @@ public class ChatHistoryService {
     /** Toàn bộ tin nhắn trong 1 phiên (kiểm tra quyền sở hữu). */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public List<ChatMessage> listMessages(Long patientId, Long sessionId) {
-        ChatSession session = OwnedResourceLoader.loadOwned(sessionRepository.findById(sessionId),
-                s -> s.getPatient().getId().equals(patientId),
-                "Khong tim thay phien chat hoac ban khong co quyen truy cap");
+        ChatSession session = getOwnedSession(patientId, sessionId);
+        return listMessagesForSession(session);
+    }
+
+    @Transactional(value = "postgresTransactionManager", readOnly = true)
+    public List<ChatMessage> listMessagesForSession(ChatSession session) {
         return messageRepository.findBySessionIdOrderByCreatedAtAsc(session.getId());
     }
 
-    /** Đính kèm của nhiều tin nhắn 1 lượt - dùng cùng listMessages() để tránh N+1 (giống rating). */
+    @Transactional(value = "postgresTransactionManager", readOnly = true)
+    public ChatSession getOwnedSession(Long patientId, Long sessionId) {
+        return OwnedResourceLoader.loadOwned(sessionRepository.findById(sessionId),
+                s -> s.getPatient().getId().equals(patientId),
+                "Khong tim thay phien chat hoac ban khong co quyen truy cap");
+    }
+
+    /**
+     * Đính kèm của nhiều tin nhắn 1 lượt - dùng cùng listMessages() để tránh N+1
+     * (giống rating).
+     */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public List<ChatAttachment> listAttachments(List<Long> messageIds) {
         return attachmentRepository.findByMessageIdIn(messageIds);
     }
 
     /**
-     * Lấy 1 file đính kèm cụ thể để trả về nội dung (download/hiển thị lại trong lịch sử) -
-     * kiểm tra attachment đó thực sự thuộc 1 message trong đúng phiên chat của bệnh nhân này,
+     * Lấy 1 file đính kèm cụ thể để trả về nội dung (download/hiển thị lại trong
+     * lịch sử) -
+     * kiểm tra attachment đó thực sự thuộc 1 message trong đúng phiên chat của bệnh
+     * nhân này,
      * không chỉ tin vào attachmentId do client gửi lên.
      */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
@@ -169,15 +191,18 @@ public class ChatHistoryService {
         ChatSession session = OwnedResourceLoader.loadOwned(sessionRepository.findById(sessionId),
                 s -> s.getPatient().getId().equals(patientId),
                 "Khong tim thay phien chat hoac ban khong co quyen truy cap");
-        // Các FK chat_messages/session_id và message_ratings/message_id có ON DELETE CASCADE.
+        // Các FK chat_messages/session_id và message_ratings/message_id có ON DELETE
+        // CASCADE.
         sessionRepository.delete(session);
     }
 
     // ─────────────────────────────── Rating ─────────────────────────────────
 
     /**
-     * UPSERT đánh giá (HELPFUL / UNHELPFUL) của bệnh nhân cho 1 câu trả lời assistant.
-     * Kiểm tra: message phải thuộc phiên của đúng bệnh nhân + sender phải là 'assistant'.
+     * UPSERT đánh giá (HELPFUL / UNHELPFUL) của bệnh nhân cho 1 câu trả lời
+     * assistant.
+     * Kiểm tra: message phải thuộc phiên của đúng bệnh nhân + sender phải là
+     * 'assistant'.
      */
     @Transactional("postgresTransactionManager")
     public void rateMessage(Long patientId, Long messageId, String rating) {
@@ -205,7 +230,8 @@ public class ChatHistoryService {
     // ─────────────────────────────── Helpers ────────────────────────────────
 
     private String toJson(Object value) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
@@ -214,5 +240,6 @@ public class ChatHistoryService {
     }
 
     /** Kết quả trả về sau khi lưu một lượt trao đổi chat. */
-    public record SavedExchange(Long sessionId, Long patientMessageId, Long assistantMessageId) {}
+    public record SavedExchange(Long sessionId, Long patientMessageId, Long assistantMessageId) {
+    }
 }

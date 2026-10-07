@@ -1,0 +1,306 @@
+package vn.gastroai.be.infrastructure.pdf;
+
+import com.lowagie.text.Chunk;
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.BaseFont;
+import com.lowagie.text.pdf.PdfContentByte;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfPageEventHelper;
+import com.lowagie.text.pdf.PdfWriter;
+import com.lowagie.text.Rectangle;
+import java.awt.Color;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
+
+/**
+ * Lớp dùng chung để dựng PDF tiếng Việt (UC0019 xuất nhật ký sức khỏe, UC0027
+ * xuất phiên
+ * chat sẽ dùng lại). KHÔNG phải @Component - mỗi lần xuất PDF thì new 1 cái
+ * mới, dùng
+ * xong bỏ đi, giống 1 object Java bình thường (không giữ state giữa các lần
+ * xuất).
+ *
+ * Những font mặc định của PDF (Helvetica...) không có chữ tiếng Việt có dấu,
+ * nên phải nhúng
+ * (EMBEDDED) font Noto Sans vào file, dùng chế độ mã hóa IDENTITY_H (Unicode)
+ * thì mới hiện
+ * đúng dấu tiếng Việt. Đọc font bằng getResourceAsStream (không dùng File trực
+ * tiếp) vì khi
+ * đóng gói thành .jar, đường dẫn File trên đĩa không còn tồn tại, còn
+ * getResourceAsStream
+ * đọc được cả trong .jar.
+ */
+public class PdfDocumentBuilder {
+
+    private static final Color HEADER_BACKGROUND = new Color(0xF0, 0xF0, 0xF0);
+    private static final Color GRAY_TEXT = new Color(0x66, 0x66, 0x66);
+    private static final Color WARNING_RED = new Color(0xB0, 0x00, 0x20);
+
+    private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    private final Document document;
+
+    private final BaseFont regularBaseFont;
+    private final Font normalFont;
+    private final Font boldFont;
+    private final Font titleFont;
+    private final Font smallGrayFont;
+    private final Font warningFont;
+    private final BaseFont pageNumberBaseFont;
+
+    public PdfDocumentBuilder() {
+        this.document = new Document(PageSize.A4, 36, 36, 36, 36);
+        try {
+            this.regularBaseFont = loadFont("NotoSans-Regular.ttf");
+            BaseFont boldBase = loadFont("NotoSans-Bold.ttf");
+
+            this.normalFont = new Font(regularBaseFont, 10, Font.NORMAL);
+            this.boldFont = new Font(boldBase, 10, Font.NORMAL);
+            this.titleFont = new Font(boldBase, 18, Font.NORMAL);
+            this.smallGrayFont = new Font(regularBaseFont, 8, Font.NORMAL, GRAY_TEXT);
+            this.warningFont = new Font(boldBase, 10, Font.NORMAL, WARNING_RED);
+            // Font đánh số trang chỉ cần in số 0-9, dùng Helvetica mặc định (không tiếng
+            // Việt)
+            // là đủ, tạo 1 lần ở đây để PageNumberEvent dùng lại, tránh gọi lại
+            // createFont()
+            // (có khai báo throws) bên trong onEndPage.
+            this.pageNumberBaseFont = BaseFont.createFont();
+
+            PdfWriter writer = PdfWriter.getInstance(document, outputStream);
+            writer.setPageEvent(new PageNumberEvent());
+
+            document.open();
+        } catch (DocumentException | IOException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    private BaseFont loadFont(String fileName) throws IOException, DocumentException {
+        byte[] bytes;
+        try (var input = getClass().getResourceAsStream("/fonts/" + fileName)) {
+            if (input == null) {
+                throw new IOException("Không tìm thấy font " + fileName + " trong resources/fonts");
+            }
+            bytes = input.readAllBytes();
+        }
+        return BaseFont.createFont(fileName, BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, bytes, null);
+    }
+
+    private String sanitize(String text) {
+        if (text == null)
+            return null;
+        StringBuilder result = new StringBuilder();
+        text.codePoints().forEach(codePoint -> {
+            if (codePoint == '\n' || regularBaseFont.charExists(codePoint)) {
+                result.appendCodePoint(codePoint);
+            }
+        });
+        return result.toString();
+    }
+
+    public PdfDocumentBuilder title(String text) {
+        try {
+            Paragraph p = new Paragraph(sanitize(text), titleFont);
+            p.setAlignment(Element.ALIGN_CENTER);
+            p.setSpacingAfter(4);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    public PdfDocumentBuilder subtitle(String text) {
+        try {
+            Paragraph p = new Paragraph(sanitize(text), smallGrayFont);
+            p.setAlignment(Element.ALIGN_CENTER);
+            p.setSpacingAfter(16);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    public PdfDocumentBuilder section(String heading) {
+        try {
+            Paragraph p = new Paragraph(sanitize(heading), boldFont);
+            p.setSpacingBefore(16);
+            p.setSpacingAfter(6);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    public PdfDocumentBuilder keyValue(String label, String value) {
+        try {
+            Paragraph p = new Paragraph();
+            p.add(new Chunk(sanitize(label) + ": ", boldFont));
+            p.add(new Chunk(blankToDash(sanitize(value)), normalFont));
+            p.setSpacingAfter(2);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    /**
+     * In tieu de + nhieu dong "nhan: gia tri" thanh 1 khoi KHONG bi cat sang 2
+     * trang.
+     */
+    public PdfDocumentBuilder keyValueBlock(String heading, List<String[]> pairs) {
+        try {
+            PdfPCell cell = new PdfPCell();
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setPadding(0);
+
+            Paragraph title = new Paragraph(sanitize(heading), boldFont);
+            title.setSpacingAfter(6);
+            cell.addElement(title);
+
+            for (String[] pair : pairs) {
+                Paragraph line = new Paragraph();
+                line.add(new Chunk(sanitize(pair[0]) + ": ", boldFont));
+                line.add(new Chunk(blankToDash(sanitize(pair[1])), normalFont));
+                line.setSpacingAfter(2);
+                cell.addElement(line);
+            }
+
+            PdfPTable block = new PdfPTable(1);
+            block.setWidthPercentage(100);
+            block.setSpacingBefore(16);
+            block.setKeepTogether(true);
+            block.addCell(cell);
+            document.add(block);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    public PdfDocumentBuilder paragraph(String text) {
+        try {
+            Paragraph p = new Paragraph(sanitize(text), normalFont);
+            p.setSpacingAfter(6);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    public PdfDocumentBuilder table(String[] headers, float[] relativeWidths, List<String[]> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return paragraph("Không có ghi nhận trong khoảng thời gian này.");
+        }
+        try {
+            PdfPTable table = new PdfPTable(headers.length);
+            table.setWidthPercentage(100);
+            table.setWidths(relativeWidths);
+            table.setHeaderRows(1);
+
+            for (String header : headers) {
+                PdfPCell cell = new PdfPCell(new Paragraph(sanitize(header), boldFont));
+                cell.setBackgroundColor(HEADER_BACKGROUND);
+                cell.setPadding(5);
+                table.addCell(cell);
+            }
+
+            for (String[] row : rows) {
+                for (String value : row) {
+                    PdfPCell cell = new PdfPCell(new Paragraph(blankToDash(sanitize(value)), normalFont));
+                    cell.setPadding(5);
+                    table.addCell(cell);
+                }
+            }
+
+            document.add(table);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    public PdfDocumentBuilder note(String text) {
+        try {
+            Paragraph p = new Paragraph(sanitize(text), smallGrayFont);
+            p.setSpacingBefore(16);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    /**
+     * Dòng mở đầu 1 tin nhắn chat: tên người nói (đậm) + " · " + giờ (chữ xám nhỏ).
+     */
+    public PdfDocumentBuilder messageHeader(String speaker, String time) {
+        try {
+            Paragraph p = new Paragraph();
+            p.add(new Chunk(sanitize(speaker), boldFont));
+            p.add(new Chunk(" · " + sanitize(time), smallGrayFont));
+            p.setSpacingBefore(10);
+            p.setSpacingAfter(2);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    /**
+     * Đoạn cảnh báo khẩn cấp - chữ đậm màu đỏ, nổi bật giữa các tin nhắn thường.
+     */
+    public PdfDocumentBuilder warning(String text) {
+        try {
+            Paragraph p = new Paragraph(sanitize(text), warningFont);
+            p.setSpacingBefore(6);
+            p.setSpacingAfter(6);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    public byte[] build() {
+        document.close();
+        return outputStream.toByteArray();
+    }
+
+    private String blankToDash(String value) {
+        return (value == null || value.isBlank()) ? "—" : value;
+    }
+
+    /**
+     * In "Trang N" ở chân mỗi trang. Không static để dùng lại pageNumberBaseFont
+     * của outer.
+     */
+    private class PageNumberEvent extends PdfPageEventHelper {
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            PdfContentByte cb = writer.getDirectContent();
+            cb.saveState();
+            cb.beginText();
+            cb.setFontAndSize(pageNumberBaseFont, 8);
+            cb.showTextAligned(Element.ALIGN_CENTER,
+                    "Trang " + writer.getPageNumber(),
+                    document.getPageSize().getWidth() / 2,
+                    document.bottomMargin() - 10,
+                    0);
+            cb.endText();
+            cb.restoreState();
+        }
+    }
+
+}
