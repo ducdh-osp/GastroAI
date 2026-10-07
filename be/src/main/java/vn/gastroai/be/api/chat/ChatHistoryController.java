@@ -17,7 +17,10 @@ import vn.gastroai.be.domain.chat.ChatSession;
 import vn.gastroai.be.infrastructure.filestorage.ChatAttachmentStorage;
 import vn.gastroai.be.infrastructure.persistence.postgres.ChatAttachmentRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.MessageRatingRepository;
-
+import vn.gastroai.be.application.chat.ChatExportService;
+import vn.gastroai.be.application.support.VietnamDateRange;
+import org.springframework.http.CacheControl;
+import java.time.format.DateTimeFormatter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.security.Principal;
@@ -37,18 +40,21 @@ import vn.gastroai.be.domain.chat.MessageRating;
 @RequestMapping("/api/v1/chat/sessions")
 public class ChatHistoryController {
 
-    private final ChatHistoryService chatHistoryService;
+        private final ChatHistoryService chatHistoryService;
+    private final ChatExportService chatExportService;
     private final MessageRatingRepository ratingRepository;
     private final ChatAttachmentRepository attachmentRepository;
     private final ChatAttachmentStorage attachmentStorage;
     private final ObjectMapper objectMapper;
 
     public ChatHistoryController(ChatHistoryService chatHistoryService,
+                                 ChatExportService chatExportService,
                                  MessageRatingRepository ratingRepository,
                                  ChatAttachmentRepository attachmentRepository,
                                  ChatAttachmentStorage attachmentStorage,
                                  ObjectMapper objectMapper) {
         this.chatHistoryService = chatHistoryService;
+        this.chatExportService = chatExportService;
         this.ratingRepository = ratingRepository;
         this.attachmentRepository = attachmentRepository;
         this.attachmentStorage = attachmentStorage;
@@ -108,6 +114,27 @@ public class ChatHistoryController {
                 .contentType(MediaType.parseMediaType(attachment.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(content);
+    }
+      /** Xuất toàn bộ 1 phiên chat ra PDF (UC0027) - tên người nói, nội dung đã bỏ markdown,
+     * cảnh báo khẩn cấp, tên file đính kèm và nguồn tham khảo. */
+    @GetMapping("/{sessionId}/pdf")
+    public ResponseEntity<byte[]> exportSessionPdf(
+            @PathVariable Long sessionId,
+            Principal principal, Authentication authentication) {
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
+        byte[] pdf = chatExportService.exportSession(patientId, sessionId);
+
+        String dateSuffix = DateTimeFormatter.ofPattern("yyyyMMdd")
+                .withZone(VietnamDateRange.ZONE)
+                .format(java.time.Instant.now());
+        String filename = "phien-chat-" + sessionId + "-" + dateSuffix + ".pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename).build().toString())
+                .cacheControl(CacheControl.noStore())
+                .body(pdf);
     }
 
     /** Xóa phiên chat và toàn bộ tin nhắn/đánh giá đi kèm của bệnh nhân hiện tại. */

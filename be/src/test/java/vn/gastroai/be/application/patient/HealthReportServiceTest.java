@@ -162,4 +162,24 @@ class HealthReportServiceTest {
         assertEquals(Instant.parse("2026-08-31T17:00:00Z"), fromCaptor.getValue());
         assertTrue(toCaptor.getValue().isBefore(Instant.parse("2026-09-01T17:00:00Z")));
     }
+    @Test
+    void exportSanitizesEmojiInNotesWithoutThrowing() throws IOException {
+        Long patientId = 1L;
+        Patient patient = patient("Nguyễn Văn A");
+        when(patientRepository.findById(patientId)).thenReturn(Optional.of(patient));
+        when(medicalProfileService.getProfile(patientId)).thenReturn(EMPTY_PROFILE);
+        when(medicationReminderService.list(patientId)).thenReturn(List.of());
+        when(bristolLogRepository.findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(eq(patientId), any(), any()))
+                .thenReturn(List.of());
+
+        FoodDiaryEntry meal = new FoodDiaryEntry(patient, Instant.parse("2026-09-01T00:00:00Z"),
+                "Phở bò", MealType.BREAKFAST, null, null, "Ngon quá 😋🎉");
+        when(foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(eq(patientId), any(), any()))
+                .thenReturn(List.of(meal));
+
+        byte[] pdf = service.export(patientId, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 1));
+
+        String text = extractText(pdf);
+        assertTrue(text.contains("Ngon quá"), "Phai giu duoc chu co dau, chi loai bo emoji");
+    }
 }

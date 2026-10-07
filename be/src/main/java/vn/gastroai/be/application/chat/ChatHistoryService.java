@@ -131,14 +131,17 @@ public class ChatHistoryService {
     }
 
     /** Toàn bộ tin nhắn trong 1 phiên (kiểm tra quyền sở hữu). */
-    @Transactional(value = "postgresTransactionManager", readOnly = true)
+   @Transactional(value = "postgresTransactionManager", readOnly = true)
     public List<ChatMessage> listMessages(Long patientId, Long sessionId) {
-        ChatSession session = OwnedResourceLoader.loadOwned(sessionRepository.findById(sessionId),
-                s -> s.getPatient().getId().equals(patientId),
-                "Khong tim thay phien chat hoac ban khong co quyen truy cap");
+        ChatSession session = getOwnedSession(patientId, sessionId);
         return messageRepository.findBySessionIdOrderByCreatedAtAsc(session.getId());
     }
-
+    @Transactional(value = "postgresTransactionManager", readOnly = true)
+    public ChatSession getOwnedSession(Long patientId, Long sessionId) {
+        return OwnedResourceLoader.loadOwned(sessionRepository.findById(sessionId),
+                s -> s.getPatient().getId().equals(patientId),
+                "Khong tim thay phien chat hoac ban khong co quyen truy cap");
+    }
     /** Đính kèm của nhiều tin nhắn 1 lượt - dùng cùng listMessages() để tránh N+1 (giống rating). */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public List<ChatAttachment> listAttachments(List<Long> messageIds) {

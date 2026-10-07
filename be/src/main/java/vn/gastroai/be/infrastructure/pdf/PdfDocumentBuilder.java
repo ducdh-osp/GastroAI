@@ -34,26 +34,33 @@ public class PdfDocumentBuilder {
 
     private static final Color HEADER_BACKGROUND = new Color(0xF0, 0xF0, 0xF0);
     private static final Color GRAY_TEXT = new Color(0x66, 0x66, 0x66);
+    private static final Color WARNING_RED = new Color(0xB0, 0x00, 0x20);
 
     private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     private final Document document;
 
+    private final BaseFont regularBaseFont;
     private final Font normalFont;
     private final Font boldFont;
     private final Font titleFont;
     private final Font smallGrayFont;
+    private final Font warningFont;
     private final BaseFont pageNumberBaseFont;
 
     public PdfDocumentBuilder() {
         this.document = new Document(PageSize.A4, 36, 36, 36, 36);
         try {
-            BaseFont regularBase = loadFont("NotoSans-Regular.ttf");
+            this.regularBaseFont = loadFont("NotoSans-Regular.ttf");
             BaseFont boldBase = loadFont("NotoSans-Bold.ttf");
 
-            this.normalFont = new Font(regularBase, 10, Font.NORMAL);
+            this.normalFont = new Font(regularBaseFont, 10, Font.NORMAL);
             this.boldFont = new Font(boldBase, 10, Font.NORMAL);
             this.titleFont = new Font(boldBase, 18, Font.NORMAL);
-            this.smallGrayFont = new Font(regularBase, 8, Font.NORMAL, GRAY_TEXT);
+            this.smallGrayFont = new Font(regularBaseFont, 8, Font.NORMAL, GRAY_TEXT);
+            this.warningFont = new Font(boldBase, 10, Font.NORMAL, WARNING_RED);
+            // Font đánh số trang chỉ cần in số 0-9, dùng Helvetica mặc định (không tiếng Việt)
+            // là đủ, tạo 1 lần ở đây để PageNumberEvent dùng lại, tránh gọi lại createFont()
+            // (có khai báo throws) bên trong onEndPage.
             this.pageNumberBaseFont = BaseFont.createFont();
 
             PdfWriter writer = PdfWriter.getInstance(document, outputStream);
@@ -76,9 +83,20 @@ public class PdfDocumentBuilder {
         return BaseFont.createFont(fileName, BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, bytes, null);
     }
 
+    private String sanitize(String text) {
+        if (text == null) return null;
+        StringBuilder result = new StringBuilder();
+        text.codePoints().forEach(codePoint -> {
+            if (codePoint == '\n' || regularBaseFont.charExists(codePoint)) {
+                result.appendCodePoint(codePoint);
+            }
+        });
+        return result.toString();
+    }
+
     public PdfDocumentBuilder title(String text) {
         try {
-            Paragraph p = new Paragraph(text, titleFont);
+            Paragraph p = new Paragraph(sanitize(text), titleFont);
             p.setAlignment(Element.ALIGN_CENTER);
             p.setSpacingAfter(4);
             document.add(p);
@@ -90,7 +108,7 @@ public class PdfDocumentBuilder {
 
     public PdfDocumentBuilder subtitle(String text) {
         try {
-            Paragraph p = new Paragraph(text, smallGrayFont);
+            Paragraph p = new Paragraph(sanitize(text), smallGrayFont);
             p.setAlignment(Element.ALIGN_CENTER);
             p.setSpacingAfter(16);
             document.add(p);
@@ -102,7 +120,7 @@ public class PdfDocumentBuilder {
 
     public PdfDocumentBuilder section(String heading) {
         try {
-            Paragraph p = new Paragraph(heading, boldFont);
+            Paragraph p = new Paragraph(sanitize(heading), boldFont);
             p.setSpacingBefore(16);
             p.setSpacingAfter(6);
             document.add(p);
@@ -115,8 +133,8 @@ public class PdfDocumentBuilder {
     public PdfDocumentBuilder keyValue(String label, String value) {
         try {
             Paragraph p = new Paragraph();
-            p.add(new Chunk(label + ": ", boldFont));
-            p.add(new Chunk(blankToDash(value), normalFont));
+            p.add(new Chunk(sanitize(label) + ": ", boldFont));
+            p.add(new Chunk(blankToDash(sanitize(value)), normalFont));
             p.setSpacingAfter(2);
             document.add(p);
             return this;
@@ -127,7 +145,7 @@ public class PdfDocumentBuilder {
 
     public PdfDocumentBuilder paragraph(String text) {
         try {
-            Paragraph p = new Paragraph(text, normalFont);
+            Paragraph p = new Paragraph(sanitize(text), normalFont);
             p.setSpacingAfter(6);
             document.add(p);
             return this;
@@ -147,7 +165,7 @@ public class PdfDocumentBuilder {
             table.setHeaderRows(1);
 
             for (String header : headers) {
-                PdfPCell cell = new PdfPCell(new Paragraph(header, boldFont));
+                PdfPCell cell = new PdfPCell(new Paragraph(sanitize(header), boldFont));
                 cell.setBackgroundColor(HEADER_BACKGROUND);
                 cell.setPadding(5);
                 table.addCell(cell);
@@ -155,7 +173,7 @@ public class PdfDocumentBuilder {
 
             for (String[] row : rows) {
                 for (String value : row) {
-                    PdfPCell cell = new PdfPCell(new Paragraph(blankToDash(value), normalFont));
+                    PdfPCell cell = new PdfPCell(new Paragraph(blankToDash(sanitize(value)), normalFont));
                     cell.setPadding(5);
                     table.addCell(cell);
                 }
@@ -170,8 +188,36 @@ public class PdfDocumentBuilder {
 
     public PdfDocumentBuilder note(String text) {
         try {
-            Paragraph p = new Paragraph(text, smallGrayFont);
+            Paragraph p = new Paragraph(sanitize(text), smallGrayFont);
             p.setSpacingBefore(16);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    /** Dòng mở đầu 1 tin nhắn chat: tên người nói (đậm) + " · " + giờ (chữ xám nhỏ). */
+    public PdfDocumentBuilder messageHeader(String speaker, String time) {
+        try {
+            Paragraph p = new Paragraph();
+            p.add(new Chunk(sanitize(speaker), boldFont));
+            p.add(new Chunk(" · " + sanitize(time), smallGrayFont));
+            p.setSpacingBefore(10);
+            p.setSpacingAfter(2);
+            document.add(p);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+
+    /** Đoạn cảnh báo khẩn cấp - chữ đậm màu đỏ, nổi bật giữa các tin nhắn thường. */
+    public PdfDocumentBuilder warning(String text) {
+        try {
+            Paragraph p = new Paragraph(sanitize(text), warningFont);
+            p.setSpacingBefore(6);
+            p.setSpacingAfter(6);
             document.add(p);
             return this;
         } catch (DocumentException e) {
