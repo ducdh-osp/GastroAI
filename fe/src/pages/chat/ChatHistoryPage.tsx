@@ -1,8 +1,8 @@
 import { ClockCircleOutlined, LoadingOutlined, MessageOutlined } from '@ant-design/icons'
-import { Alert, Spin, Typography } from 'antd'
+import { Alert, Spin, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { deleteChatSession, getChatSessionMessages, listChatSessions } from '../../api/chat'
+import { deleteChatSession, downloadChatSessionPdf, getChatSessionMessages, listChatSessions } from '../../api/chat'
 import type { ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
 import { AppShell } from '../../components/layout/AppShell'
 import { HistorySessionItem } from '../../components/chat/HistorySessionItem'
@@ -26,6 +26,7 @@ export default function ChatHistoryPage() {
   const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  const [exportingId, setExportingId] = useState<number | null>(null)
   useEffect(() => {
     setLoadingSessions(true)
     setSessionsError(null)
@@ -74,7 +75,17 @@ export default function ChatHistoryPage() {
       setDeletingSessionId(null)
     }
   }
-
+  async function handleExport(session: ChatSessionSummary) {
+    if (exportingId !== null) return
+    setExportingId(session.id)
+    try {
+      await downloadChatSessionPdf(session.id)
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không thể xuất PDF phiên chat.')
+    } finally {
+      setExportingId(null)
+    }
+  }
   return (
     <AppShell fixedViewport>
       <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col">
@@ -117,13 +128,15 @@ export default function ChatHistoryPage() {
               ) : (
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                   {sessions.map((session) => (
-                    <HistorySessionItem
+                   <HistorySessionItem
                       key={session.id}
                       session={session}
                       isSelected={selectedSession?.id === session.id}
                       onClick={() => void handleSelectSession(session)}
                       onDelete={() => void handleDeleteSession(session)}
+                      onExport={() => void handleExport(session)}
                       deleting={deletingSessionId === session.id}
+                      exporting={exportingId === session.id}
                     />
                   ))}
                 </div>

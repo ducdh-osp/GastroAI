@@ -1,5 +1,5 @@
 import { apiClient, getAuthToken } from '../lib/axios'
-
+import { downloadFile } from '../lib/download'
 export type SenderType = 'patient' | 'assistant' | 'system'
 
 export type MessageStatus = 'sending' | 'sent' | 'failed' | 'replying'
@@ -360,4 +360,8 @@ export async function deleteChatSession(sessionId: number): Promise<void> {
 /** Đánh giá câu trả lời AI (UPSERT — có thể đổi ý). */
 export async function rateMessage(messageId: number, rating: RatingValue): Promise<void> {
   await apiClient.post(`/chat/messages/${messageId}/rating`, { rating })
+}
+/** Tải PDF toàn bộ 1 phiên chat (UC0027). */
+export async function downloadChatSessionPdf(sessionId: number): Promise<void> {
+  await downloadFile(`/chat/sessions/${sessionId}/pdf`, `phien-chat-${sessionId}.pdf`)
 }
