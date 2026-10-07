@@ -35,6 +35,13 @@ export interface DailyCountPoint {
   count: number
 }
 
+/** UC0020 - 1 muc nhat ky an uong dang nam trong thung rac. */
+export interface FoodDiaryTrashItem {
+  entry: FoodDiaryEntry
+  deletedAt: string
+  purgeAt: string
+}
+
 export async function listFoodDiary(page = 0, size = 20): Promise<FoodDiaryListResponse> {
   try {
     const { data } = await apiClient.get<FoodDiaryListResponse>('/patient/food-diary', { params: { page, size } })
@@ -76,5 +83,25 @@ export async function deleteFoodDiaryEntry(id: number): Promise<void> {
     await apiClient.delete(`/patient/food-diary/${id}`)
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể xoá nhật ký ăn uống. Vui lòng thử lại.')
+  }
+}
+
+/** UC0020 - danh sach cac muc dang nam trong thung rac (con trong han 30 ngay). */
+export async function listFoodDiaryTrash(): Promise<FoodDiaryTrashItem[]> {
+  try {
+    const { data } = await apiClient.get<FoodDiaryTrashItem[]>('/patient/food-diary/trash')
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải thùng rác. Vui lòng thử lại.')
+  }
+}
+
+/** UC0020 - khoi phuc 1 muc tu thung rac. */
+export async function restoreFoodDiaryEntry(id: number): Promise<FoodDiaryEntry> {
+  try {
+    const { data } = await apiClient.post<FoodDiaryEntry>(`/patient/food-diary/${id}/restore`)
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể khôi phục. Vui lòng thử lại.')
   }
 }

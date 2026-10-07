@@ -1,16 +1,18 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Typography } from 'antd'
+import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Tabs, Typography, notification } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useState } from 'react'
 import {
   createBristolLog,
   deleteBristolLog,
   listBristolLogs,
+  restoreBristolLog,
   updateBristolLog,
 } from '../../api/bristol'
 import type { BristolLog, BristolLogRequest } from '../../api/bristol'
 import { AppShell } from '../../components/layout/AppShell'
 import { BristolLogModal } from '../../components/bristol/BristolLogModal'
+import { BristolTrashTable } from '../../components/bristol/BristolTrashTable'
 import { BRISTOL_TYPE_LABELS } from '../../constants/bristol'
 import { useInFlightGuard } from '../../hooks/useInFlightGuard'
 import { usePagedList } from '../../hooks/usePagedList'
@@ -68,10 +70,40 @@ export default function BristolPage() {
         } else {
           void reload()
         }
+        // UC0020 - cho phep "Hoan tac" ngay sau khi xoa, khoi phai mo tab Thung rac.
+        // Tu dong dong sau 6s (duration tinh bang giay cua antd notification).
+        notification.open({
+          key: `bristol-undo-${id}`,
+          message: 'Đã chuyển vào thùng rác',
+          description: 'Bạn có thể khôi phục mục này trong vòng 30 ngày.',
+          duration: 6,
+          btn: (
+            <Button
+              size="small"
+              type="primary"
+              onClick={() => {
+                notification.destroy(`bristol-undo-${id}`)
+                void handleUndo(id)
+              }}
+            >
+              Hoàn tác
+            </Button>
+          ),
+        })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Không thể xoá.')
       }
     })
+  }
+
+  async function handleUndo(id: number) {
+    try {
+      await restoreBristolLog(id)
+      void reload()
+    } catch {
+      // Hoan tac la tinh nang phu - neu loi (vd da qua han job don dep chay truoc) thi
+      // bo qua lang le, nguoi dung van co the vao tab Thung rac de khoi phuc/xem ly do.
+    }
   }
 
   const columns: ColumnsType<BristolLog> = [
@@ -89,7 +121,13 @@ export default function BristolPage() {
       render: (_, record) => (
         <div className="flex gap-1">
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm title="Xoá mục này?" okText="Xoá" cancelText="Huỷ" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm
+            title="Chuyển vào thùng rác?"
+            description="Có thể khôi phục trong 30 ngày."
+            okText="Chuyển vào thùng rác"
+            cancelText="Huỷ"
+            onConfirm={() => handleDelete(record.id)}
+          >
             <Button
               size="small"
               type="text"
@@ -118,23 +156,42 @@ export default function BristolPage() {
 
         {error && <Alert type="error" message={error} showIcon className="mb-4" />}
 
-        <Card className="rounded-2xl border-black/5 shadow-sm">
-          <Spin spinning={loading}>
-            <Table<BristolLog>
-              columns={columns}
-              dataSource={items}
-              rowKey="id"
-              size="small"
-              pagination={false}
-              locale={{ emptyText: 'Chưa có mục nào được ghi nhận' }}
-            />
-          </Spin>
-          {totalElements > pageSize && (
-            <div className="mt-4 flex justify-end">
-              <Pagination current={page + 1} pageSize={pageSize} total={totalElements} onChange={(p) => setPage(p - 1)} showSizeChanger={false} />
-            </div>
-          )}
-        </Card>
+        <Tabs
+          items={[
+            {
+              key: 'list',
+              label: 'Nhật ký',
+              children: (
+                <Card className="rounded-2xl border-black/5 shadow-sm">
+                  <Spin spinning={loading}>
+                    <Table<BristolLog>
+                      columns={columns}
+                      dataSource={items}
+                      rowKey="id"
+                      size="small"
+                      pagination={false}
+                      locale={{ emptyText: 'Chưa có mục nào được ghi nhận' }}
+                    />
+                  </Spin>
+                  {totalElements > pageSize && (
+                    <div className="mt-4 flex justify-end">
+                      <Pagination current={page + 1} pageSize={pageSize} total={totalElements} onChange={(p) => setPage(p - 1)} showSizeChanger={false} />
+                    </div>
+                  )}
+                </Card>
+              ),
+            },
+            {
+              key: 'trash',
+              label: 'Thùng rác',
+              children: (
+                <Card className="rounded-2xl border-black/5 shadow-sm">
+                  <BristolTrashTable onRestored={reload} />
+                </Card>
+              ),
+            },
+          ]}
+        />
       </div>
 
       <BristolLogModal
