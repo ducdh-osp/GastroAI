@@ -143,6 +143,24 @@ public class PdfDocumentBuilder {
         }
     }
 
+     public PdfDocumentBuilder keyValueBlock(String heading, List<String[]> pairs) {
+        try {
+            Paragraph block = new Paragraph();
+            block.add(new Chunk(sanitize(heading), boldFont));
+            for (String[] pair : pairs) {
+                block.add(Chunk.NEWLINE);
+                block.add(new Chunk(sanitize(pair[0]) + ": ", boldFont));
+                block.add(new Chunk(blankToDash(sanitize(pair[1])), normalFont));
+            }
+            block.setSpacingBefore(16);
+            block.setKeepTogether(true);
+            document.add(block);
+            return this;
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Không tạo được file PDF", e);
+        }
+    }
+    
     public PdfDocumentBuilder paragraph(String text) {
         try {
             Paragraph p = new Paragraph(sanitize(text), normalFont);
@@ -251,4 +269,5 @@ public class PdfDocumentBuilder {
             cb.restoreState();
         }
     }
+    
 }

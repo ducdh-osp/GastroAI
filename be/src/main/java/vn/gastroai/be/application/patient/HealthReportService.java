@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -108,8 +109,7 @@ public class HealthReportService {
         builder.keyValue("Họ tên", patient.getFullName());
         builder.keyValue("Số điện thoại", patient.getPhone());
         builder.keyValue("Ngày sinh", profile.dateOfBirth() == null ? null : DATE_FORMAT.format(profile.dateOfBirth()));
-        builder.keyValue("Giới tính",
-        profile.gender() == null ? null : GENDER_LABELS.get(profile.gender()));
+        builder.keyValue("Giới tính", profile.gender() == null ? null : GENDER_LABELS.get(profile.gender()));
         builder.keyValue("Chiều cao (cm)", profile.heightCm() == null ? null : profile.heightCm().toString());
         builder.keyValue("Cân nặng (kg)", profile.weightKg() == null ? null : profile.weightKg().toString());
 
@@ -143,8 +143,9 @@ public class HealthReportService {
                 new float[] {1.4f, 3, 2},
                 bristolLogs.stream().map(this::toBristolRow).toList());
 
-        builder.section("Tóm tắt");
-        appendSummary(builder, meals, bristolLogs);
+        // In ca muc Tom tat thanh 1 khoi giu tren cung 1 trang - truoc day in tung dong rieng
+        // nen bi cat doi khi gan cuoi trang (tieu de o trang 1, cac dong con lai o trang 2).
+        builder.keyValueBlock("Tóm tắt", buildSummary(meals, bristolLogs));
 
         builder.note("Thông tin do người dùng tự ghi nhận trên GastroAI, chỉ mang tính tham khảo, "
                 + "không thay thế chẩn đoán của bác sĩ.");
@@ -152,25 +153,30 @@ public class HealthReportService {
         return builder.build();
     }
 
-    private void appendSummary(PdfDocumentBuilder builder, List<FoodDiaryEntry> meals, List<BristolLog> bristolLogs) {
+    /** Tinh cac dong tom tat (nhan - gia tri), chua in gi vao PDF - keyValueBlock() se in ca khoi. */
+    private List<String[]> buildSummary(List<FoodDiaryEntry> meals, List<BristolLog> bristolLogs) {
+        List<String[]> lines = new ArrayList<>();
+
         Map<Integer, Long> bristolCounts = bristolLogs.stream()
                 .collect(Collectors.groupingBy(BristolLog::getBristolType, Collectors.counting()));
         for (int type = 1; type <= 7; type++) {
             long count = bristolCounts.getOrDefault(type, 0L);
             if (count > 0) {
-                builder.keyValue(BRISTOL_TYPE_LABELS.get(type), count + " lần");
+                lines.add(new String[] {BRISTOL_TYPE_LABELS.get(type), count + " lần"});
             }
         }
 
         long mealsWithSymptoms = meals.stream()
                 .filter(m -> m.getSymptomsAfterMeal() != null && !m.getSymptomsAfterMeal().isBlank())
                 .count();
-        builder.keyValue("Số bữa ăn có ghi triệu chứng", mealsWithSymptoms + " / " + meals.size());
+        lines.add(new String[] {"Số bữa ăn có ghi triệu chứng", mealsWithSymptoms + " / " + meals.size()});
 
         Set<LocalDate> daysWithRecord = new HashSet<>();
         meals.forEach(m -> daysWithRecord.add(m.getEatenAt().atZone(VietnamDateRange.ZONE).toLocalDate()));
         bristolLogs.forEach(b -> daysWithRecord.add(b.getLoggedAt().atZone(VietnamDateRange.ZONE).toLocalDate()));
-        builder.keyValue("Số ngày có ít nhất một ghi nhận", String.valueOf(daysWithRecord.size()));
+        lines.add(new String[] {"Số ngày có ít nhất một ghi nhận", String.valueOf(daysWithRecord.size())});
+
+        return lines;
     }
 
     private String[] toReminderRow(MedicationReminderResponse reminder) {
