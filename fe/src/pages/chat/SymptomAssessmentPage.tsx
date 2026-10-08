@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   assessSymptoms,
+  type CareRecommendation,
   type PatientGroup,
   type PrimarySymptom,
   type Progression,
@@ -160,6 +161,31 @@ function getAdvice(result: SymptomAssessmentResponse) {
   }
 }
 
+function getCareAdvice(careRecommendation?: CareRecommendation) {
+  if (careRecommendation === 'EMERGENCY_CARE') {
+    return {
+      type: 'error' as const,
+      title: 'Cần cấp cứu ngay',
+      description: 'Hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay.',
+    }
+  }
+  if (careRecommendation === 'SEE_DOCTOR') {
+    return {
+      type: 'warning' as const,
+      title: 'Nên gặp bác sĩ',
+      description: 'Hãy liên hệ cơ sở y tế để được tư vấn hoặc khám trực tiếp.',
+    }
+  }
+  if (careRecommendation === 'SELF_CARE_AT_HOME') {
+    return {
+      type: 'success' as const,
+      title: 'Tự chăm sóc tại nhà',
+      description: 'Nghỉ ngơi, uống đủ nước và theo dõi diễn tiến. Hãy gặp bác sĩ nếu triệu chứng nặng lên hoặc không cải thiện.',
+    }
+  }
+  return null
+}
+
 export default function SymptomAssessmentPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
@@ -229,6 +255,7 @@ export default function SymptomAssessmentPage() {
   const warningSet = new Set(answers.warningSigns ?? [])
   const emergencySelected = emergencyWarningOptions.some((option) => warningSet.has(option.value))
   const advice = result ? getAdvice(result) : null
+  const careAdvice = result ? getCareAdvice(result.careRecommendation) ?? advice : null
   const titleForSeverity = answers.reportedSeverity ? severityLabels[answers.reportedSeverity] : 'Chưa chọn'
 
   return (
@@ -261,7 +288,7 @@ export default function SymptomAssessmentPage() {
 
         {error && <Alert type="error" showIcon message={error} className="mb-4 shrink-0" />}
 
-        {result && advice ? (
+        {result && careAdvice ? (
           <div className="space-y-5 pb-6">
             <Card className="rounded-2xl border-black/5 shadow-sm">
               <Result
@@ -270,7 +297,7 @@ export default function SymptomAssessmentPage() {
                 title={<span className="flex flex-wrap items-center justify-center gap-2">Mức đánh giá: <Tag color={severityColors[result.severityLevel]}>{severityLabels[result.severityLevel]}</Tag></span>}
                 subTitle="Kết quả dựa trên câu trả lời bạn cung cấp, không phải chẩn đoán."
               />
-              <Alert type={advice.type} showIcon message={advice.title} description={advice.description} />
+              <Alert type={careAdvice.type} showIcon message={careAdvice.title} description={careAdvice.description} />
               {result.emergency && <Alert className="mt-3" type="error" showIcon message="Nếu dấu hiệu đang xảy ra, hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay." />}
             </Card>
 

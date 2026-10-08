@@ -1,6 +1,7 @@
 package vn.gastroai.be.application.triage;
 
 import org.junit.jupiter.api.Test;
+import vn.gastroai.be.domain.triage.CareRecommendation;
 import vn.gastroai.be.domain.triage.StructuredTriageResult;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput.ActivityImpact;
@@ -175,6 +176,27 @@ class TriageServiceTest {
         assertTrue(result.requiresClinicianReview());
         assertEquals(SeverityLevel.MODERATE, result.severityLevel());
         assertEquals(2, result.matchedGroups().size());
+    }
+
+    @Test
+    void recommendsTheAppropriateCareActionForEachSafetyLevel() {
+        StructuredTriageResult emergency = triageService.assess(input(SeverityLevel.MILD,
+                ActivityImpact.NONE, Progression.STABLE, Duration.ONE_TO_THREE_DAYS,
+                PatientGroup.ADULT, Set.of(WarningSign.BLOOD_IN_VOMIT)));
+        StructuredTriageResult needsReview = triageService.assess(input(SeverityLevel.MILD,
+                ActivityImpact.NONE, Progression.STABLE, Duration.UNSURE,
+                PatientGroup.ADULT, Set.of()));
+        StructuredTriageResult severe = triageService.assess(input(SeverityLevel.SEVERE,
+                ActivityImpact.NONE, Progression.STABLE, Duration.ONE_TO_THREE_DAYS,
+                PatientGroup.ADULT, Set.of()));
+        StructuredTriageResult selfCare = triageService.assess(input(SeverityLevel.MILD,
+                ActivityImpact.NONE, Progression.STABLE, Duration.ONE_TO_THREE_DAYS,
+                PatientGroup.ADULT, Set.of()));
+
+        assertEquals(CareRecommendation.EMERGENCY_CARE, emergency.careRecommendation());
+        assertEquals(CareRecommendation.SEE_DOCTOR, needsReview.careRecommendation());
+        assertEquals(CareRecommendation.SEE_DOCTOR, severe.careRecommendation());
+        assertEquals(CareRecommendation.SELF_CARE_AT_HOME, selfCare.careRecommendation());
     }
 
     private static SymptomAssessmentInput input(SeverityLevel severity, ActivityImpact impact,

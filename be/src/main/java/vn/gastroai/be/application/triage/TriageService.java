@@ -1,6 +1,7 @@
 package vn.gastroai.be.application.triage;
 
 import org.springframework.stereotype.Service;
+import vn.gastroai.be.domain.triage.CareRecommendation;
 import vn.gastroai.be.domain.triage.TriageResult;
 import vn.gastroai.be.domain.triage.StructuredTriageResult;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput;
@@ -170,8 +171,20 @@ public class TriageService {
             }
         }
 
+        CareRecommendation careRecommendation = recommendCare(severity, emergency, needsClinicianReview);
         return new StructuredTriageResult(severity, emergency, List.copyOf(matchedGroups),
-                List.copyOf(reasons), needsClinicianReview);
+                List.copyOf(reasons), needsClinicianReview, careRecommendation);
+    }
+
+    private static CareRecommendation recommendCare(SeverityLevel severity, boolean emergency,
+            boolean requiresClinicianReview) {
+        if (emergency) {
+            return CareRecommendation.EMERGENCY_CARE;
+        }
+        if (requiresClinicianReview || severity == SeverityLevel.SEVERE) {
+            return CareRecommendation.SEE_DOCTOR;
+        }
+        return CareRecommendation.SELF_CARE_AT_HOME;
     }
 
     /**
