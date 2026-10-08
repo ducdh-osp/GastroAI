@@ -18,6 +18,7 @@ export type SymptomDuration =
   | 'UNSURE'
 
 export type SeverityLevel = 'MILD' | 'MODERATE' | 'SEVERE' | 'UNDETERMINED'
+export type CareRecommendation = 'SELF_CARE_AT_HOME' | 'SEE_DOCTOR' | 'EMERGENCY_CARE'
 export type ActivityImpact = 'NONE' | 'SOME_LIMITATION' | 'PREVENTS_NORMAL_ACTIVITY'
 export type Progression = 'IMPROVING' | 'STABLE' | 'WORSENING'
 export type PatientGroup = 'ADULT' | 'UNDER_18' | 'PREGNANT_OR_RECENTLY_POSTPARTUM' | 'UNSURE'
@@ -58,13 +59,10 @@ export interface SymptomAssessmentResponse {
   matchedGroups: string[]
   reasonCodes: string[]
   requiresClinicianReview: boolean
+  careRecommendation: CareRecommendation
 }
 
-export interface SymptomAssessmentHistoryItem extends SymptomAssessmentRequest, SymptomAssessmentResponse {
-  severityLevel: SeverityLevel
-  matchedGroups: string[]
-  reasonCodes: string[]
-}
+export interface SymptomAssessmentHistoryItem extends SymptomAssessmentRequest, Omit<SymptomAssessmentResponse, 'careRecommendation'> {}
 
 export async function assessSymptoms(request: SymptomAssessmentRequest): Promise<SymptomAssessmentResponse> {
   const { data } = await apiClient.post<SymptomAssessmentResponse>('/patient/triage/assessments', request)

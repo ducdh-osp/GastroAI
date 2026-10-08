@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import vn.gastroai.be.api.patient.SymptomAssessmentResponse;
 import vn.gastroai.be.domain.auth.Patient;
+import vn.gastroai.be.domain.triage.CareRecommendation;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput;
 import vn.gastroai.be.domain.triage.SymptomAssessmentRecord;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
@@ -64,6 +65,7 @@ class SymptomAssessmentHistoryServiceTest {
         assertNotNull(response.assessedAt());
         assertTrue(response.emergency());
         assertFalse(response.requiresClinicianReview());
+        assertEquals(CareRecommendation.EMERGENCY_CARE, response.careRecommendation());
         verify(recordRepository).save(any(SymptomAssessmentRecord.class));
     }
 
@@ -87,6 +89,7 @@ class SymptomAssessmentHistoryServiceTest {
         SymptomAssessmentResponse response = service.assessAndSave(42L, assessmentInput(Set.of()));
 
         assertFalse(response.emergency());
+        assertEquals(CareRecommendation.SELF_CARE_AT_HOME, response.careRecommendation());
         verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), anyList());
     }
 

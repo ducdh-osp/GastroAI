@@ -7,5 +7,6 @@ public record StructuredTriageResult(
         boolean emergency,
         List<String> matchedGroups,
         List<String> reasonCodes,
-        boolean requiresClinicianReview) {
+        boolean requiresClinicianReview,
+        CareRecommendation careRecommendation) {
 }

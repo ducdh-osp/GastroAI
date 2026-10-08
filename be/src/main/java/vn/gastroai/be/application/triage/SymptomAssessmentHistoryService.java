@@ -67,7 +67,8 @@ public class SymptomAssessmentHistoryService {
                     patientId, null, null, messageContent, result.matchedGroups());
         }
         return new SymptomAssessmentResponse(saved.getId(), saved.getAssessedAt(), result.severityLevel(),
-                result.emergency(), result.matchedGroups(), result.reasonCodes(), result.requiresClinicianReview());
+                result.emergency(), result.matchedGroups(), result.reasonCodes(), result.requiresClinicianReview(),
+                result.careRecommendation());
     }
 
     @Transactional(value = "postgresTransactionManager", readOnly = true)
