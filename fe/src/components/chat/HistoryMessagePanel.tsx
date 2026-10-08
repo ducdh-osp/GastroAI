@@ -1,5 +1,6 @@
 import {
   DislikeTwoTone,
+  FileTextOutlined,
   LikeTwoTone,
   LoadingOutlined,
   MessageOutlined,
@@ -151,6 +152,21 @@ export function HistoryMessagePanel({
                     }`}
                   >
                     <MarkdownContent content={msg.content} />
+
+                    {msg.attachments.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+                        {msg.attachments.map((attachment) => attachment.previewUrl ? (
+                          <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer">
+                            <img src={attachment.previewUrl} alt={`Tệp đính kèm ${attachment.name}`} className="h-20 w-20 rounded-lg object-cover" />
+                          </a>
+                        ) : (
+                          <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="flex max-w-52 items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-xs text-slate-700 no-underline">
+                            <FileTextOutlined className="text-base text-teal-700" />
+                            <span className="truncate">{attachment.name}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Nguồn tham khảo */}
                     {msg.sources && msg.sources.length > 0 && <SourceReferences sources={msg.sources} />}

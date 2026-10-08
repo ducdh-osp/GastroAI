@@ -87,8 +87,10 @@ export interface ChatMessageDetail {
   relatedQuestions: string[]
   matchedGroups: string[]
   rating: RatingValue | null
-  attachments: ChatAttachmentDto[]
+  attachments: Attachment[]
 }
+
+export type ChatMessageDetailDto = Omit<ChatMessageDetail, 'attachments'> & { attachments: ChatAttachmentDto[] }
 
 const TRIAGE_GROUP_LABELS: Record<string, string> = {
   XUAT_HUYET_TIEU_HOA: 'nghi xuất huyết tiêu hóa',
@@ -347,8 +349,8 @@ export async function listChatSessions(page = 0, size = 20): Promise<ChatSession
 }
 
 /** Toàn bộ tin nhắn trong 1 phiên chat. */
-export async function getChatSessionMessages(sessionId: number): Promise<ChatMessageDetail[]> {
-  const { data } = await apiClient.get<ChatMessageDetail[]>(`/chat/sessions/${sessionId}`)
+export async function getChatSessionMessages(sessionId: number): Promise<ChatMessageDetailDto[]> {
+  const { data } = await apiClient.get<ChatMessageDetailDto[]>(`/chat/sessions/${sessionId}`)
   return data
 }
 

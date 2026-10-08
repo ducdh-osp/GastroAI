@@ -25,6 +25,7 @@ import { CmsAuthProvider } from '../stores/cmsAuthStore'
 import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
 import HealthReportPage from '../pages/patient/HealthReportPage'
+import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 
 export const router = createBrowserRouter([
   {
@@ -144,6 +145,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <SymptomAssessmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/articles',
+        element: (
+          <ProtectedRoute>
+            <KnowledgeLibraryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/articles/:slug',
+        element: (
+          <ProtectedRoute>
+            <KnowledgeLibraryPage />
           </ProtectedRoute>
         ),
       },

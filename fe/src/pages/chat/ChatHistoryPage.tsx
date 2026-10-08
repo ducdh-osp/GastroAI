@@ -1,8 +1,8 @@
 import { ClockCircleOutlined, LoadingOutlined, MessageOutlined } from '@ant-design/icons'
 import { Alert, Spin, Typography, message } from 'antd'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { deleteChatSession, downloadChatSessionPdf, getChatSessionMessages, listChatSessions } from '../../api/chat'
+import { deleteChatSession, downloadChatSessionPdf, getChatSessionMessages, listChatSessions, loadAttachmentsForDisplay } from '../../api/chat'
 import type { ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
 import { AppShell } from '../../components/layout/AppShell'
 import { HistorySessionItem } from '../../components/chat/HistorySessionItem'
@@ -21,12 +21,14 @@ export default function ChatHistoryPage() {
   // ── Phiên đang xem ──
   const [selectedSession, setSelectedSession] = useState<ChatSessionSummary | null>(null)
   const [messages, setMessages] = useState<ChatMessageDetail[]>([])
+  const attachmentUrls = useRef<string[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [messagesError, setMessagesError] = useState<string | null>(null)
   const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const [exportingId, setExportingId] = useState<number | null>(null)
+  useEffect(() => () => attachmentUrls.current.forEach((url) => URL.revokeObjectURL(url)), [])
   useEffect(() => {
     setLoadingSessions(true)
     setSessionsError(null)
@@ -37,11 +39,18 @@ export default function ChatHistoryPage() {
   }, [])
 
   async function handleSelectSession(session: ChatSessionSummary) {
+    attachmentUrls.current.forEach((url) => URL.revokeObjectURL(url))
+    attachmentUrls.current = []
     setSelectedSession(session)
     setMessagesError(null)
     setLoadingMessages(true)
     try {
-      const msgs = await getChatSessionMessages(session.id)
+      const dtos = await getChatSessionMessages(session.id)
+      const msgs = await Promise.all(dtos.map(async (msg) => ({
+        ...msg,
+        attachments: await loadAttachmentsForDisplay(msg.attachments).catch(() => []),
+      })))
+      attachmentUrls.current = msgs.flatMap((msg) => msg.attachments.map((attachment) => attachment.url))
       setMessages(msgs)
     } catch {
       setMessagesError('Không thể tải nội dung phiên chat.')
@@ -67,6 +76,8 @@ export default function ChatHistoryPage() {
       if (selectedSession?.id === sessionId) {
         setSelectedSession(null)
         setMessages([])
+        attachmentUrls.current.forEach((url) => URL.revokeObjectURL(url))
+        attachmentUrls.current = []
         setMessagesError(null)
       }
     } catch {
