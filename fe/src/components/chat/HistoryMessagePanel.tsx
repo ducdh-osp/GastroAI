@@ -1,5 +1,6 @@
 import {
   DislikeTwoTone,
+  FileImageOutlined,
   FileTextOutlined,
   LikeTwoTone,
   LoadingOutlined,
@@ -11,7 +12,9 @@ import {
   WarningFilled,
 } from '@ant-design/icons'
 import { Alert, Button, Spin, Tag, Tooltip, Typography } from 'antd'
-import type { ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
+import { useEffect, useState } from 'react'
+import { downloadChatAttachment, loadAttachmentForDisplay } from '../../api/chat'
+import type { ChatAttachmentDto, ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
 import { describeMatchedGroups } from '../../api/chat'
 import { MarkdownContent } from './MarkdownContent'
 import { SourceReferences } from './SourceReferences'
@@ -43,6 +46,61 @@ function RatingBadge({ rating }: { rating: string | null }) {
     <Tag color="error" icon={<DislikeTwoTone twoToneColor="#dc2626" />} className="ml-2 text-xs">
       Không hữu ích
     </Tag>
+  )
+}
+
+function HistoryAttachment({ attachment }: { attachment: ChatAttachmentDto }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
+
+  async function showImage() {
+    if (previewUrl) return
+    setLoading(true)
+    setError(null)
+    try {
+      const loaded = await loadAttachmentForDisplay(attachment)
+      const url = loaded.previewUrl ?? loaded.url
+      setPreviewUrl(url)
+    } catch {
+      setError('Không thể tải ảnh đính kèm.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function download() {
+    setLoading(true)
+    setError(null)
+    try {
+      await downloadChatAttachment(attachment)
+    } catch {
+      setError('Không thể tải tệp đính kèm.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const isImage = attachment.contentType.startsWith('image/')
+  return (
+    <div className="max-w-60 rounded-lg bg-white/90 px-2.5 py-2 text-xs text-slate-700">
+      {isImage && previewUrl ? (
+        <a href={previewUrl} target="_blank" rel="noreferrer" className="block">
+          <img src={previewUrl} alt={`Tệp đính kèm ${attachment.originalFilename}`} className="max-h-48 max-w-full rounded object-contain" />
+        </a>
+      ) : (
+        <div className="flex items-center gap-2">
+          {isImage ? <FileImageOutlined className="text-base text-teal-700" /> : <FileTextOutlined className="text-base text-teal-700" />}
+          <span className="min-w-0 flex-1 truncate">{attachment.originalFilename}</span>
+          <Button size="small" type="link" loading={loading} onClick={() => void (isImage ? showImage() : download())}>
+            {isImage ? 'Xem' : 'Tải'}
+          </Button>
+        </div>
+      )}
+      {error && <span role="alert" className="block text-red-600">{error}</span>}
+    </div>
   )
 }
 
@@ -155,16 +213,7 @@ export function HistoryMessagePanel({
 
                     {msg.attachments.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
-                        {msg.attachments.map((attachment) => attachment.previewUrl ? (
-                          <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer">
-                            <img src={attachment.previewUrl} alt={`Tệp đính kèm ${attachment.name}`} className="h-20 w-20 rounded-lg object-cover" />
-                          </a>
-                        ) : (
-                          <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="flex max-w-52 items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-xs text-slate-700 no-underline">
-                            <FileTextOutlined className="text-base text-teal-700" />
-                            <span className="truncate">{attachment.name}</span>
-                          </a>
-                        ))}
+                        {msg.attachments.map((attachment) => <HistoryAttachment key={attachment.id} attachment={attachment} />)}
                       </div>
                     )}
 

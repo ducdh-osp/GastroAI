@@ -2,20 +2,13 @@ import { ArrowLeftOutlined, ClockCircleOutlined, FileSearchOutlined, SearchOutli
 import { Alert, Button, Card, Empty, Input, Pagination, Select, Spin, Tag, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { getKnowledgeArticle, listKnowledgeArticles } from '../../api/articles'
+import { getKnowledgeArticle, listKnowledgeArticleCategories, listKnowledgeArticles } from '../../api/articles'
 import type { KnowledgeArticleDetail, KnowledgeArticleSummary } from '../../api/articles'
 import { AppShell } from '../../components/layout/AppShell'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 
 const { Text, Title } = Typography
 const PAGE_SIZE = 12
-const CATEGORY_OPTIONS = [
-  { value: 'Trào ngược dạ dày', label: 'Trào ngược dạ dày' },
-  { value: 'Đại tràng và ruột', label: 'Đại tràng và ruột' },
-  { value: 'Dạ dày', label: 'Dạ dày' },
-  { value: 'Dinh dưỡng và hấp thu', label: 'Dinh dưỡng và hấp thu' },
-]
-
 function KnowledgeArticleCard({ article }: { article: KnowledgeArticleSummary }) {
   return (
     <Link to={`/articles/${article.slug}`} className="block h-full no-underline">
@@ -42,7 +35,13 @@ function ArticleDetail({ slug }: { slug: string }) {
     setArticle(null)
     getKnowledgeArticle(slug)
       .then((result) => { if (!cancelled) setArticle(result) })
-      .catch(() => { if (!cancelled) setError('Không tìm thấy bài viết hoặc hiện không thể tải bài.') })
+      .catch((reason: unknown) => {
+        if (!cancelled) {
+          setError(reason instanceof Error && reason.message === 'ARTICLE_NOT_FOUND'
+            ? 'Không tìm thấy bài viết này.'
+            : 'Không thể tải bài viết. Vui lòng thử lại.')
+        }
+      })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [slug])
@@ -81,11 +80,20 @@ export default function KnowledgeLibraryPage() {
   const [queryInput, setQueryInput] = useState('')
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string>()
+  const [categories, setCategories] = useState<string[]>([])
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    listKnowledgeArticleCategories()
+      .then((result) => { if (!cancelled) setCategories(result) })
+      .catch(() => { if (!cancelled) setError('Không thể tải chủ đề bài viết.') })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     if (slug) return
@@ -118,6 +126,7 @@ export default function KnowledgeLibraryPage() {
               allowClear
               enterButton={<><SearchOutlined /> Tìm</>}
               placeholder="Tìm theo triệu chứng hoặc chủ đề"
+              maxLength={100}
               value={queryInput}
               onChange={(event) => setQueryInput(event.target.value)}
               onSearch={(value) => { setPage(0); setQuery(value.trim()) }}
@@ -126,7 +135,7 @@ export default function KnowledgeLibraryPage() {
             <Select
               allowClear
               placeholder="Tất cả chủ đề"
-              options={CATEGORY_OPTIONS}
+              options={categories.map((value) => ({ value, label: value }))}
               value={category}
               onChange={(value) => { setPage(0); setCategory(value) }}
               className="w-56"

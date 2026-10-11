@@ -87,10 +87,8 @@ export interface ChatMessageDetail {
   relatedQuestions: string[]
   matchedGroups: string[]
   rating: RatingValue | null
-  attachments: Attachment[]
+  attachments: ChatAttachmentDto[]
 }
-
-export type ChatMessageDetailDto = Omit<ChatMessageDetail, 'attachments'> & { attachments: ChatAttachmentDto[] }
 
 const TRIAGE_GROUP_LABELS: Record<string, string> = {
   XUAT_HUYET_TIEU_HOA: 'nghi xuất huyết tiêu hóa',
@@ -157,7 +155,7 @@ async function sendMessage(request: SendMessageRequest): Promise<Message & { ses
  * attachment.url (đường dẫn API) trực tiếp vì endpoint đó cần header Authorization mà
  * browser không tự gắn khi load ảnh/mở link thường (xem ChatHistoryController.downloadAttachment).
  */
-async function loadAttachmentForDisplay(dto: ChatAttachmentDto): Promise<Attachment> {
+export async function loadAttachmentForDisplay(dto: ChatAttachmentDto): Promise<Attachment> {
   const { data: blob } = await apiClient.get<Blob>(dto.url, { responseType: 'blob' })
   const objectUrl = URL.createObjectURL(blob)
   return {
@@ -349,9 +347,14 @@ export async function listChatSessions(page = 0, size = 20): Promise<ChatSession
 }
 
 /** Toàn bộ tin nhắn trong 1 phiên chat. */
-export async function getChatSessionMessages(sessionId: number): Promise<ChatMessageDetailDto[]> {
-  const { data } = await apiClient.get<ChatMessageDetailDto[]>(`/chat/sessions/${sessionId}`)
+export async function getChatSessionMessages(sessionId: number): Promise<ChatMessageDetail[]> {
+  const { data } = await apiClient.get<ChatMessageDetail[]>(`/chat/sessions/${sessionId}`)
   return data
+}
+
+/** Tải một file lịch sử theo yêu cầu, không tải trước toàn bộ tệp của phiên. */
+export async function downloadChatAttachment(dto: ChatAttachmentDto): Promise<void> {
+  await downloadFile(dto.url, dto.originalFilename)
 }
 
 /** Xóa một phiên chat cùng toàn bộ tin nhắn và đánh giá liên quan. */

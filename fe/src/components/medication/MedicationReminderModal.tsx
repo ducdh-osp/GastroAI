@@ -1,7 +1,8 @@
 import { Alert, DatePicker, Form, Input, Modal, Select, Switch } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { MedicationReminder, MedicationReminderRequest } from '../../api/medication'
+import { listCatalogItems } from '../../api/catalogs'
 
 interface MedicationReminderModalProps {
   open: boolean
@@ -12,7 +13,7 @@ interface MedicationReminderModalProps {
 }
 
 interface MedicationReminderFormValues {
-  medicineName: string
+  medicineName: string[]
   dosage: string
   timesOfDay: string[]
   treatmentDates: [Dayjs, Dayjs] | null
@@ -22,11 +23,13 @@ interface MedicationReminderFormValues {
 
 export function MedicationReminderModal({ open, reminder, saving, onCancel, onSubmit }: MedicationReminderModalProps) {
   const [form] = Form.useForm<MedicationReminderFormValues>()
+  const [medicineOptions, setMedicineOptions] = useState<{ value: string; label: string }[]>([])
+  const [catalogLoadError, setCatalogLoadError] = useState(false)
 
   useEffect(() => {
     if (!open) return
     form.setFieldsValue({
-      medicineName: reminder?.medicineName ?? '',
+      medicineName: reminder?.medicineName ? [reminder.medicineName] : [],
       dosage: reminder?.dosage ?? '',
       // BE co the tra "HH:mm" hoac "HH:mm:ss" tuy LocalTime co giay hay khong - thu ca 2.
       timesOfDay: reminder ? reminder.timesOfDay.map((time) => time.slice(0, 5)) : ['08:00'],
@@ -38,10 +41,23 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
     })
   }, [open, reminder, form])
 
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    listCatalogItems('MEDICATION')
+      .then((items) => {
+        if (cancelled) return
+        setMedicineOptions(items.map(({ name }) => ({ value: name, label: name })))
+        setCatalogLoadError(false)
+      })
+      .catch(() => { if (!cancelled) setCatalogLoadError(true) })
+    return () => { cancelled = true }
+  }, [open])
+
   function handleOk() {
     form.validateFields().then((values) => {
       onSubmit({
-        medicineName: values.medicineName,
+        medicineName: values.medicineName?.[0]?.trim() ?? '',
         dosage: values.dosage || null,
         timesOfDay: values.timesOfDay.map((time) => `${time}:00`),
         startDate: values.treatmentDates?.[0].format('YYYY-MM-DD') ?? null,
@@ -71,8 +87,13 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
           message="Chỉ tạo lịch cho thuốc/liều cần được nhắc"
           description="Lịch này được quản lý độc lập với danh sách thuốc không cần lịch nhắc trong Hồ sơ bệnh lý."
         />
-        <Form.Item label="Tên thuốc" name="medicineName" rules={[{ required: true, message: 'Nhập tên thuốc' }, { max: 200, message: 'Tên thuốc tối đa 200 ký tự' }]}>
-          <Input maxLength={200} showCount placeholder="Vd: Omeprazole" />
+        {catalogLoadError && <Alert className="mb-4" type="warning" showIcon message="Không tải được danh mục thuốc; bạn vẫn có thể tự nhập tên thuốc." />}
+        <Form.Item label="Tên thuốc" name="medicineName" rules={[{ validator: async (_, names: string[] | undefined) => {
+          const name = names?.[0]?.trim() ?? ''
+          if (!name) throw new Error('Nhập tên thuốc')
+          if (name.length > 200) throw new Error('Tên thuốc tối đa 200 ký tự')
+        } }]}>
+          <Select mode="tags" maxCount={1} options={medicineOptions} placeholder="Chọn hoặc nhập tên thuốc" className="w-full" />
         </Form.Item>
         <Form.Item label="Liều lượng" name="dosage" rules={[{ max: 200, message: 'Liều lượng tối đa 200 ký tự' }]}>
           <Input maxLength={200} showCount placeholder="Vd: 20mg, 1 viên" />

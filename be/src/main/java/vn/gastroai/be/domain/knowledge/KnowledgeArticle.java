@@ -54,6 +54,12 @@ public class KnowledgeArticle {
     @Column(nullable = false)
     private boolean published;
 
+    @Column(name = "medical_reviewer", length = 200)
+    private String medicalReviewer;
+
+    @Column(name = "medical_reviewed_at")
+    private Instant medicalReviewedAt;
+
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 

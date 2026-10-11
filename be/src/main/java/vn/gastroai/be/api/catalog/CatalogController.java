@@ -8,6 +8,7 @@ import vn.gastroai.be.domain.catalog.CatalogType;
 import vn.gastroai.be.infrastructure.persistence.postgres.CatalogItemRepository;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/v1/catalogs")
@@ -20,8 +21,14 @@ public class CatalogController {
     }
 
     @GetMapping("/{type}")
-    public List<CatalogItemResponse> list(@PathVariable CatalogType type) {
-        return catalogItemRepository.findByTypeAndActiveTrueOrderBySortOrderAscNameAsc(type)
+    public List<CatalogItemResponse> list(@PathVariable String type) {
+        CatalogType normalizedType;
+        try {
+            normalizedType = CatalogType.valueOf(type.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("type phai la SYMPTOM, CONDITION hoac MEDICATION");
+        }
+        return catalogItemRepository.findByTypeAndActiveTrueOrderBySortOrderAscNameAsc(normalizedType)
                 .stream().map(CatalogItemResponse::from).toList();
     }
 }

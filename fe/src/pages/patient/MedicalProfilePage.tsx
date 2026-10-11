@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMedicalProfile, updateMedicalProfile } from '../../api/medicalProfile'
 import type { Gender } from '../../api/medicalProfile'
+import { listCatalogItems } from '../../api/catalogs'
 import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
@@ -22,9 +23,9 @@ interface MedicalProfileFormValues {
   weightKg: number | null
   medicalHistory: string
   allergies: string
-  chronicConditions: string
+  chronicConditions: string[]
   pastSurgeries: string
-  currentMedications: string
+  currentMedications: string[]
   dietaryRestrictions: string
 }
 
@@ -57,6 +58,9 @@ export default function MedicalProfilePage() {
   const [exists, setExists] = useState(false)
   const [version, setVersion] = useState<number | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  const [conditionOptions, setConditionOptions] = useState<{ value: string; label: string }[]>([])
+  const [medicationOptions, setMedicationOptions] = useState<{ value: string; label: string }[]>([])
+  const [catalogLoadError, setCatalogLoadError] = useState(false)
   const loadSequence = useRef(0)
 
   const loadProfile = useCallback(() => {
@@ -71,9 +75,9 @@ export default function MedicalProfilePage() {
           weightKg: profile.weightKg,
           medicalHistory: profile.medicalHistory ?? '',
           allergies: listToText(profile.allergies),
-          chronicConditions: listToText(profile.chronicConditions),
+          chronicConditions: profile.chronicConditions,
           pastSurgeries: listToText(profile.pastSurgeries),
-          currentMedications: listToText(profile.currentMedications),
+          currentMedications: profile.currentMedications,
           dietaryRestrictions: listToText(profile.dietaryRestrictions),
         })
         setExists(profile.exists)
@@ -93,6 +97,18 @@ export default function MedicalProfilePage() {
     void loadProfile()
     return () => { loadSequence.current += 1 }
   }, [loadProfile])
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([listCatalogItems('CONDITION'), listCatalogItems('MEDICATION')])
+      .then(([conditions, medications]) => {
+        if (cancelled) return
+        setConditionOptions(conditions.map(({ name }) => ({ value: name, label: name })))
+        setMedicationOptions(medications.map(({ name }) => ({ value: name, label: name })))
+      })
+      .catch(() => { if (!cancelled) setCatalogLoadError(true) })
+    return () => { cancelled = true }
+  }, [])
 
   function retryLoad() {
     setLoading(true)
@@ -115,9 +131,9 @@ export default function MedicalProfilePage() {
         weightKg: values.weightKg ?? null,
         medicalHistory: values.medicalHistory ?? '',
         allergies: textToList(values.allergies),
-        chronicConditions: textToList(values.chronicConditions),
+        chronicConditions: values.chronicConditions ?? [],
         pastSurgeries: textToList(values.pastSurgeries),
-        currentMedications: textToList(values.currentMedications),
+        currentMedications: values.currentMedications ?? [],
         dietaryRestrictions: textToList(values.dietaryRestrictions),
       })
       setExists(profile.exists)
@@ -158,6 +174,7 @@ export default function MedicalProfilePage() {
           ) : (
             <>
               {saveError && <Alert type="error" message={saveError} showIcon className="mb-4" />}
+              {catalogLoadError && <Alert type="warning" message="Không tải được danh mục gợi ý; bạn vẫn có thể tự nhập nội dung." showIcon className="mb-4" />}
               {success && <Alert type="success" message={success} showIcon className="mb-4" />}
               {exists && updatedAt && (
                 <Text type="secondary" className="mb-4 block text-xs">
@@ -186,7 +203,7 @@ export default function MedicalProfilePage() {
                 </div>
 
                 <Form.Item label="Bệnh nền đang mắc" name="chronicConditions">
-                  <Input.TextArea rows={2} placeholder="Nhập các bệnh nền, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
+                  <Select mode="tags" tokenSeparators={[',']} options={conditionOptions} placeholder="Chọn hoặc nhập bệnh lý" className="w-full" />
                 </Form.Item>
                 <Form.Item label="Tiền sử phẫu thuật" name="pastSurgeries">
                   <Input.TextArea rows={2} placeholder="Nhập các lần phẫu thuật, mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
@@ -204,7 +221,7 @@ export default function MedicalProfilePage() {
                     </>
                   }
                 >
-                  <Input.TextArea rows={2} placeholder="Vd: thuốc bác sĩ khác kê, dùng khi cần; mỗi mục một dòng hoặc ngăn cách bằng dấu phẩy" />
+                  <Select mode="tags" tokenSeparators={[',']} options={medicationOptions} placeholder="Chọn hoặc nhập thuốc" className="w-full" />
                 </Form.Item>
                 <Form.Item label="Chế độ ăn đặc biệt / không dung nạp" name="dietaryRestrictions">
                   <Input.TextArea rows={2} placeholder="Vd: không dung nạp lactose, ăn chay..." />

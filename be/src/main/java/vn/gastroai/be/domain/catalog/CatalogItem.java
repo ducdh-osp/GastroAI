@@ -33,6 +33,9 @@ public class CatalogItem {
     @Column(nullable = false, length = 200)
     private String name;
 
+    @Column(name = "triage_code", length = 80)
+    private String triageCode;
+
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
