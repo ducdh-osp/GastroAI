@@ -8,6 +8,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.gastroai.be.application.patient.FoodDiaryService;
+import vn.gastroai.be.application.patient.FoodSymptomCorrelationService;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
@@ -34,6 +35,9 @@ class FoodDiaryControllerTest {
 
     @MockitoBean
     private FoodDiaryService foodDiaryService;
+
+    @MockitoBean
+    private FoodSymptomCorrelationService foodSymptomCorrelationService;
 
     @MockitoBean
     private JwtService jwtService;
@@ -111,6 +115,36 @@ class FoodDiaryControllerTest {
     @WithMockUser(username = "1", roles = "ADMIN")
     void trashRejectsAdminRole() throws Exception {
         mockMvc.perform(get("/api/v1/patient/food-diary/trash").with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void sensitivityProfileReturnsOkWithDefaultDays() throws Exception {
+        when(foodSymptomCorrelationService.analyze(1L, 90))
+                .thenReturn(new FoodSensitivityProfileResponse(true, 20, 90, 25.0, List.of(
+                        new FoodCorrelationItem("sua", 4, 3, 75.0))));
+
+        mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasEnoughData").value(true))
+                .andExpect(jsonPath("$.topCorrelations[0].foodKeyword").value("sua"));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void sensitivityProfileRejectsDaysOutOfRange() throws Exception {
+        mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").param("days", "0").with(csrf()))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").param("days", "366").with(csrf()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "ADMIN")
+    void sensitivityProfileRejectsAdminRole() throws Exception {
+        mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").with(csrf()))
                 .andExpect(status().isForbidden());
     }
 }

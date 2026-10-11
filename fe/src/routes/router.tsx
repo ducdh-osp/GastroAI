@@ -13,6 +13,7 @@ import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
 import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
 import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
+import FoodSensitivityProfilePage from '../pages/patient/FoodSensitivityProfilePage'
 import BristolPage from '../pages/patient/BristolPage'
 import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
 import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
@@ -97,6 +98,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FoodDiaryHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/food-sensitivity',
+        element: (
+          <ProtectedRoute>
+            <FoodSensitivityProfilePage />
           </ProtectedRoute>
         ),
       },

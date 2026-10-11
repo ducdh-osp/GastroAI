@@ -1,4 +1,4 @@
-import { BarChartOutlined, CoffeeOutlined, CommentOutlined, DownOutlined, ExperimentOutlined, FilePdfOutlined, FileSearchOutlined, FileTextOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LineChartOutlined, LogoutOutlined, MedicineBoxOutlined, MessageOutlined } from '@ant-design/icons'
+import { BarChartOutlined, BulbOutlined, CoffeeOutlined, CommentOutlined, DownOutlined, ExperimentOutlined, FilePdfOutlined, FileSearchOutlined, FileTextOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LineChartOutlined, LogoutOutlined, MedicineBoxOutlined, MessageOutlined } from '@ant-design/icons'
 import { Dropdown } from 'antd'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { key: 'medical-profile', label: 'Hồ sơ bệnh lý', icon: <FileTextOutlined />, to: '/medical-profile' },
   { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
   { key: 'food-diary-history', label: 'Lịch sử ăn uống', icon: <BarChartOutlined />, to: '/food-diary-history' },
+  { key: 'food-sensitivity', label: 'Nhạy cảm thực phẩm', icon: <BulbOutlined />, to: '/food-sensitivity' },
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
   { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
   { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },

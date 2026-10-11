@@ -5,20 +5,25 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.patient.FoodDiaryService;
+import vn.gastroai.be.application.patient.FoodSymptomCorrelationService;
 import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
 import java.util.List;
 
-/** UC0011 (CRUD nhat ky an uong) + UC0012 (xem lich su/bieu do) + UC0020 (thung rac). */
+/** UC0011 (CRUD nhat ky an uong) + UC0012 (xem lich su/bieu do) + UC0020 (thung rac)
+ * + UC0022/UC0023 (phan tich tuong quan thuc pham - trieu chung). */
 @RestController
 @RequestMapping("/api/v1/patient/food-diary")
 public class FoodDiaryController {
 
     private final FoodDiaryService foodDiaryService;
+    private final FoodSymptomCorrelationService foodSymptomCorrelationService;
 
-    public FoodDiaryController(FoodDiaryService foodDiaryService) {
+    public FoodDiaryController(FoodDiaryService foodDiaryService,
+                               FoodSymptomCorrelationService foodSymptomCorrelationService) {
         this.foodDiaryService = foodDiaryService;
+        this.foodSymptomCorrelationService = foodSymptomCorrelationService;
     }
 
     @PostMapping
@@ -82,5 +87,18 @@ public class FoodDiaryController {
             @PathVariable Long id,
             Principal principal, Authentication authentication) {
         return foodDiaryService.restore(AuthenticatedRequest.patientId(principal, authentication), id);
+    }
+
+    /** UC0022/UC0023 - ho so nhay cam thuc pham: top tu khoa mon an hay di kem trieu chung,
+     * tinh tu nhat ky an uong + nhat ky Bristol trong "days" ngay gan nhat. */
+    @GetMapping("/sensitivity-profile")
+    public FoodSensitivityProfileResponse sensitivityProfile(
+            @RequestParam(defaultValue = "90") int days,
+            Principal principal, Authentication authentication) {
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
+        if (days < 1 || days > 365) {
+            throw new IllegalArgumentException("days trong khoang 1..365");
+        }
+        return foodSymptomCorrelationService.analyze(patientId, days);
     }
 }
