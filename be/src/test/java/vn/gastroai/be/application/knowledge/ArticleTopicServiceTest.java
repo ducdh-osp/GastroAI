@@ -112,6 +112,15 @@ class ArticleTopicServiceTest {
     }
 
     @Test
+    void updateRejectsStaleVersionWithOptimisticLockingException() {
+        ArticleTopic existing = topic(1L, "Dạ dày", 10);
+        when(topics.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(org.springframework.orm.ObjectOptimisticLockingFailureException.class,
+                () -> service.update(1L, new ArticleTopicRequest("Dạ dày mới", 10, 999L)));
+    }
+
+    @Test
     void deleteBlockedWhenArticlesStillUseTopic() {
         ArticleTopic existing = topic(1L, "Dạ dày", 10);
         when(topics.findById(1L)).thenReturn(Optional.of(existing));

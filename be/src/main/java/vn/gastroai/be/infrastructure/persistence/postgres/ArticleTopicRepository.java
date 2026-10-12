@@ -11,5 +11,7 @@ public interface ArticleTopicRepository extends JpaRepository<ArticleTopic, Long
 
     boolean existsByNameIgnoreCase(String name);
 
+    java.util.Optional<ArticleTopic> findByNameIgnoreCase(String name);
+
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 }

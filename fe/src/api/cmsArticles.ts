@@ -13,6 +13,7 @@ export interface CmsArticleSummary {
   medicalReviewedAt: string | null
   sortOrder: number
   updatedAt: string
+  version?: number
 }
 
 /** UC0065 - Chi tiết đầy đủ bài viết cho form soạn thảo CMS. */
@@ -45,11 +46,13 @@ export interface CmsArticleInput {
   published?: boolean
   medicalReviewer?: string | null
   sortOrder?: number | null
+  version?: number | null
 }
 
 export interface CmsArticlePublishInput {
   published: boolean
   medicalReviewer?: string | null
+  version?: number | null
 }
 
 export async function listCmsArticles(params: {

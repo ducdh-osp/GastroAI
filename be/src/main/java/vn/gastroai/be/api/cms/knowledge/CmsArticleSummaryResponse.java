@@ -16,8 +16,17 @@ public record CmsArticleSummaryResponse(
         String medicalReviewer,
         Instant medicalReviewedAt,
         Integer sortOrder,
-        Instant updatedAt
+        Instant updatedAt,
+        Long version
 ) {
+    public CmsArticleSummaryResponse(
+            Long id, String slug, String title, String summary, String category,
+            Integer readingMinutes, boolean published, String medicalReviewer,
+            Instant medicalReviewedAt, Integer sortOrder, Instant updatedAt
+    ) {
+        this(id, slug, title, summary, category, readingMinutes, published, medicalReviewer, medicalReviewedAt, sortOrder, updatedAt, 0L);
+    }
+
     public static CmsArticleSummaryResponse from(KnowledgeArticle article) {
         return new CmsArticleSummaryResponse(
                 article.getId(),
@@ -30,7 +39,8 @@ public record CmsArticleSummaryResponse(
                 article.getMedicalReviewer(),
                 article.getMedicalReviewedAt(),
                 article.getSortOrder(),
-                article.getUpdatedAt()
+                article.getUpdatedAt(),
+                article.getVersion()
         );
     }
 }

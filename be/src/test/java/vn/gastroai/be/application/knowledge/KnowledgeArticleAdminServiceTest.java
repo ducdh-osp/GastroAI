@@ -1,13 +1,17 @@
 package vn.gastroai.be.application.knowledge;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import vn.gastroai.be.api.cms.knowledge.CmsArticleDetailResponse;
 import vn.gastroai.be.api.cms.knowledge.CmsArticlePublishRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsArticleRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsArticleSummaryResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
+import vn.gastroai.be.domain.knowledge.ArticleTopic;
 import vn.gastroai.be.domain.knowledge.KnowledgeArticle;
+import vn.gastroai.be.infrastructure.persistence.postgres.ArticleTopicRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.KnowledgeArticleRepository;
 
 import java.time.Instant;
@@ -15,20 +19,23 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class KnowledgeArticleAdminServiceTest {
 
     private final KnowledgeArticleRepository articleRepository = mock(KnowledgeArticleRepository.class);
-    private final KnowledgeArticleAdminService service = new KnowledgeArticleAdminService(articleRepository);
+    private final ArticleTopicRepository topicRepository = mock(ArticleTopicRepository.class);
+    private final KnowledgeArticleAdminService service = new KnowledgeArticleAdminService(articleRepository, topicRepository);
+
+    @BeforeEach
+    void setupTopicMock() {
+        when(topicRepository.findByNameIgnoreCase(any())).thenAnswer(inv -> {
+            String name = inv.getArgument(0);
+            return Optional.of(new ArticleTopic(name, 10));
+        });
+    }
 
     private KnowledgeArticle sampleArticle(Long id, String slug, String title, String category, boolean published) {
         KnowledgeArticle a = new KnowledgeArticle();
@@ -43,9 +50,12 @@ class KnowledgeArticleAdminServiceTest {
         a.setSourceUrl("https://niddk.nih.gov");
         a.setSourceCheckedAt(LocalDate.of(2026, 10, 8));
         a.setPublished(published);
+        a.setMedicalReviewer(published ? "BS. Nguyễn Văn A" : null);
+        a.setMedicalReviewedAt(published ? Instant.now() : null);
         a.setSortOrder(10);
         a.setCreatedAt(Instant.now());
         a.setUpdatedAt(Instant.now());
+        a.setVersion(0L);
         return a;
     }
 
@@ -72,7 +82,7 @@ class KnowledgeArticleAdminServiceTest {
     }
 
     @Test
-    void createAutoGeneratesSlugAndCalculatesReadingMinutes() {
+    void createAutoGeneratesSlugAndEnforcesMedicalReviewerForPublished() {
         when(articleRepository.existsBySlug("viem-loet-da-day")).thenReturn(false);
         when(articleRepository.findAllByOrderBySortOrderAscTitleAsc()).thenReturn(List.of());
         when(articleRepository.save(any(KnowledgeArticle.class))).thenAnswer(inv -> {
@@ -93,6 +103,7 @@ class KnowledgeArticleAdminServiceTest {
                 null,
                 true,
                 "BS. Nguyễn Văn A",
+                null,
                 null
         );
 
@@ -100,56 +111,118 @@ class KnowledgeArticleAdminServiceTest {
 
         assertEquals("viem-loet-da-day", res.slug());
         assertEquals("Viêm loét dạ dày", res.title());
-        assertEquals(1, res.readingMinutes()); // ~17 từ -> 1 phút
+        assertEquals(1, res.readingMinutes());
         assertTrue(res.published());
         assertEquals("BS. Nguyễn Văn A", res.medicalReviewer());
         assertNotNull(res.medicalReviewedAt());
     }
 
     @Test
-    void createRejectsDuplicateManualSlug() {
-        when(articleRepository.existsBySlug("custom-slug")).thenReturn(true);
+    void createRejectsPublishedWithoutReviewer() {
+        CmsArticleRequest req = new CmsArticleRequest(
+                "Viêm loét dạ dày",
+                null,
+                "Tóm tắt",
+                "Dạ dày",
+                null,
+                "Nội dung bài viết",
+                "Nguồn",
+                "https://example.com",
+                null,
+                true,
+                null, // Không có reviewer
+                null,
+                null
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> service.create(req));
+    }
+
+    @Test
+    void createRejectsNonExistentCategory() {
+        when(topicRepository.findByNameIgnoreCase("Chủ đề lạ")).thenReturn(Optional.empty());
 
         CmsArticleRequest req = new CmsArticleRequest(
                 "Tiêu đề",
-                "custom-slug",
+                null,
                 "Tóm tắt",
-                "Dạ dày",
-                2,
+                "Chủ đề lạ",
+                null,
                 "Nội dung",
                 "Nguồn",
                 "https://example.com",
                 null,
                 false,
                 null,
+                null,
                 null
         );
 
-        assertThrows(IllegalStateException.class, () -> service.create(req));
+        assertThrows(IllegalArgumentException.class, () -> service.create(req));
     }
 
     @Test
-    void updateValidatesDuplicateSlugForOtherArticles() {
+    void updateUnpublishesWhenContentChangedWithoutReviewer() {
         KnowledgeArticle existing = sampleArticle(1L, "slug-cu", "Tiêu đề cũ", "Dạ dày", true);
         when(articleRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(articleRepository.existsBySlugAndIdNot("slug-trung", 1L)).thenReturn(true);
+        when(articleRepository.save(existing)).thenReturn(existing);
 
         CmsArticleRequest req = new CmsArticleRequest(
-                "Tiêu đề mới",
-                "slug-trung",
+                "Tiêu đề mới hoàn toàn",
+                null,
                 "Tóm tắt mới",
                 "Dạ dày",
-                5,
-                "Nội dung mới",
+                null,
+                "Nội dung mới đã sửa chữa",
+                "Nguồn",
+                "https://example.com",
+                null,
+                true, // Muốn giữ published nhưng không đưa reviewer mới
+                null,
+                null,
+                0L
+        );
+
+        CmsArticleDetailResponse res = service.update(1L, req);
+
+        // Hệ thống tự động chuyển về bản nháp và xóa medicalReviewedAt để bác sĩ duyệt lại
+        assertFalse(res.published());
+        assertNull(res.medicalReviewedAt());
+    }
+
+    @Test
+    void updateChecksOptimisticLockVersion() {
+        KnowledgeArticle existing = sampleArticle(1L, "slug-cu", "Tiêu đề cũ", "Dạ dày", true);
+        existing.setVersion(5L);
+        when(articleRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        CmsArticleRequest req = new CmsArticleRequest(
+                "Tiêu đề",
+                null,
+                "Tóm tắt",
+                "Dạ dày",
+                null,
+                "Nội dung",
                 "Nguồn",
                 "https://example.com",
                 null,
                 true,
+                "BS. A",
                 null,
-                null
+                4L // Version cũ -> Conflict
         );
 
-        assertThrows(IllegalStateException.class, () -> service.update(1L, req));
+        assertThrows(ObjectOptimisticLockingFailureException.class, () -> service.update(1L, req));
+    }
+
+    @Test
+    void setPublishedRequiresMedicalReviewer() {
+        KnowledgeArticle existing = sampleArticle(1L, "slug-1", "Tiêu đề", "Dạ dày", false);
+        existing.setMedicalReviewer(null);
+        when(articleRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        CmsArticlePublishRequest req = new CmsArticlePublishRequest(true, null, 0L);
+        assertThrows(IllegalArgumentException.class, () -> service.setPublished(1L, req));
     }
 
     @Test
@@ -158,7 +231,7 @@ class KnowledgeArticleAdminServiceTest {
         when(articleRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(articleRepository.save(existing)).thenReturn(existing);
 
-        CmsArticlePublishRequest req = new CmsArticlePublishRequest(true, "BS. Trần Văn B");
+        CmsArticlePublishRequest req = new CmsArticlePublishRequest(true, "BS. Trần Văn B", 0L);
         CmsArticleDetailResponse res = service.setPublished(1L, req);
 
         assertTrue(res.published());

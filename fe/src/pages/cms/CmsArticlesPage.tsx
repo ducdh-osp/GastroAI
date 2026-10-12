@@ -12,7 +12,6 @@ import {
 } from '../../api/cmsArticles'
 import { listArticleTopics, type ArticleTopic } from '../../api/cmsArticleTopics'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
-import { useCmsAuth } from '../../stores/cmsAuthStore'
 import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
@@ -25,7 +24,6 @@ const STATUS_OPTIONS = [
 
 export default function CmsArticlesPage() {
   const navigate = useNavigate()
-  const { user } = useCmsAuth()
 
   const [articles, setArticles] = useState<CmsArticleSummary[]>([])
   const [topics, setTopics] = useState<ArticleTopic[]>([])
@@ -90,11 +88,16 @@ export default function CmsArticlesPage() {
 
   async function handleTogglePublish(article: CmsArticleSummary) {
     const nextPublished = !article.published
+    if (nextPublished && !article.medicalReviewer?.trim()) {
+      message.warning('Bài viết chưa có bác sĩ duyệt y khoa độc lập. Vui lòng mở chỉnh sửa để hoàn tất kiểm duyệt trước khi xuất bản.')
+      return
+    }
     setTogglingId(article.id)
     try {
       await publishCmsArticle(article.id, {
         published: nextPublished,
-        medicalReviewer: nextPublished ? (article.medicalReviewer || user?.fullName || 'Bác sĩ kiểm duyệt') : undefined,
+        medicalReviewer: nextPublished ? article.medicalReviewer : undefined,
+        version: article.version,
       })
       message.success(nextPublished ? 'Đã xuất bản bài viết.' : 'Đã chuyển về bản nháp.')
       load()
@@ -204,7 +207,7 @@ export default function CmsArticlesPage() {
           </Tooltip>
           <Popconfirm
             title="Xoá bài viết này?"
-            description="Bài viết sẽ bị xoá khỏi thư viện của bệnh nhân."
+            description="Bài viết sẽ bị xoá vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác."
             okText="Xoá"
             cancelText="Huỷ"
             okButtonProps={{ danger: true }}

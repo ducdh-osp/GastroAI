@@ -6,11 +6,13 @@ export interface ArticleTopic {
   name: string
   sortOrder: number
   articleCount: number
+  version?: number
 }
 
 export interface ArticleTopicInput {
   name: string
   sortOrder?: number | null
+  version?: number | null
 }
 
 export async function listArticleTopics(): Promise<ArticleTopic[]> {

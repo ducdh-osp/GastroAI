@@ -29,7 +29,6 @@ import {
 import { listArticleTopics, type ArticleTopic } from '../../api/cmsArticleTopics'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
-import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 const { Title, Text } = Typography
 
@@ -52,10 +51,10 @@ export default function CmsArticleEditorPage() {
   const { id } = useParams<{ id?: string }>()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
-  const { user } = useCmsAuth()
 
   const [form] = Form.useForm<FormValues>()
   const [topics, setTopics] = useState<ArticleTopic[]>([])
+  const [articleVersion, setArticleVersion] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,7 +74,7 @@ export default function CmsArticleEditorPage() {
       form.setFieldsValue({
         published: false,
         sourceCheckedAt: dayjs(),
-        medicalReviewer: user?.fullName || undefined,
+        medicalReviewer: undefined,
         readingMinutes: undefined,
       })
       return
@@ -85,6 +84,7 @@ export default function CmsArticleEditorPage() {
     setError(null)
     getCmsArticle(Number(id))
       .then((article) => {
+        setArticleVersion(article.version)
         form.setFieldsValue({
           title: article.title,
           slug: article.slug,
@@ -105,7 +105,7 @@ export default function CmsArticleEditorPage() {
         setError(extractArticleError(err, 'Không thể tải thông tin bài viết.'))
       })
       .finally(() => setLoading(false))
-  }, [id, form, user])
+  }, [id, form])
 
   // Tự động tính thời gian đọc khi người dùng nhập nội dung nếu chưa nhập số thủ công
   function handleContentChange(val: string) {
@@ -135,6 +135,7 @@ export default function CmsArticleEditorPage() {
         medicalReviewer: values.medicalReviewer?.trim() || undefined,
         published: values.published,
         sortOrder: values.sortOrder,
+        version: isEdit ? articleVersion : undefined,
       }
 
       if (isEdit && id) {
@@ -289,16 +290,48 @@ export default function CmsArticleEditorPage() {
               {/* Cột phải: Cài đặt xuất bản & nguồn */}
               <Col xs={24} lg={8}>
                 <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Xuất bản & Kiểm duyệt">
+                  {isEdit && (
+                    <Alert
+                      type="info"
+                      showIcon
+                      className="mb-4 text-xs"
+                      message="Quy định kiểm duyệt y khoa"
+                      description="Khi sửa nội dung bài viết đã công khai mà không có thông tin duyệt y khoa mới, bài viết sẽ tự động chuyển về Bản nháp để yêu cầu kiểm duyệt lại."
+                    />
+                  )}
+
                   <Form.Item name="published" label="Trạng thái xuất bản" valuePropName="checked">
                     <Switch checkedChildren="Công khai" unCheckedChildren="Bản nháp" />
                   </Form.Item>
 
                   <Form.Item
-                    name="medicalReviewer"
-                    label="Bác sĩ duyệt y khoa"
-                    extra="Tên bác sĩ hoặc chuyên gia phụ trách duyệt nội dung bài viết này."
+                    noStyle
+                    shouldUpdate={(prev, curr) => prev.published !== curr.published}
                   >
-                    <Input placeholder="Ví dụ: BS. Nguyễn Văn A" maxLength={200} />
+                    {({ getFieldValue }) => {
+                      const isPublished = Boolean(getFieldValue('published'))
+                      return (
+                        <Form.Item
+                          name="medicalReviewer"
+                          label="Bác sĩ duyệt y khoa"
+                          extra={
+                            isPublished
+                              ? 'Bắt buộc khi xuất bản công khai. Người duyệt phải độc lập với người biên soạn.'
+                              : 'Tên bác sĩ hoặc chuyên gia phụ trách duyệt nội dung bài viết này.'
+                          }
+                          rules={[
+                            {
+                              required: isPublished,
+                              whitespace: true,
+                              message: 'Vui lòng nhập tên bác sĩ duyệt y khoa trước khi công khai bài viết',
+                            },
+                            { max: 200, message: 'Tối đa 200 ký tự' },
+                          ]}
+                        >
+                          <Input placeholder="Ví dụ: BS. CKII Nguyễn Văn A" maxLength={200} />
+                        </Form.Item>
+                      )
+                    }}
                   </Form.Item>
 
                   <Form.Item
@@ -335,7 +368,12 @@ export default function CmsArticleEditorPage() {
                   </Form.Item>
 
                   <Form.Item name="sourceCheckedAt" label="Ngày kiểm tra nguồn">
-                    <DatePicker className="w-full" format="DD/MM/YYYY" placeholder="Chọn ngày" />
+                    <DatePicker
+                      className="w-full"
+                      format="DD/MM/YYYY"
+                      placeholder="Chọn ngày"
+                      disabledDate={(current) => Boolean(current && current > dayjs().endOf('day'))}
+                    />
                   </Form.Item>
                 </Card>
               </Col>

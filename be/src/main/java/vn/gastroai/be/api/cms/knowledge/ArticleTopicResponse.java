@@ -5,6 +5,10 @@ public record ArticleTopicResponse(
         Long id,
         String name,
         int sortOrder,
-        long articleCount
+        long articleCount,
+        Long version
 ) {
+    public ArticleTopicResponse(Long id, String name, int sortOrder, long articleCount) {
+        this(id, name, sortOrder, articleCount, 0L);
+    }
 }

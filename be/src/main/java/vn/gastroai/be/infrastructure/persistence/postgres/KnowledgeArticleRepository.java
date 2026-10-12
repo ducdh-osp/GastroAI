@@ -18,8 +18,6 @@ public interface KnowledgeArticleRepository extends JpaRepository<KnowledgeArtic
 
     Optional<KnowledgeArticle> findBySlugAndPublishedTrue(String slug);
 
-    Optional<KnowledgeArticle> findBySlug(String slug);
-
     boolean existsBySlug(String slug);
 
     boolean existsBySlugAndIdNot(String slug, Long id);

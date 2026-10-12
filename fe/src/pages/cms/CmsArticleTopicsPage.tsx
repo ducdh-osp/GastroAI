@@ -69,10 +69,17 @@ export default function CmsArticleTopicsPage() {
     setSaving(true)
     try {
       if (editing) {
-        await updateArticleTopic(editing.id, values)
+        await updateArticleTopic(editing.id, {
+          name: values.name.trim(),
+          sortOrder: values.sortOrder,
+          version: editing.version,
+        })
         message.success('Đã cập nhật chủ đề.')
       } else {
-        await createArticleTopic(values)
+        await createArticleTopic({
+          name: values.name.trim(),
+          sortOrder: values.sortOrder,
+        })
         message.success('Đã thêm chủ đề.')
       }
       setModalOpen(false)

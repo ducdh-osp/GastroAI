@@ -24,6 +24,10 @@ public class ArticleTopic {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
     @Column(nullable = false, length = 80)
     private String name;
 

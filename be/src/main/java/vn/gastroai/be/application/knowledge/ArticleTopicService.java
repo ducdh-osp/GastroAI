@@ -55,6 +55,9 @@ public class ArticleTopicService {
     @Transactional(TX)
     public ArticleTopicResponse update(Long id, ArticleTopicRequest request) {
         ArticleTopic topic = load(id);
+        if (request.version() != null && !request.version().equals(topic.getVersion())) {
+            throw new org.springframework.orm.ObjectOptimisticLockingFailureException(ArticleTopic.class, id);
+        }
         String newName = cleanName(request.name());
         if (topicRepository.existsByNameIgnoreCaseAndIdNot(newName, id)) {
             throw new IllegalStateException("Chu de \"" + newName + "\" da ton tai");
@@ -81,7 +84,12 @@ public class ArticleTopicService {
             throw new IllegalStateException("Khong the xoa chu de \"" + topic.getName() + "\" vi con "
                     + inUse + " bai viet dang dung. Hay chuyen cac bai viet sang chu de khac truoc.");
         }
-        topicRepository.delete(topic);
+        try {
+            topicRepository.delete(topic);
+            topicRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new IllegalStateException("Khong the xoa chu de \"" + topic.getName() + "\" vi con bai viet dang dung.", e);
+        }
     }
 
     private ArticleTopic load(Long id) {
@@ -106,6 +114,6 @@ public class ArticleTopicService {
     }
 
     private static ArticleTopicResponse toResponse(ArticleTopic topic, long articleCount) {
-        return new ArticleTopicResponse(topic.getId(), topic.getName(), topic.getSortOrder(), articleCount);
+        return new ArticleTopicResponse(topic.getId(), topic.getName(), topic.getSortOrder(), articleCount, topic.getVersion());
     }
 }
