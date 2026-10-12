@@ -18,6 +18,8 @@ public class AdminWebSocketHandshakeInterceptor implements HandshakeInterceptor 
     private static final Set<String> ALLOWED_ROLES = Set.of("ADMIN", "DOCTOR");
 
     public static final String HTTP_SESSION_ID_ATTRIBUTE = "HTTP_SESSION_ID";
+    public static final String CMS_USER_ID_ATTRIBUTE = "CMS_USER_ID";
+    public static final String CMS_USER_TYPE_ATTRIBUTE = "CMS_USER_TYPE";
 
     @Override
     public boolean beforeHandshake(
@@ -34,6 +36,8 @@ public class AdminWebSocketHandshakeInterceptor implements HandshakeInterceptor 
 
                 if (userType != null && ALLOWED_ROLES.contains(userType.toString())) {
                     attributes.put(HTTP_SESSION_ID_ATTRIBUTE, session.getId());
+                    attributes.put(CMS_USER_ID_ATTRIBUTE, session.getAttribute(CmsAuthService.AUTH_USER_ID));
+                    attributes.put(CMS_USER_TYPE_ATTRIBUTE, userType.toString());
                     return true;
                 }
             }

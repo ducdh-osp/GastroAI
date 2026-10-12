@@ -12,7 +12,8 @@ import java.time.Instant;
 /** UC0011 - body cua POST/PUT /api/v1/patient/food-diary. */
 public record FoodDiaryEntryRequest(
         @NotNull @PastOrPresent(message = "thoi diem an khong duoc o tuong lai") Instant eatenAt,
-        @NotBlank @Size(max = 500, message = "mon an toi da 500 ky tu") String description,
+        @NotBlank(message = "mon an khong duoc de trong")
+        @Size(max = 500, message = "mon an toi da 500 ky tu") String description,
         @NotNull MealType mealType,
         @Size(max = 1000, message = "trieu chung sau an toi da 1000 ky tu") String symptomsAfterMeal,
         @PositiveOrZero(message = "thoi gian khoi phat khong duoc am") Integer symptomOnsetMinutes,

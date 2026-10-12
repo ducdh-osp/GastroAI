@@ -62,7 +62,7 @@ export interface SymptomAssessmentResponse {
   careRecommendation: CareRecommendation
 }
 
-export interface SymptomAssessmentHistoryItem extends SymptomAssessmentRequest, Omit<SymptomAssessmentResponse, 'careRecommendation'> {}
+export interface SymptomAssessmentHistoryItem extends SymptomAssessmentRequest, SymptomAssessmentResponse {}
 
 export async function assessSymptoms(request: SymptomAssessmentRequest): Promise<SymptomAssessmentResponse> {
   const { data } = await apiClient.post<SymptomAssessmentResponse>('/patient/triage/assessments', request)

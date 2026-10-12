@@ -10,6 +10,9 @@ import vn.gastroai.be.domain.auth.Patient;
 import java.util.Optional;
 
 public interface PatientRepository extends JpaRepository<Patient, Long> {
+    @Query("select p.id from Patient p where p.emailVerified = true")
+    java.util.List<Long> findAllVerifiedIds();
+
     Optional<Patient> findByEmail(String email);
 
     Optional<Patient> findByVerificationTokenHash(String hash);

@@ -70,6 +70,9 @@ public class SymptomAssessmentRecord {
     @Column(name = "requires_clinician_review", nullable = false)
     private boolean requiresClinicianReview;
 
+    @Column(name = "care_recommendation", nullable = false, length = 30)
+    private String careRecommendation;
+
     @Column(name = "assessed_at", nullable = false, updatable = false)
     private Instant assessedAt = Instant.now();
 }

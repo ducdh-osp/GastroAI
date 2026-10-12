@@ -31,6 +31,8 @@ import CmsArticlesPage from '../pages/cms/CmsArticlesPage'
 import CmsArticleEditorPage from '../pages/cms/CmsArticleEditorPage'
 import HealthReportPage from '../pages/patient/HealthReportPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
+import NotificationsPage from '../pages/patient/NotificationsPage'
+import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 
 export const router = createBrowserRouter([
   {
@@ -54,6 +56,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/notifications',
+        element: (
+          <ProtectedRoute>
+            <NotificationsPage />
           </ProtectedRoute>
         ),
       },
@@ -202,6 +212,14 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsHomePage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/notifications',
+            element: (
+              <CmsProtectedRoute>
+                <CmsNotificationsPage />
               </CmsProtectedRoute>
             ),
           },

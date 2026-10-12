@@ -18,6 +18,9 @@ public interface FoodDiaryEntryRepository extends JpaRepository<FoodDiaryEntry, 
 
     List<FoodDiaryEntry> findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(Long patientId, Instant from, Instant to);
 
+    boolean existsByPatientIdAndEatenAtGreaterThanEqualAndEatenAtLessThan(
+            Long patientId, Instant from, Instant to);
+
     /** Danh sach thung rac, moi nhat truoc, gioi han 200 dong de tranh tra ve qua nhieu. */
     @Query(value = "SELECT * FROM food_diary_entries " +
             "WHERE patient_id = :patientId AND deleted_at IS NOT NULL AND deleted_at >= :cutoff " +

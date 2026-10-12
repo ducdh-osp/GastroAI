@@ -3,6 +3,7 @@ import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect } from 'react'
 import type { BristolLog, BristolLogRequest } from '../../api/bristol'
 import { BRISTOL_TYPE_OPTIONS } from '../../constants/bristol'
+import { disableFutureTime, isFutureDateTime } from '../../lib/dateTime'
 
 interface BristolLogModalProps {
   open: boolean
@@ -32,6 +33,10 @@ export function BristolLogModal({ open, log, saving, onCancel, onSubmit }: Brist
 
   function handleOk() {
     form.validateFields().then((values) => {
+      if (isFutureDateTime(values.loggedAt)) {
+        form.setFields([{ name: 'loggedAt', errors: ['Thời điểm không được ở tương lai'] }])
+        return
+      }
       onSubmit({
         loggedAt: values.loggedAt.toISOString(),
         bristolType: values.bristolType,
@@ -53,7 +58,13 @@ export function BristolLogModal({ open, log, saving, onCancel, onSubmit }: Brist
     >
       <Form<BristolLogFormValues> form={form} layout="vertical" className="mt-4">
         <Form.Item label="Thời điểm" name="loggedAt" rules={[{ required: true, message: 'Chọn thời điểm' }]}>
-          <DatePicker showTime className="w-full" format="DD/MM/YYYY HH:mm" disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
+          <DatePicker
+            showTime
+            className="w-full"
+            format="DD/MM/YYYY HH:mm"
+            disabledDate={(d) => d.isAfter(dayjs(), 'day')}
+            disabledTime={disableFutureTime}
+          />
         </Form.Item>
         <Form.Item label="Phân loại theo thang Bristol" name="bristolType" rules={[{ required: true, message: 'Chọn 1 mức' }]}>
           <Radio.Group style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
