@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { resetPassword } from '../../api/auth'
 import { AuthShell } from '../../components/auth/AuthShell'
+import { isAtMostUtf8Bytes } from '../../lib/validation'
 
 interface ResetPasswordFormValues {
   newPassword: string
@@ -55,8 +56,8 @@ export default function ResetPasswordPage() {
       {error && <Alert type="error" message={error} showIcon className="mb-4" />}
       {success && <Alert type="success" message={success} showIcon className="mb-4" />}
       <Form<ResetPasswordFormValues> layout="vertical" onFinish={onFinish} disabled={loading}>
-        <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
-          <Input.Password />
+        <Form.Item label="Mật khẩu mới" name="newPassword" rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}>
+          <Input.Password maxLength={72} />
         </Form.Item>
         <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu mới' }]}>
           <Input.Password />

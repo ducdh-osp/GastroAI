@@ -2,8 +2,10 @@ import { HeartOutlined, ReadOutlined, SafetyCertificateOutlined } from '@ant-des
 import { Alert, Button, Form, Input } from 'antd'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { resendVerification } from '../../api/auth'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { useAuth } from '../../stores/authStore'
+import { isAtMostUtf8Bytes } from '../../lib/validation'
 
 interface LoginFormValues {
   email: string
@@ -43,10 +45,17 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [lockedUntil, setLockedUntil] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
+  const [resendNotice, setResendNotice] = useState<string | null>(null)
+  const [resendError, setResendError] = useState<string | null>(null)
 
   async function onFinish(values: LoginFormValues) {
     setError(null)
     setLockedUntil(null)
+    setUnverifiedEmail(null)
+    setResendNotice(null)
+    setResendError(null)
     setLoading(true)
     try {
       await login(values)
@@ -55,8 +64,24 @@ export default function LoginPage() {
       const data = (err as { response?: { data?: { message?: string; lockedUntil?: string } } })?.response?.data
       setError(formatError(data?.message ?? 'Đăng nhập thất bại, thử lại sau.'))
       setLockedUntil(data?.lockedUntil ?? null)
+      if (data?.message?.trim() === 'Email chua duoc xac thuc') setUnverifiedEmail(values.email.trim())
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function onResendVerification() {
+    if (!unverifiedEmail) return
+    setResending(true)
+    setResendNotice(null)
+    setResendError(null)
+    try {
+      await resendVerification(unverifiedEmail)
+      setResendNotice('Nếu email tồn tại và chưa được xác thực, hệ thống đã gửi lại link xác thực.')
+    } catch {
+      setResendError('Không thể gửi lại email lúc này. Vui lòng thử lại sau.')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -75,6 +100,15 @@ export default function LoginPage() {
           className="mb-4"
         />
       )}
+      {unverifiedEmail && (
+        <div className="mb-4 space-y-3">
+          <Button block loading={resending} onClick={() => void onResendVerification()}>
+            Gửi lại email xác thực
+          </Button>
+          {resendNotice && <Alert type="info" showIcon message={resendNotice} />}
+          {resendError && <Alert type="error" showIcon message={resendError} />}
+        </div>
+      )}
       <Form<LoginFormValues> layout="vertical" onFinish={onFinish} disabled={loading}>
         <Form.Item
           label="Email"
@@ -82,16 +116,17 @@ export default function LoginPage() {
           rules={[
             { required: true, message: 'Nhập email' },
             { type: 'email', message: 'Email không hợp lệ' },
+            { max: 255, message: 'Email tối đa 255 ký tự' },
           ]}
         >
-          <Input placeholder="ban@example.com" />
+          <Input maxLength={255} placeholder="ban@example.com" />
         </Form.Item>
         <Form.Item
           label="Mật khẩu"
           name="password"
-          rules={[{ required: true, message: 'Nhập mật khẩu' }]}
+          rules={[{ required: true, message: 'Nhập mật khẩu' }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}
         >
-          <Input.Password />
+          <Input.Password maxLength={72} />
         </Form.Item>
         <Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>

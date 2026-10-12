@@ -71,6 +71,7 @@ public class AuthService {
      */
     @Transactional("postgresTransactionManager")
     public void register(String email, String password, String name) {
+        validatePasswordLength(password);
         String normalizedEmail = normalize(email);
         if (patients.findByEmail(normalizedEmail).isPresent()) {
             throw new IllegalStateException("Email da duoc su dung");
@@ -142,6 +143,7 @@ public class AuthService {
 
     @Transactional("postgresTransactionManager")
     public void resetPassword(String token, String newPassword) {
+        validatePasswordLength(newPassword);
         Patient patient = patients.findByPasswordResetTokenHash(hash(token))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Token dat lai mat khau khong hop le"));
@@ -170,6 +172,7 @@ public class AuthService {
             BadCredentialsException.class, AccountLockedException.class, IllegalStateException.class
     })
     public AuthResult login(LoginCommand command, ClientRequestInfo requestInfo) {
+        validatePasswordLength(command.password());
         Optional<Patient> found = patients.findByEmailForUpdate(normalize(command.email()));
         if (found.isEmpty()) {
             // Không tìm thấy tài khoản: vẫn chạy BCrypt giả để thời gian phản hồi
@@ -244,18 +247,50 @@ public class AuthService {
     }
 
     /** UC0005 - Đổi mật khẩu khi đã đăng nhập. Tăng tokenVersion để JWT cũ hết hiệu lực. */
-    @Transactional("postgresTransactionManager")
-    public void changePassword(Long id, String oldPassword, String newPassword) {
-        Patient patient = patients.findById(id)
+    @Transactional(value = "postgresTransactionManager", noRollbackFor = {
+            BadCredentialsException.class, AccountLockedException.class
+    })
+    public void changePassword(Long id, String oldPassword, String newPassword,
+                               ClientRequestInfo requestInfo) {
+        validatePasswordLength(oldPassword);
+        validatePasswordLength(newPassword);
+        Patient patient = patients.findByIdForUpdate(id)
                 .orElseThrow(() -> new BadCredentialsException("Tai khoan khong ton tai"));
+        Instant now = Instant.now();
+        if (patient.getLockedUntil() != null && patient.getLockedUntil().isAfter(now)) {
+            record(patient, LoginOutcome.BLOCKED, "ACCOUNT_LOCKED", requestInfo);
+            throw new AccountLockedException(patient.getLockedUntil());
+        }
+        if (patient.getLockedUntil() != null) {
+            patient.setLockedUntil(null);
+            patient.setFailedLoginAttempts(0);
+        }
         if (!encoder.matches(oldPassword, patient.getPasswordHash())) {
+            patient.setFailedLoginAttempts(patient.getFailedLoginAttempts() + 1);
+            boolean locked = patient.getFailedLoginAttempts() >= policy.maxFailedAttempts();
+            if (locked) {
+                patient.setLockedUntil(now.plus(policy.lockDuration()));
+            }
+            record(patient, locked ? LoginOutcome.BLOCKED : LoginOutcome.FAILURE,
+                    locked ? "TOO_MANY_ATTEMPTS" : "BAD_CURRENT_PASSWORD", requestInfo);
+            if (locked) {
+                throw new AccountLockedException(patient.getLockedUntil());
+            }
             throw new BadCredentialsException("Mat khau hien tai khong dung");
         }
         if (encoder.matches(newPassword, patient.getPasswordHash())) {
             throw new IllegalArgumentException("Mat khau moi phai khac mat khau hien tai");
         }
+        patient.setFailedLoginAttempts(0);
+        patient.setLockedUntil(null);
         patient.setPasswordHash(encoder.encode(newPassword));
         patient.setTokenVersion(patient.getTokenVersion() + 1);
+    }
+
+    /** Overload cho các caller nội bộ/test không có metadata của HTTP request. */
+    public void changePassword(Long id, String oldPassword, String newPassword) {
+        changePassword(id, oldPassword, newPassword,
+                new ClientRequestInfo("unknown", "unknown", "unknown"));
     }
 
     /** UC0007 - Xem lịch sử đăng nhập của chính mình, phân trang theo thời gian gần nhất. */
@@ -282,6 +317,12 @@ public class AuthService {
 
     private static String normalize(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static void validatePasswordLength(String password) {
+        if (password == null || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalArgumentException("Mat khau khong duoc vuot qua 72 byte UTF-8");
+        }
     }
 
     private static String hash(String value) {

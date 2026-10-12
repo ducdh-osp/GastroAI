@@ -1,0 +1,235 @@
+package vn.gastroai.be.api.chat;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import vn.gastroai.be.application.chat.ChatAttachmentProcessor;
+import vn.gastroai.be.application.chat.ChatHistoryService;
+import vn.gastroai.be.application.chat.ChatService;
+import vn.gastroai.be.application.rag.StreamingRagQueryService;
+import vn.gastroai.be.application.triage.TriageAlertService;
+import vn.gastroai.be.config.SecurityConfig;
+import vn.gastroai.be.domain.triage.TriageResult;
+import vn.gastroai.be.infrastructure.ai.ImagePart;
+import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
+import vn.gastroai.be.infrastructure.security.JwtService;
+
+import java.util.List;
+import java.util.function.Consumer;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(ChatController.class)
+@Import(SecurityConfig.class)
+class ChatControllerStreamingTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private ChatService chatService;
+
+    @MockitoBean
+    private ChatHistoryService chatHistoryService;
+
+    @MockitoBean
+    private StreamingRagQueryService streamingRagQueryService;
+
+    @MockitoBean
+    private TriageAlertService triageAlertService;
+
+    @MockitoBean
+    private JwtService jwtService;
+
+    @MockitoBean
+    private PatientRepository patientRepository;
+
+    @MockitoBean
+    private RevokedTokenRepository revokedTokenRepository;
+
+    @MockitoBean
+    private ChatAttachmentProcessor attachmentProcessor;
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void streamMessagePublishesTriageAlertWhenEmergencyDetected() throws Exception {
+        stubStreamAnswer(true, List.of("DAU_BUNG_CAP_TINH"));
+        when(triageAlertService.createAndPublish(
+                eq(1L), isNull(), isNull(),
+                eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
+                .thenReturn(42L);
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
+                .thenReturn(new ChatHistoryService.SavedExchange(5L, 8L, 9L));
+
+        MvcResult mvcResult = mockMvc.perform(post("/api/v1/chat/messages/stream")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"Toi bi dau bung du doi qua\"}"))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mvcResult.getAsyncResult();
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk());
+
+        // UC0067(va) - canh bao phai duoc gui NGAY (sessionId/messageId van null luc nay),
+        // roi linkConversation() gan id that (42) voi sessionId/messageId tu SavedExchange.
+        verify(triageAlertService, timeout(2000)).createAndPublish(
+                eq(1L), isNull(), isNull(),
+                eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
+        verify(triageAlertService, timeout(2000)).linkConversation(eq(42L), eq(5L), eq(9L));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void streamMessageDoesNotPublishWhenNoEmergencyDetected() throws Exception {
+        stubStreamAnswer(false, List.of());
+
+        MvcResult mvcResult = mockMvc.perform(post("/api/v1/chat/messages/stream")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"Lam sao de giam dau bung?\"}"))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mvcResult.getAsyncResult();
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk());
+
+        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), any());
+        verify(triageAlertService, never()).linkConversation(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void streamMessageWithAttachmentsPassesImagesAndLinksThemAfterSave() throws Exception {
+        List<ImagePart> images = List.of(new ImagePart("image/png", "AQID"));
+        ChatAttachmentProcessor.ProcessedAttachments processed = new ChatAttachmentProcessor.ProcessedAttachments(
+                List.of(new ChatAttachmentProcessor.AttachmentResult("x.png", "anh.png", "image/png", 3)),
+                images,
+                "");
+        when(attachmentProcessor.process(any())).thenReturn(processed);
+        stubStreamAnswerWithAttachments(true, List.of("DAU_BUNG_CAP_TINH"));
+        when(triageAlertService.createAndPublish(
+                eq(1L), isNull(), isNull(),
+                eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
+                .thenReturn(42L);
+        when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
+                .thenReturn(new ChatHistoryService.SavedExchange(5L, 8L, 9L));
+
+        MvcResult mvcResult = mockMvc.perform(multipart("/api/v1/chat/messages/stream-with-attachments")
+                        .file(new MockMultipartFile("files", "anh.png", "image/png", new byte[]{1, 2, 3}))
+                        .file(new MockMultipartFile("request", "", "application/json",
+                                "{\"content\":\"Toi bi dau bung du doi qua\"}".getBytes()))
+                        .with(csrf())
+                        .accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mvcResult.getAsyncResult();
+
+        mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk());
+
+        verify(streamingRagQueryService, timeout(2000))
+                .streamAnswer(anyString(), eq(images), anyString(), any(), any());
+        verify(chatHistoryService, timeout(2000)).saveAttachments(eq(8L), eq(processed.attachments()));
+        verify(triageAlertService, timeout(2000)).linkConversation(eq(42L), eq(5L), eq(9L));
+        verify(attachmentProcessor, never()).discard(any());
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void streamMessageWithAttachmentsDiscardsFilesWhenStreamingFails() throws Exception {
+        List<ImagePart> images = List.of(new ImagePart("image/png", "AQID"));
+        ChatAttachmentProcessor.ProcessedAttachments processed = new ChatAttachmentProcessor.ProcessedAttachments(
+                List.of(new ChatAttachmentProcessor.AttachmentResult("x.png", "anh.png", "image/png", 3)),
+                images,
+                "");
+        when(attachmentProcessor.process(any())).thenReturn(processed);
+        when(streamingRagQueryService.streamAnswer(anyString(), eq(images), anyString(), any(), any()))
+                .thenThrow(new RuntimeException("Gemini loi gia lap"));
+
+        MvcResult mvcResult = mockMvc.perform(multipart("/api/v1/chat/messages/stream-with-attachments")
+                        .file(new MockMultipartFile("files", "anh.png", "image/png", new byte[]{1, 2, 3}))
+                        .file(new MockMultipartFile("request", "", "application/json",
+                                "{\"content\":\"Toi bi dau bung du doi qua\"}".getBytes()))
+                        .with(csrf())
+                        .accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mvcResult.getAsyncResult();
+
+        try {
+            mockMvc.perform(asyncDispatch(mvcResult));
+        } catch (Exception expected) {
+            // Gia lap Gemini loi -> emitter.completeWithError(...) -> MockMvc lan truyen loi
+            // nay len day. Day la hanh vi dung (client se nhan duoc event "error" qua SSE),
+            // khong phai that bai cua test - chi can bo qua, cai can kiem tra la discard() ben duoi.
+        }
+
+        verify(attachmentProcessor, timeout(2000)).discard(eq(processed.attachments()));
+    }
+
+    private void stubStreamAnswer(boolean emergency, List<String> matchedGroups) {
+        TriageResult triageResult = new TriageResult(emergency, matchedGroups);
+        when(streamingRagQueryService.streamAnswer(anyString(), any(), any(), any(), any())).thenAnswer(invocation -> {
+            Consumer<String> onToken = invocation.getArgument(3);
+            Consumer<TriageResult> onTriageChecked = invocation.getArgument(4);
+
+            onTriageChecked.accept(triageResult);
+            onToken.accept("Ban nen theo doi trieu chung.");
+
+            return new StreamingRagQueryService.StreamingResult(
+                    "Ban nen theo doi trieu chung.",
+                    List.of(),
+                    List.of(),
+                    emergency,
+                    matchedGroups);
+        });
+    }
+
+    private void stubStreamAnswerWithAttachments(boolean emergency, List<String> matchedGroups) {
+        TriageResult triageResult = new TriageResult(emergency, matchedGroups);
+        when(streamingRagQueryService.streamAnswer(anyString(), any(), any(), any(), any())).thenAnswer(invocation -> {
+            Consumer<String> onToken = invocation.getArgument(3);
+            Consumer<TriageResult> onTriageChecked = invocation.getArgument(4);
+
+            onTriageChecked.accept(triageResult);
+            onToken.accept("Day la mo ta anh.");
+
+            return new StreamingRagQueryService.StreamingResult(
+                    "Day la mo ta anh.",
+                    List.of(),
+                    List.of(),
+                    emergency,
+                    matchedGroups);
+        });
+    }
+}

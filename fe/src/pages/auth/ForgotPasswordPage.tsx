@@ -37,8 +37,8 @@ export default function ForgotPasswordPage() {
       {error && <Alert type="error" message={error} showIcon className="mb-4" />}
       {message && <Alert type="success" message={message} showIcon className="mb-4" />}
       <Form layout="vertical" onFinish={onFinish} disabled={loading}>
-        <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}>
-          <Input placeholder="ban@example.com" />
+        <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 255, message: 'Email tối đa 255 ký tự' }]}>
+          <Input maxLength={255} placeholder="ban@example.com" />
         </Form.Item>
         <Button type="primary" htmlType="submit" block loading={loading}>Gửi liên kết đặt lại</Button>
       </Form>

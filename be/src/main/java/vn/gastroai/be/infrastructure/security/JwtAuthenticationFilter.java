@@ -1,10 +1,13 @@
 package vn.gastroai.be.infrastructure.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,15 +21,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Xác thực JWT cho mọi request của Bệnh nhân — chạy trước UsernamePasswordAuthenticationFilter
- * (đăng ký trong SecurityConfig). Không cần session, mỗi request tự chứng minh danh tính qua
- * header Authorization: Bearer <token>. Token hợp lệ về mặt chữ ký/hạn vẫn có thể bị từ chối
- * nếu: đã bị thu hồi (logout, xem RevokedTokenRepository) hoặc tokenVersion không khớp
- * (đổi/reset mật khẩu làm mọi token cũ trước đó hết hiệu lực ngay, không cần đợi hết hạn).
- */
+/** Authenticates patient JWT bearer tokens and applies token revocation/version checks. */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtService jwt;
     private final PatientRepository patients;
     private final RevokedTokenRepository revoked;
@@ -43,28 +42,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain chain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
+            Claims claims;
+            Long patientId;
             try {
-                Claims claims = jwt.parse(header.substring(7));
-                Long patientId = Long.valueOf(claims.getSubject());
+                claims = jwt.parse(header.substring(7));
+                patientId = Long.valueOf(claims.getSubject());
+            } catch (JwtException | IllegalArgumentException ignored) {
+                // Invalid, expired, or malformed tokens are anonymous requests.
+                chain.doFilter(request, response);
+                return;
+            }
+
+            try {
                 Optional<Patient> patient = patients.findById(patientId);
                 Number tokenVersion = claims.get("version", Number.class);
-                // 3 điều kiện phải đúng hết: tài khoản còn tồn tại, token chưa bị thu hồi
-                // (logout), và version trong token khớp version hiện tại trong DB (chưa bị
-                // vô hiệu bởi đổi/reset mật khẩu).
                 if (patient.isPresent()
                         && !revoked.existsById(claims.getId())
                         && tokenVersion != null
                         && patient.get().getTokenVersion() == tokenVersion.intValue()) {
                     var authentication = new UsernamePasswordAuthenticationToken(
-                            patientId, null,
+                            patientId,
+                            null,
                             List.of(new SimpleGrantedAuthority(
                                     "ROLE_" + patient.get().getRole().name())));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-            } catch (Exception ignored) {
-                // Token sai định dạng/hết hạn/chữ ký sai: không set Authentication, coi như
-                // request ẩn danh — để SecurityConfig tự quyết định endpoint đó có cần
-                // đăng nhập hay không (permitAll thì vẫn qua, còn lại bị 401/403).
+            } catch (RuntimeException exception) {
+                // Infrastructure failures need visibility; they are not invalid JWTs.
+                log.warn("JWT authentication lookup failed for {} {}", request.getMethod(),
+                        request.getRequestURI(), exception);
             }
         }
         chain.doFilter(request, response);

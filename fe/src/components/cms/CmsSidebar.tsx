@@ -9,6 +9,7 @@ import {
   LogoutOutlined,
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
+  SafetyOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
 import { Dropdown, Tag } from 'antd'
@@ -57,6 +58,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Giám sát',
     items: [
+       { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts' },
       { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true, adminOnly: true },
       { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
     ],

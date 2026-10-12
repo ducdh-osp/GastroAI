@@ -32,9 +32,8 @@ public class MeController {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
-        // Endpoint nằm trong "anyRequest().authenticated()" của SecurityConfig nên về lý
-        // thuyết không tới được đây nếu chưa đăng nhập — check thêm ở đây cho chắc, phòng
-        // trường hợp cấu hình security đổi trong tương lai mà quên rà soát controller này.
+        // SecurityConfig bắt buộc ROLE_PATIENT cho toàn bộ /me/**. Check bổ sung này giữ
+        // controller an toàn nếu cấu hình bảo mật bị thay đổi trong tương lai.
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new org.springframework.security.access.AccessDeniedException("Chua dang nhap");
         }

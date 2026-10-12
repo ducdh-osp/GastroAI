@@ -4,18 +4,18 @@ import org.springframework.stereotype.Component;
 import vn.gastroai.be.config.BackupProperties;
 import org.springframework.scheduling.annotation.Scheduled;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * UC0057 - Backup định kỳ 2 cơ sở dữ liệu bằng pg_dump/mysqldump (không dùng Docker theo
- * đúng phạm vi đề cương). Chạy lệnh CLI thật qua ProcessBuilder — máy chạy app bắt buộc
- * phải cài sẵn pg_dump và mysqldump trong PATH.
- */
+
 @Component
 public class BackupScheduler {
 
@@ -39,14 +39,18 @@ public class BackupScheduler {
             backupPostgres();
         } catch (Exception e) {
             logger.error("PostgreSQL backup failed:", e);
-            e.printStackTrace();
         }
 
         try {
             backupMysql();
         } catch (Exception e) {
             logger.error("MySQL backup failed:", e);
-            e.printStackTrace();
+        }
+
+        try {
+            cleanupOldBackups(Instant.now());
+        } catch (Exception e) {
+            logger.error("Backup cleanup failed:", e);
         }
 
         logger.info("Database backup process completed.");
@@ -82,11 +86,10 @@ public class BackupScheduler {
                 postgres.port() + "",
                 "-U",
                 postgres.username(),
+                "--clean",
+                "--if-exists",
                 "-d",
                 postgres.database());
-        // pg_dump không có flag nhập mật khẩu trực tiếp — cách chuẩn là set biến môi trường
-        // PGPASSWORD cho riêng process con này (không set ở env hệ thống, tránh lộ mật khẩu
-        // cho các process khác/khi liệt kê env toàn hệ thống).
         processBuilder.environment().put(
         "PGPASSWORD",
         postgres.password()
@@ -115,8 +118,8 @@ public class BackupScheduler {
                 "-u",
                 mysql.username(),
                 "--no-tablespaces",
+                "--add-drop-table",
                 mysql.database());
-        // Tương tự PGPASSWORD ở trên nhưng cho mysqldump (biến MYSQL_PWD).
         processBuilder.environment().put(
         "MYSQL_PWD",
         mysql.password());
@@ -126,41 +129,37 @@ public class BackupScheduler {
                 "MySQL");
     }
 
-    /**
-     * pg_dump/mysqldump ghi kết quả ra stdout — đọc trực tiếp stdout rồi copy vào file,
-     * không cần bước trung gian. Đồng thời phải đọc stderr song song trên thread riêng
-     * (không đọc tuần tự sau stdout) — nếu không, khi buffer stderr của OS đầy mà không ai
-     * đọc, process con bị treo (deadlock) chờ ai đó đọc bớt stderr trước khi ghi tiếp stdout.
-     */
     private void runBackupProcess(
             ProcessBuilder processBuilder,
             Path outputFile,
             String databaseName) {
 
+        processBuilder.redirectErrorStream(false);
+
         Process process = null;
 
         try {
             process = processBuilder.start();
-
             Process currentProcess = process;
 
+            StringBuilder errorOutput = new StringBuilder();
             Thread errorReader = new Thread(() -> {
                 try {
-                    currentProcess.getErrorStream().transferTo(
-                            System.err);
+                    errorOutput.append(new String(
+                            currentProcess.getErrorStream().readAllBytes(),
+                            StandardCharsets.UTF_8));
                 } catch (Exception ignored) {
-                    // Error stream will be handled after process completion.
+                    // Loi doc stderr khong che mat loi backup that - exitCode ben duoi van
+                    // phat hien duoc.
                 }
             });
-
             errorReader.start();
 
             try (InputStream input = process.getInputStream()) {
-                Files.copy(input, outputFile);
+                Files.copy(input, outputFile, StandardCopyOption.REPLACE_EXISTING);
             }
 
             int exitCode = process.waitFor();
-
             errorReader.join();
 
             if (exitCode != 0) {
@@ -171,7 +170,8 @@ public class BackupScheduler {
                 throw new IllegalStateException(
                         databaseName
                                 + " backup failed with exit code "
-                                + exitCode);
+                                + exitCode
+                                + (errorOutput.length() > 0 ? ": " + errorOutput : ""));
             }
 
             logger.info(
@@ -205,5 +205,49 @@ public class BackupScheduler {
             "Cannot delete failed backup file: {}",
             outputFile, e);
         }
+    }
+
+    // package-private (bo "private") de test tu truyen moc thoi gian "now" vao, khong phai luc
+    // nao cung phu thuoc Instant.now() thuc te - xem BackupSchedulerTest.
+    void cleanupOldBackups(Instant now) throws Exception {
+        if (!Files.isDirectory(getBackupDir())) {
+            // Thu muc backup chua ton tai (chua backup lan nao) - khong co gi de don.
+            return;
+        }
+
+        if (backupProperties.retentionDays() <= 0) {
+            // Khong chan truong hop nay thi ai do set BACKUP_RETENTION_DAYS=0 (hoac am) se xoa
+            // sach toan bo backup hien co - do la cau hinh sai, khong phai y dinh "giu 0 ngay".
+            logger.warn(
+                    "retention-days={} khong hop le (phai > 0) - bo qua don backup cu.",
+                    backupProperties.retentionDays());
+            return;
+        }
+
+        Instant cutoff = now.minus(backupProperties.retentionDays(), ChronoUnit.DAYS);
+
+        try (var files = Files.list(getBackupDir())) {
+            files
+                    .filter(Files::isRegularFile)
+                    .filter(BackupScheduler::isBackupFile)
+                    .forEach(path -> {
+                        try {
+                            Instant lastModified = Files.getLastModifiedTime(path).toInstant();
+                            if (lastModified.isBefore(cutoff)) {
+                                Files.delete(path);
+                                logger.info("Deleted old backup file: {}", path.toAbsolutePath());
+                            }
+                        } catch (Exception e) {
+                            logger.error("Cannot check/delete old backup file: {}", path, e);
+                        }
+                    });
+        }
+    }
+
+    // Chi xoa dung file backup do chinh BackupScheduler tao ra (postgres_*.sql, mysql_*.sql),
+    // khong xoa nham file .sql khac ai do de tam trong cung thu muc.
+    private static boolean isBackupFile(Path path) {
+        String name = path.getFileName().toString();
+        return (name.startsWith("postgres_") || name.startsWith("mysql_")) && name.endsWith(".sql");
     }
 }

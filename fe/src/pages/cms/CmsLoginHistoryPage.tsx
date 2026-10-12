@@ -1,11 +1,18 @@
 import { Alert, Card, Pagination, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getCmsLoginHistory } from '../../api/cmsAuth'
 import type { LoginHistoryItem } from '../../api/auth'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 
 const { Title, Text } = Typography
+
+function pageSizeForViewport(height: number): number {
+  // Reserve space for the page heading, card padding and pager - giong cach
+  // LoginHistoryPage (patient) tinh, de bang chiem vua du chieu cao con lai thay vi
+  // de trong mot khoang lon ben duoi khi it du lieu hon 1 trang co dinh 20 dong.
+  return Math.max(4, Math.min(20, Math.floor((height - 400) / 50)))
+}
 
 type LoginStatus = 'SUCCESS' | 'FAILURE' | 'BLOCKED'
 
@@ -46,23 +53,35 @@ const columns: ColumnsType<LoginHistoryItem> = [
   {
     title: 'Thiết bị',
     key: 'device',
+    width: 280,
     render: (_, record) => (
-      <div>
+      <div className="min-w-0">
         <Text strong>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
-        <div><Text type="secondary">{record.userAgent ?? '—'}</Text></div>
+        <div>
+          <Text type="secondary" className="block truncate" title={record.userAgent ?? undefined}>
+            {record.userAgent ?? '—'}
+          </Text>
+        </div>
       </div>
     ),
   },
   {
     title: 'Địa chỉ IP',
     key: 'ip',
+    width: 160,
     render: (_, record) => <Text code>{record.ipAddress ?? '—'}</Text>,
   },
   {
     title: 'Lý do thất bại',
     dataIndex: 'failureReason',
     key: 'failureReason',
-    render: (val: string | null) => (val ? <Text type="danger">{val}</Text> : <Text type="secondary">—</Text>),
+    width: 220,
+    render: (val: string | null) =>
+      val ? (
+        <Text type="danger" className="block truncate" title={val}>{val}</Text>
+      ) : (
+        <Text type="secondary">—</Text>
+      ),
   },
   {
     title: 'Trạng thái',
@@ -83,70 +102,97 @@ export default function CmsLoginHistoryPage() {
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [recentFailureCount, setRecentFailureCount] = useState(0)
-  const pageSize = 20
+  const [pageSize, setPageSize] = useState(() => pageSizeForViewport(window.innerHeight))
+  const previousPageSize = useRef(pageSize)
+  const requestId = useRef(0)
 
   useEffect(() => {
+    function updatePageSize() {
+      setPageSize(pageSizeForViewport(window.innerHeight))
+    }
+
+    window.addEventListener('resize', updatePageSize)
+    return () => window.removeEventListener('resize', updatePageSize)
+  }, [])
+
+  useEffect(() => {
+    if (previousPageSize.current !== pageSize) {
+      previousPageSize.current = pageSize
+      setPage(0)
+    }
+  }, [pageSize])
+
+  useEffect(() => {
+    const currentRequestId = ++requestId.current
     setLoading(true)
     setError(null)
     getCmsLoginHistory(page, pageSize)
       .then((res) => {
+        if (currentRequestId !== requestId.current) return
         setItems(res.items)
         setTotalElements(res.totalElements)
         setRecentFailureCount(res.recentFailureCount)
       })
       .catch((err: unknown) => {
+        if (currentRequestId !== requestId.current) return
         const msg =
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
           'Không thể tải lịch sử đăng nhập.'
         setError(msg)
       })
-      .finally(() => setLoading(false))
-  }, [page])
+      .finally(() => { if (currentRequestId === requestId.current) setLoading(false) })
+  }, [page, pageSize])
 
   return (
     <CmsAppShell>
-      <div className="mb-6">
-        <Text type="secondary">Bảo mật tài khoản</Text>
-        <Title level={2} className="mb-1! mt-1!">Lịch sử đăng nhập</Title>
-        <Text type="secondary">Các lần đăng nhập gần đây vào tài khoản quản trị của bạn.</Text>
-      </div>
+      <div className="flex h-[calc(100svh-3rem)] min-h-0 flex-col gap-4 overflow-hidden sm:h-[calc(100svh-4rem)]">
+        <div className="shrink-0">
+          <Text type="secondary">Bảo mật tài khoản</Text>
+          <Title level={2} className="mb-1! mt-1!">Lịch sử đăng nhập</Title>
+          <Text type="secondary">Các lần đăng nhập gần đây vào tài khoản quản trị của bạn.</Text>
+        </div>
 
-      {error && <Alert type="error" showIcon message={error} className="mb-6" />}
+        {error && <Alert type="error" showIcon message={error} className="shrink-0" />}
 
-      {!error && !loading && recentFailureCount > 0 && (
-        <Alert
-          className="mb-6"
-          type="warning"
-          showIcon
-          message="Có hoạt động cần kiểm tra"
-          description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy liên hệ quản trị viên hệ thống ngay.`}
-        />
-      )}
-
-      <Card className="rounded-2xl border-black/5 shadow-sm">
-        <Spin spinning={loading}>
-          <Table<LoginHistoryItem>
-            columns={columns}
-            dataSource={items}
-            rowKey="id"
-            pagination={false}
-            scroll={{ x: 720 }}
-            locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
+        {!error && !loading && recentFailureCount > 0 && (
+          <Alert
+            className="shrink-0"
+            type="warning"
+            showIcon
+            message="Có hoạt động cần kiểm tra"
+            description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy liên hệ quản trị viên hệ thống ngay.`}
           />
-        </Spin>
-
-        {totalElements > pageSize && (
-          <div className="mt-4 flex justify-end">
-            <Pagination
-              current={page + 1}
-              pageSize={pageSize}
-              total={totalElements}
-              onChange={(p) => setPage(p - 1)}
-              showSizeChanger={false}
-            />
-          </div>
         )}
-      </Card>
+
+        <Card
+          className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm"
+          styles={{ body: { display: 'flex', height: '100%', minHeight: 0, flexDirection: 'column', overflow: 'hidden' } }}
+        >
+          <Spin spinning={loading}>
+            <Table<LoginHistoryItem>
+              columns={columns}
+              dataSource={items}
+              rowKey="id"
+              pagination={false}
+              scroll={{ x: 970 }}
+              tableLayout="fixed"
+              locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
+            />
+          </Spin>
+
+          {totalElements > pageSize && (
+            <div className="mt-auto flex shrink-0 justify-end pt-4">
+              <Pagination
+                current={page + 1}
+                pageSize={pageSize}
+                total={totalElements}
+                onChange={(p) => setPage(p - 1)}
+                showSizeChanger={false}
+              />
+            </div>
+          )}
+        </Card>
+      </div>
     </CmsAppShell>
   )
 }

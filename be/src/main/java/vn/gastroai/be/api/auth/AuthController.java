@@ -87,15 +87,17 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    // principal.getName() lấy từ subject của JWT (chính là patientId) — do
-    // JwtAuthenticationFilter set vào SecurityContext, endpoint này bắt buộc đã đăng nhập.
+    // SecurityConfig chỉ cho ROLE_PATIENT vào endpoint này. principal.getName() lấy từ subject
+    // của JWT (chính là patientId), do JwtAuthenticationFilter set vào SecurityContext.
     @PostMapping("/change-password")
     public ResponseEntity<Void> change(@Valid @RequestBody ChangePasswordRequest request,
-                                       java.security.Principal principal) {
+                                       java.security.Principal principal,
+                                       HttpServletRequest servletRequest) {
         authService.changePassword(
                 Long.valueOf(principal.getName()),
                 request.currentPassword(),
-                request.newPassword());
+                request.newPassword(),
+                requestInfoResolver.resolve(servletRequest));
         return ResponseEntity.noContent().build();
     }
 }

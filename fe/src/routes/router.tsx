@@ -10,68 +10,206 @@ import ChangePasswordPage from '../pages/auth/ChangePasswordPage'
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
+import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
+import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
+import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
+import FoodSensitivityProfilePage from '../pages/patient/FoodSensitivityProfilePage'
+import BristolPage from '../pages/patient/BristolPage'
+import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
+import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
+import ChatPage from '../pages/chat/ChatPage'
+import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
+import SymptomAssessmentPage from '../pages/chat/SymptomAssessmentPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
+import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
+import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
+import HealthReportPage from '../pages/patient/HealthReportPage'
+import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 
 export const router = createBrowserRouter([
-  // Patient
-  { path: '/login', element: <LoginPage /> },
-  { path: '/register', element: <RegisterPage /> },
-  { path: '/verify-email', element: <VerifyEmailPage /> },
-  { path: '/forgot-password', element: <ForgotPasswordPage /> },
-  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
-    path: '/',
+    // Bọc toàn bộ route để FaviconSwitcher (cần useLocation, chỉ dùng được bên trong Router)
+    // theo dõi được path hiện tại và đổi icon tab tương ứng - không đổi hành vi route nào cả.
     element: (
-      <ProtectedRoute>
-        <HomePage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/login-history',
-    element: (
-      <ProtectedRoute>
-        <LoginHistoryPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/change-password',
-    element: (
-      <ProtectedRoute>
-        <ChangePasswordPage />
-      </ProtectedRoute>
-    ),
-  },
-
-  // CMS - Admin / Doctor. Dùng 1 CmsAuthProvider chung cho cả nhánh /cms/* — nếu mỗi route
-  // tự bọc provider riêng, state đăng nhập ở /cms/login sẽ mất ngay khi điều hướng sang /cms
-  // (mỗi provider là 1 instance context độc lập, không chia sẻ được cho nhau).
-  {
-    element: (
-      <CmsAuthProvider>
+      <>
+        <FaviconSwitcher />
         <Outlet />
-      </CmsAuthProvider>
+      </>
     ),
     children: [
-      { path: '/cms/login', element: <CmsLoginPage /> },
+      // Patient
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+      { path: '/verify-email', element: <VerifyEmailPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
       {
-        path: '/cms',
+        path: '/',
         element: (
-          <CmsProtectedRoute>
-            <CmsHomePage />
-          </CmsProtectedRoute>
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
         ),
       },
       {
-        path: '/cms/login-history',
+        path: '/login-history',
         element: (
-          <CmsProtectedRoute>
-            <CmsLoginHistoryPage />
-          </CmsProtectedRoute>
+          <ProtectedRoute>
+            <LoginHistoryPage />
+          </ProtectedRoute>
         ),
+      },
+      {
+        path: '/change-password',
+        element: (
+          <ProtectedRoute>
+            <ChangePasswordPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/medical-profile',
+        element: (
+          <ProtectedRoute>
+            <MedicalProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+        {
+        path: '/health-report',
+        element: (
+          <ProtectedRoute>
+            <HealthReportPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/food-diary',
+        element: (
+          <ProtectedRoute>
+            <FoodDiaryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/food-diary-history',
+        element: (
+          <ProtectedRoute>
+            <FoodDiaryHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/food-sensitivity',
+        element: (
+          <ProtectedRoute>
+            <FoodSensitivityProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/bristol',
+        element: (
+          <ProtectedRoute>
+            <BristolPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/bristol-history',
+        element: (
+          <ProtectedRoute>
+            <BristolHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/medications',
+        element: (
+          <ProtectedRoute>
+            <MedicationRemindersPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/chat',
+        element: (
+          <ProtectedRoute>
+            <ChatPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/chat-history',
+        element: (
+          <ProtectedRoute>
+            <ChatHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/symptom-assessment',
+        element: (
+          <ProtectedRoute>
+            <SymptomAssessmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/articles',
+        element: (
+          <ProtectedRoute>
+            <KnowledgeLibraryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/articles/:slug',
+        element: (
+          <ProtectedRoute>
+            <KnowledgeLibraryPage />
+          </ProtectedRoute>
+        ),
+      },
+
+      // CMS - Admin / Doctor. Dùng 1 CmsAuthProvider chung cho cả nhánh /cms/* — nếu mỗi route
+      // tự bọc provider riêng, state đăng nhập ở /cms/login sẽ mất ngay khi điều hướng sang /cms
+      // (mỗi provider là 1 instance context độc lập, không chia sẻ được cho nhau).
+      {
+        element: (
+          <CmsAuthProvider>
+            <Outlet />
+          </CmsAuthProvider>
+        ),
+        children: [
+          { path: '/cms/login', element: <CmsLoginPage /> },
+          {
+            path: '/cms',
+            element: (
+              <CmsProtectedRoute>
+                <CmsHomePage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/login-history',
+            element: (
+              <CmsProtectedRoute>
+                <CmsLoginHistoryPage />
+              </CmsProtectedRoute>
+            ),
+          },
+           {
+            path: '/cms/triage-alerts',
+            element: (
+              <CmsProtectedRoute>
+                <CmsTriageAlertsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+        ],
       },
     ],
   },

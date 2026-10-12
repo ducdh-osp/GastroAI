@@ -1,4 +1,4 @@
-import { DownOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LogoutOutlined } from '@ant-design/icons'
+import { BarChartOutlined, BulbOutlined, CoffeeOutlined, CommentOutlined, DownOutlined, ExperimentOutlined, FilePdfOutlined, FileSearchOutlined, FileTextOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LineChartOutlined, LogoutOutlined, MedicineBoxOutlined, MessageOutlined } from '@ant-design/icons'
 import { Dropdown } from 'antd'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
@@ -6,9 +6,21 @@ import { Logo } from '../brand/Logo'
 
 const NAV_ITEMS = [
   { key: 'home', label: 'Trang chủ', icon: <HomeOutlined />, to: '/' },
+  { key: 'chat', label: 'Tư vấn sức khỏe', icon: <CommentOutlined />, to: '/chat' },
+  { key: 'chat-history', label: 'Lịch sử phiên chat', icon: <MessageOutlined />, to: '/chat-history' },
+  { key: 'articles', label: 'Bài viết tiêu hoá', icon: <FileSearchOutlined />, to: '/articles' },
+  { key: 'medical-profile', label: 'Hồ sơ bệnh lý', icon: <FileTextOutlined />, to: '/medical-profile' },
+  { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
+  { key: 'food-diary-history', label: 'Lịch sử ăn uống', icon: <BarChartOutlined />, to: '/food-diary-history' },
+  { key: 'food-sensitivity', label: 'Nhạy cảm thực phẩm', icon: <BulbOutlined />, to: '/food-sensitivity' },
+  { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
+  { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
+  { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
+  { key: 'health-report', label: 'Xuất nhật ký sức khỏe', icon: <FilePdfOutlined />, to: '/health-report' },
   { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
   { key: 'change-password', label: 'Đổi mật khẩu', icon: <KeyOutlined />, to: '/change-password' },
 ]
+
 
 /** Sidebar cố định cho các trang bệnh nhân sau khi đăng nhập — cùng cấu trúc với CmsSidebar
  * (bên admin) và cùng nền tối, nhưng dùng tông xanh ngọc đậm (#0f2926) thay vì slate để 2
@@ -18,8 +30,8 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  function handleLogout() {
-    logout()
+  async function handleLogout() {
+    await logout()
     navigate('/login')
   }
 
