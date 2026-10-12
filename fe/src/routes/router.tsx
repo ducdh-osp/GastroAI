@@ -26,6 +26,8 @@ import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
 import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
+import CmsTriageKeywordsPage from '../pages/cms/CmsTriageKeywordsPage'
+import CmsRuntimeConfigPage from '../pages/cms/CmsRuntimeConfigPage'
 import HealthReportPage from '../pages/patient/HealthReportPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 
@@ -215,6 +217,22 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsTriageAlertsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/triage-keywords',
+            element: (
+              <CmsProtectedRoute>
+                <CmsTriageKeywordsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/runtime-config',
+            element: (
+              <CmsProtectedRoute>
+                <CmsRuntimeConfigPage />
               </CmsProtectedRoute>
             ),
           },

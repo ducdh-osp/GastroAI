@@ -1,6 +1,8 @@
 package vn.gastroai.be.application.rag;
 
 import org.junit.jupiter.api.Test;
+import vn.gastroai.be.application.config.AppRuntimeConfigService;
+import vn.gastroai.be.application.config.AppRuntimeConfigSnapshot;
 import vn.gastroai.be.application.triage.TriageService;
 import vn.gastroai.be.domain.triage.TriageResult;
 import vn.gastroai.be.infrastructure.ai.GeminiChatClient;
@@ -43,7 +45,7 @@ class StreamingRagQueryServiceTest {
             return null;
         }).when(streamingChatClient).generateStream(anyString(), anyString(), any(), any());
 
-        StreamingRagQueryService service = new StreamingRagQueryService(
+        StreamingRagQueryService service = serviceWithTopK(
                 embeddingClient, embeddingStore, streamingChatClient, chatClient, triageService, 5);
 
         service.streamAnswer(
@@ -82,7 +84,7 @@ class StreamingRagQueryServiceTest {
             return null;
         }).when(streamingChatClient).generateStream(anyString(), anyString(), any(), any());
 
-        StreamingRagQueryService service = new StreamingRagQueryService(
+        StreamingRagQueryService service = serviceWithTopK(
                 embeddingClient, embeddingStore, streamingChatClient, chatClient, triageService, 5);
 
         List<ImagePart> images = List.of(new ImagePart("image/png", "AQID"));
@@ -97,5 +99,18 @@ class StreamingRagQueryServiceTest {
 
         assertEquals("Day la mo ta anh.", result.answer());
         verify(streamingChatClient).generateStream(anyString(), eq("Day la vet gi tren da?"), eq(images), any());
+    }
+
+    /** UC0059 - topK gio doc tu AppRuntimeConfigService thay vi hardcode - mock san 1 config co
+     * dinh (threshold=null) cho cac test logic streaming o tren, vi chung khong nham kiem tra
+     * UC0059. */
+    private static StreamingRagQueryService serviceWithTopK(
+            GeminiEmbeddingClient embeddingClient, EmbeddingStore embeddingStore,
+            GeminiStreamingChatClient streamingChatClient, GeminiChatClient chatClient,
+            TriageService triageService, int topK) {
+        AppRuntimeConfigService configService = mock(AppRuntimeConfigService.class);
+        when(configService.getConfig()).thenReturn(new AppRuntimeConfigSnapshot(topK, null, true, null, null));
+        return new StreamingRagQueryService(
+                embeddingClient, embeddingStore, streamingChatClient, chatClient, triageService, configService);
     }
 }

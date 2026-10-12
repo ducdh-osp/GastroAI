@@ -10,6 +10,8 @@ import {
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
   SafetyOutlined,
+  SettingOutlined,
+  TagsOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
 import { Dropdown, Tag } from 'antd'
@@ -61,6 +63,15 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
        { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts' },
       { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true, adminOnly: true },
       { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
+    ],
+  },
+  {
+    // UC0054 Actor "Admin / Bác sĩ" nên adminOnly=false; UC0059 Actor chỉ "Admin" (xem
+    // masterplan) nên adminOnly=true - khớp đúng SecurityConfig phía BE cho 2 route này.
+    title: 'Cấu hình',
+    items: [
+      { key: 'triage-keywords', label: 'Từ khóa Triage', icon: <TagsOutlined />, to: '/cms/triage-keywords' },
+      { key: 'runtime-config', label: 'Cấu hình RAG/Triage', icon: <SettingOutlined />, to: '/cms/runtime-config', adminOnly: true },
     ],
   },
 ]

@@ -1,7 +1,8 @@
 package vn.gastroai.be.application.rag;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import vn.gastroai.be.application.config.AppRuntimeConfigService;
+import vn.gastroai.be.application.config.AppRuntimeConfigSnapshot;
 import vn.gastroai.be.infrastructure.ai.GeminiChatClient;
 import vn.gastroai.be.infrastructure.ai.GeminiEmbeddingClient;
 import vn.gastroai.be.infrastructure.ai.GeminiStreamingChatClient;
@@ -25,7 +26,7 @@ public class StreamingRagQueryService {
     private final GeminiStreamingChatClient streamingChatClient;
     private final GeminiChatClient chatClient;
     private final TriageService triageService;
-    private final int topK;
+    private final AppRuntimeConfigService appRuntimeConfigService;
 
     public StreamingRagQueryService(
             GeminiEmbeddingClient embeddingClient,
@@ -33,14 +34,14 @@ public class StreamingRagQueryService {
             GeminiStreamingChatClient streamingChatClient,
             GeminiChatClient chatClient,
             TriageService triageService,
-            @Value("${app.rag.top-k:5}") int topK
+            AppRuntimeConfigService appRuntimeConfigService
     ) {
         this.embeddingClient = embeddingClient;
         this.embeddingStore = embeddingStore;
         this.streamingChatClient = streamingChatClient;
         this.chatClient = chatClient;
         this.triageService = triageService;
-        this.topK = topK;
+        this.appRuntimeConfigService = appRuntimeConfigService;
     }
 
     public StreamingResult streamAnswer(
@@ -62,9 +63,11 @@ public class StreamingRagQueryService {
 
         onTriageChecked.accept(triageResult);
 
+        AppRuntimeConfigSnapshot config = appRuntimeConfigService.getConfig();
         float[] queryVector = embeddingClient.embed(question);
 
-        List<SimilarChunk> context = embeddingStore.findTopK(queryVector, topK);
+        List<SimilarChunk> context = RagQueryService.applySimilarityThreshold(
+                embeddingStore.findTopK(queryVector, config.ragTopK()), config.ragSimilarityThreshold());
 
         List<RagSource> sources = context.stream()
                 .limit(MAX_DISPLAYED_SOURCES)

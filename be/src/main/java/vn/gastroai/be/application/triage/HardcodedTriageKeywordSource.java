@@ -1,7 +1,5 @@
 package vn.gastroai.be.application.triage;
 
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.Map;
 
@@ -13,8 +11,13 @@ import java.util.Map;
  * Từ khóa lưu sẵn dạng thường, không dấu (TriageService cũng chuẩn hóa input theo cách này
  * trước khi so khớp, xem TriageService.normalize()). Mỗi nhóm có nhiều cách nói khác nhau vì
  * UC0034 ưu tiên recall cao hơn precision - thà báo nhầm còn hơn bỏ sót ca thật.
+ *
+ * KHÔNG còn là @Component từ GĐ5 - DatabaseTriageKeywordSource (đọc từ bảng triage_keywords,
+ * seed từ đúng nội dung của class này ở V32) mới là nguồn thật TriageService dùng, cho phép
+ * admin CRUD qua màn hình CMS (UC0054) mà không cần build lại/restart app. Giữ lại class này vì
+ * TriageServiceTest dùng trực tiếp (test logic so khớp không cần DB/Spring context) và để lưu
+ * nguồn trích dẫn y khoa gốc.
  */
-@Component
 public class HardcodedTriageKeywordSource implements TriageKeywordSource {
 
     private static final Map<String, List<String>> KEYWORDS_BY_GROUP = Map.ofEntries(
