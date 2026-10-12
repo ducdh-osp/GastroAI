@@ -64,6 +64,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/login",
                                 "/api/v1/cms/auth/**",
+                                "/api/v1/faqs/**",
                                 "/error")
                         .permitAll()
                         // Patient endpoints must never accept a CMS HttpSession. MySQL CMS ids
@@ -74,13 +75,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/chat/**").hasRole("PATIENT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "DOCTOR")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/documents")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/article-topics/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/articles/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/faqs/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/backup/**")

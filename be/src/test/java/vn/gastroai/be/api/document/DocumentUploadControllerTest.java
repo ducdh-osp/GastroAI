@@ -108,6 +108,35 @@ class DocumentUploadControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void listReturnsPagedDocuments() throws Exception {
+        DocumentSummaryResponse docSummary = new DocumentSummaryResponse(
+                42L, "IBS guide", "/path", "https://example.com",
+                DocumentStatus.DONE, DocumentProcessingStage.DONE,
+                null, 10L, java.time.Instant.now(), java.time.Instant.now()
+        );
+        when(documentStatusService.list(null, null, 0, 15))
+                .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15));
+
+        mockMvc.perform(get("/api/v1/documents"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(42))
+                .andExpect(jsonPath("$.items[0].chunkCount").value(10));
+    }
+
+    @Test
+    @WithMockUser(roles = "DOCTOR")
+    void retryDelegatesToStatusService() throws Exception {
+        Document retried = document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING);
+        when(documentStatusService.retry(42L)).thenReturn(retried);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/documents/42/retry"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
     private Document document(DocumentStatus status, DocumentProcessingStage stage) {
         Document document = new Document();
         document.setId(42L);

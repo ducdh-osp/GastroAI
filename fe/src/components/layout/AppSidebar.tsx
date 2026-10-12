@@ -1,4 +1,4 @@
-import { BarChartOutlined, FireOutlined, BulbOutlined, CoffeeOutlined, CommentOutlined, DownOutlined, ExperimentOutlined, FilePdfOutlined, FileSearchOutlined, FileTextOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LineChartOutlined, LogoutOutlined, MedicineBoxOutlined, MessageOutlined } from '@ant-design/icons'
+import { BarChartOutlined, FireOutlined, BulbOutlined, CoffeeOutlined, CommentOutlined, DownOutlined, ExperimentOutlined, FilePdfOutlined, FileSearchOutlined, FileTextOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LineChartOutlined, LogoutOutlined, MedicineBoxOutlined, MessageOutlined, QuestionCircleOutlined } from '@ant-design/icons'
 import { Dropdown } from 'antd'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { key: 'chat', label: 'Tư vấn sức khỏe', icon: <CommentOutlined />, to: '/chat' },
   { key: 'chat-history', label: 'Lịch sử phiên chat', icon: <MessageOutlined />, to: '/chat-history' },
   { key: 'articles', label: 'Bài viết tiêu hoá', icon: <FileSearchOutlined />, to: '/articles' },
+  { key: 'faq', label: 'Hỏi đáp thường gặp', icon: <QuestionCircleOutlined />, to: '/faq' },
   { key: 'medical-profile', label: 'Hồ sơ bệnh lý', icon: <FileTextOutlined />, to: '/medical-profile' },
   { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
   { key: 'food-diary-history', label: 'Lịch sử ăn uống', icon: <BarChartOutlined />, to: '/food-diary-history' },

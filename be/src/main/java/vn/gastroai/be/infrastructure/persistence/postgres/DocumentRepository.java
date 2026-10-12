@@ -13,6 +13,8 @@ import java.util.Optional;
 
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 
+    List<Document> findAllByOrderByUploadedAtDesc();
+
     /** Tim cac document dang do o nhung trang thai chua hoan tat - dung de phuc hoi sau khi server khoi dong lai. */
     List<Document> findByStatusIn(List<DocumentStatus> statuses);
 

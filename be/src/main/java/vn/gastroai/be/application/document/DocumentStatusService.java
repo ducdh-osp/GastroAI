@@ -11,6 +11,7 @@ import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -84,6 +85,76 @@ public class DocumentStatusService {
 
         documentRepository.save(document);
         chunkRepository.deleteByDocumentId(documentId);
+    }
+
+    @Transactional(readOnly = true)
+    public vn.gastroai.be.api.document.DocumentPageResponse list(
+            String query,
+            DocumentStatus status,
+            int page,
+            int size
+    ) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
+        }
+
+        String normalizedQuery = query == null || query.isBlank()
+                ? ""
+                : vn.gastroai.be.application.support.VietnameseText.normalize(query.trim());
+
+        List<Document> all = documentRepository.findAllByOrderByUploadedAtDesc();
+
+        List<Document> filtered = all.stream()
+                .filter(d -> status == null || d.getStatus() == status)
+                .filter(d -> normalizedQuery.isEmpty()
+                        || (d.getTitle() != null && vn.gastroai.be.application.support.VietnameseText.normalize(d.getTitle()).contains(normalizedQuery))
+                        || (d.getSourceUrl() != null && vn.gastroai.be.application.support.VietnameseText.normalize(d.getSourceUrl()).contains(normalizedQuery)))
+                .toList();
+
+        // Lấy số lượng chunks cho từng document
+        java.util.Map<Long, Long> chunkCounts = chunkRepository.countByDocumentIdGrouped().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        long offset = pageable.getOffset();
+        if (offset >= filtered.size()) {
+            return new vn.gastroai.be.api.document.DocumentPageResponse(List.of(), filtered.size(), page, size);
+        }
+
+        int start = Math.toIntExact(offset);
+        int end = Math.min(start + size, filtered.size());
+
+        List<vn.gastroai.be.api.document.DocumentSummaryResponse> items = filtered.subList(start, end).stream()
+                .map(d -> new vn.gastroai.be.api.document.DocumentSummaryResponse(
+                        d.getId(),
+                        d.getTitle(),
+                        d.getSource(),
+                        d.getSourceUrl(),
+                        d.getStatus(),
+                        d.getProcessingStage(),
+                        d.getErrorMessage(),
+                        chunkCounts.getOrDefault(d.getId(), 0L),
+                        d.getUploadedAt(),
+                        d.getUpdatedAt()
+                ))
+                .toList();
+
+        return new vn.gastroai.be.api.document.DocumentPageResponse(items, filtered.size(), page, size);
+    }
+
+    @Transactional
+    public Document retry(Long documentId) {
+        Document document = getDocument(documentId);
+        if (document.getStatus() != DocumentStatus.ERROR) {
+            throw new IllegalStateException("Chỉ có thể thử lại các tài liệu đang ở trạng thái lỗi (ERROR)");
+        }
+        document.setStatus(DocumentStatus.PENDING);
+        document.setProcessingStage(DocumentProcessingStage.PENDING);
+        document.setErrorMessage(null);
+        return documentRepository.save(document);
     }
 
     private Document getDocument(Long documentId) {

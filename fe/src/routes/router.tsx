@@ -29,8 +29,11 @@ import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
 import CmsArticleTopicsPage from '../pages/cms/CmsArticleTopicsPage'
 import CmsArticlesPage from '../pages/cms/CmsArticlesPage'
 import CmsArticleEditorPage from '../pages/cms/CmsArticleEditorPage'
+import CmsDocumentsPage from '../pages/cms/CmsDocumentsPage'
+import CmsFaqPage from '../pages/cms/CmsFaqPage'
 import HealthReportPage from '../pages/patient/HealthReportPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
+import FaqPage from '../pages/patient/FaqPage'
 
 export const router = createBrowserRouter([
   {
@@ -185,6 +188,14 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: '/faq',
+        element: (
+          <ProtectedRoute>
+            <FaqPage />
+          </ProtectedRoute>
+        ),
+      },
 
       // CMS - Admin / Doctor. Dùng 1 CmsAuthProvider chung cho cả nhánh /cms/* — nếu mỗi route
       // tự bọc provider riêng, state đăng nhập ở /cms/login sẽ mất ngay khi điều hướng sang /cms
@@ -222,6 +233,14 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: '/cms/documents',
+            element: (
+              <CmsProtectedRoute>
+                <CmsDocumentsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
             path: '/cms/article-topics',
             element: (
               <CmsProtectedRoute>
@@ -250,6 +269,14 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsArticleEditorPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/faq',
+            element: (
+              <CmsProtectedRoute>
+                <CmsFaqPage />
               </CmsProtectedRoute>
             ),
           },

@@ -44,6 +44,22 @@ public class DocumentUploadController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @GetMapping
+    public ResponseEntity<DocumentPageResponse> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) DocumentStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size
+    ) {
+        return ResponseEntity.ok(documentStatusService.list(q, status, page, size));
+    }
+
+    @PostMapping("/{documentId}/retry")
+    public ResponseEntity<DocumentStatusResponse> retry(@PathVariable Long documentId) {
+        Document document = documentStatusService.retry(documentId);
+        return ResponseEntity.accepted().body(toResponse(document));
+    }
+
     @DeleteMapping("/{documentId}")
     public ResponseEntity<Void> delete(@PathVariable Long documentId) {
         documentUploadService.delete(documentId);
