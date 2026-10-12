@@ -26,6 +26,9 @@ import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
 import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
+import CmsArticleTopicsPage from '../pages/cms/CmsArticleTopicsPage'
+import CmsArticlesPage from '../pages/cms/CmsArticlesPage'
+import CmsArticleEditorPage from '../pages/cms/CmsArticleEditorPage'
 import HealthReportPage from '../pages/patient/HealthReportPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 
@@ -215,6 +218,38 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsTriageAlertsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/article-topics',
+            element: (
+              <CmsProtectedRoute>
+                <CmsArticleTopicsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/articles',
+            element: (
+              <CmsProtectedRoute>
+                <CmsArticlesPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/articles/new',
+            element: (
+              <CmsProtectedRoute>
+                <CmsArticleEditorPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/articles/:id/edit',
+            element: (
+              <CmsProtectedRoute>
+                <CmsArticleEditorPage />
               </CmsProtectedRoute>
             ),
           },

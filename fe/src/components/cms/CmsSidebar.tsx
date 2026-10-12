@@ -10,6 +10,7 @@ import {
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
   SafetyOutlined,
+  TagsOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
 import { Dropdown, Tag } from 'antd'
@@ -51,7 +52,8 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     title: 'Kho tri thức',
     items: [
       { key: 'documents', label: 'Tài liệu y khoa', icon: <FileTextOutlined />, comingSoon: true },
-      { key: 'articles', label: 'Bài viết kiến thức', icon: <BookOutlined />, comingSoon: true },
+      { key: 'articles', label: 'Bài viết kiến thức', icon: <BookOutlined />, to: '/cms/articles' },
+      { key: 'article-topics', label: 'Chủ đề bài viết', icon: <TagsOutlined />, to: '/cms/article-topics' },
       { key: 'faq', label: 'Câu hỏi thường gặp', icon: <QuestionCircleOutlined />, comingSoon: true },
     ],
   },
