@@ -10,6 +10,8 @@ import org.springframework.messaging.support.MessageBuilder;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Map;
+
 class StompClientSendBlockingInterceptorTest {
 
     private final StompClientSendBlockingInterceptor interceptor = new StompClientSendBlockingInterceptor();
@@ -47,6 +49,31 @@ class StompClientSendBlockingInterceptorTest {
     }
 
     @Test
+    void patientCanSubscribeOnlyToOwnNotificationDestination() {
+        Message<byte[]> own = stompMessage(StompCommand.SUBSCRIBE,
+                "/topic/notifications/patient/7", Map.of("PATIENT_ID", 7L));
+        Message<byte[]> anotherPatient = stompMessage(StompCommand.SUBSCRIBE,
+                "/topic/notifications/patient/8", Map.of("PATIENT_ID", 7L));
+        Message<byte[]> triage = stompMessage(StompCommand.SUBSCRIBE,
+                "/topic/triage-alerts", Map.of("PATIENT_ID", 7L));
+
+        assertSame(own, interceptor.preSend(own, null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(anotherPatient, null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(triage, null));
+    }
+
+    @Test
+    void onlyAdminCmsSessionCanSubscribeToAdminNotifications() {
+        Message<byte[]> admin = stompMessage(StompCommand.SUBSCRIBE, "/topic/notifications/admin",
+                Map.of("HTTP_SESSION_ID", "s1", "CMS_USER_TYPE", "ADMIN"));
+        Message<byte[]> doctor = stompMessage(StompCommand.SUBSCRIBE, "/topic/notifications/admin",
+                Map.of("HTTP_SESSION_ID", "s2", "CMS_USER_TYPE", "DOCTOR"));
+
+        assertSame(admin, interceptor.preSend(admin, null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(doctor, null));
+    }
+
+    @Test
     void allowsConnectFrame() {
         Message<byte[]> message = stompMessage(StompCommand.CONNECT, null);
 
@@ -56,9 +83,17 @@ class StompClientSendBlockingInterceptorTest {
     }
 
     private static Message<byte[]> stompMessage(StompCommand command, String destination) {
+        return stompMessage(command, destination, null);
+    }
+
+    private static Message<byte[]> stompMessage(StompCommand command, String destination,
+                                                Map<String, Object> sessionAttributes) {
         StompHeaderAccessor accessor = StompHeaderAccessor.create(command);
         if (destination != null) {
             accessor.setDestination(destination);
+        }
+        if (sessionAttributes != null) {
+            accessor.setSessionAttributes(sessionAttributes);
         }
         return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
     }

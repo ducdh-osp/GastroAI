@@ -118,69 +118,26 @@ const reasonExplanations: Record<string, string> = {
   DURATION_UNCLEAR: 'Thời gian kéo dài chưa rõ; nên trao đổi thêm với nhân viên y tế.',
 }
 
-function getAdvice(result: SymptomAssessmentResponse) {
-  if (result.emergency) {
-    return {
-      type: 'error' as const,
-      title: 'Cần được trợ giúp y tế khẩn cấp',
-      description: 'Bạn đã chọn ít nhất một dấu hiệu khẩn cấp. Hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay; đừng chờ chatbot đánh giá thêm.',
-    }
-  }
-  if (result.requiresClinicianReview) {
-    return {
-      type: 'warning' as const,
-      title: 'Nên trao đổi với nhân viên y tế',
-      description: 'Một số dấu hiệu hoặc thông tin bạn cung cấp cần được xem xét trực tiếp. Công cụ không thể xác định nguyên nhân hay thay thế bác sĩ.',
-    }
-  }
-  if (result.severityLevel === 'SEVERE') {
-    return {
-      type: 'warning' as const,
-      title: 'Triệu chứng đang ảnh hưởng nhiều đến sinh hoạt',
-      description: 'Bạn tự đánh giá triệu chứng ở mức nặng. Hãy liên hệ nhân viên y tế để được tư vấn trực tiếp, đặc biệt nếu tình trạng tiếp tục nặng lên.',
-    }
-  }
-  if (result.severityLevel === 'MODERATE') {
-    return {
-      type: 'info' as const,
-      title: 'Theo dõi sát diễn tiến',
-      description: 'Nếu triệu chứng kéo dài, nặng lên hoặc tiếp tục ảnh hưởng sinh hoạt, hãy liên hệ nhân viên y tế để được tư vấn.',
-    }
-  }
-  if (result.severityLevel === 'UNDETERMINED') {
-    return {
-      type: 'info' as const,
-      title: 'Chưa đủ thông tin để đánh giá',
-      description: 'Hãy trao đổi với nhân viên y tế để được hướng dẫn phù hợp với tình trạng của bạn.',
-    }
-  }
-  return {
-    type: 'success' as const,
-    title: 'Tiếp tục theo dõi triệu chứng',
-    description: 'Ghi nhận nếu triệu chứng thay đổi. Nếu kéo dài, nặng lên hoặc khiến bạn lo lắng, hãy liên hệ nhân viên y tế.',
-  }
-}
-
 function getCareAdvice(careRecommendation?: CareRecommendation) {
   if (careRecommendation === 'EMERGENCY_CARE') {
     return {
       type: 'error' as const,
       title: 'Cần cấp cứu ngay',
-      description: 'Hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay.',
+      description: 'Hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay; đừng chờ chatbot đánh giá thêm.',
     }
   }
   if (careRecommendation === 'SEE_DOCTOR') {
     return {
       type: 'warning' as const,
       title: 'Nên gặp bác sĩ',
-      description: 'Hãy liên hệ cơ sở y tế để được tư vấn hoặc khám trực tiếp.',
+      description: 'Hãy liên hệ cơ sở y tế để được tư vấn hoặc khám trực tiếp. Công cụ không thể xác định nguyên nhân hay thay thế bác sĩ.',
     }
   }
   if (careRecommendation === 'SELF_CARE_AT_HOME') {
     return {
       type: 'success' as const,
       title: 'Tự chăm sóc tại nhà',
-      description: 'Nghỉ ngơi, uống đủ nước và theo dõi diễn tiến. Hãy gặp bác sĩ nếu triệu chứng nặng lên hoặc không cải thiện.',
+      description: 'Nghỉ ngơi, uống đủ nước và theo dõi diễn tiến. Hãy gặp bác sĩ nếu triệu chứng kéo dài, nặng lên, ảnh hưởng sinh hoạt hoặc khiến bạn lo lắng.',
     }
   }
   return null
@@ -254,8 +211,7 @@ export default function SymptomAssessmentPage() {
 
   const warningSet = new Set(answers.warningSigns ?? [])
   const emergencySelected = emergencyWarningOptions.some((option) => warningSet.has(option.value))
-  const advice = result ? getAdvice(result) : null
-  const careAdvice = result ? getCareAdvice(result.careRecommendation) ?? advice : null
+  const careAdvice = result ? getCareAdvice(result.careRecommendation) : null
   const titleForSeverity = answers.reportedSeverity ? severityLabels[answers.reportedSeverity] : 'Chưa chọn'
 
   return (
@@ -292,7 +248,7 @@ export default function SymptomAssessmentPage() {
           <div className="space-y-5 pb-6">
             <Card className="rounded-2xl border-black/5 shadow-sm">
               <Result
-                status={result.emergency ? 'error' : result.severityLevel === 'UNDETERMINED' ? 'info' : result.requiresClinicianReview || result.severityLevel === 'SEVERE' ? 'warning' : 'success'}
+                status={result.careRecommendation === 'EMERGENCY_CARE' ? 'error' : result.careRecommendation === 'SEE_DOCTOR' ? 'warning' : 'success'}
                 icon={result.emergency ? <ExclamationCircleOutlined /> : <CheckCircleOutlined />}
                 title={<span className="flex flex-wrap items-center justify-center gap-2">Mức đánh giá: <Tag color={severityColors[result.severityLevel]}>{severityLabels[result.severityLevel]}</Tag></span>}
                 subTitle="Kết quả dựa trên câu trả lời bạn cung cấp, không phải chẩn đoán."

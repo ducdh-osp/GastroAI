@@ -28,8 +28,13 @@ import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
 import CmsTriageKeywordsPage from '../pages/cms/CmsTriageKeywordsPage'
 import CmsRuntimeConfigPage from '../pages/cms/CmsRuntimeConfigPage'
+import CmsArticleTopicsPage from '../pages/cms/CmsArticleTopicsPage'
+import CmsArticlesPage from '../pages/cms/CmsArticlesPage'
+import CmsArticleEditorPage from '../pages/cms/CmsArticleEditorPage'
 import HealthReportPage from '../pages/patient/HealthReportPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
+import NotificationsPage from '../pages/patient/NotificationsPage'
+import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 
 export const router = createBrowserRouter([
   {
@@ -53,6 +58,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/notifications',
+        element: (
+          <ProtectedRoute>
+            <NotificationsPage />
           </ProtectedRoute>
         ),
       },
@@ -205,6 +218,14 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: '/cms/notifications',
+            element: (
+              <CmsProtectedRoute>
+                <CmsNotificationsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
             path: '/cms/login-history',
             element: (
               <CmsProtectedRoute>
@@ -233,6 +254,38 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsRuntimeConfigPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/article-topics',
+            element: (
+              <CmsProtectedRoute>
+                <CmsArticleTopicsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/articles',
+            element: (
+              <CmsProtectedRoute>
+                <CmsArticlesPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/articles/new',
+            element: (
+              <CmsProtectedRoute>
+                <CmsArticleEditorPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/articles/:id/edit',
+            element: (
+              <CmsProtectedRoute>
+                <CmsArticleEditorPage />
               </CmsProtectedRoute>
             ),
           },

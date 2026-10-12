@@ -76,10 +76,16 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/documents")
                         .hasAnyRole("ADMIN", "DOCTOR")
+                        // SockJS cannot attach the Authorization header during its HTTP handshake.
+                        // This endpoint validates the JWT query token in PatientWebSocketHandshakeInterceptor.
+                        .requestMatchers("/ws/patient/**").permitAll()
                         .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/notifications/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-keywords/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/article-topics/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/articles/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/backup/**")

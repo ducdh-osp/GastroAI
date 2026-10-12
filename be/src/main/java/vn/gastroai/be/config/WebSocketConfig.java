@@ -11,6 +11,7 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 import vn.gastroai.be.infrastructure.security.AdminWebSocketHandlerDecoratorFactory;
 import vn.gastroai.be.infrastructure.security.AdminWebSocketHandshakeInterceptor;
 import vn.gastroai.be.infrastructure.security.StompClientSendBlockingInterceptor;
+import vn.gastroai.be.infrastructure.security.PatientWebSocketHandshakeInterceptor;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -22,14 +23,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final AdminWebSocketHandshakeInterceptor adminWebSocketHandshakeInterceptor;
     private final AdminWebSocketHandlerDecoratorFactory adminWebSocketHandlerDecoratorFactory;
     private final StompClientSendBlockingInterceptor stompClientSendBlockingInterceptor;
+    private final PatientWebSocketHandshakeInterceptor patientWebSocketHandshakeInterceptor;
 
     public WebSocketConfig(
             AdminWebSocketHandshakeInterceptor adminWebSocketHandshakeInterceptor,
             AdminWebSocketHandlerDecoratorFactory adminWebSocketHandlerDecoratorFactory,
-            StompClientSendBlockingInterceptor stompClientSendBlockingInterceptor) {
+            StompClientSendBlockingInterceptor stompClientSendBlockingInterceptor,
+            PatientWebSocketHandshakeInterceptor patientWebSocketHandshakeInterceptor) {
         this.adminWebSocketHandshakeInterceptor = adminWebSocketHandshakeInterceptor;
         this.adminWebSocketHandlerDecoratorFactory = adminWebSocketHandlerDecoratorFactory;
         this.stompClientSendBlockingInterceptor = stompClientSendBlockingInterceptor;
+        this.patientWebSocketHandshakeInterceptor = patientWebSocketHandshakeInterceptor;
     }
 
     @Override
@@ -43,6 +47,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(allowedOrigin)
                 .addInterceptors(adminWebSocketHandshakeInterceptor)
+                .withSockJS();
+        registry.addEndpoint("/ws/patient")
+                .setAllowedOrigins(allowedOrigin)
+                .addInterceptors(patientWebSocketHandshakeInterceptor)
                 .withSockJS();
     }
 

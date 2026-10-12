@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.api.patient.SymptomAssessmentHistoryResponse;
 import vn.gastroai.be.api.patient.SymptomAssessmentResponse;
 import vn.gastroai.be.domain.auth.Patient;
+import vn.gastroai.be.domain.triage.CareRecommendation;
 import vn.gastroai.be.domain.triage.StructuredTriageResult;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput;
 import vn.gastroai.be.domain.triage.SymptomAssessmentRecord;
@@ -56,6 +57,7 @@ public class SymptomAssessmentHistoryService {
         record.setMatchedGroups(writeJson(result.matchedGroups()));
         record.setReasonCodes(writeJson(result.reasonCodes()));
         record.setRequiresClinicianReview(result.requiresClinicianReview());
+        record.setCareRecommendation(result.careRecommendation().name());
 
         SymptomAssessmentRecord saved = recordRepository.save(record);
         if (result.emergency()) {
@@ -79,7 +81,8 @@ public class SymptomAssessmentHistoryService {
                         record.getActivityImpact(), record.getProgression(), record.getPatientGroup(),
                         readJson(record.getWarningSigns()), record.getSeverityLevel(), record.isEmergency(),
                         readJson(record.getMatchedGroups()), readJson(record.getReasonCodes()),
-                        record.isRequiresClinicianReview(), record.getAssessedAt()))
+                        record.isRequiresClinicianReview(),
+                        CareRecommendation.valueOf(record.getCareRecommendation()), record.getAssessedAt()))
                 .toList();
     }
 
