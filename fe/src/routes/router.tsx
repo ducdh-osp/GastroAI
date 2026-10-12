@@ -26,6 +26,8 @@ import { CmsProtectedRoute } from './CmsProtectedRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
 import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
+import CmsTriageKeywordsPage from '../pages/cms/CmsTriageKeywordsPage'
+import CmsRuntimeConfigPage from '../pages/cms/CmsRuntimeConfigPage'
 import CmsArticleTopicsPage from '../pages/cms/CmsArticleTopicsPage'
 import CmsArticlesPage from '../pages/cms/CmsArticlesPage'
 import CmsArticleEditorPage from '../pages/cms/CmsArticleEditorPage'
@@ -34,6 +36,8 @@ import CmsFaqPage from '../pages/cms/CmsFaqPage'
 import HealthReportPage from '../pages/patient/HealthReportPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 import FaqPage from '../pages/patient/FaqPage'
+import NotificationsPage from '../pages/patient/NotificationsPage'
+import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 
 export const router = createBrowserRouter([
   {
@@ -57,6 +61,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/notifications',
+        element: (
+          <ProtectedRoute>
+            <NotificationsPage />
           </ProtectedRoute>
         ),
       },
@@ -217,6 +229,14 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: '/cms/notifications',
+            element: (
+              <CmsProtectedRoute>
+                <CmsNotificationsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
             path: '/cms/login-history',
             element: (
               <CmsProtectedRoute>
@@ -237,6 +257,22 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsDocumentsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/triage-keywords',
+            element: (
+              <CmsProtectedRoute>
+                <CmsTriageKeywordsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/runtime-config',
+            element: (
+              <CmsProtectedRoute>
+                <CmsRuntimeConfigPage />
               </CmsProtectedRoute>
             ),
           },

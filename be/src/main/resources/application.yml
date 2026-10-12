@@ -106,12 +106,11 @@ app:
     # gemini-2.5-flash đã bị Google ngừng cấp cho API key mới tạo (xác nhận qua lỗi 404 thật
     # lúc test) — dùng bản hiện tại theo đúng gợi ý trong message lỗi của Google.
     chat-model: gemini-3.6-flash
-  # Đọc bởi RagQueryService (@Value) — số chunk truy xuất tối đa cho mỗi câu hỏi (UC0028).
-  rag:
-    top-k: ${RAG_TOP_K:5}
   journal:
     trash-retention-days: ${JOURNAL_TRASH_RETENTION_DAYS:30}
     trash-purge-cron: ${JOURNAL_TRASH_PURGE_CRON:0 45 3 * * *}
+  notification:
+    journal-reminder-cron: ${JOURNAL_REMINDER_CRON:0 0 20 * * *}
   backup:
     directory: ${BACKUP_DIRECTORY:./backups}
     retention-days: ${BACKUP_RETENTION_DAYS:14}

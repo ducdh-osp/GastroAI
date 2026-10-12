@@ -1,5 +1,6 @@
 import {
   AuditOutlined,
+  BellOutlined,
   BookOutlined,
   DashboardOutlined,
   DownOutlined,
@@ -10,14 +11,17 @@ import {
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
   SafetyOutlined,
+  SettingOutlined,
   TagsOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
-import { Dropdown, Tag } from 'antd'
-import type { ReactNode } from 'react'
+import { Badge, Dropdown, notification, Tag } from 'antd'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Logo } from '../brand/Logo'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
+import { getUnreadNotificationCount } from '../../api/notifications'
+import { useNotificationSocket } from '../../hooks/useNotificationSocket'
 
 interface NavItem {
   key: string
@@ -65,6 +69,15 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
     ],
   },
+  {
+    // UC0054 Actor "Admin / Bác sĩ" nên adminOnly=false; UC0059 Actor chỉ "Admin" (xem
+    // masterplan) nên adminOnly=true - khớp đúng SecurityConfig phía BE cho 2 route này.
+    title: 'Cấu hình',
+    items: [
+      { key: 'triage-keywords', label: 'Từ khóa Triage', icon: <TagsOutlined />, to: '/cms/triage-keywords' },
+      { key: 'runtime-config', label: 'Cấu hình RAG/Triage', icon: <SettingOutlined />, to: '/cms/runtime-config', adminOnly: true },
+    ],
+  },
 ]
 
 const ROLE_LABEL: Record<string, string> = {
@@ -80,6 +93,27 @@ const ROLE_LABEL: Record<string, string> = {
 export function CmsSidebar() {
   const { user, logout } = useCmsAuth()
   const location = useLocation()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (user?.userType !== 'ADMIN') return
+    const refreshUnreadCount = () => {
+      void getUnreadNotificationCount('admin').then(setUnreadCount).catch(() => {})
+    }
+    refreshUnreadCount()
+    window.addEventListener('gastroai:notification-state', refreshUnreadCount)
+    return () => window.removeEventListener('gastroai:notification-state', refreshUnreadCount)
+  }, [user?.userType])
+
+  useNotificationSocket({
+    audience: 'admin',
+    enabled: user?.userType === 'ADMIN',
+    onNotification: useCallback((item) => {
+      setUnreadCount((count) => count + 1)
+      notification.warning({ message: item.title, description: item.message, placement: 'topRight' })
+      window.dispatchEvent(new Event('gastroai:notification'))
+    }, []),
+  })
 
   const visibleSections = NAV_SECTIONS.map((section) => ({
     ...section,
@@ -95,6 +129,20 @@ export function CmsSidebar() {
         </div>
 
         <nav className="mt-2 space-y-5 px-3">
+          {user?.userType === 'ADMIN' && (
+            <Link
+              to="/cms/notifications"
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                location.pathname === '/cms/notifications' ? 'bg-teal-500/15 text-teal-300' : 'text-white/80 hover:bg-white/5'
+              }`}
+            >
+              <BellOutlined />
+              <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                Thông báo
+                {unreadCount > 0 && <Badge count={unreadCount} overflowCount={99} size="small" />}
+              </span>
+            </Link>
+          )}
           {visibleSections.map((section) => (
             <div key={section.title}>
               <p className="px-2 text-[0.65rem] font-semibold tracking-[0.2em] text-white/40 uppercase">

@@ -1,7 +1,8 @@
 package vn.gastroai.be.application.rag;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import vn.gastroai.be.application.config.AppRuntimeConfigService;
+import vn.gastroai.be.application.config.AppRuntimeConfigSnapshot;
 import vn.gastroai.be.infrastructure.ai.GeminiChatClient;
 import vn.gastroai.be.infrastructure.ai.GeminiEmbeddingClient;
 import vn.gastroai.be.infrastructure.ai.ImagePart;
@@ -33,17 +34,17 @@ public class RagQueryService {
     private final GeminiEmbeddingClient embeddingClient;
     private final EmbeddingStore embeddingStore;
     private final GeminiChatClient chatClient;
-    private final int topK;
+    private final AppRuntimeConfigService appRuntimeConfigService;
 
     public RagQueryService(
             GeminiEmbeddingClient embeddingClient,
             EmbeddingStore embeddingStore,
             GeminiChatClient chatClient,
-            @Value("${app.rag.top-k:5}") int topK) {
+            AppRuntimeConfigService appRuntimeConfigService) {
         this.embeddingClient = embeddingClient;
         this.embeddingStore = embeddingStore;
         this.chatClient = chatClient;
-        this.topK = topK;
+        this.appRuntimeConfigService = appRuntimeConfigService;
     }
 
     public String answer(String question) {
@@ -65,8 +66,10 @@ public class RagQueryService {
      * file dinh kem dang pdf/docx, duoc noi them vao cuoi prompt nhu 1 doan ngu canh nua.
      */
     public RagAnswer answerWithSources(String question, List<ImagePart> images, String attachedDocumentText) {
+        AppRuntimeConfigSnapshot config = appRuntimeConfigService.getConfig();
         float[] queryVector = embeddingClient.embed(question);
-        List<SimilarChunk> context = embeddingStore.findTopK(queryVector, topK);
+        List<SimilarChunk> context = applySimilarityThreshold(
+                embeddingStore.findTopK(queryVector, config.ragTopK()), config.ragSimilarityThreshold());
 
         String attachmentContext = buildAttachmentContext(attachedDocumentText);
 
@@ -103,6 +106,19 @@ public class RagQueryService {
                 ? ""
                 : "\n\nNoi dung tai lieu benh nhan vua gui kem (co the chua lieu luong - van ap " +
                   "dung dung chi dan ve lieu luong o tren):\n" + DosageRedactor.redact(attachedDocumentText);
+    }
+
+    /**
+     * UC0059 - loc bo chunk qua xa so voi cau hoi (distance > threshold), ngoai viec gioi han
+     * so luong qua top-k. threshold=null (mac dinh cu, chua config qua CMS) giu nguyen hanh vi
+     * cu - khong loc gi them, chi lay top-k. Tach rieng de StreamingRagQueryService dung lai y
+     * het, giong buildAttachmentContext() o tren.
+     */
+    public static List<SimilarChunk> applySimilarityThreshold(List<SimilarChunk> chunks, Double threshold) {
+        if (threshold == null) {
+            return chunks;
+        }
+        return chunks.stream().filter(chunk -> chunk.distance() <= threshold).toList();
     }
     /**
      * Goi y cau hoi lien quan la tinh nang phu (khong phai ly do chinh nguoi dung

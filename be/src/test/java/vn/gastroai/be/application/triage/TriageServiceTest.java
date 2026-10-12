@@ -140,6 +140,46 @@ class TriageServiceTest {
     }
 
     @Test
+    void moderateWithWorseningProgressionRequiresDoctor() {
+        StructuredTriageResult result = triageService.assess(input(SeverityLevel.MODERATE,
+                ActivityImpact.NONE, Progression.WORSENING, Duration.ONE_TO_THREE_DAYS,
+                PatientGroup.ADULT, Set.of()));
+
+        assertEquals(CareRecommendation.SEE_DOCTOR, result.careRecommendation());
+    }
+
+    @Test
+    void moderateThatPreventsNormalActivityRequiresDoctor() {
+        StructuredTriageResult result = triageService.assess(input(SeverityLevel.MODERATE,
+                ActivityImpact.PREVENTS_NORMAL_ACTIVITY, Progression.STABLE,
+                Duration.ONE_TO_THREE_DAYS, PatientGroup.ADULT, Set.of()));
+
+        assertEquals(CareRecommendation.SEE_DOCTOR, result.careRecommendation());
+    }
+
+    @Test
+    void moderatePersistentSymptomsRequireDoctor() {
+        for (Duration duration : Set.of(Duration.MORE_THAN_THREE_DAYS, Duration.RECURRING)) {
+            StructuredTriageResult result = triageService.assess(input(SeverityLevel.MODERATE,
+                    ActivityImpact.NONE, Progression.STABLE, duration,
+                    PatientGroup.ADULT, Set.of()));
+
+            assertEquals(CareRecommendation.SEE_DOCTOR, result.careRecommendation(), duration.name());
+        }
+    }
+
+    @Test
+    void persistentSymptomsRequireDoctorEvenWhenReportedAsMild() {
+        for (Duration duration : Set.of(Duration.MORE_THAN_THREE_DAYS, Duration.RECURRING)) {
+            StructuredTriageResult result = triageService.assess(input(SeverityLevel.MILD,
+                    ActivityImpact.NONE, Progression.STABLE, duration,
+                    PatientGroup.ADULT, Set.of()));
+
+            assertEquals(CareRecommendation.SEE_DOCTOR, result.careRecommendation(), duration.name());
+        }
+    }
+
+    @Test
     void highRiskAbdominalWarningSignsTriggerEmergencyTriage() {
         for (WarningSign warningSign : Set.of(WarningSign.HIGH_FEVER_WITH_ABDOMINAL_PAIN,
                 WarningSign.PAIN_RADIATING_TO_BACK_OR_SHOULDER,

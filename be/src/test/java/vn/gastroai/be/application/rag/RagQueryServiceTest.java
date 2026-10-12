@@ -1,6 +1,8 @@
 package vn.gastroai.be.application.rag;
 
 import org.junit.jupiter.api.Test;
+import vn.gastroai.be.application.config.AppRuntimeConfigService;
+import vn.gastroai.be.application.config.AppRuntimeConfigSnapshot;
 import vn.gastroai.be.infrastructure.ai.GeminiChatClient;
 import vn.gastroai.be.infrastructure.ai.GeminiEmbeddingClient;
 import vn.gastroai.be.infrastructure.rag.EmbeddingStore;
@@ -33,7 +35,7 @@ class RagQueryServiceTest {
                 new SimilarChunk(1L, 10L, "Cam nang tieu hoa", "Uong nhieu nuoc va an nhieu chat xo.", 0.05, null)));
         when(chatClient.generate(anyString(), anyString(), any())).thenReturn("Ban nen uong nhieu nuoc.");
 
-        RagQueryService ragQueryService = new RagQueryService(embeddingClient, embeddingStore, chatClient, 5);
+        RagQueryService ragQueryService = ragQueryServiceWithTopK(embeddingClient, embeddingStore, chatClient, 5);
 
         RagAnswer result = ragQueryService.answerWithSources("Lam sao de giam tao bon?");
 
@@ -55,7 +57,7 @@ class RagQueryServiceTest {
                 new SimilarChunk(1L, 10L, "Phac do dieu tri", "Amitriptyline 25mg/ngay vao buoi toi.", 0.05, null)));
         when(chatClient.generate(anyString(), anyString(), any())).thenReturn("Ban nen di kham de duoc ke don phu hop.");
 
-        RagQueryService ragQueryService = new RagQueryService(embeddingClient, embeddingStore, chatClient, 5);
+        RagQueryService ragQueryService = ragQueryServiceWithTopK(embeddingClient, embeddingStore, chatClient, 5);
 
         RagAnswer result = ragQueryService.answerWithSources("Thuoc nay uong lieu bao nhieu?");
 
@@ -75,7 +77,7 @@ class RagQueryServiceTest {
         when(embeddingStore.findTopK(queryVector, 5)).thenReturn(List.of());
         when(chatClient.generate(anyString(), anyString(), any())).thenReturn("Chua co du lieu de tra loi.");
 
-        RagQueryService ragQueryService = new RagQueryService(embeddingClient, embeddingStore, chatClient, 5);
+        RagQueryService ragQueryService = ragQueryServiceWithTopK(embeddingClient, embeddingStore, chatClient, 5);
 
         RagAnswer result = ragQueryService.answerWithSources("Cau hoi khong co trong kho tri thuc");
 
@@ -100,7 +102,7 @@ class RagQueryServiceTest {
         when(chatClient.generate(anyString(), eq("Cau hoi: Dau bung phai lam sao?\nCau tra loi: Ban nen uong nhieu nuoc.")))
                 .thenReturn("1. Trieu chung nay co nguy hiem khong?\n- Khi nao nen di kham?\n\nToi nen theo doi gi them?");
 
-        RagQueryService ragQueryService = new RagQueryService(embeddingClient, embeddingStore, chatClient, 5);
+        RagQueryService ragQueryService = ragQueryServiceWithTopK(embeddingClient, embeddingStore, chatClient, 5);
 
         RagAnswer result = ragQueryService.answerWithSources("Dau bung phai lam sao?");
 
@@ -124,12 +126,23 @@ class RagQueryServiceTest {
         when(chatClient.generate(anyString(), eq("Cau hoi: Cau hoi khong co trong kho tri thuc\nCau tra loi: Chua co du lieu de tra loi.")))
                 .thenThrow(new IllegalStateException("Gemini khong tra ve cau tra loi nao"));
 
-        RagQueryService ragQueryService = new RagQueryService(embeddingClient, embeddingStore, chatClient, 5);
+        RagQueryService ragQueryService = ragQueryServiceWithTopK(embeddingClient, embeddingStore, chatClient, 5);
 
         RagAnswer result = ragQueryService.answerWithSources("Cau hoi khong co trong kho tri thuc");
 
         // Cau tra loi chinh van phai nguyen ven du buoc goi y cau hoi lien quan bi loi.
         assertEquals("Chua co du lieu de tra loi.", result.answer());
         assertTrue(result.relatedQuestions().isEmpty());
+    }
+
+    /** UC0059 - topK gio doc tu AppRuntimeConfigService (co the doi qua CMS) thay vi hardcode -
+     * mock san 1 config co dinh (threshold=null = khong loc gi them) cho cac test logic RAG o
+     * tren, vi chung khong nham kiem tra UC0059. */
+    private static RagQueryService ragQueryServiceWithTopK(
+            GeminiEmbeddingClient embeddingClient, EmbeddingStore embeddingStore,
+            GeminiChatClient chatClient, int topK) {
+        AppRuntimeConfigService configService = mock(AppRuntimeConfigService.class);
+        when(configService.getConfig()).thenReturn(new AppRuntimeConfigSnapshot(topK, null, true, null, null));
+        return new RagQueryService(embeddingClient, embeddingStore, chatClient, configService);
     }
 }
