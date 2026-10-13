@@ -67,6 +67,15 @@ public class DocumentStatusService {
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
 
+        // UC0049 - ban moi xu ly xong thi tu thanh ban dang dung cua ca nhom. Thu tu bat
+        // buoc: tat ban cu (clearCurrent) TRUOC, bat ban nay SAU - neu dao nguoc, luc
+        // Hibernate auto-flush se co 2 dong cung is_current = true trong 1 nhom va vi pham
+        // index uk_documents_group_current.
+        if (!document.isCurrentVersion()) {
+            documentRepository.clearCurrent(document.groupId());
+            document.setCurrentVersion(true);
+        }
+
         documentRepository.save(document);
     }
 
