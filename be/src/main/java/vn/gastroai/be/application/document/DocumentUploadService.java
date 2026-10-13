@@ -14,6 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import vn.gastroai.be.application.support.ResourceNotFoundException;
 
 @Service
 public class DocumentUploadService {
@@ -25,8 +28,7 @@ public class DocumentUploadService {
 
     public DocumentUploadService(
             FileStorageService fileStorageService,
-            DocumentRepository documentRepository
-    ) {
+            DocumentRepository documentRepository) {
         this.fileStorageService = fileStorageService;
         this.documentRepository = documentRepository;
     }
@@ -76,7 +78,10 @@ public class DocumentUploadService {
         }
     }
 
-    /** Mã băm SHA-256 (dạng hex, 64 ký tự) của nội dung file đã lưu - dùng để phát hiện upload trùng. */
+    /**
+     * Mã băm SHA-256 (dạng hex, 64 ký tự) của nội dung file đã lưu - dùng để phát
+     * hiện upload trùng.
+     */
     private static String computeContentHash(Path storedPath) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -130,11 +135,12 @@ public class DocumentUploadService {
 
         return url;
     }
-    @Transactional
+
+    @Transactional("postgresTransactionManager")
     public void delete(Long documentId) {
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Không tìm thấy document: " + documentId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy tài liệu: " + documentId));
 
         if (document.getStatus() == DocumentStatus.PENDING
                 || document.getStatus() == DocumentStatus.PROCESSING) {
@@ -145,7 +151,24 @@ public class DocumentUploadService {
         documentRepository.delete(document);
 
         if (document.getSource() != null) {
-            fileStorageService.delete(Path.of(document.getSource()));
+            deleteFileAfterCommit(Path.of(document.getSource()));
         }
+    }
+
+    /**
+     * Chi xoa file tren dia SAU KHI DB da commit xong viec xoa - commit loi thi giu
+     * file.
+     */
+    private void deleteFileAfterCommit(Path file) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            fileStorageService.delete(file);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                fileStorageService.delete(file);
+            }
+        });
     }
 }
