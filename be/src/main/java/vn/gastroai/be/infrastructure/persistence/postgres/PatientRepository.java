@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import vn.gastroai.be.domain.auth.Patient;
 
 import java.util.Optional;
@@ -18,6 +20,18 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     Optional<Patient> findByVerificationTokenHash(String hash);
 
     Optional<Patient> findByPasswordResetTokenHash(String hash);
+
+    @Query("""
+            select p from Patient p
+            where (:q is null
+                    or lower(p.email) like lower(concat('%', :q, '%'))
+                    or lower(coalesce(p.fullName, '')) like lower(concat('%', :q, '%')))
+              and (:adminLocked is null or p.adminLocked = :adminLocked)
+            """)
+    Page<Patient> searchForAdmin(
+            @Param("q") String q,
+            @Param("adminLocked") Boolean adminLocked,
+            Pageable pageable);
 
     /**
      * Giống findByEmail nhưng khoá row (SELECT ... FOR UPDATE) — dùng riêng cho AuthService.login()

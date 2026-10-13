@@ -69,14 +69,22 @@ public class CmsAuthController {
         }
         HttpSession session = request.getSession(false);
         Object userId = session == null ? null : session.getAttribute(CmsAuthService.AUTH_USER_ID);
-        Object userType = session == null ? null : session.getAttribute(CmsAuthService.AUTH_USER_TYPE);
-        if (userId == null || userType == null) {
+        Object accountType = session == null ? null : session.getAttribute(CmsAuthService.AUTH_ACCOUNT_TYPE);
+        if (userId == null) {
             throw new AccessDeniedException("Chua dang nhap");
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "attemptedAt"));
         Long id = Long.valueOf(userId.toString());
-        boolean isDoctor = "DOCTOR".equals(userType);
+        if (accountType == null) {
+            accountType = session.getAttribute(CmsAuthService.AUTH_USER_TYPE);
+        }
+        if (accountType == null || !("ADMIN".equals(accountType.toString())
+                || "DOCTOR".equals(accountType.toString())
+                || "CONTENT_EDITOR".equals(accountType.toString()))) {
+            throw new AccessDeniedException("Chua dang nhap");
+        }
+        boolean isDoctor = "DOCTOR".equals(accountType) || "CONTENT_EDITOR".equals(accountType);
         Page<LoginHistoryItem> result = isDoctor
                 ? cmsAuthService.doctorHistory(id, pageable).map(history -> new LoginHistoryItem(
                         history.getId(), history.getAttemptedAt(), history.getOutcome().name(),

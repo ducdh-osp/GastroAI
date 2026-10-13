@@ -74,6 +74,17 @@ class ArticleTopicAdminControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "10", roles = "CONTENT_EDITOR")
+    void listReturnsTopicsForContentEditor() throws Exception {
+        when(service.list()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/cms/article-topics"))
+                .andExpect(status().isOk());
+
+        verify(service).list();
+    }
+
+    @Test
     @WithMockUser(username = "7", roles = "ADMIN")
     void createReturnsCreatedForAdmin() throws Exception {
         ArticleTopicRequest request = new ArticleTopicRequest("Đại tràng", 20, null);

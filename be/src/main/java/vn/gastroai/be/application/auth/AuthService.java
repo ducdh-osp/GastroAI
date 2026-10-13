@@ -169,7 +169,8 @@ public class AuthService {
      * race condition khi 2 request đăng nhập sai cùng lúc làm đếm sai số lần thất bại.
      */
     @Transactional(value = "postgresTransactionManager", noRollbackFor = {
-            BadCredentialsException.class, AccountLockedException.class, IllegalStateException.class
+            BadCredentialsException.class, AccountLockedException.class, AccountDisabledException.class,
+            IllegalStateException.class
     })
     public AuthResult login(LoginCommand command, ClientRequestInfo requestInfo) {
         validatePasswordLength(command.password());
@@ -182,6 +183,10 @@ public class AuthService {
         }
         Patient patient = found.get();
         Instant now = Instant.now();
+        if (patient.isAdminLocked()) {
+            record(patient, LoginOutcome.BLOCKED, "ADMIN_DISABLED", requestInfo);
+            throw new AccountDisabledException();
+        }
         if (patient.getLockedUntil() != null && patient.getLockedUntil().isAfter(now)) {
             record(patient, LoginOutcome.BLOCKED, "ACCOUNT_LOCKED", requestInfo);
             throw new AccountLockedException(patient.getLockedUntil());
@@ -248,7 +253,7 @@ public class AuthService {
 
     /** UC0005 - Đổi mật khẩu khi đã đăng nhập. Tăng tokenVersion để JWT cũ hết hiệu lực. */
     @Transactional(value = "postgresTransactionManager", noRollbackFor = {
-            BadCredentialsException.class, AccountLockedException.class
+            BadCredentialsException.class, AccountLockedException.class, AccountDisabledException.class
     })
     public void changePassword(Long id, String oldPassword, String newPassword,
                                ClientRequestInfo requestInfo) {
@@ -257,6 +262,10 @@ public class AuthService {
         Patient patient = patients.findByIdForUpdate(id)
                 .orElseThrow(() -> new BadCredentialsException("Tai khoan khong ton tai"));
         Instant now = Instant.now();
+        if (patient.isAdminLocked()) {
+            record(patient, LoginOutcome.BLOCKED, "ADMIN_DISABLED", requestInfo);
+            throw new AccountDisabledException();
+        }
         if (patient.getLockedUntil() != null && patient.getLockedUntil().isAfter(now)) {
             record(patient, LoginOutcome.BLOCKED, "ACCOUNT_LOCKED", requestInfo);
             throw new AccountLockedException(patient.getLockedUntil());

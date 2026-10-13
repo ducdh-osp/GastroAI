@@ -14,7 +14,7 @@ export interface CmsAuthResponse {
   userId: number
   email: string
   fullName: string
-  userType: CmsRole
+  userType: CmsRole | 'CONTENT_EDITOR'
   lockedUntil?: string | null
 }
 
