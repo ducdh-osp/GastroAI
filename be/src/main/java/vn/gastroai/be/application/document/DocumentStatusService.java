@@ -13,8 +13,12 @@ import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 import vn.gastroai.be.api.document.DocumentVersionResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentStatusService {
@@ -67,10 +71,9 @@ public class DocumentStatusService {
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
 
-        // UC0049 - ban moi xu ly xong thi tu thanh ban dang dung cua ca nhom. Thu tu bat
-        // buoc: tat ban cu (clearCurrent) TRUOC, bat ban nay SAU - neu dao nguoc, luc
-        // Hibernate auto-flush se co 2 dong cung is_current = true trong 1 nhom va vi pham
-        // index uk_documents_group_current.
+        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung. clearCurrent chay
+        // TRUOC, bat ban nay SAU, de khong bao gio co 2 ban cung la hien hanh trong 1 nhom
+        // (index uk_documents_group_current).
         if (!document.isCurrentVersion()) {
             documentRepository.clearCurrent(document.groupId());
             document.setCurrentVersion(true);
@@ -114,7 +117,18 @@ public class DocumentStatusService {
 
         List<Document> all = documentRepository.findAllByOrderByUploadedAtDesc();
 
-        List<Document> filtered = all.stream()
+        // UC0049 - moi phien ban la 1 dong rieng, nen gom theo ma nhom de moi tai lieu chi
+        // hien 1 dong (ban moi nhat). LinkedHashMap giu thu tu "tai len moi nhat truoc".
+        Map<Long, List<Document>> groups = all.stream()
+                .collect(Collectors.groupingBy(Document::groupId, LinkedHashMap::new, Collectors.toList()));
+
+        List<Document> latestPerGroup = groups.values().stream()
+                .map(versions -> versions.stream()
+                        .max(Comparator.comparingInt(Document::getVersionNo))
+                        .orElseThrow())
+                .toList();
+
+        List<Document> filtered = latestPerGroup.stream()
                 .filter(d -> status == null || d.getStatus() == status)
                 .filter(d -> normalizedQuery.isEmpty()
                         || (d.getTitle() != null && vn.gastroai.be.application.support.VietnameseText
@@ -149,7 +163,14 @@ public class DocumentStatusService {
                         d.getErrorMessage(),
                         chunkCounts.getOrDefault(d.getId(), 0L),
                         d.getUploadedAt(),
-                        d.getUpdatedAt()))
+                        d.getUpdatedAt(),
+                        d.getVersionNo(),
+                        groups.get(d.groupId()).stream()
+                                .filter(Document::isCurrentVersion)
+                                .map(Document::getVersionNo)
+                                .findFirst()
+                                .orElse(null),
+                        groups.get(d.groupId()).size()))
                 .toList();
 
         return new vn.gastroai.be.api.document.DocumentPageResponse(items, filtered.size(), page, size);

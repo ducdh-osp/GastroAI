@@ -13,11 +13,13 @@ import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -212,5 +214,49 @@ class DocumentStatusServiceTest {
         InOrder order = inOrder(documentRepository);
         order.verify(documentRepository).clearCurrent(1L);
         order.verify(documentRepository).save(v2);
+    }
+
+    // ===== B5 - danh sach tai lieu: moi tai lieu 1 dong =====
+
+    // Tai lieu A co 3 phien ban -> chi hien 1 dong (ban moi nhat = ban 3), kem so ban dang dung
+    // (ban 2) va tong so phien ban (3).
+    @Test
+    void listShowsOneRowPerDocumentWithLatestVersion() {
+        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
+        v1.setTitle("Phác đồ HP");
+        Document v2 = version(2L, 1L, 2, true, DocumentStatus.DONE);
+        v2.setTitle("Phác đồ HP");
+        Document v3 = version(3L, 1L, 3, false, DocumentStatus.PROCESSING);
+        v3.setTitle("Phác đồ HP");
+
+        when(documentRepository.findAllByOrderByUploadedAtDesc()).thenReturn(List.of(v3, v2, v1));
+        when(chunkRepository.countByDocumentIdGrouped()).thenReturn(new ArrayList<>());
+
+        var page = documentStatusService.list(null, null, 0, 10);
+
+        assertEquals(1, page.total());
+        assertEquals(1, page.items().size());
+        var item = page.items().get(0);
+        assertEquals(3L, item.id());
+        assertEquals(3, item.versionNo());
+        assertEquals(2, item.currentVersionNo());
+        assertEquals(3, item.versionCount());
+    }
+
+    // Tai lieu da bi go (khong ban nao la hien hanh) -> currentVersionNo la null.
+    @Test
+    void listReturnsNullCurrentVersionNoWhenNoVersionIsCurrent() {
+        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
+        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
+        Document v3 = version(3L, 1L, 3, false, DocumentStatus.DONE);
+
+        when(documentRepository.findAllByOrderByUploadedAtDesc()).thenReturn(List.of(v3, v2, v1));
+        when(chunkRepository.countByDocumentIdGrouped()).thenReturn(new ArrayList<>());
+
+        var page = documentStatusService.list(null, null, 0, 10);
+
+        assertEquals(1, page.total());
+        assertNull(page.items().get(0).currentVersionNo());
+        assertEquals(3, page.items().get(0).versionCount());
     }
 }

@@ -15,6 +15,9 @@ public record DocumentSummaryResponse(
         String errorMessage,
         long chunkCount,
         Instant uploadedAt,
-        Instant updatedAt
+        Instant updatedAt,
+        int versionNo,
+        Integer currentVersionNo,
+        int versionCount
 ) {
 }

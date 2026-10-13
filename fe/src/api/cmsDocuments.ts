@@ -20,6 +20,9 @@ export interface CmsDocumentItem {
   chunkCount: number
   uploadedAt: string
   updatedAt: string
+  versionNo: number
+  currentVersionNo: number | null
+  versionCount: number
 }
 
 export interface CmsDocumentPage {
