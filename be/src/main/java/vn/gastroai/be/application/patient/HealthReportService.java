@@ -96,8 +96,8 @@ public class HealthReportService {
                 .findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(patientId, start, end);
         List<BristolLog> bristolLogs = bristolLogRepository
                 .findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(patientId, start, end);
-        List<MedicationReminderResponse> activeReminders = medicationReminderService.list(patientId).stream()
-                .filter(MedicationReminderResponse::active)
+        List<MedicationReminderResponse> remindersInPeriod = medicationReminderService.list(patientId).stream()
+                .filter(reminder -> overlapsPeriod(reminder, from, to))
                 .toList();
 
         PdfDocumentBuilder builder = new PdfDocumentBuilder();
@@ -125,11 +125,11 @@ public class HealthReportService {
             builder.keyValue("Chế độ ăn kiêng", String.join(", ", profile.dietaryRestrictions()));
         }
 
-        builder.section("Thuốc theo lịch nhắc");
+        builder.section("Thuốc trong giai đoạn này");
         builder.table(
-                new String[] {"Tên thuốc", "Liều", "Khung giờ", "Thời gian dùng", "Hướng dẫn"},
-                new float[] {2, 1.2f, 1.5f, 1.8f, 2.5f},
-                activeReminders.stream().map(this::toReminderRow).toList());
+                new String[] {"Tên thuốc", "Liều", "Khung giờ", "Thời gian dùng", "Hướng dẫn", "Trạng thái"},
+                new float[] {1.8f, 1.1f, 1.3f, 1.7f, 2.1f, 1.2f},
+                remindersInPeriod.stream().map(this::toReminderRow).toList());
 
         builder.section("Nhật ký ăn uống");
         builder.table(
@@ -183,7 +183,15 @@ public class HealthReportService {
         String times = reminder.timesOfDay().stream().map(TIME_FORMAT::format).collect(Collectors.joining(", "));
         String period = (reminder.startDate() == null ? "—" : DATE_FORMAT.format(reminder.startDate()))
                 + " – " + (reminder.endDate() == null ? "—" : DATE_FORMAT.format(reminder.endDate()));
-        return new String[] {reminder.medicineName(), reminder.dosage(), times, period, reminder.instructions()};
+        String status = reminder.active() ? "Đang nhắc" : "Đã tắt";
+        return new String[] {reminder.medicineName(), reminder.dosage(), times, period, reminder.instructions(), status};
+    }
+
+    /** Lich thuoc co giao voi khoang bao cao [from, to] khong. Ngay trong = khong gioi han. */
+    private boolean overlapsPeriod(MedicationReminderResponse reminder, LocalDate from, LocalDate to) {
+        boolean startsBeforeReportEnds = reminder.startDate() == null || !reminder.startDate().isAfter(to);
+        boolean endsAfterReportStarts = reminder.endDate() == null || !reminder.endDate().isBefore(from);
+        return startsBeforeReportEnds && endsAfterReportStarts;
     }
 
     private String[] toMealRow(FoodDiaryEntry entry) {
