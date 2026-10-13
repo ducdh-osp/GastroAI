@@ -1,10 +1,13 @@
 package vn.gastroai.be.application.document;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.rag.Document;
@@ -12,6 +15,7 @@ import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,35 +38,94 @@ class DocumentUploadServiceTest {
     private MultipartFile file;
 
     @InjectMocks
-    private DocumentUploadService documentUploadService;
+    private DocumentUploadService service;
 
-    // UC0049 - ban moi nhat cua nhom dang PENDING/PROCESSING thi chua cho tai ban moi len
-    // (-> IllegalStateException, GlobalExceptionHandler doi thanh 409). Phai chan TRUOC khi
-    // luu file xuong dia, neu khong se de lai file mo coi.
+    @AfterEach
+    void clearTransactionSynchronization() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    private Document document(Long id, DocumentStatus status) {
+        Document document = new Document();
+        document.setId(id);
+        document.setTitle("phac-do.pdf");
+        document.setSource("uploads/phac-do.pdf");
+        document.setStatus(status);
+        return document;
+    }
+
+    // ===== B1 - xoa tai lieu =====
+
+    @Test
+    void deleteThrowsNotFoundWhenDocumentDoesNotExist() {
+        when(documentRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.delete(99L));
+        verify(fileStorageService, never()).delete(any());
+    }
+
+    @Test
+    void deleteRejectsDocumentStillBeingProcessed() {
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(document(1L, DocumentStatus.PROCESSING)));
+
+        assertThrows(IllegalStateException.class, () -> service.delete(1L));
+        verify(documentRepository, never()).delete(any(Document.class));
+        verify(fileStorageService, never()).delete(any());
+    }
+
+    @Test
+    void deleteRemovesRowAndFileImmediatelyWhenNoTransaction() {
+        Document document = document(1L, DocumentStatus.DONE);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
+
+        service.delete(1L);
+
+        verify(documentRepository).delete(document);
+        verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
+    }
+
+    @Test
+    void deleteWaitsForCommitBeforeRemovingFile() {
+        TransactionSynchronizationManager.initSynchronization();
+        Document document = document(1L, DocumentStatus.DONE);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
+
+        service.delete(1L);
+
+        verify(fileStorageService, never()).delete(any());
+
+        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+            synchronization.afterCommit();
+        }
+        verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
+    }
+
+    // ===== UC0049 - tai phien ban moi =====
+
+    // Ban moi nhat cua nhom dang PENDING/PROCESSING thi chua cho tai ban moi len
+    // (IllegalStateException -> 409). Phai chan TRUOC khi luu file, tranh file mo coi.
     @Test
     void uploadNewVersionRejectsWhenPreviousVersionStillProcessing() {
-        Document v1 = new Document();
-        v1.setId(1L);
+        Document v1 = document(1L, DocumentStatus.PROCESSING);
         v1.setVersionNo(1);
-        v1.setStatus(DocumentStatus.PROCESSING);
 
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
 
-        assertThrows(IllegalStateException.class,
-                () -> documentUploadService.uploadNewVersion(1L, file, null));
+        assertThrows(IllegalStateException.class, () -> service.uploadNewVersion(1L, file, null));
 
         verify(fileStorageService, never()).store(any());
         verify(documentRepository, never()).save(any());
     }
 
-    // UC0049 - tai lieu goc khong ton tai -> ResourceNotFoundException (404), khong luu gi ca.
+    // Tai lieu goc khong ton tai -> ResourceNotFoundException (404), khong luu gi ca.
     @Test
     void uploadNewVersionThrowsWhenDocumentNotFound() {
         when(documentRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> documentUploadService.uploadNewVersion(99L, file, null));
+        assertThrows(ResourceNotFoundException.class, () -> service.uploadNewVersion(99L, file, null));
 
         verify(fileStorageService, never()).store(any());
         verify(documentRepository, never()).save(any());
