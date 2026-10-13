@@ -2,9 +2,13 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  CloudUploadOutlined,
   DeleteOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
   FilePdfOutlined,
   FileTextOutlined,
+  HistoryOutlined,
   InboxOutlined,
   LinkOutlined,
   LoadingOutlined,
@@ -18,8 +22,10 @@ import {
   Button,
   Card,
   Col,
+  Drawer,
   Empty,
   Input,
+  List,
   Modal,
   Popconfirm,
   Row,
@@ -29,6 +35,7 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
   Upload,
   message,
@@ -38,17 +45,44 @@ import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  activateCmsDocumentVersion,
   deleteCmsDocument,
   listCmsDocuments,
+  listCmsDocumentVersions,
+  publishCmsDocument,
   retryCmsDocument,
+  searchCmsDocumentContent,
+  unpublishCmsDocument,
   uploadCmsDocument,
+  uploadCmsDocumentVersion,
   type CmsDocumentItem,
+  type CmsDocumentSearchHit,
+  type CmsDocumentVersion,
   type DocumentProcessingStage,
   type DocumentStatus,
 } from '../../api/cmsDocuments'
 
 const { Title, Text } = Typography
 const { Dragger } = Upload
+
+// Code cu viet lap (err as {...})?.response?.data?.message o nhieu cho - gom thanh 1 ham.
+function errorMessageOf(err: unknown, fallback: string): string {
+  return (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback
+}
+
+// To sang tu khoa trong doan trich. Dung JSX (khong ghep chuoi HTML) nen noi dung tai lieu
+// khong the chen ma doc vao trang.
+function highlight(text: string, q: string) {
+  const index = text.toLowerCase().indexOf(q.toLowerCase())
+  if (!q || index < 0) return text
+  return (
+    <>
+      {text.slice(0, index)}
+      <mark>{text.slice(index, index + q.length)}</mark>
+      {text.slice(index + q.length)}
+    </>
+  )
+}
 
 export default function CmsDocumentsPage() {
   const [items, setItems] = useState<CmsDocumentItem[]>([])
@@ -72,6 +106,19 @@ export default function CmsDocumentsPage() {
 
   // Modal xem lỗi chi tiết
   const [errorModalItem, setErrorModalItem] = useState<CmsDocumentItem | null>(null)
+
+  // UC0049 - tai ban moi: null = tai tai lieu moi (nhu cu), co gia tri = tai phien ban moi cho tai lieu do
+  const [versionTarget, setVersionTarget] = useState<CmsDocumentItem | null>(null)
+
+  // UC0049 - ngan keo lich su phien ban
+  const [historyItem, setHistoryItem] = useState<CmsDocumentItem | null>(null)
+  const [versions, setVersions] = useState<CmsDocumentVersion[]>([])
+  const [versionsLoading, setVersionsLoading] = useState(false)
+
+  // UC0055 - tim trong noi dung
+  const [contentQuery, setContentQuery] = useState('')
+  const [contentHits, setContentHits] = useState<CmsDocumentSearchHit[] | null>(null)
+  const [contentSearching, setContentSearching] = useState(false)
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -112,7 +159,7 @@ export default function CmsDocumentsPage() {
 
   // KPI stats
   const stats = useMemo(() => {
-    const done = items.filter((i) => i.status === 'DONE').length
+    const done = items.filter((i) => i.status === 'DONE' && i.currentVersionNo !== null).length
     const processing = items.filter((i) => i.status === 'PROCESSING' || i.status === 'PENDING').length
     const error = items.filter((i) => i.status === 'ERROR').length
     return { done, processing, error, total }
@@ -127,15 +174,20 @@ export default function CmsDocumentsPage() {
     const file = uploadFileList[0].originFileObj as File
     setUploading(true)
     try {
-      await uploadCmsDocument(file, sourceUrlInput || undefined)
-      message.success('Đã tải lên tài liệu thành công. Hệ thống đang tiến hành số hóa tự động.')
+      if (versionTarget) {
+        await uploadCmsDocumentVersion(versionTarget.id, file, sourceUrlInput || undefined)
+        message.success(`Đã tải phiên bản mới cho "${versionTarget.title}". Bản cũ vẫn được dùng cho tới khi bản mới xử lý xong.`)
+      } else {
+        await uploadCmsDocument(file, sourceUrlInput || undefined)
+        message.success('Đã tải lên tài liệu thành công. Hệ thống đang tiến hành số hóa tự động.')
+      }
       setUploadModalOpen(false)
+      setVersionTarget(null)
       setUploadFileList([])
       setSourceUrlInput('')
       loadData()
     } catch (err: unknown) {
-      const errMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      message.error(errMsg || 'Tải lên tài liệu thất bại')
+      message.error(errorMessageOf(err, 'Tải lên tài liệu thất bại'))
     } finally {
       setUploading(false)
     }
@@ -159,6 +211,68 @@ export default function CmsDocumentsPage() {
     } catch (err: unknown) {
       const errMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       message.error(errMsg || 'Xóa tài liệu thất bại')
+    }
+  }
+
+  function openUploadVersion(item: CmsDocumentItem) {
+    setVersionTarget(item)
+    setUploadFileList([])
+    setSourceUrlInput(item.sourceUrl ?? '')
+    setUploadModalOpen(true)
+  }
+
+  async function openHistory(item: CmsDocumentItem) {
+    setHistoryItem(item)
+    setVersionsLoading(true)
+    try {
+      setVersions(await listCmsDocumentVersions(item.id))
+    } catch (err) {
+      message.error(errorMessageOf(err, 'Không tải được lịch sử phiên bản'))
+    } finally {
+      setVersionsLoading(false)
+    }
+  }
+
+  async function handleActivate(version: CmsDocumentVersion) {
+    if (!historyItem) return
+    try {
+      await activateCmsDocumentVersion(historyItem.id, version.id)
+      message.success(`Chatbot đã chuyển sang dùng phiên bản v${version.versionNo}`)
+      await openHistory(historyItem)
+      loadData()
+    } catch (err) {
+      message.error(errorMessageOf(err, 'Không đổi được phiên bản'))
+    }
+  }
+
+  async function handleTogglePublish(item: CmsDocumentItem) {
+    try {
+      if (item.currentVersionNo === null) {
+        await publishCmsDocument(item.id)
+        message.success('Đã đăng lại tài liệu cho chatbot')
+      } else {
+        await unpublishCmsDocument(item.id)
+        message.success('Đã gỡ tài liệu khỏi chatbot (dữ liệu vẫn được giữ)')
+      }
+      loadData()
+    } catch (err) {
+      message.error(errorMessageOf(err, 'Thao tác thất bại'))
+    }
+  }
+
+  async function handleContentSearch(value: string) {
+    const q = value.trim()
+    if (q.length < 2) {
+      message.warning('Nhập ít nhất 2 ký tự để tìm trong nội dung')
+      return
+    }
+    setContentSearching(true)
+    try {
+      setContentHits(await searchCmsDocumentContent(q))
+    } catch (err) {
+      message.error(errorMessageOf(err, 'Tìm kiếm thất bại'))
+    } finally {
+      setContentSearching(false)
     }
   }
 
@@ -255,6 +369,21 @@ export default function CmsDocumentsPage() {
       render: (status: DocumentStatus) => renderStatusTag(status),
     },
     {
+      title: 'Phiên bản',
+      key: 'version',
+      width: 140,
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Text className="text-xs">v{record.versionNo} · {record.versionCount} phiên bản</Text>
+          {record.currentVersionNo === null ? (
+            <Tag color="default">Đã gỡ</Tag>
+          ) : (
+            <Tag color="green">Đang dùng v{record.currentVersionNo}</Tag>
+          )}
+        </Space>
+      ),
+    },
+    {
       title: 'Giai đoạn số hóa',
       key: 'processingStage',
       width: 160,
@@ -300,7 +429,7 @@ export default function CmsDocumentsPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 110,
+      width: 200,
       align: 'center',
       render: (_, record) => (
         <Space size="small">
@@ -314,9 +443,38 @@ export default function CmsDocumentsPage() {
               onClick={() => handleRetry(record)}
             />
           )}
+          <Tooltip title="Lịch sử phiên bản">
+            <Button type="text" size="small" icon={<HistoryOutlined />} onClick={() => openHistory(record)} />
+          </Tooltip>
+          <Tooltip title="Tải phiên bản mới">
+            <Button
+              type="text"
+              size="small"
+              icon={<CloudUploadOutlined />}
+              disabled={record.status === 'PENDING' || record.status === 'PROCESSING'}
+              onClick={() => openUploadVersion(record)}
+            />
+          </Tooltip>
+          <Popconfirm
+            title={record.currentVersionNo === null ? 'Đăng lại tài liệu?' : 'Gỡ tài liệu khỏi chatbot?'}
+            description={record.currentVersionNo === null
+              ? 'Chatbot sẽ dùng lại phiên bản đã xử lý xong mới nhất.'
+              : 'Chatbot sẽ không trích dẫn tài liệu này nữa. Dữ liệu vẫn được giữ, có thể đăng lại.'}
+            okText="Đồng ý"
+            cancelText="Hủy"
+            onConfirm={() => handleTogglePublish(record)}
+          >
+            <Tooltip title={record.currentVersionNo === null ? 'Đăng lại' : 'Gỡ khỏi chatbot'}>
+              <Button
+                type="text"
+                size="small"
+                icon={record.currentVersionNo === null ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
           <Popconfirm
             title="Xóa tài liệu này?"
-            description="Tài liệu và toàn bộ vector embeddings liên quan sẽ bị xóa khỏi hệ thống RAG."
+            description="Mọi phiên bản của tài liệu và toàn bộ vector embeddings liên quan sẽ bị xóa khỏi hệ thống RAG."
             okText="Xóa"
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
@@ -363,6 +521,7 @@ export default function CmsDocumentsPage() {
             onClick={() => {
               setUploadFileList([])
               setSourceUrlInput('')
+              setVersionTarget(null)
               setUploadModalOpen(true)
             }}
           >
@@ -498,15 +657,88 @@ export default function CmsDocumentsPage() {
         />
       </Card>
 
+      {/* UC0055 - Tìm trong nội dung tài liệu */}
+      <Card title="Tìm trong nội dung tài liệu" bodyStyle={{ padding: 16 }}>
+        <Input.Search
+          placeholder="VD: Helicobacter pylori, liều PPI..."
+          value={contentQuery}
+          onChange={(e) => setContentQuery(e.target.value)}
+          onSearch={handleContentSearch}
+          loading={contentSearching}
+          enterButton="Tìm"
+          allowClear
+        />
+        <Text type="secondary" className="text-xs mt-1 block">
+          Chỉ tìm trong phiên bản đang được chatbot dùng. Tìm có phân biệt dấu (gõ "dạ dày", không gõ "da day").
+        </Text>
+        {contentHits !== null && (
+          <List
+            className="mt-4"
+            dataSource={contentHits}
+            locale={{ emptyText: 'Không tìm thấy đoạn nào chứa cụm từ này' }}
+            renderItem={(hit) => (
+              <List.Item>
+                <List.Item.Meta
+                  title={<span>{hit.title} <Text type="secondary" className="text-xs">· Đoạn #{hit.chunkIndex}</Text></span>}
+                  description={highlight(hit.snippet, contentQuery.trim())}
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Card>
+
+      {/* UC0049 - Ngăn kéo lịch sử phiên bản */}
+      <Drawer
+        title={historyItem ? `Lịch sử phiên bản — ${historyItem.title}` : ''}
+        open={historyItem !== null}
+        onClose={() => setHistoryItem(null)}
+        width={560}
+      >
+        <Table<CmsDocumentVersion>
+          rowKey="id"
+          size="small"
+          loading={versionsLoading}
+          dataSource={versions}
+          pagination={false}
+          columns={[
+            { title: 'Bản', dataIndex: 'versionNo', width: 60, render: (v: number) => `v${v}` },
+            { title: 'Trạng thái', dataIndex: 'status', width: 120, render: (s: DocumentStatus) => renderStatusTag(s) },
+            {
+              title: 'Tải lên',
+              dataIndex: 'uploadedAt',
+              render: (val: string) => dayjs(val).format('DD/MM/YYYY HH:mm'),
+            },
+            {
+              title: '',
+              key: 'action',
+              width: 130,
+              render: (_, v) => v.currentVersion
+                ? <Tag color="green">Đang dùng</Tag>
+                : v.status === 'DONE'
+                  ? <Button size="small" onClick={() => handleActivate(v)}>Dùng bản này</Button>
+                  : null,
+            },
+          ]}
+        />
+      </Drawer>
+
       {/* Modal Tải lên tài liệu */}
       <Modal
-        title="Tải lên tài liệu phác đồ y khoa mới"
+        title={versionTarget ? `Tải phiên bản mới cho "${versionTarget.title}"` : 'Tải lên tài liệu phác đồ y khoa mới'}
         open={uploadModalOpen}
-        onCancel={() => !uploading && setUploadModalOpen(false)}
+        onCancel={() => {
+          if (uploading) return
+          setUploadModalOpen(false)
+          setVersionTarget(null)
+        }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => setUploadModalOpen(false)}
+            onClick={() => {
+              setUploadModalOpen(false)
+              setVersionTarget(null)
+            }}
             disabled={uploading}
           >
             Hủy

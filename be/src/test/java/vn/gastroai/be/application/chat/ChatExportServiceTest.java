@@ -138,6 +138,23 @@ class ChatExportServiceTest {
 
         assertTrue(text.contains("Chúc bạn mau khỏe"));
     }
+    
+    @Test
+    void exportCollapsesConsecutiveMissingCharsIntoOneReplacementSymbol() throws IOException {
+        Patient patient = patient();
+        ChatSession session = session(patient);
+        ChatMessage aiMsg = message(session, 101L, "assistant", "Chúc bạn mau khỏe 😊🎉", null, false);
+
+        when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(aiMsg));
+        when(chatHistoryService.listAttachments(List.of(101L))).thenReturn(List.of());
+
+        String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
+
+        assertTrue(text.contains("Chúc bạn mau khỏe"));
+        assertFalse(text.contains("□□"), "Khong duoc co 2 dau thay the dinh lien nhau");
+        assertFalse(text.contains("??"), "Khong duoc co 2 dau thay the dinh lien nhau");
+    }
 
     @Test
     void exportEmptySessionShowsPlaceholderText() throws IOException {

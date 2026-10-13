@@ -60,6 +60,19 @@ public class Document {
     @Column(name = "content_hash", length = 64)
     private String contentHash;
 
+    @Column(name = "root_id")
+    private Long rootId;
+
+    @Column(name = "version_no", nullable = false)
+    private int versionNo = 1;
+
+    @Column(name = "is_current", nullable = false)
+    private boolean currentVersion = true;
+
+    public Long groupId() {
+        return rootId != null ? rootId : id;
+    }
+    
     @PreUpdate
     void touch() {
         updatedAt = Instant.now();

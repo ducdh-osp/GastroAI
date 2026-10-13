@@ -1,6 +1,8 @@
 import { ConfigProvider } from 'antd'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
@@ -12,6 +14,8 @@ import { AuthProvider } from './stores/authStore'
 // nay dayjs bo qua tham so format va roi ve parse bang Date native, luon ra Invalid Date
 // voi chuoi gio don le nhu "08:00". Dang ky 1 lan duy nhat o entry point.
 dayjs.extend(customParseFormat)
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
