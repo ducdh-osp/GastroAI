@@ -17,6 +17,7 @@ import com.lowagie.text.Rectangle;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 
 /**
@@ -43,6 +44,13 @@ public class PdfDocumentBuilder {
     private static final Color GRAY_TEXT = new Color(0x66, 0x66, 0x66);
     private static final Color WARNING_RED = new Color(0xB0, 0x00, 0x20);
 
+    // UC0068 - doc 2 file TTF (~1.2MB) tu dia 1 LAN DUY NHAT khi class duoc nap, dung chung
+    // cho moi lan new PdfDocumentBuilder() - truoc day moi lan xuat PDF deu doc lai tu dau.
+    // BaseFont.createFont(..., cached=true) da tu dung chung BaseFont giua cac lan goi, nen
+    // phan lang phi thuc su chi la buoc doc file truoc do.
+    private static final byte[] REGULAR_FONT_BYTES = readFontBytes("NotoSans-Regular.ttf");
+    private static final byte[] BOLD_FONT_BYTES = readFontBytes("NotoSans-Bold.ttf");
+
     private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     private final Document document;
 
@@ -53,18 +61,22 @@ public class PdfDocumentBuilder {
     private final Font smallGrayFont;
     private final Font warningFont;
     private final BaseFont pageNumberBaseFont;
+    // Ky tu dung thay cho 1 chuoi ky tu lien tiep ma font khong co (thuong la emoji).
+    // Tinh 1 lan o day: neu font khong co ca "□" thi dung "?" de khong lap lai loi tuong tu.
+    private final String missingCharReplacement;
 
     public PdfDocumentBuilder() {
         this.document = new Document(PageSize.A4, 36, 36, 36, 36);
         try {
-            this.regularBaseFont = loadFont("NotoSans-Regular.ttf");
-            BaseFont boldBase = loadFont("NotoSans-Bold.ttf");
+            this.regularBaseFont = loadFont("NotoSans-Regular.ttf", REGULAR_FONT_BYTES);
+            BaseFont boldBase = loadFont("NotoSans-Bold.ttf", BOLD_FONT_BYTES);
 
             this.normalFont = new Font(regularBaseFont, 10, Font.NORMAL);
             this.boldFont = new Font(boldBase, 10, Font.NORMAL);
             this.titleFont = new Font(boldBase, 18, Font.NORMAL);
             this.smallGrayFont = new Font(regularBaseFont, 8, Font.NORMAL, GRAY_TEXT);
             this.warningFont = new Font(boldBase, 10, Font.NORMAL, WARNING_RED);
+            this.missingCharReplacement = regularBaseFont.charExists('□') ? "□" : "?";
             // Font đánh số trang chỉ cần in số 0-9, dùng Helvetica mặc định (không tiếng
             // Việt)
             // là đủ, tạo 1 lần ở đây để PageNumberEvent dùng lại, tránh gọi lại
@@ -81,24 +93,37 @@ public class PdfDocumentBuilder {
         }
     }
 
-    private BaseFont loadFont(String fileName) throws IOException, DocumentException {
-        byte[] bytes;
-        try (var input = getClass().getResourceAsStream("/fonts/" + fileName)) {
+    /** Doc 1 file font tu resources/fonts thanh mang byte - chi goi tu cac hang static ben
+     * tren, dung 1 lan duy nhat luc nap class. */
+    private static byte[] readFontBytes(String fileName) {
+        try (var input = PdfDocumentBuilder.class.getResourceAsStream("/fonts/" + fileName)) {
             if (input == null) {
-                throw new IOException("Không tìm thấy font " + fileName + " trong resources/fonts");
+                throw new IllegalStateException("Không tìm thấy font " + fileName + " trong resources/fonts");
             }
-            bytes = input.readAllBytes();
+            return input.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
+    }
+
+    private BaseFont loadFont(String fileName, byte[] bytes) throws DocumentException, IOException {
         return BaseFont.createFont(fileName, BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, bytes, null);
     }
 
+    /** Bo ky tu font khong co, gop nhieu ky tu thieu LIEN TIEP thanh 1 dau thay the duy nhat
+     * (1 emoji thuong gom 2-4 ma ky tu, khong gop se ra 2-4 dau "□" dinh nhau). */
     private String sanitize(String text) {
         if (text == null)
             return null;
         StringBuilder result = new StringBuilder();
+        boolean[] lastWasMissing = {false};
         text.codePoints().forEach(codePoint -> {
             if (codePoint == '\n' || regularBaseFont.charExists(codePoint)) {
                 result.appendCodePoint(codePoint);
+                lastWasMissing[0] = false;
+            } else if (!lastWasMissing[0]) {
+                result.append(missingCharReplacement);
+                lastWasMissing[0] = true;
             }
         });
         return result.toString();
