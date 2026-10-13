@@ -34,6 +34,24 @@ public class DocumentUploadService {
     }
 
     public Document upload(MultipartFile file, String sourceUrl) {
+        return storeNewDocument(file, sourceUrl, null, 1, true);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public Document uploadNewVersion(Long documentId, MultipartFile file, String sourceUrl) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        Long groupId = document.groupId();
+        Document latest = documentRepository.findGroup(groupId).get(0);
+
+        if (latest.getStatus() == DocumentStatus.PENDING || latest.getStatus() == DocumentStatus.PROCESSING) {
+            throw new IllegalStateException("Phiên bản trước đang được xử lý, vui lòng chờ xong rồi tải bản mới");
+        }
+        return storeNewDocument(file, sourceUrl, groupId, latest.getVersionNo() + 1, false);
+    }
+
+    private Document storeNewDocument(MultipartFile file, String sourceUrl, Long rootId, int versionNo,
+            boolean currentVersion) {
 
         // 0. Validate URL nguồn TRƯỚC khi lưu file, để URL sai không để lại file mồ côi
         String normalizedSourceUrl = normalizeSourceUrl(sourceUrl);
@@ -60,7 +78,9 @@ public class DocumentUploadService {
             document.setSourceUrl(normalizedSourceUrl);
             document.setStatus(DocumentStatus.PENDING);
             document.setContentHash(contentHash);
-
+            document.setRootId(rootId);
+            document.setVersionNo(versionNo);
+            document.setCurrentVersion(currentVersion);
             // 3. Lưu document vào database với trạng thái PENDING - không tự gọi
             // worker xử lý ở đây nữa. DocumentProcessingScheduler sẽ định kỳ quét và
             // giành lấy document này để xử lý (xem file DocumentProcessingScheduler).

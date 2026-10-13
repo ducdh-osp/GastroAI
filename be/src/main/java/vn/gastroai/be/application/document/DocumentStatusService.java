@@ -10,6 +10,8 @@ import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
+import vn.gastroai.be.api.document.DocumentVersionResponse;
+import vn.gastroai.be.application.support.ResourceNotFoundException;
 
 import java.util.List;
 import java.util.Optional;
@@ -92,8 +94,7 @@ public class DocumentStatusService {
             String query,
             DocumentStatus status,
             int page,
-            int size
-    ) {
+            int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
@@ -107,16 +108,17 @@ public class DocumentStatusService {
         List<Document> filtered = all.stream()
                 .filter(d -> status == null || d.getStatus() == status)
                 .filter(d -> normalizedQuery.isEmpty()
-                        || (d.getTitle() != null && vn.gastroai.be.application.support.VietnameseText.normalize(d.getTitle()).contains(normalizedQuery))
-                        || (d.getSourceUrl() != null && vn.gastroai.be.application.support.VietnameseText.normalize(d.getSourceUrl()).contains(normalizedQuery)))
+                        || (d.getTitle() != null && vn.gastroai.be.application.support.VietnameseText
+                                .normalize(d.getTitle()).contains(normalizedQuery))
+                        || (d.getSourceUrl() != null && vn.gastroai.be.application.support.VietnameseText
+                                .normalize(d.getSourceUrl()).contains(normalizedQuery)))
                 .toList();
 
         // Lấy số lượng chunks cho từng document
         java.util.Map<Long, Long> chunkCounts = chunkRepository.countByDocumentIdGrouped().stream()
                 .collect(java.util.stream.Collectors.toMap(
                         row -> (Long) row[0],
-                        row -> (Long) row[1]
-                ));
+                        row -> (Long) row[1]));
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         long offset = pageable.getOffset();
@@ -138,8 +140,7 @@ public class DocumentStatusService {
                         d.getErrorMessage(),
                         chunkCounts.getOrDefault(d.getId(), 0L),
                         d.getUploadedAt(),
-                        d.getUpdatedAt()
-                ))
+                        d.getUpdatedAt()))
                 .toList();
 
         return new vn.gastroai.be.api.document.DocumentPageResponse(items, filtered.size(), page, size);
@@ -157,10 +158,39 @@ public class DocumentStatusService {
         return documentRepository.save(document);
     }
 
+    @Transactional(readOnly = true)
+    public List<DocumentVersionResponse> listVersions(Long documentId) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        return documentRepository.findGroup(document.groupId()).stream()
+                .map(d -> new DocumentVersionResponse(d.getId(), d.getVersionNo(), d.getTitle(), d.getStatus(),
+                        d.isCurrentVersion(), d.getUploadedAt(), d.getErrorMessage()))
+                .toList();
+    }
+
+    @Transactional
+    public void activateVersion(Long documentId, Long versionId) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        Document target = documentRepository.findById(versionId)
+                .filter(v -> v.groupId().equals(document.groupId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Phiên bản không thuộc tài liệu này"));
+
+        if (target.getStatus() != DocumentStatus.DONE) {
+            throw new IllegalStateException("Chỉ dùng được phiên bản đã xử lý xong");
+        }
+        if (target.isCurrentVersion()) {
+            return;
+        }
+        documentRepository.clearCurrent(target.groupId());
+        target.setCurrentVersion(true);
+        documentRepository.save(target);
+    }
+
     private Document getDocument(Long documentId) {
         return documentRepository.findById(documentId)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Không tìm thấy document: " + documentId
-                ));
+                        "Không tìm thấy document: " + documentId));
     }
+
 }
