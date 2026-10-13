@@ -45,7 +45,7 @@ public class PatientWebSocketHandshakeInterceptor implements HandshakeIntercepto
             Long patientId = Long.valueOf(claims.getSubject());
             Number version = claims.get("version", Number.class);
             var patient = patientRepository.findById(patientId);
-            if (patient.isEmpty() || version == null
+            if (patient.isEmpty() || patient.get().isAdminLocked() || version == null
                     || patient.get().getTokenVersion() != version.intValue()
                     || revokedTokenRepository.existsById(claims.getId())) {
                 response.setStatusCode(HttpStatus.FORBIDDEN);

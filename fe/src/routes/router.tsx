@@ -23,6 +23,7 @@ import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
 import SymptomAssessmentPage from '../pages/chat/SymptomAssessmentPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { CmsProtectedRoute } from './CmsProtectedRoute'
+import { CmsAdminRoute } from './CmsAdminRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
 import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
@@ -38,6 +39,8 @@ import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 import FaqPage from '../pages/patient/FaqPage'
 import NotificationsPage from '../pages/patient/NotificationsPage'
 import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
+import CmsUsersPage from '../pages/cms/CmsUsersPage'
+import CmsRbacPage from '../pages/cms/CmsRbacPage'
 
 export const router = createBrowserRouter([
   {
@@ -234,6 +237,22 @@ export const router = createBrowserRouter([
               <CmsProtectedRoute>
                 <CmsNotificationsPage />
               </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/users',
+            element: (
+              <CmsAdminRoute>
+                <CmsUsersPage />
+              </CmsAdminRoute>
+            ),
+          },
+          {
+            path: '/cms/rbac',
+            element: (
+              <CmsAdminRoute>
+                <CmsRbacPage />
+              </CmsAdminRoute>
             ),
           },
           {

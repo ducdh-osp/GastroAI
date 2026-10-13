@@ -59,6 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (patient.isPresent()
                         && !revoked.existsById(claims.getId())
                         && tokenVersion != null
+                        && !patient.get().isAdminLocked()
                         && patient.get().getTokenVersion() == tokenVersion.intValue()) {
                     var authentication = new UsernamePasswordAuthenticationToken(
                             patientId,

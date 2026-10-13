@@ -8,6 +8,7 @@ const { Title, Paragraph } = Typography
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Admin',
   DOCTOR: 'Bác sĩ',
+  CONTENT_EDITOR: 'Biên tập nội dung',
 }
 
 // Cùng nguyên tắc adminOnly với CmsSidebar — "Quản lý người dùng"/"Nhật ký hoạt động" chỉ

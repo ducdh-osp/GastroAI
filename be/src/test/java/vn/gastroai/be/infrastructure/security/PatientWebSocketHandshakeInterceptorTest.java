@@ -76,6 +76,28 @@ class PatientWebSocketHandshakeInterceptorTest {
         verify(response).setStatusCode(HttpStatus.FORBIDDEN);
     }
 
+    @Test
+    void rejectsTokenOfManuallyLockedPatient() {
+        Claims claims = mock(Claims.class);
+        when(jwtService.parse("locked-token")).thenReturn(claims);
+        when(claims.getSubject()).thenReturn("7");
+        when(claims.get("version", Number.class)).thenReturn(3);
+        when(claims.getId()).thenReturn("jti-locked");
+        Patient patient = new Patient();
+        patient.setId(7L);
+        patient.setTokenVersion(3);
+        patient.setAdminLocked(true);
+        when(patientRepository.findById(7L)).thenReturn(Optional.of(patient));
+        when(revokedTokenRepository.existsById("jti-locked")).thenReturn(false);
+
+        boolean accepted = interceptor.beforeHandshake(
+                request("http://localhost/ws/patient/info?access_token=locked-token"),
+                response, handler, new HashMap<>());
+
+        assertFalse(accepted);
+        verify(response).setStatusCode(HttpStatus.FORBIDDEN);
+    }
+
     private ServerHttpRequest request(String uri) {
         ServerHttpRequest request = mock(ServerHttpRequest.class);
         when(request.getURI()).thenReturn(URI.create(uri));
