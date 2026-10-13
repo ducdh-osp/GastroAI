@@ -1,6 +1,7 @@
 package vn.gastroai.be.application.patient;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import vn.gastroai.be.api.patient.DailyCountPoint;
 import vn.gastroai.be.api.patient.FoodDiaryEntryRequest;
 import vn.gastroai.be.api.patient.FoodDiaryEntryResponse;
@@ -91,13 +92,42 @@ class FoodDiaryServiceTest {
         patient.setId(1L);
         FoodDiaryEntry entry = new FoodDiaryEntry(patient, Instant.now(), "Pho bo", null);
         when(foodDiaryEntryRepository.findById(99L)).thenReturn(Optional.of(entry));
-        when(foodDiaryEntryRepository.save(any(FoodDiaryEntry.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(foodDiaryEntryRepository.saveAndFlush(any(FoodDiaryEntry.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.delete(1L, 99L);
 
         assertNotNull(entry.getDeletedAt());
         // Phai la soft-delete: KHONG duoc goi repository.delete(...) that su.
         verify(foodDiaryEntryRepository, never()).delete(any());
+    }
+
+    // ===== UC0068 - optimistic lock (@Version), chong "song lai" ban ghi da xoa =====
+
+    @Test
+    void updateThrowsConflictWhenAnotherRequestAlreadyWroteANewerVersion() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        FoodDiaryEntry entry = new FoodDiaryEntry(patient, Instant.now(), "Pho bo", null);
+        when(foodDiaryEntryRepository.findById(99L)).thenReturn(Optional.of(entry));
+        // Mo phong dung tinh huong Duc mo ta: request xoa da ghi version moi hon truoc,
+        // nen saveAndFlush() cua request sua (dang cam version cu) bi Hibernate tu choi.
+        when(foodDiaryEntryRepository.saveAndFlush(any(FoodDiaryEntry.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(FoodDiaryEntry.class, 99L));
+
+        assertThrows(ObjectOptimisticLockingFailureException.class,
+                () -> service.update(1L, 99L, new FoodDiaryEntryRequest(Instant.now(), "Sua roi", null)));
+    }
+
+    @Test
+    void deleteThrowsConflictWhenAnotherRequestAlreadyWroteANewerVersion() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        FoodDiaryEntry entry = new FoodDiaryEntry(patient, Instant.now(), "Pho bo", null);
+        when(foodDiaryEntryRepository.findById(99L)).thenReturn(Optional.of(entry));
+        when(foodDiaryEntryRepository.saveAndFlush(any(FoodDiaryEntry.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(FoodDiaryEntry.class, 99L));
+
+        assertThrows(ObjectOptimisticLockingFailureException.class, () -> service.delete(1L, 99L));
     }
 
     @Test
@@ -125,12 +155,25 @@ class FoodDiaryServiceTest {
         FoodDiaryEntry entry = new FoodDiaryEntry(patient, Instant.now(), "Pho bo", null);
         entry.setDeletedAt(Instant.now().minus(1, ChronoUnit.DAYS));
         when(foodDiaryEntryRepository.findDeletedOwned(99L, 1L)).thenReturn(Optional.of(entry));
-        when(foodDiaryEntryRepository.save(any(FoodDiaryEntry.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(foodDiaryEntryRepository.saveAndFlush(any(FoodDiaryEntry.class))).thenAnswer(inv -> inv.getArgument(0));
 
         FoodDiaryEntryResponse response = service.restore(1L, 99L);
 
         assertNull(entry.getDeletedAt());
         assertEquals("Pho bo", response.description());
+    }
+
+    @Test
+    void restoreThrowsConflictWhenAnotherRequestAlreadyWroteANewerVersion() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        FoodDiaryEntry entry = new FoodDiaryEntry(patient, Instant.now(), "Pho bo", null);
+        entry.setDeletedAt(Instant.now().minus(1, ChronoUnit.DAYS));
+        when(foodDiaryEntryRepository.findDeletedOwned(99L, 1L)).thenReturn(Optional.of(entry));
+        when(foodDiaryEntryRepository.saveAndFlush(any(FoodDiaryEntry.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(FoodDiaryEntry.class, 99L));
+
+        assertThrows(ObjectOptimisticLockingFailureException.class, () -> service.restore(1L, 99L));
     }
 
     @Test

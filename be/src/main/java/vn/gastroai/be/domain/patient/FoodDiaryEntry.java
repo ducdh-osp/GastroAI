@@ -22,6 +22,13 @@ public class FoodDiaryEntry {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** UC0068 - chong ghi de khi request sua va request xoa (soft-delete) chay chong len
+     * nhau: request ghi sau cung voi version cu se bi Hibernate tu choi (ORM optimistic
+     * locking exception) thay vi am tham ghi de deleted_at. */
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
