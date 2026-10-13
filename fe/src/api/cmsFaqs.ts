@@ -7,8 +7,11 @@ export interface CmsFaqItem {
   category: string
   sortOrder: number
   published: boolean
+  medicalReviewer: string | null
+  medicalReviewedAt: string | null
   createdAt: string
   updatedAt: string
+  version?: number
 }
 
 export interface CmsFaqPageResponse {
@@ -24,6 +27,15 @@ export interface CmsFaqFormValues {
   category: string
   sortOrder?: number
   published?: boolean
+  /** Bắt buộc khi xuất bản. Chỉ gửi khi bác sĩ thực sự duyệt (lại) nội dung lần này. */
+  medicalReviewer?: string | null
+  version?: number | null
+}
+
+export interface CmsFaqPublishInput {
+  published: boolean
+  medicalReviewer?: string | null
+  version?: number | null
 }
 
 export async function listCmsFaqs(params: {
@@ -57,8 +69,8 @@ export async function updateCmsFaq(id: number, payload: CmsFaqFormValues): Promi
   return data
 }
 
-export async function setCmsFaqPublished(id: number, published: boolean): Promise<CmsFaqItem> {
-  const { data } = await cmsApiClient.patch<CmsFaqItem>(`/cms/faqs/${id}/publish`, { published })
+export async function setCmsFaqPublished(id: number, payload: CmsFaqPublishInput): Promise<CmsFaqItem> {
+  const { data } = await cmsApiClient.patch<CmsFaqItem>(`/cms/faqs/${id}/publish`, payload)
   return data
 }
 

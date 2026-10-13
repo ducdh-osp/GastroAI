@@ -57,7 +57,7 @@ public class FaqAdminController {
             @PathVariable Long id,
             @Valid @RequestBody CmsFaqPublishRequest request
     ) {
-        return ResponseEntity.ok(faqAdminService.setPublished(id, request.published()));
+        return ResponseEntity.ok(faqAdminService.setPublished(id, request));
     }
 
     @DeleteMapping("/{id}")

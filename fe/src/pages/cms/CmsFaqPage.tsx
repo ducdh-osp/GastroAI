@@ -1,14 +1,19 @@
 import {
+  CheckCircleOutlined,
   DeleteOutlined,
   EditOutlined,
+  EyeInvisibleOutlined,
   EyeOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
 import {
+  Alert,
   Button,
   Card,
+  Checkbox,
   Empty,
   Form,
   Input,
@@ -21,6 +26,7 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd'
@@ -42,6 +48,33 @@ import { MarkdownContent } from '../../components/chat/MarkdownContent'
 
 const { Title, Text, Paragraph } = Typography
 
+type FaqFormValues = CmsFaqFormValues & { reviewConfirmed?: boolean }
+
+interface ReviewFormValues {
+  medicalReviewer: string
+  reviewConfirmed: boolean
+}
+
+/** Lần duyệt y khoa còn hiệu lực cho nội dung hiện tại (BE xoá medicalReviewedAt khi nội dung đổi). */
+function hasValidReview(item: CmsFaqItem | null | undefined): boolean {
+  return Boolean(item?.medicalReviewer?.trim() && item?.medicalReviewedAt)
+}
+
+function extractError(err: unknown, fallback: string): string {
+  const response = (err as { response?: { status?: number; data?: { message?: string } } })?.response
+  if (response?.status === 409) {
+    return 'Câu hỏi đã được người khác cập nhật. Danh sách đã được tải lại, vui lòng kiểm tra và thử lại.'
+  }
+  return response?.data?.message || fallback
+}
+
+const REVIEW_CONFIRM_RULE = {
+  validator: (_: unknown, value: boolean) =>
+    value
+      ? Promise.resolve()
+      : Promise.reject(new Error('Vui lòng xác nhận nội dung đã được bác sĩ kiểm duyệt')),
+}
+
 export default function CmsFaqPage() {
   const [items, setItems] = useState<CmsFaqItem[]>([])
   const [total, setTotal] = useState(0)
@@ -62,11 +95,19 @@ export default function CmsFaqPage() {
   const [editingItem, setEditingItem] = useState<CmsFaqItem | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [previewTab, setPreviewTab] = useState<'edit' | 'preview'>('edit')
-  const [form] = Form.useForm<CmsFaqFormValues>()
+  const [form] = Form.useForm<FaqFormValues>()
   const answerValue = Form.useWatch('answer', form)
+  const publishedValue = Form.useWatch('published', form)
+  const reviewerValue = Form.useWatch('medicalReviewer', form)
 
   // Modal Xem chi tiết
   const [detailItem, setDetailItem] = useState<CmsFaqItem | null>(null)
+
+  // Modal Kiểm duyệt & xuất bản
+  const [reviewItem, setReviewItem] = useState<CmsFaqItem | null>(null)
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [togglingId, setTogglingId] = useState<number | null>(null)
+  const [reviewForm] = Form.useForm<ReviewFormValues>()
 
   // Tải danh mục gợi ý
   const loadCategories = useCallback(async () => {
@@ -116,8 +157,11 @@ export default function CmsFaqPage() {
     setPreviewTab('edit')
     form.resetFields()
     form.setFieldsValue({
-      published: true,
+      // Mặc định là bản nháp - chỉ công khai sau khi có bác sĩ kiểm duyệt y khoa
+      published: false,
       sortOrder: undefined,
+      medicalReviewer: undefined,
+      reviewConfirmed: false,
       category: categoryOptions[0] || 'Trào ngược dạ dày thực quản',
     })
     setModalOpen(true)
@@ -126,45 +170,111 @@ export default function CmsFaqPage() {
   function handleOpenEdit(item: CmsFaqItem) {
     setEditingItem(item)
     setPreviewTab('edit')
+    form.resetFields()
     form.setFieldsValue({
       question: item.question,
       answer: item.answer,
       category: item.category,
       sortOrder: item.sortOrder,
       published: item.published,
+      // Không tự điền reviewer cũ: chỉ nhập khi bác sĩ thực sự duyệt lại nội dung lần này
+      medicalReviewer: undefined,
+      reviewConfirmed: false,
     })
     setModalOpen(true)
   }
 
-  async function handleFormSubmit(values: CmsFaqFormValues) {
+  async function handleFormSubmit(values: FaqFormValues) {
     setSubmitting(true)
+    const payload: CmsFaqFormValues = {
+      question: values.question,
+      answer: values.answer,
+      category: Array.isArray(values.category) ? values.category[0] : values.category,
+      sortOrder: values.sortOrder,
+      published: Boolean(values.published),
+      medicalReviewer: values.medicalReviewer?.trim() || undefined,
+    }
     try {
       if (editingItem) {
-        await updateCmsFaq(editingItem.id, values)
-        message.success('Cập nhật câu hỏi thành công')
+        const saved = await updateCmsFaq(editingItem.id, { ...payload, version: editingItem.version })
+        if (payload.published && !saved.published) {
+          message.warning(
+            'Nội dung y khoa đã thay đổi nhưng chưa được kiểm duyệt lại - câu hỏi đã tự động chuyển về Bản nháp.',
+          )
+        } else {
+          message.success('Cập nhật câu hỏi thành công')
+        }
       } else {
-        await createCmsFaq(values)
-        message.success('Thêm câu hỏi mới thành công')
+        await createCmsFaq(payload)
+        message.success(payload.published ? 'Đã thêm và xuất bản câu hỏi' : 'Đã lưu câu hỏi dưới dạng bản nháp')
       }
       setModalOpen(false)
       loadData()
       loadCategories()
-    } catch {
-      message.error(editingItem ? 'Cập nhật thất bại' : 'Thêm mới thất bại')
+    } catch (err) {
+      message.error(extractError(err, editingItem ? 'Cập nhật thất bại' : 'Thêm mới thất bại'))
+      if ((err as { response?: { status?: number } })?.response?.status === 409) {
+        setModalOpen(false)
+        loadData()
+      }
     } finally {
       setSubmitting(false)
     }
   }
 
-  async function handleTogglePublished(item: CmsFaqItem, published: boolean) {
+  async function handleUnpublish(item: CmsFaqItem) {
+    setTogglingId(item.id)
     try {
-      await setCmsFaqPublished(item.id, published)
-      message.success(published ? 'Đã xuất bản câu hỏi' : 'Đã chuyển thành bản nháp')
-      setItems((prev) =>
-        prev.map((f) => (f.id === item.id ? { ...f, published } : f)),
-      )
-    } catch {
-      message.error('Không thể đổi trạng thái xuất bản')
+      const saved = await setCmsFaqPublished(item.id, { published: false, version: item.version })
+      message.success('Đã ẩn câu hỏi khỏi trang bệnh nhân')
+      setItems((prev) => prev.map((f) => (f.id === item.id ? saved : f)))
+    } catch (err) {
+      message.error(extractError(err, 'Không thể ẩn câu hỏi'))
+      loadData()
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
+  async function handlePublishWithExistingReview(item: CmsFaqItem) {
+    setTogglingId(item.id)
+    try {
+      const saved = await setCmsFaqPublished(item.id, { published: true, version: item.version })
+      message.success('Đã xuất bản câu hỏi')
+      setItems((prev) => prev.map((f) => (f.id === item.id ? saved : f)))
+    } catch (err) {
+      message.error(extractError(err, 'Không thể xuất bản câu hỏi'))
+      loadData()
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
+  function handleOpenReview(item: CmsFaqItem) {
+    reviewForm.resetFields()
+    setReviewItem(item)
+  }
+
+  async function handleReviewSubmit(values: ReviewFormValues) {
+    if (!reviewItem) return
+    setReviewSubmitting(true)
+    try {
+      const saved = await setCmsFaqPublished(reviewItem.id, {
+        published: true,
+        medicalReviewer: values.medicalReviewer.trim(),
+        version: reviewItem.version,
+      })
+      message.success('Đã kiểm duyệt và xuất bản câu hỏi')
+      setItems((prev) => prev.map((f) => (f.id === reviewItem.id ? saved : f)))
+      setReviewItem(null)
+    } catch (err) {
+      message.error(extractError(err, 'Không thể xuất bản câu hỏi'))
+      if ((err as { response?: { status?: number } })?.response?.status === 409) {
+        setReviewItem(null)
+        loadData()
+      }
+    } finally {
+      setReviewSubmitting(false)
     }
   }
 
@@ -174,9 +284,49 @@ export default function CmsFaqPage() {
       message.success('Đã xóa câu hỏi')
       loadData()
       loadCategories()
-    } catch {
-      message.error('Xóa thất bại')
+    } catch (err) {
+      message.error(extractError(err, 'Xóa thất bại'))
     }
+  }
+
+  function renderPublishAction(record: CmsFaqItem) {
+    if (record.published) {
+      return (
+        <Popconfirm
+          title="Ẩn câu hỏi này?"
+          description="Bệnh nhân sẽ không còn thấy câu hỏi này trong mục FAQ."
+          okText="Ẩn"
+          cancelText="Hủy"
+          onConfirm={() => handleUnpublish(record)}
+        >
+          <Button size="small" icon={<EyeInvisibleOutlined />} loading={togglingId === record.id}>
+            Ẩn
+          </Button>
+        </Popconfirm>
+      )
+    }
+    if (hasValidReview(record)) {
+      return (
+        <Popconfirm
+          title="Xuất bản câu hỏi này?"
+          description={`Nội dung hiện tại đã được ${record.medicalReviewer} kiểm duyệt lúc ${dayjs(record.medicalReviewedAt).format('DD/MM/YYYY HH:mm')}.`}
+          okText="Xuất bản"
+          cancelText="Hủy"
+          onConfirm={() => handlePublishWithExistingReview(record)}
+        >
+          <Button size="small" type="primary" ghost icon={<CheckCircleOutlined />} loading={togglingId === record.id}>
+            Xuất bản
+          </Button>
+        </Popconfirm>
+      )
+    }
+    return (
+      <Tooltip title="Nội dung chưa được bác sĩ kiểm duyệt - cần duyệt trước khi xuất bản">
+        <Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => handleOpenReview(record)}>
+          Duyệt & xuất bản
+        </Button>
+      </Tooltip>
+    )
   }
 
   const columns: ColumnsType<CmsFaqItem> = [
@@ -218,18 +368,25 @@ export default function CmsFaqPage() {
       ),
     },
     {
-      title: 'Xuất bản',
-      dataIndex: 'published',
+      title: 'Xuất bản & Kiểm duyệt',
       key: 'published',
-      width: 110,
-      align: 'center',
-      render: (published: boolean, record) => (
-        <Switch
-          checked={published}
-          checkedChildren="Hiện"
-          unCheckedChildren="Ẩn"
-          onChange={(checked) => handleTogglePublished(record, checked)}
-        />
+      width: 220,
+      render: (_, record) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            {record.published ? (
+              <Tag color="green">Đang xuất bản</Tag>
+            ) : (
+              <Tag color="orange">Bản nháp</Tag>
+            )}
+            {renderPublishAction(record)}
+          </div>
+          <div className="text-xs text-slate-400">
+            {hasValidReview(record)
+              ? `Duyệt: ${record.medicalReviewer}`
+              : 'Chưa kiểm duyệt y khoa'}
+          </div>
+        </div>
       ),
     },
     {
@@ -442,13 +599,75 @@ export default function CmsFaqPage() {
             </Form.Item>
           </div>
 
+          <Alert
+            type="info"
+            showIcon
+            className="mb-4 text-xs"
+            message="Quy định kiểm duyệt y khoa"
+            description={
+              editingItem
+                ? 'FAQ chỉ được công khai khi có bác sĩ kiểm duyệt độc lập. Nếu sửa câu hỏi/câu trả lời của FAQ đang công khai mà không nhập thông tin duyệt mới, FAQ sẽ tự động chuyển về Bản nháp.'
+                : 'FAQ mới được lưu dưới dạng Bản nháp. Chỉ xuất bản khi nội dung đã được bác sĩ kiểm duyệt độc lập.'
+            }
+          />
+
+          {editingItem && (
+            <div className="mb-4 text-xs text-slate-500">
+              Kiểm duyệt hiện tại:{' '}
+              {hasValidReview(editingItem) ? (
+                <span className="font-medium text-slate-700">
+                  {editingItem.medicalReviewer} ({dayjs(editingItem.medicalReviewedAt).format('DD/MM/YYYY HH:mm')})
+                </span>
+              ) : (
+                <span className="font-medium text-orange-600">Chưa có / đã hết hiệu lực do nội dung thay đổi</span>
+              )}
+            </div>
+          )}
+
           <Form.Item
             label="Trạng thái xuất bản"
             name="published"
             valuePropName="checked"
           >
-            <Switch checkedChildren="Xuất bản ngay" unCheckedChildren="Lưu nháp" />
+            <Switch checkedChildren="Công khai" unCheckedChildren="Bản nháp" />
           </Form.Item>
+
+          {(() => {
+            // Bắt buộc nhập reviewer khi công khai mà chưa có lần duyệt còn hiệu lực
+            const reviewerRequired = Boolean(publishedValue) && !hasValidReview(editingItem)
+            const hasReviewer = Boolean(reviewerValue?.trim())
+            return (
+              <>
+                <Form.Item
+                  name="medicalReviewer"
+                  label="Bác sĩ kiểm duyệt y khoa"
+                  extra={
+                    editingItem
+                      ? 'Chỉ nhập khi bác sĩ đã duyệt (lại) đúng nội dung lần này. Người duyệt phải độc lập với người biên soạn.'
+                      : 'Bắt buộc khi xuất bản. Người duyệt phải độc lập với người biên soạn.'
+                  }
+                  rules={[
+                    {
+                      required: reviewerRequired,
+                      whitespace: true,
+                      message: 'Vui lòng nhập tên bác sĩ kiểm duyệt trước khi công khai FAQ',
+                    },
+                    { max: 200, message: 'Tối đa 200 ký tự' },
+                  ]}
+                >
+                  <Input placeholder="Ví dụ: BS. CKII Nguyễn Văn A" maxLength={200} />
+                </Form.Item>
+
+                {hasReviewer && (
+                  <Form.Item name="reviewConfirmed" valuePropName="checked" rules={[REVIEW_CONFIRM_RULE]}>
+                    <Checkbox>
+                      Tôi xác nhận bác sĩ trên đã kiểm duyệt y khoa đúng nội dung câu hỏi & câu trả lời này
+                    </Checkbox>
+                  </Form.Item>
+                )}
+              </>
+            )
+          })()}
 
           <div className="mb-2 flex items-center justify-between">
             <span className="font-semibold text-slate-700">
@@ -546,6 +765,22 @@ export default function CmsFaqPage() {
 
             <div>
               <Text type="secondary" className="text-xs uppercase font-medium">
+                Kiểm duyệt y khoa
+              </Text>
+              <div className="mt-1 text-sm">
+                {hasValidReview(detailItem) ? (
+                  <span className="text-slate-700">
+                    <SafetyCertificateOutlined className="mr-1 text-teal-600" />
+                    {detailItem.medicalReviewer} — {dayjs(detailItem.medicalReviewedAt).format('DD/MM/YYYY HH:mm')}
+                  </span>
+                ) : (
+                  <span className="text-orange-600">Chưa được kiểm duyệt cho nội dung hiện tại</span>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <Text type="secondary" className="text-xs uppercase font-medium">
                 Câu hỏi
               </Text>
               <Paragraph className="!mt-1 !mb-0 font-semibold text-slate-800 text-base">
@@ -567,6 +802,64 @@ export default function CmsFaqPage() {
               <span>Cập nhật: {dayjs(detailItem.updatedAt).format('DD/MM/YYYY HH:mm')}</span>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Modal Kiểm duyệt & xuất bản */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-teal-700">
+            <SafetyCertificateOutlined />
+            <span>Kiểm duyệt y khoa & xuất bản</span>
+          </div>
+        }
+        open={Boolean(reviewItem)}
+        onCancel={() => setReviewItem(null)}
+        footer={null}
+        width={640}
+        destroyOnClose
+      >
+        {reviewItem && (
+          <Form form={reviewForm} layout="vertical" onFinish={handleReviewSubmit} className="mt-2">
+            <Alert
+              type="warning"
+              showIcon
+              className="mb-4"
+              message="Nội dung này sẽ hiển thị cho bệnh nhân"
+              description="Chỉ xuất bản khi bác sĩ độc lập đã đọc và xác nhận tính chính xác y khoa của câu trả lời bên dưới."
+            />
+            <Paragraph className="!mb-2 font-semibold text-slate-800">{reviewItem.question}</Paragraph>
+            <div className="mb-4 max-h-[260px] overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-4">
+              <MarkdownContent content={reviewItem.answer} />
+            </div>
+
+            <Form.Item
+              name="medicalReviewer"
+              label="Bác sĩ kiểm duyệt y khoa"
+              rules={[
+                { required: true, whitespace: true, message: 'Vui lòng nhập tên bác sĩ kiểm duyệt' },
+                { max: 200, message: 'Tối đa 200 ký tự' },
+              ]}
+            >
+              <Input placeholder="Ví dụ: BS. CKII Nguyễn Văn A" maxLength={200} />
+            </Form.Item>
+
+            <Form.Item name="reviewConfirmed" valuePropName="checked" rules={[REVIEW_CONFIRM_RULE]}>
+              <Checkbox>Tôi xác nhận bác sĩ trên đã kiểm duyệt y khoa đúng nội dung này</Checkbox>
+            </Form.Item>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+              <Button onClick={() => setReviewItem(null)}>Hủy</Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={reviewSubmitting}
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                Duyệt & xuất bản
+              </Button>
+            </div>
+          </Form>
         )}
       </Modal>
     </div>

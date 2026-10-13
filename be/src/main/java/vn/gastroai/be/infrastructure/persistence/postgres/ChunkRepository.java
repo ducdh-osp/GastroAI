@@ -11,7 +11,7 @@ public interface ChunkRepository extends JpaRepository<Chunk, Long> {
 
     long countByDocumentId(Long documentId);
 
-    @org.springframework.data.jpa.repository.Query("SELECT c.documentId, count(c) FROM Chunk c GROUP BY c.documentId")
+    @org.springframework.data.jpa.repository.Query("SELECT c.document.id, count(c) FROM Chunk c GROUP BY c.document.id")
     List<Object[]> countByDocumentIdGrouped();
 
     void deleteByDocumentId(Long documentId);

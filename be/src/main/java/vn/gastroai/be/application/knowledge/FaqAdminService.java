@@ -4,9 +4,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.api.cms.knowledge.CmsFaqPageResponse;
+import vn.gastroai.be.api.cms.knowledge.CmsFaqPublishRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsFaqRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsFaqResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
@@ -23,6 +25,8 @@ public class FaqAdminService {
 
     private static final String TX = "postgresTransactionManager";
     private static final int SORT_STEP = 10;
+    private static final String MSG_REVIEW_REQUIRED =
+            "FAQ muốn xuất bản bắt buộc phải có thông tin bác sĩ kiểm duyệt y khoa cho nội dung hiện tại";
 
     private final FaqRepository faqRepository;
 
@@ -74,33 +78,77 @@ public class FaqAdminService {
 
     @Transactional(value = TX)
     public CmsFaqResponse create(CmsFaqRequest req) {
+        String question = clean(req.question(), "Câu hỏi không được để trống");
+        String answer = clean(req.answer(), "Câu trả lời không được để trống");
+        String category = clean(req.category(), "Chủ đề không được để trống");
         int sortOrder = req.sortOrder() != null ? req.sortOrder() : nextSortOrder();
-        boolean published = req.published() == null || req.published();
+        // Mặc định là bản nháp - chỉ công khai khi client yêu cầu rõ ràng VÀ có bác sĩ kiểm duyệt
+        boolean published = Boolean.TRUE.equals(req.published());
+        String reviewer = trimToNull(req.medicalReviewer());
 
-        Faq faq = new Faq(
-                req.question().trim(),
-                req.answer().trim(),
-                req.category().trim(),
-                sortOrder,
-                published
-        );
+        Faq faq = new Faq(question, answer, category, sortOrder, false);
+        if (published) {
+            if (reviewer == null) {
+                throw new IllegalArgumentException(MSG_REVIEW_REQUIRED);
+            }
+            faq.setPublished(true);
+        }
+        if (reviewer != null) {
+            faq.setMedicalReviewer(reviewer);
+            faq.setMedicalReviewedAt(Instant.now());
+        }
 
         return toResponse(faqRepository.save(faq));
     }
 
     @Transactional(value = TX)
     public CmsFaqResponse update(Long id, CmsFaqRequest req) {
-        Faq faq = faqRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay FAQ voi id=" + id));
+        Faq faq = load(id);
+        checkVersion(faq, req.version());
 
-        faq.setQuestion(req.question().trim());
-        faq.setAnswer(req.answer().trim());
-        faq.setCategory(req.category().trim());
+        String question = clean(req.question(), "Câu hỏi không được để trống");
+        String answer = clean(req.answer(), "Câu trả lời không được để trống");
+        String category = clean(req.category(), "Chủ đề không được để trống");
+        String newReviewer = trimToNull(req.medicalReviewer());
+
+        boolean contentChanged = !question.equals(faq.getQuestion()) || !answer.equals(faq.getAnswer());
+        boolean targetPublished = req.published() != null ? req.published() : faq.isPublished();
+
+        faq.setQuestion(question);
+        faq.setAnswer(answer);
+        faq.setCategory(category);
         if (req.sortOrder() != null) {
             faq.setSortOrder(req.sortOrder());
         }
-        if (req.published() != null) {
-            faq.setPublished(req.published());
+
+        if (targetPublished) {
+            if (faq.isPublished() && contentChanged && newReviewer == null) {
+                // Nội dung y khoa thay đổi trên FAQ đang công khai mà không có kiểm duyệt mới
+                // -> tự động chuyển về bản nháp để bệnh nhân không thấy nội dung chưa được duyệt
+                faq.setPublished(false);
+                faq.setMedicalReviewedAt(null);
+            } else {
+                String reviewer = newReviewer != null ? newReviewer : trimToNull(faq.getMedicalReviewer());
+                // Lần duyệt cũ chỉ còn hiệu lực khi nội dung không đổi và chưa bị vô hiệu hoá trước đó
+                boolean previousReviewValid = !contentChanged && faq.getMedicalReviewedAt() != null;
+                if (reviewer == null || (newReviewer == null && !previousReviewValid)) {
+                    throw new IllegalArgumentException(MSG_REVIEW_REQUIRED);
+                }
+                faq.setPublished(true);
+                faq.setMedicalReviewer(reviewer);
+                if (newReviewer != null) {
+                    faq.setMedicalReviewedAt(Instant.now());
+                }
+            }
+        } else {
+            faq.setPublished(false);
+            if (newReviewer != null) {
+                faq.setMedicalReviewer(newReviewer);
+                faq.setMedicalReviewedAt(Instant.now());
+            } else if (contentChanged) {
+                // Lần duyệt cũ không còn áp dụng cho nội dung mới
+                faq.setMedicalReviewedAt(null);
+            }
         }
         faq.setUpdatedAt(Instant.now());
 
@@ -108,20 +156,33 @@ public class FaqAdminService {
     }
 
     @Transactional(value = TX)
-    public CmsFaqResponse setPublished(Long id, boolean published) {
-        Faq faq = faqRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay FAQ voi id=" + id));
+    public CmsFaqResponse setPublished(Long id, CmsFaqPublishRequest req) {
+        Faq faq = load(id);
+        checkVersion(faq, req.version());
 
-        faq.setPublished(published);
+        if (Boolean.TRUE.equals(req.published())) {
+            String newReviewer = trimToNull(req.medicalReviewer());
+            String reviewer = newReviewer != null ? newReviewer : trimToNull(faq.getMedicalReviewer());
+            // Cần có người duyệt VÀ lần duyệt phải còn hiệu lực cho nội dung hiện tại
+            if (reviewer == null || (newReviewer == null && faq.getMedicalReviewedAt() == null)) {
+                throw new IllegalArgumentException(
+                        "Không thể xuất bản FAQ khi chưa có thông tin bác sĩ kiểm duyệt y khoa cho nội dung hiện tại");
+            }
+            faq.setPublished(true);
+            faq.setMedicalReviewer(reviewer);
+            if (newReviewer != null) {
+                faq.setMedicalReviewedAt(Instant.now());
+            }
+        } else {
+            faq.setPublished(false);
+        }
         faq.setUpdatedAt(Instant.now());
         return toResponse(faqRepository.save(faq));
     }
 
     @Transactional(value = TX)
     public void delete(Long id) {
-        Faq faq = faqRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay FAQ voi id=" + id));
-        faqRepository.delete(faq);
+        faqRepository.delete(load(id));
     }
 
     @Transactional(value = TX, readOnly = true)
@@ -136,6 +197,28 @@ public class FaqAdminService {
                 .orElse(0) + SORT_STEP;
     }
 
+    private Faq load(Long id) {
+        return faqRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay FAQ voi id=" + id));
+    }
+
+    private static void checkVersion(Faq faq, Long requestVersion) {
+        if (requestVersion != null && !requestVersion.equals(faq.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Faq.class, faq.getId());
+        }
+    }
+
+    private static String clean(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(message);
+        }
+        return value.trim();
+    }
+
+    private static String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
     private boolean containsNormalized(String text, String normalizedQuery) {
         if (text == null || text.isBlank()) {
             return false;
@@ -144,15 +227,6 @@ public class FaqAdminService {
     }
 
     private CmsFaqResponse toResponse(Faq faq) {
-        return new CmsFaqResponse(
-                faq.getId(),
-                faq.getQuestion(),
-                faq.getAnswer(),
-                faq.getCategory(),
-                faq.getSortOrder(),
-                faq.isPublished(),
-                faq.getCreatedAt(),
-                faq.getUpdatedAt()
-        );
+        return CmsFaqResponse.from(faq);
     }
 }
