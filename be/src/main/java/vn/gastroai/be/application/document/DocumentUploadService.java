@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
@@ -161,18 +162,25 @@ public class DocumentUploadService {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Không tìm thấy tài liệu: " + documentId));
+        Long groupId = document.groupId();
+        List<Document> versions = documentRepository.findGroup(groupId);
 
-        if (document.getStatus() == DocumentStatus.PENDING
-                || document.getStatus() == DocumentStatus.PROCESSING) {
+        boolean anyProcessing = versions.stream().anyMatch(v ->
+                v.getStatus() == DocumentStatus.PENDING || v.getStatus() == DocumentStatus.PROCESSING);
+        if (anyProcessing) {
             throw new IllegalStateException(
-                    "Tài liệu đang được xử lý, vui lòng thử lại sau");
+                    "Tài liệu có phiên bản đang được xử lý, vui lòng thử lại sau");
         }
 
-        documentRepository.delete(document);
+        // Gom duong dan file TRUOC khi xoa DB - sau deleteGroup cac dong khong con de doc.
+        List<Path> files = versions.stream()
+                .map(Document::getSource)
+                .filter(source -> source != null)
+                .map(Path::of)
+                .toList();
 
-        if (document.getSource() != null) {
-            deleteFileAfterCommit(Path.of(document.getSource()));
-        }
+        documentRepository.deleteGroup(groupId);
+        files.forEach(this::deleteFileAfterCommit);
     }
 
     /**

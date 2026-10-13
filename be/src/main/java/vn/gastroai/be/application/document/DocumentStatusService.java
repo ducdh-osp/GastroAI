@@ -216,6 +216,32 @@ public class DocumentStatusService {
         target.setCurrentVersion(true);
         documentRepository.save(target);
     }
+       /** UC0050 - go tai lieu khoi chatbot nhung giu nguyen du lieu, co the dang lai sau. */
+    @Transactional
+    public void unpublish(Long documentId) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        documentRepository.clearCurrent(document.groupId());
+    }
+
+    /** UC0050 - dang lai: bat phien ban DONE moi nhat cua nhom. */
+    @Transactional
+    public void publish(Long documentId) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        Long groupId = document.groupId();
+        Document latestDone = documentRepository.findGroup(groupId).stream()
+                .filter(v -> v.getStatus() == DocumentStatus.DONE)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Chưa có phiên bản nào xử lý xong để đăng"));
+
+        if (latestDone.isCurrentVersion()) {
+            return;
+        }
+        documentRepository.clearCurrent(groupId);
+        latestDone.setCurrentVersion(true);
+        documentRepository.save(latestDone);
+    }
 
     private Document getDocument(Long documentId) {
         return documentRepository.findById(documentId)

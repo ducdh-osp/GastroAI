@@ -259,4 +259,48 @@ class DocumentStatusServiceTest {
         assertNull(page.items().get(0).currentVersionNo());
         assertEquals(3, page.items().get(0).versionCount());
     }
+       @Test
+    void unpublishClearsCurrentForGroup() {
+        Document v2 = version(2L, 1L, 2, true, DocumentStatus.DONE);
+        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
+
+        documentStatusService.unpublish(2L);
+
+        verify(documentRepository).clearCurrent(1L);
+    }
+
+    // Nhom khong co ban DONE nao (vd tat ca ERROR) -> khong co gi de dang, 409.
+    @Test
+    void publishRejectsWhenNoDoneVersion() {
+        Document v1 = version(1L, null, 1, false, DocumentStatus.ERROR);
+        Document v2 = version(2L, 1L, 2, false, DocumentStatus.ERROR);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
+
+        assertThrows(IllegalStateException.class, () -> documentStatusService.publish(1L));
+
+        verify(documentRepository, never()).clearCurrent(any());
+        verify(documentRepository, never()).save(any());
+    }
+
+    // Ban moi nhat (v3) bi ERROR -> dang ban DONE gan nhat (v2), khong phai v3, cung khong phai v1.
+    // clearCurrent phai chay truoc save (index uk_documents_group_current).
+    @Test
+    void publishActivatesLatestDoneVersion() {
+        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
+        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
+        Document v3 = version(3L, 1L, 3, false, DocumentStatus.ERROR);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v3, v2, v1));
+
+        documentStatusService.publish(1L);
+
+        assertTrue(v2.isCurrentVersion());
+        assertFalse(v1.isCurrentVersion());
+        assertFalse(v3.isCurrentVersion());
+
+        InOrder order = inOrder(documentRepository);
+        order.verify(documentRepository).clearCurrent(1L);
+        order.verify(documentRepository).save(v2);
+    }
 }

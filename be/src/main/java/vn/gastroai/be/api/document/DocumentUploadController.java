@@ -19,8 +19,7 @@ public class DocumentUploadController {
 
     public DocumentUploadController(
             DocumentUploadService documentUploadService,
-            DocumentStatusService documentStatusService
-    ) {
+            DocumentStatusService documentStatusService) {
         this.documentUploadService = documentUploadService;
         this.documentStatusService = documentStatusService;
     }
@@ -28,18 +27,15 @@ public class DocumentUploadController {
     @PostMapping
     public ResponseEntity<DocumentStatusResponse> upload(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "sourceUrl", required = false) String sourceUrl
-    ) {
-        Document document =
-                documentUploadService.upload(file, sourceUrl);
+            @RequestParam(value = "sourceUrl", required = false) String sourceUrl) {
+        Document document = documentUploadService.upload(file, sourceUrl);
 
         return ResponseEntity.accepted().body(toResponse(document));
     }
 
     @GetMapping("/{documentId}")
     public ResponseEntity<DocumentStatusResponse> getStatus(
-            @PathVariable Long documentId
-    ) {
+            @PathVariable Long documentId) {
         return documentStatusService.findDocument(documentId)
                 .map(document -> ResponseEntity.ok(toResponse(document)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -50,8 +46,7 @@ public class DocumentUploadController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) DocumentStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "15") int size
-    ) {
+            @RequestParam(defaultValue = "15") int size) {
         return ResponseEntity.ok(documentStatusService.list(q, status, page, size));
     }
 
@@ -60,14 +55,17 @@ public class DocumentUploadController {
         Document document = documentStatusService.retry(documentId);
         return ResponseEntity.accepted().body(toResponse(document));
     }
-        /** UC0049 - tai len phien ban moi cho 1 tai lieu da co. Ban moi chua duoc dung cho
-     * toi khi xu ly xong (xem DocumentStatusService.markDone). */
+
+    /**
+     * UC0049 - tai len phien ban moi cho 1 tai lieu da co. Ban moi chua duoc dung
+     * cho
+     * toi khi xu ly xong (xem DocumentStatusService.markDone).
+     */
     @PostMapping("/{documentId}/versions")
     public ResponseEntity<DocumentStatusResponse> uploadVersion(
             @PathVariable Long documentId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "sourceUrl", required = false) String sourceUrl
-    ) {
+            @RequestParam(value = "sourceUrl", required = false) String sourceUrl) {
         Document document = documentUploadService.uploadNewVersion(documentId, file, sourceUrl);
         return ResponseEntity.accepted().body(toResponse(document));
     }
@@ -82,9 +80,22 @@ public class DocumentUploadController {
     @PostMapping("/{documentId}/versions/{versionId}/activate")
     public ResponseEntity<Void> activateVersion(
             @PathVariable Long documentId,
-            @PathVariable Long versionId
-    ) {
+            @PathVariable Long versionId) {
         documentStatusService.activateVersion(documentId, versionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** UC0050 - go tai lieu khoi chatbot (giu du lieu). */
+    @PostMapping("/{documentId}/unpublish")
+    public ResponseEntity<Void> unpublish(@PathVariable Long documentId) {
+        documentStatusService.unpublish(documentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** UC0050 - dang lai phien ban DONE moi nhat. */
+    @PostMapping("/{documentId}/publish")
+    public ResponseEntity<Void> publish(@PathVariable Long documentId) {
+        documentStatusService.publish(documentId);
         return ResponseEntity.noContent().build();
     }
 
@@ -93,6 +104,7 @@ public class DocumentUploadController {
         documentUploadService.delete(documentId);
         return ResponseEntity.noContent().build();
     }
+
     private DocumentStatusResponse toResponse(Document document) {
         return new DocumentStatusResponse(
                 document.getId(),
@@ -107,7 +119,6 @@ public class DocumentUploadController {
             String title,
             DocumentStatus status,
             DocumentProcessingStage processingStage,
-            String errorMessage
-    ) {
+            String errorMessage) {
     }
 }

@@ -76,4 +76,10 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
         @Query("UPDATE Document d SET d.currentVersion = false "
                         + "WHERE COALESCE(d.rootId, d.id) = :groupId AND d.currentVersion = true")
         int clearCurrent(@Param("groupId") Long groupId);
+
+        /** Xoa moi phien ban cua 1 nhom bang 1 cau lenh (chunk/embedding tu xoa theo cascade). */
+        @Modifying
+        @Transactional
+        @Query("DELETE FROM Document d WHERE COALESCE(d.rootId, d.id) = :groupId")
+        int deleteGroup(@Param("groupId") Long groupId);
 }

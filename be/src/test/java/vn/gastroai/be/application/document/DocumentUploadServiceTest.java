@@ -56,7 +56,7 @@ class DocumentUploadServiceTest {
         return document;
     }
 
-    // ===== B1 - xoa tai lieu =====
+    // ===== B1 / B6 - xoa tai lieu (xoa ca nhom phien ban) =====
 
     @Test
     void deleteThrowsNotFoundWhenDocumentDoesNotExist() {
@@ -68,10 +68,12 @@ class DocumentUploadServiceTest {
 
     @Test
     void deleteRejectsDocumentStillBeingProcessed() {
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(document(1L, DocumentStatus.PROCESSING)));
+        Document document = document(1L, DocumentStatus.PROCESSING);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(document));
 
         assertThrows(IllegalStateException.class, () -> service.delete(1L));
-        verify(documentRepository, never()).delete(any(Document.class));
+        verify(documentRepository, never()).deleteGroup(any());
         verify(fileStorageService, never()).delete(any());
     }
 
@@ -79,10 +81,11 @@ class DocumentUploadServiceTest {
     void deleteRemovesRowAndFileImmediatelyWhenNoTransaction() {
         Document document = document(1L, DocumentStatus.DONE);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(document));
 
         service.delete(1L);
 
-        verify(documentRepository).delete(document);
+        verify(documentRepository).deleteGroup(1L);
         verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
     }
 
@@ -91,6 +94,7 @@ class DocumentUploadServiceTest {
         TransactionSynchronizationManager.initSynchronization();
         Document document = document(1L, DocumentStatus.DONE);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(document));
 
         service.delete(1L);
 
@@ -100,6 +104,41 @@ class DocumentUploadServiceTest {
             synchronization.afterCommit();
         }
         verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
+    }
+
+    // Goi delete bang id cua 1 ban con -> xoa ca nhom va file cua MOI phien ban.
+    @Test
+    void deleteRemovesFilesOfAllVersions() {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setSource("uploads/v1.pdf");
+        Document v2 = document(2L, DocumentStatus.DONE);
+        v2.setRootId(1L);
+        v2.setSource("uploads/v2.pdf");
+
+        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
+
+        service.delete(2L);
+
+        verify(documentRepository).deleteGroup(1L);
+        verify(fileStorageService).delete(Path.of("uploads/v1.pdf"));
+        verify(fileStorageService).delete(Path.of("uploads/v2.pdf"));
+    }
+
+    // Chi can 1 phien ban dang xu ly la khong cho xoa ca nhom (worker dang ghi chunk/embedding).
+    @Test
+    void deleteRejectsWhenAnyVersionProcessing() {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        Document v2 = document(2L, DocumentStatus.PROCESSING);
+        v2.setRootId(1L);
+
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
+
+        assertThrows(IllegalStateException.class, () -> service.delete(1L));
+
+        verify(documentRepository, never()).deleteGroup(any());
+        verify(fileStorageService, never()).delete(any());
     }
 
     // ===== UC0049 - tai phien ban moi =====
