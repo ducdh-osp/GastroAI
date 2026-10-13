@@ -41,6 +41,8 @@ public class StompClientSendBlockingInterceptor implements ChannelInterceptor {
             // /ws is already protected by AdminWebSocketHandshakeInterceptor. Keeping the
             // no-session branch preserves the existing interceptor unit contract; a patient
             // handshake always carries PATIENT_ID and is therefore denied these destinations.
+            // /ws da duoc AdminWebSocketHandshakeInterceptor bao ve. Giu nhanh khong-session
+            // de tuong thich voi STOMP interceptor va cac test contract hien co.
             boolean allowedCms = patientId == null && CMS_DESTINATIONS.contains(destination);
             boolean allowedAdminNotification = cmsSession && "ADMIN".equals(cmsRole)
                     && ADMIN_NOTIFICATION_DESTINATION.equals(destination);

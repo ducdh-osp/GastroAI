@@ -275,6 +275,22 @@ class AuthServiceTest {
     }
 
     @Test
+    void manuallyDisabledAccountCannotLoginEvenWithCorrectPassword() {
+        Patient patient = patient();
+        patient.setAdminLocked(true);
+        patient.setPasswordHash("bcrypt");
+        patient.setEmailVerified(true);
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(patient));
+
+        assertThrows(AccountDisabledException.class,
+                () -> service.login(new LoginCommand("user@example.com", "Password1!")));
+
+        verifyNoInteractions(encoder, jwt);
+        verify(history).save(argThat((PatientLoginHistory item) ->
+                item.getOutcome().name().equals("BLOCKED")));
+    }
+
+    @Test
     void expiredLockIsClearedBeforeSuccessfulLogin() {
         Patient patient = patient();
         patient.setPasswordHash("bcrypt");

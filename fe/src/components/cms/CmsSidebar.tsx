@@ -30,6 +30,7 @@ interface NavItem {
   to?: string
   comingSoon?: boolean
   adminOnly?: boolean
+  roles?: string[]
 }
 
 // adminOnly khớp đúng cột Actor trong masterplan (UC0046/47/51/52 chỉ ghi "Admin", không có
@@ -48,8 +49,8 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Người dùng',
     items: [
-      { key: 'users', label: 'Quản lý người dùng', icon: <TeamOutlined />, comingSoon: true, adminOnly: true },
-      { key: 'roles', label: 'Phân quyền RBAC', icon: <SafetyCertificateOutlined />, comingSoon: true, adminOnly: true },
+      { key: 'users', label: 'Quản lý người dùng', icon: <TeamOutlined />, to: '/cms/users', adminOnly: true },
+      { key: 'roles', label: 'Phân quyền RBAC', icon: <SafetyCertificateOutlined />, to: '/cms/rbac', adminOnly: true },
     ],
   },
   {
@@ -64,7 +65,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Giám sát',
     items: [
-       { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts' },
+       { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts', roles: ['ADMIN', 'DOCTOR'] },
       { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true, adminOnly: true },
       { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
     ],
@@ -74,7 +75,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     // masterplan) nên adminOnly=true - khớp đúng SecurityConfig phía BE cho 2 route này.
     title: 'Cấu hình',
     items: [
-      { key: 'triage-keywords', label: 'Từ khóa Triage', icon: <TagsOutlined />, to: '/cms/triage-keywords' },
+      { key: 'triage-keywords', label: 'Từ khóa Triage', icon: <TagsOutlined />, to: '/cms/triage-keywords', roles: ['ADMIN', 'DOCTOR'] },
       { key: 'runtime-config', label: 'Cấu hình RAG/Triage', icon: <SettingOutlined />, to: '/cms/runtime-config', adminOnly: true },
     ],
   },
@@ -83,6 +84,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Admin',
   DOCTOR: 'Bác sĩ',
+  CONTENT_EDITOR: 'Biên tập nội dung',
 }
 
 /**
@@ -117,7 +119,10 @@ export function CmsSidebar() {
 
   const visibleSections = NAV_SECTIONS.map((section) => ({
     ...section,
-    items: section.items.filter((item) => !item.adminOnly || user?.userType === 'ADMIN'),
+    items: section.items.filter((item) =>
+      (!item.adminOnly || user?.userType === 'ADMIN')
+      && (!item.roles || item.roles.includes(user?.userType ?? '')),
+    ),
   })).filter((section) => section.items.length > 0)
 
   return (

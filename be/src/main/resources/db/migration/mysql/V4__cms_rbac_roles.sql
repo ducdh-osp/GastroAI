@@ -1,0 +1,6 @@
+-- Role phan quyen CMS: admins luon ADMIN; doctors co the DOCTOR hoac CONTENT_EDITOR.
+ALTER TABLE admins
+    ADD COLUMN role VARCHAR(30) NOT NULL DEFAULT 'ADMIN';
+
+ALTER TABLE doctors
+    ADD COLUMN role VARCHAR(30) NOT NULL DEFAULT 'DOCTOR';

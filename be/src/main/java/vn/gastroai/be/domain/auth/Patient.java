@@ -85,6 +85,13 @@ public class Patient {
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
+    // Khoa thu cong tu CMS, doc lap voi khoa tam thoi do dang nhap sai.
+    @Column(name = "admin_locked", nullable = false)
+    private boolean adminLocked;
+
+    @Column(name = "admin_locked_at")
+    private Instant adminLockedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
