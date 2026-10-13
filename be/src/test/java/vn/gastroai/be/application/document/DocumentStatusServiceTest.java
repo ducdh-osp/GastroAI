@@ -303,4 +303,43 @@ class DocumentStatusServiceTest {
         order.verify(documentRepository).clearCurrent(1L);
         order.verify(documentRepository).save(v2);
     }
+     @Test
+    void searchContentRejectsShortQuery() {
+        assertThrows(IllegalArgumentException.class,
+                () -> documentStatusService.searchContent(" a "));
+
+        verify(chunkRepository, never()).searchContent(any());
+    }
+
+    // % va _ la ky tu dai dien cua LIKE; neu khong escape thi "50%_x" khop gan nhu moi thu.
+    // Trong Java, chuoi "50\\%\\_x" chinh la 50\%\_x.
+    @Test
+    void searchContentEscapesLikeWildcards() {
+        when(chunkRepository.searchContent(any())).thenReturn(List.of());
+
+        documentStatusService.searchContent("50%_x");
+
+        verify(chunkRepository).searchContent("50\\%\\_x");
+    }
+
+    // Doan trich bi cat o ca 2 dau -> co dau "…" o dau va cuoi; chu hoa van duoc giu vi chi
+    // dung chu thuong de tim vi tri.
+    @Test
+    void snippetAddsEllipsisWhenCut() {
+        String content = "a".repeat(300) + " Helicobacter " + "b".repeat(300);
+
+        String result = DocumentStatusService.snippet(content, "helicobacter");
+
+        assertTrue(result.startsWith("…"));
+        assertTrue(result.endsWith("…"));
+        assertTrue(result.contains("Helicobacter"));
+    }
+
+    // Noi dung ngan, khong can cat -> giu nguyen, khong them "…".
+    @Test
+    void snippetWithoutCutHasNoEllipsis() {
+        String result = DocumentStatusService.snippet("Điều trị HP", "HP");
+
+        assertEquals("Điều trị HP", result);
+    }
 }

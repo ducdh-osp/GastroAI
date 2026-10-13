@@ -114,6 +114,11 @@ public class DocumentUploadController {
                 document.getErrorMessage());
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<DocumentSearchHit>> search(@RequestParam("q") String q) {
+        return ResponseEntity.ok(documentStatusService.searchContent(q));
+    }
+
     public record DocumentStatusResponse(
             Long documentId,
             String title,

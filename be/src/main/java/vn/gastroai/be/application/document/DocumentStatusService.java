@@ -10,9 +10,10 @@ import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
+import vn.gastroai.be.api.document.DocumentSearchHit;
 import vn.gastroai.be.api.document.DocumentVersionResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
-
+import java.util.Locale;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ public class DocumentStatusService {
 
     private final DocumentRepository documentRepository;
     private final ChunkRepository chunkRepository;
+    private static final int SNIPPET_RADIUS = 120;
 
     public DocumentStatusService(DocumentRepository documentRepository, ChunkRepository chunkRepository) {
         this.documentRepository = documentRepository;
@@ -71,8 +73,10 @@ public class DocumentStatusService {
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
 
-        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung. clearCurrent chay
-        // TRUOC, bat ban nay SAU, de khong bao gio co 2 ban cung la hien hanh trong 1 nhom
+        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung. clearCurrent
+        // chay
+        // TRUOC, bat ban nay SAU, de khong bao gio co 2 ban cung la hien hanh trong 1
+        // nhom
         // (index uk_documents_group_current).
         if (!document.isCurrentVersion()) {
             documentRepository.clearCurrent(document.groupId());
@@ -117,8 +121,10 @@ public class DocumentStatusService {
 
         List<Document> all = documentRepository.findAllByOrderByUploadedAtDesc();
 
-        // UC0049 - moi phien ban la 1 dong rieng, nen gom theo ma nhom de moi tai lieu chi
-        // hien 1 dong (ban moi nhat). LinkedHashMap giu thu tu "tai len moi nhat truoc".
+        // UC0049 - moi phien ban la 1 dong rieng, nen gom theo ma nhom de moi tai lieu
+        // chi
+        // hien 1 dong (ban moi nhat). LinkedHashMap giu thu tu "tai len moi nhat
+        // truoc".
         Map<Long, List<Document>> groups = all.stream()
                 .collect(Collectors.groupingBy(Document::groupId, LinkedHashMap::new, Collectors.toList()));
 
@@ -216,7 +222,11 @@ public class DocumentStatusService {
         target.setCurrentVersion(true);
         documentRepository.save(target);
     }
-       /** UC0050 - go tai lieu khoi chatbot nhung giu nguyen du lieu, co the dang lai sau. */
+
+    /**
+     * UC0050 - go tai lieu khoi chatbot nhung giu nguyen du lieu, co the dang lai
+     * sau.
+     */
     @Transactional
     public void unpublish(Long documentId) {
         Document document = documentRepository.findById(documentId)
@@ -241,6 +251,35 @@ public class DocumentStatusService {
         documentRepository.clearCurrent(groupId);
         latestDone.setCurrentVersion(true);
         documentRepository.save(latestDone);
+    }
+
+    /**
+     * UC0055 - tim cum tu trong noi dung tai lieu dang dung, tra doan trich quanh
+     * cho khop.
+     */
+    @Transactional(readOnly = true)
+    public List<DocumentSearchHit> searchContent(String query) {
+        String q = query == null ? "" : query.trim();
+        if (q.length() < 2) {
+            throw new IllegalArgumentException("Nhập ít nhất 2 ký tự để tìm kiếm");
+        }
+        String escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        return chunkRepository.searchContent(escaped).stream()
+                .map(row -> new DocumentSearchHit(row.getDocumentId(), row.getTitle(),
+                        row.getChunkIndex(), snippet(row.getContent(), q)))
+                .toList();
+    }
+
+    /** Cat ~120 ky tu truoc va sau vi tri khop dau tien, them "…" neu bi cat. */
+    static String snippet(String content, String q) {
+        String text = content.replaceAll("\\s+", " ").trim();
+        int index = text.toLowerCase(Locale.ROOT).indexOf(q.toLowerCase(Locale.ROOT));
+        if (index < 0) {
+            index = 0;
+        }
+        int start = Math.max(0, index - SNIPPET_RADIUS);
+        int end = Math.min(text.length(), index + q.length() + SNIPPET_RADIUS);
+        return (start > 0 ? "…" : "") + text.substring(start, end) + (end < text.length() ? "…" : "");
     }
 
     private Document getDocument(Long documentId) {
