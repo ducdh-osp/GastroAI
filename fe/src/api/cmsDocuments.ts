@@ -23,6 +23,7 @@ export interface CmsDocumentItem {
   versionNo: number
   currentVersionNo: number | null
   versionCount: number
+  unpublished: boolean
 }
 
 export interface CmsDocumentPage {

@@ -116,7 +116,7 @@ class DocumentUploadControllerTest {
                                 42L, "IBS guide", "/path", "https://example.com",
                                 DocumentStatus.DONE, DocumentProcessingStage.DONE,
                                 null, 10L, java.time.Instant.now(), java.time.Instant.now(),
-                                1, 1, 1);
+                                1, 1, 1, false);
                 when(documentStatusService.list(null, null, 0, 15))
                                 .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15));
 

@@ -247,7 +247,7 @@ export default function CmsDocumentsPage() {
 
   async function handleTogglePublish(item: CmsDocumentItem) {
     try {
-      if (item.currentVersionNo === null) {
+      if (item.unpublished) {
         await publishCmsDocument(item.id)
         message.success('Đã đăng lại tài liệu cho chatbot')
       } else {
@@ -375,10 +375,12 @@ export default function CmsDocumentsPage() {
       render: (_, record) => (
         <Space direction="vertical" size={2}>
           <Text className="text-xs">v{record.versionNo} · {record.versionCount} phiên bản</Text>
-          {record.currentVersionNo === null ? (
+          {record.unpublished ? (
             <Tag color="default">Đã gỡ</Tag>
-          ) : (
+          ) : record.currentVersionNo !== null ? (
             <Tag color="green">Đang dùng v{record.currentVersionNo}</Tag>
+          ) : (
+            <Tag color="orange">Chưa sẵn sàng</Tag>
           )}
         </Space>
       ),

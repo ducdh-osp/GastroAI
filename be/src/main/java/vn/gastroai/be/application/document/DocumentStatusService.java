@@ -13,6 +13,7 @@ import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 import vn.gastroai.be.api.document.DocumentSearchHit;
 import vn.gastroai.be.api.document.DocumentVersionResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -73,12 +74,11 @@ public class DocumentStatusService {
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
 
-        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung. clearCurrent
-        // chay
-        // TRUOC, bat ban nay SAU, de khong bao gio co 2 ban cung la hien hanh trong 1
-        // nhom
-        // (index uk_documents_group_current).
-        if (!document.isCurrentVersion()) {
+        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung, TRU KHI admin da
+        // chu dong go tai lieu (dong goc co unpublished_at) - luc do chi danh dau DONE.
+        // clearCurrent chay TRUOC, bat ban nay SAU, de khong bao gio co 2 ban cung la
+        // hien hanh trong 1 nhom (index uk_documents_group_current).
+        if (!document.isCurrentVersion() && rootOf(document).getUnpublishedAt() == null) {
             documentRepository.clearCurrent(document.groupId());
             document.setCurrentVersion(true);
         }
@@ -176,7 +176,9 @@ public class DocumentStatusService {
                                 .map(Document::getVersionNo)
                                 .findFirst()
                                 .orElse(null),
-                        groups.get(d.groupId()).size()))
+                        groups.get(d.groupId()).size(),
+                        groups.get(d.groupId()).stream()
+                                .anyMatch(v -> v.getRootId() == null && v.getUnpublishedAt() != null)))
                 .toList();
 
         return new vn.gastroai.be.api.document.DocumentPageResponse(items, filtered.size(), page, size);
@@ -215,6 +217,7 @@ public class DocumentStatusService {
         if (target.getStatus() != DocumentStatus.DONE) {
             throw new IllegalStateException("Chỉ dùng được phiên bản đã xử lý xong");
         }
+        clearUnpublishedFlag(target);
         if (target.isCurrentVersion()) {
             return;
         }
@@ -232,6 +235,14 @@ public class DocumentStatusService {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
         documentRepository.clearCurrent(document.groupId());
+
+        // Danh dau "go co chu dich" tren dong goc. clearCurrent la cau UPDATE hang loat nen
+        // ban trong bo nho co the con ghi "dang dung" (cu) - dong bo lai truoc khi save, neu
+        // khong save(root) se ghi de is_current = true tro lai.
+        Document root = rootOf(document);
+        root.setCurrentVersion(false);
+        root.setUnpublishedAt(Instant.now());
+        documentRepository.save(root);
     }
 
     /** UC0050 - dang lai: bat phien ban DONE moi nhat cua nhom. */
@@ -245,6 +256,7 @@ public class DocumentStatusService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Chưa có phiên bản nào xử lý xong để đăng"));
 
+        clearUnpublishedFlag(latestDone);
         if (latestDone.isCurrentVersion()) {
             return;
         }
@@ -280,6 +292,25 @@ public class DocumentStatusService {
         int start = Math.max(0, index - SNIPPET_RADIUS);
         int end = Math.min(text.length(), index + q.length() + SNIPPET_RADIUS);
         return (start > 0 ? "…" : "") + text.substring(start, end) + (end < text.length() ? "…" : "");
+    }
+
+    /** Dong goc cua nhom chua phien ban nay (chinh no neu no la ban goc). */
+    private Document rootOf(Document version) {
+        Long groupId = version.groupId();
+        if (groupId.equals(version.getId())) {
+            return version;
+        }
+        return documentRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + groupId));
+    }
+
+    /** Dang lai / dung 1 ban cu thi bo co "da go" tren dong goc. */
+    private void clearUnpublishedFlag(Document version) {
+        Document root = rootOf(version);
+        if (root.getUnpublishedAt() != null) {
+            root.setUnpublishedAt(null);
+            documentRepository.save(root);
+        }
     }
 
     private Document getDocument(Long documentId) {

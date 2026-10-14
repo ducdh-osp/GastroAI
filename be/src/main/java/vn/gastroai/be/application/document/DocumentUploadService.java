@@ -35,7 +35,7 @@ public class DocumentUploadService {
     }
 
     public Document upload(MultipartFile file, String sourceUrl) {
-        return storeNewDocument(file, sourceUrl, null, 1, true);
+        return storeNewDocument(file, sourceUrl, null, 1, false);
     }
 
     @Transactional("postgresTransactionManager")

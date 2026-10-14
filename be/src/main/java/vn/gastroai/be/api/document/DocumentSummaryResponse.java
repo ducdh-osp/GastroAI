@@ -18,6 +18,7 @@ public record DocumentSummaryResponse(
         Instant updatedAt,
         int versionNo,
         Integer currentVersionNo,
-        int versionCount
+        int versionCount,
+        boolean unpublished
 ) {
 }
