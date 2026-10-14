@@ -4,7 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import vn.gastroai.be.domain.rag.Chunk;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
+import java.util.Collection;
 import java.util.List;
 
 public interface ChunkRepository extends JpaRepository<Chunk, Long> {
@@ -13,6 +13,11 @@ public interface ChunkRepository extends JpaRepository<Chunk, Long> {
 
     long countByDocumentId(Long documentId);
 
+    
+    /** Dem chunk chi cho cac tai lieu duoc chon (vd cac dong cua trang hien tai), khong dem ca bang. */
+    @Query("SELECT c.document.id, COUNT(c) FROM Chunk c WHERE c.document.id IN :ids GROUP BY c.document.id")
+    List<Object[]> countByDocumentIdIn(@Param("ids") Collection<Long> ids);
+    
     @org.springframework.data.jpa.repository.Query("SELECT c.document.id, count(c) FROM Chunk c GROUP BY c.document.id")
     List<Object[]> countByDocumentIdGrouped();
 

@@ -27,6 +27,8 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import vn.gastroai.be.infrastructure.persistence.postgres.DocumentGroupRow;
+import vn.gastroai.be.infrastructure.persistence.postgres.DocumentListRow;
 
 @ExtendWith(MockitoExtension.class)
 class DocumentStatusServiceTest {
@@ -66,29 +68,6 @@ class DocumentStatusServiceTest {
         assertEquals("Embedding failed", document.getErrorMessage());
 
         verify(documentRepository, org.mockito.Mockito.times(5)).save(document);
-    }
-
-    @Test
-    void listFiltersByStatusAndQuery() {
-        Document d1 = new Document();
-        d1.setId(1L);
-        d1.setTitle("Hội chứng ruột kích thích IBS");
-        d1.setStatus(DocumentStatus.DONE);
-
-        Document d2 = new Document();
-        d2.setId(2L);
-        d2.setTitle("Viêm loét dạ dày");
-        d2.setStatus(DocumentStatus.ERROR);
-
-        when(documentRepository.findAllByOrderByUploadedAtDesc()).thenReturn(java.util.List.of(d1, d2));
-        List<Object[]> counts = new java.util.ArrayList<>();
-        counts.add(new Object[] { 1L, 15L });
-        when(chunkRepository.countByDocumentIdGrouped()).thenReturn(counts);
-
-        var page = documentStatusService.list("ruot kich thich", null, 0, 10);
-        assertEquals(1, page.total());
-        assertEquals(1L, page.items().get(0).id());
-        assertEquals(15L, page.items().get(0).chunkCount());
     }
 
     @Test
@@ -221,50 +200,6 @@ class DocumentStatusServiceTest {
         order.verify(documentRepository).save(v2);
     }
 
-    // ===== B5 - danh sach tai lieu: moi tai lieu 1 dong =====
-
-    // Tai lieu A co 3 phien ban -> chi hien 1 dong (ban moi nhat = ban 3), kem so
-    // ban dang dung
-    // (ban 2) va tong so phien ban (3).
-    @Test
-    void listShowsOneRowPerDocumentWithLatestVersion() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
-        v1.setTitle("Phác đồ HP");
-        Document v2 = version(2L, 1L, 2, true, DocumentStatus.DONE);
-        v2.setTitle("Phác đồ HP");
-        Document v3 = version(3L, 1L, 3, false, DocumentStatus.PROCESSING);
-        v3.setTitle("Phác đồ HP");
-
-        when(documentRepository.findAllByOrderByUploadedAtDesc()).thenReturn(List.of(v3, v2, v1));
-        when(chunkRepository.countByDocumentIdGrouped()).thenReturn(new ArrayList<>());
-
-        var page = documentStatusService.list(null, null, 0, 10);
-
-        assertEquals(1, page.total());
-        assertEquals(1, page.items().size());
-        var item = page.items().get(0);
-        assertEquals(3L, item.id());
-        assertEquals(3, item.versionNo());
-        assertEquals(2, item.currentVersionNo());
-        assertEquals(3, item.versionCount());
-    }
-
-    // Tai lieu da bi go (khong ban nao la hien hanh) -> currentVersionNo la null.
-    @Test
-    void listReturnsNullCurrentVersionNoWhenNoVersionIsCurrent() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        Document v3 = version(3L, 1L, 3, false, DocumentStatus.DONE);
-
-        when(documentRepository.findAllByOrderByUploadedAtDesc()).thenReturn(List.of(v3, v2, v1));
-        when(chunkRepository.countByDocumentIdGrouped()).thenReturn(new ArrayList<>());
-
-        var page = documentStatusService.list(null, null, 0, 10);
-
-        assertEquals(1, page.total());
-        assertNull(page.items().get(0).currentVersionNo());
-        assertEquals(3, page.items().get(0).versionCount());
-    }
 
     @Test
     void unpublishClearsCurrentForGroup() {
@@ -436,33 +371,6 @@ class DocumentStatusServiceTest {
         assertTrue(v2.isCurrentVersion());
     }
 
-    // list: tai lieu da go -> unpublished = true.
-    @Test
-    void listFlagsUnpublishedDocument() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
-        v1.setUnpublishedAt(Instant.now());
-        when(documentRepository.findAllByOrderByUploadedAtDesc()).thenReturn(List.of(v1));
-        when(chunkRepository.countByDocumentIdGrouped()).thenReturn(new ArrayList<>());
-
-        var page = documentStatusService.list(null, null, 0, 10);
-
-        assertTrue(page.items().get(0).unpublished());
-        assertNull(page.items().get(0).currentVersionNo());
-    }
-
-    // list: tai lieu chua ai go nhung chua co ban DONE -> khong phai "da go".
-    @Test
-    void listDoesNotFlagWaitingDocumentAsUnpublished() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.PROCESSING);
-        when(documentRepository.findAllByOrderByUploadedAtDesc()).thenReturn(List.of(v1));
-        when(chunkRepository.countByDocumentIdGrouped()).thenReturn(new ArrayList<>());
-
-        var page = documentStatusService.list(null, null, 0, 10);
-
-        assertFalse(page.items().get(0).unpublished());
-        assertNull(page.items().get(0).currentVersionNo());
-    }
-
     @Test
     void unpublishRejectsGroupWithoutDoneVersion() {
         Document v1 = version(1L, null, 1, false, DocumentStatus.PENDING);
@@ -554,5 +462,208 @@ class DocumentStatusServiceTest {
 
         assertEquals(50, result.items().size());
         assertFalse(result.truncated());
+    }
+
+    
+    // ===== C6 - danh sach tai lieu: truy van nhe, dem chunk theo trang =====
+
+    // Dong nhe cua danh sach (khong co full_text).
+    private DocumentListRow listRow(long id, String title, DocumentStatus status, int versionNo, long groupId) {
+        return new DocumentListRow() {
+            @Override
+            public Long getId() {
+                return id;
+            }
+
+            @Override
+            public String getTitle() {
+                return title;
+            }
+
+            @Override
+            public String getSource() {
+                return "uploads/" + id + ".pdf";
+            }
+
+            @Override
+            public String getSourceUrl() {
+                return null;
+            }
+
+            @Override
+            public DocumentStatus getStatus() {
+                return status;
+            }
+
+            @Override
+            public DocumentProcessingStage getProcessingStage() {
+                return DocumentProcessingStage.DONE;
+            }
+
+            @Override
+            public String getErrorMessage() {
+                return null;
+            }
+
+            @Override
+            public Instant getUploadedAt() {
+                return Instant.now();
+            }
+
+            @Override
+            public Instant getUpdatedAt() {
+                return Instant.now();
+            }
+
+            @Override
+            public Integer getVersionNo() {
+                return versionNo;
+            }
+
+            @Override
+            public Long getGroupId() {
+                return groupId;
+            }
+        };
+    }
+
+    // Dong tong hop theo nhom (ket qua GROUP BY).
+    private DocumentGroupRow groupRow(long groupId, long versionCount, Integer currentVersionNo,
+            Long currentId, Instant unpublishedAt) {
+        return new DocumentGroupRow() {
+            @Override
+            public Long getGroupId() {
+                return groupId;
+            }
+
+            @Override
+            public Long getVersionCount() {
+                return versionCount;
+            }
+
+            @Override
+            public Integer getCurrentVersionNo() {
+                return currentVersionNo;
+            }
+
+            @Override
+            public Long getCurrentId() {
+                return currentId;
+            }
+
+            @Override
+            public Instant getUnpublishedAt() {
+                return unpublishedAt;
+            }
+        };
+    }
+
+    // Loc theo tu khoa KHONG DAU (logic cua Hai) van hoat dong tren danh sach nhe.
+    @Test
+    void listFiltersByStatusAndQuery() {
+        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
+                listRow(1L, "Hội chứng ruột kích thích IBS", DocumentStatus.DONE, 1, 1L),
+                listRow(2L, "Viêm loét dạ dày", DocumentStatus.ERROR, 1, 2L)));
+        when(documentRepository.findGroupRows()).thenReturn(List.of(
+                groupRow(1L, 1, 1, 1L, null),
+                groupRow(2L, 1, null, null, null)));
+        when(chunkRepository.countByDocumentIdIn(any()))
+                .thenReturn(List.<Object[]>of(new Object[] { 1L, 15L }));
+
+        var page = documentStatusService.list("ruot kich thich", null, 0, 10);
+
+        assertEquals(1, page.total());
+        assertEquals(1L, page.items().get(0).id());
+        assertEquals(15L, page.items().get(0).chunkCount());
+    }
+
+    // Tai lieu co 3 ban: dong hien la ban moi nhat (v3), ban dang dung la v2,
+    // so chunk lay theo BAN DANG DUNG (id 2), khong phai v3.
+    @Test
+    void listShowsOneRowPerDocumentWithLatestVersion() {
+        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
+                listRow(3L, "Phác đồ HP", DocumentStatus.PROCESSING, 3, 1L)));
+        when(documentRepository.findGroupRows()).thenReturn(List.of(
+                groupRow(1L, 3, 2, 2L, null)));
+        when(chunkRepository.countByDocumentIdIn(any()))
+                .thenReturn(List.<Object[]>of(new Object[] { 2L, 40L }));
+
+        var page = documentStatusService.list(null, null, 0, 10);
+
+        assertEquals(1, page.total());
+        var item = page.items().get(0);
+        assertEquals(3L, item.id());
+        assertEquals(3, item.versionNo());
+        assertEquals(2, item.currentVersionNo());
+        assertEquals(3, item.versionCount());
+        assertEquals(40L, item.chunkCount());
+        verify(chunkRepository).countByDocumentIdIn(List.of(2L));
+    }
+
+    // Khong ban nao dang dung -> currentVersionNo la null, chunk dem theo dong dang hien.
+    @Test
+    void listReturnsNullCurrentVersionNoWhenNoVersionIsCurrent() {
+        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
+                listRow(3L, "Phác đồ HP", DocumentStatus.DONE, 3, 1L)));
+        when(documentRepository.findGroupRows()).thenReturn(List.of(
+                groupRow(1L, 3, null, null, null)));
+        when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
+
+        var page = documentStatusService.list(null, null, 0, 10);
+
+        assertNull(page.items().get(0).currentVersionNo());
+        assertEquals(3, page.items().get(0).versionCount());
+        assertEquals(0L, page.items().get(0).chunkCount());
+        verify(chunkRepository).countByDocumentIdIn(List.of(3L));
+    }
+
+    // Nhom co unpublishedAt -> unpublished = true.
+    @Test
+    void listFlagsUnpublishedDocument() {
+        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
+                listRow(1L, "Phác đồ HP", DocumentStatus.DONE, 1, 1L)));
+        when(documentRepository.findGroupRows()).thenReturn(List.of(
+                groupRow(1L, 1, null, null, Instant.now())));
+        when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
+
+        var page = documentStatusService.list(null, null, 0, 10);
+
+        assertTrue(page.items().get(0).unpublished());
+        assertNull(page.items().get(0).currentVersionNo());
+    }
+
+    // Tai lieu dang cho xu ly, chua ai go -> khong phai "da go".
+    @Test
+    void listDoesNotFlagWaitingDocumentAsUnpublished() {
+        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
+                listRow(1L, "Phác đồ HP", DocumentStatus.PROCESSING, 1, 1L)));
+        when(documentRepository.findGroupRows()).thenReturn(List.of(
+                groupRow(1L, 1, null, null, null)));
+        when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
+
+        var page = documentStatusService.list(null, null, 0, 10);
+
+        assertFalse(page.items().get(0).unpublished());
+        assertNull(page.items().get(0).currentVersionNo());
+    }
+
+    // Muc tieu chinh cua C6: chi dem chunk cho cac dong cua TRANG HIEN TAI, khong dem ca bang.
+    @Test
+    void listCountsChunksOnlyForRowsOfCurrentPage() {
+        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
+                listRow(1L, "A", DocumentStatus.DONE, 1, 1L),
+                listRow(2L, "B", DocumentStatus.DONE, 1, 2L),
+                listRow(3L, "C", DocumentStatus.DONE, 1, 3L)));
+        when(documentRepository.findGroupRows()).thenReturn(List.of(
+                groupRow(1L, 1, 1, 1L, null),
+                groupRow(2L, 1, 1, 2L, null),
+                groupRow(3L, 1, 1, 3L, null)));
+        when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
+
+        var page = documentStatusService.list(null, null, 0, 2);
+
+        assertEquals(3, page.total());
+        assertEquals(2, page.items().size());
+        verify(chunkRepository).countByDocumentIdIn(List.of(1L, 2L));
     }
 }

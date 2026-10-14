@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import vn.gastroai.be.api.document.DocumentSearchResult;
+import vn.gastroai.be.infrastructure.persistence.postgres.DocumentGroupRow;
+import vn.gastroai.be.infrastructure.persistence.postgres.DocumentListRow;
 
 @Service
 public class DocumentStatusService {
@@ -118,22 +120,18 @@ public class DocumentStatusService {
                 ? ""
                 : vn.gastroai.be.application.support.VietnameseText.normalize(query.trim());
 
-        List<Document> all = documentRepository.findAllByOrderByUploadedAtDesc();
+        // Moi tai lieu 1 dong (phien ban moi nhat), KHONG co full_text - nhe hon nhieu
+        // so voi
+        // tai moi phien ban cua moi tai lieu.
+        List<DocumentListRow> latestPerGroup = documentRepository.findLatestVersionRows();
 
-        // UC0049 - moi phien ban la 1 dong rieng, nen gom theo ma nhom de moi tai lieu
-        // chi
-        // hien 1 dong (ban moi nhat). LinkedHashMap giu thu tu "tai len moi nhat
-        // truoc".
-        Map<Long, List<Document>> groups = all.stream()
-                .collect(Collectors.groupingBy(Document::groupId, LinkedHashMap::new, Collectors.toList()));
+        // Thong tin theo nhom: so phien ban, ban dang dung, da go hay chua.
+        Map<Long, DocumentGroupRow> groups = documentRepository.findGroupRows().stream()
+                .collect(Collectors.toMap(DocumentGroupRow::getGroupId, g -> g));
 
-        List<Document> latestPerGroup = groups.values().stream()
-                .map(versions -> versions.stream()
-                        .max(Comparator.comparingInt(Document::getVersionNo))
-                        .orElseThrow())
-                .toList();
-
-        List<Document> filtered = latestPerGroup.stream()
+        // Loc trang thai + tim khong dau trong Java (SQL khong lam duoc neu thieu
+        // extension unaccent).
+        List<DocumentListRow> filtered = latestPerGroup.stream()
                 .filter(d -> status == null || d.getStatus() == status)
                 .filter(d -> normalizedQuery.isEmpty()
                         || (d.getTitle() != null && vn.gastroai.be.application.support.VietnameseText
@@ -141,12 +139,6 @@ public class DocumentStatusService {
                         || (d.getSourceUrl() != null && vn.gastroai.be.application.support.VietnameseText
                                 .normalize(d.getSourceUrl()).contains(normalizedQuery)))
                 .toList();
-
-        // Lấy số lượng chunks cho từng document
-        java.util.Map<Long, Long> chunkCounts = chunkRepository.countByDocumentIdGrouped().stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (Long) row[1]));
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         long offset = pageable.getOffset();
@@ -156,31 +148,49 @@ public class DocumentStatusService {
 
         int start = Math.toIntExact(offset);
         int end = Math.min(start + size, filtered.size());
+        List<DocumentListRow> pageRows = filtered.subList(start, end);
 
-        List<vn.gastroai.be.api.document.DocumentSummaryResponse> items = filtered.subList(start, end).stream()
-                .map(d -> new vn.gastroai.be.api.document.DocumentSummaryResponse(
-                        d.getId(),
-                        d.getTitle(),
-                        d.getSource(),
-                        d.getSourceUrl(),
-                        d.getStatus(),
-                        d.getProcessingStage(),
-                        d.getErrorMessage(),
-                        chunkCounts.getOrDefault(d.getId(), 0L),
-                        d.getUploadedAt(),
-                        d.getUpdatedAt(),
-                        d.getVersionNo(),
-                        groups.get(d.groupId()).stream()
-                                .filter(Document::isCurrentVersion)
-                                .map(Document::getVersionNo)
-                                .findFirst()
-                                .orElse(null),
-                        groups.get(d.groupId()).size(),
-                        groups.get(d.groupId()).stream()
-                                .anyMatch(v -> v.getRootId() == null && v.getUnpublishedAt() != null)))
+        // Dem chunk CHI cho cac dong cua trang hien tai, theo ban dang dung (neu co),
+        // khong co thi theo ban moi nhat.
+        List<Long> chunkOwnerIds = pageRows.stream()
+                .map(row -> chunkOwnerId(row, groups.get(row.getGroupId())))
+                .distinct()
+                .toList();
+        Map<Long, Long> chunkCounts = chunkRepository.countByDocumentIdIn(chunkOwnerIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]));
+
+        List<vn.gastroai.be.api.document.DocumentSummaryResponse> items = pageRows.stream()
+                .map(row -> {
+                    DocumentGroupRow group = groups.get(row.getGroupId());
+                    return new vn.gastroai.be.api.document.DocumentSummaryResponse(
+                            row.getId(),
+                            row.getTitle(),
+                            row.getSource(),
+                            row.getSourceUrl(),
+                            row.getStatus(),
+                            row.getProcessingStage(),
+                            row.getErrorMessage(),
+                            chunkCounts.getOrDefault(chunkOwnerId(row, group), 0L),
+                            row.getUploadedAt(),
+                            row.getUpdatedAt(),
+                            row.getVersionNo(),
+                            group == null ? null : group.getCurrentVersionNo(),
+                            group == null ? 1 : group.getVersionCount().intValue(),
+                            group != null && group.getUnpublishedAt() != null);
+                })
                 .toList();
 
         return new vn.gastroai.be.api.document.DocumentPageResponse(items, filtered.size(), page, size);
+    }
+
+    /**
+     * id cua dong ma so chunk duoc tinh: ban dang dung neu co, khong thi chinh dong
+     * dang hien.
+     */
+    private static Long chunkOwnerId(DocumentListRow row, DocumentGroupRow group) {
+        return group != null && group.getCurrentId() != null ? group.getCurrentId() : row.getId();
     }
 
     @Transactional
@@ -277,7 +287,7 @@ public class DocumentStatusService {
      * UC0055 - tim cum tu trong noi dung tai lieu dang dung, tra doan trich quanh
      * cho khop.
      */
-     @Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public DocumentSearchResult searchContent(String query) {
         String q = query == null ? "" : query.trim();
         if (q.length() < 2) {
