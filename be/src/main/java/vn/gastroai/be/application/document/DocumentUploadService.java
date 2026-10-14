@@ -18,6 +18,7 @@ import java.util.List;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @Service
 public class DocumentUploadService {
@@ -102,7 +103,19 @@ public class DocumentUploadService {
             // 3. Lưu document vào database với trạng thái PENDING - không tự gọi
             // worker xử lý ở đây nữa. DocumentProcessingScheduler sẽ định kỳ quét và
             // giành lấy document này để xử lý (xem file DocumentProcessingScheduler).
-            document = documentRepository.save(document);
+            try {
+                // saveAndFlush: ghi xuong DB ngay de bat loi trung (nhom, versionNo) tai day,
+                // khong de no no o cuoi giao dich voi thong bao kho hieu.
+                document = documentRepository.saveAndFlush(document);
+            } catch (DataIntegrityViolationException e) {
+                if (rootId != null) {
+                    throw new IllegalStateException(
+                            "Vừa có người khác tải phiên bản mới cho tài liệu này, "
+                                    + "vui lòng tải lại trang rồi thử lại",
+                            e);
+                }
+                throw e;
+            }
 
             // 4. Trả document cho Controller
             return document;

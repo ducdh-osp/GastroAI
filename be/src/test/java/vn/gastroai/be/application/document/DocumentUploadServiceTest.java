@@ -3,9 +3,11 @@ package vn.gastroai.be.application.document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,22 +16,20 @@ import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
-import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Files;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -167,7 +167,7 @@ class DocumentUploadServiceTest {
         assertThrows(IllegalStateException.class, () -> service.uploadNewVersion(1L, file, null));
 
         verify(fileStorageService, never()).store(any());
-        verify(documentRepository, never()).save(any());
+        verify(documentRepository, never()).saveAndFlush(any());
     }
 
     // Tai lieu goc khong ton tai -> ResourceNotFoundException (404), khong luu gi
@@ -179,7 +179,7 @@ class DocumentUploadServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> service.uploadNewVersion(99L, file, null));
 
         verify(fileStorageService, never()).store(any());
-        verify(documentRepository, never()).save(any());
+        verify(documentRepository, never()).saveAndFlush(any());
     }
 
     // ===== C2 - xoa rieng mot phien ban =====
@@ -239,6 +239,7 @@ class DocumentUploadServiceTest {
     @Test
     void deleteVersionRejectsRootWhileOtherVersionsExist() {
         Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setCurrentVersion(false);
         Document v2 = document(2L, DocumentStatus.DONE);
         v2.setRootId(1L);
         v2.setCurrentVersion(true);
@@ -292,6 +293,8 @@ class DocumentUploadServiceTest {
         verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
     }
 
+    // ===== C3 - chan trung noi dung theo nhom phien ban =====
+
     @TempDir
     Path tempDir;
 
@@ -319,7 +322,7 @@ class DocumentUploadServiceTest {
         assertTrue(ex.getMessage().contains("ibs.pdf"));
         assertTrue(ex.getMessage().contains("7"));
         verify(fileStorageService).delete(stored);
-        verify(documentRepository, never()).save(any());
+        verify(documentRepository, never()).saveAndFlush(any());
     }
 
     // Phien ban moi trung voi 1 phien ban trong CHINH nhom -> chan, bao so phien
@@ -340,7 +343,7 @@ class DocumentUploadServiceTest {
 
         assertTrue(ex.getMessage().contains("v1"));
         verify(fileStorageService).delete(stored);
-        verify(documentRepository, never()).save(any());
+        verify(documentRepository, never()).saveAndFlush(any());
     }
 
     // Phien ban moi trung voi tai lieu o NHOM KHAC -> van cho tai len.
@@ -354,7 +357,7 @@ class DocumentUploadServiceTest {
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung giong tai lieu khac"));
         when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
                 .thenReturn(List.of(other));
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Document saved = service.uploadNewVersion(1L, file, null);
 
@@ -371,12 +374,51 @@ class DocumentUploadServiceTest {
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
         when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
                 .thenReturn(List.of());
-        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Document saved = service.upload(file, null);
 
         assertEquals(1, saved.getVersionNo());
         assertFalse(saved.isCurrentVersion());
         assertEquals(DocumentStatus.PENDING, saved.getStatus());
+    }
+
+    // ===== C5 - hai nguoi cung tai ban moi: bao loi 409 de hieu =====
+
+    // saveAndFlush bi rang buoc (nhom, versionNo) tu choi -> doi thanh cau than thien,
+    // va file vua luu van bi xoa (khong de file mo coi).
+    @Test
+    void uploadNewVersionReportsFriendlyConflictWhenAnotherVersionWasJustUploaded() throws IOException {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setVersionNo(1);
+        Path stored = storedFile("noi dung ban 2");
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+        when(fileStorageService.store(file)).thenReturn(stored);
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class)))
+                .thenThrow(new DataIntegrityViolationException("uk_documents_group_version"));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> service.uploadNewVersion(1L, file, null));
+
+        assertTrue(ex.getMessage().contains("Vừa có người khác tải phiên bản mới"));
+        verify(fileStorageService).delete(stored);
+    }
+
+    // Tai TAI LIEU MOI ma gap loi rang buoc -> giu nguyen loi goc (khong phai chuyen 2 nguoi tranh nhau).
+    @Test
+    void uploadKeepsOriginalExceptionForNewDocument() throws IOException {
+        Path stored = storedFile("noi dung moi");
+        when(fileStorageService.store(file)).thenReturn(stored);
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class)))
+                .thenThrow(new DataIntegrityViolationException("loi rang buoc"));
+
+        assertThrows(DataIntegrityViolationException.class, () -> service.upload(file, null));
+
+        verify(fileStorageService).delete(stored);
     }
 }
