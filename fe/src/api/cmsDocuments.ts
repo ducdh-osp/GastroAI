@@ -106,7 +106,9 @@ export async function listCmsDocumentVersions(documentId: number): Promise<CmsDo
 export async function activateCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/activate`)
 }
-
+export async function deleteCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
+  await cmsApiClient.delete(`/documents/${documentId}/versions/${versionId}`)
+}
 export async function publishCmsDocument(documentId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/publish`)
 }
