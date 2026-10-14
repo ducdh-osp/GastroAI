@@ -75,7 +75,7 @@ public class DocumentUploadService {
                     Document existing = duplicates.get(0);
                     throw new IllegalStateException(
                             "Nội dung file này trùng với tài liệu \"" + existing.getTitle()
-                                    + "\" (id " + existing.getId() + ")");
+                                    + "\" (id " + existing.groupId() + ")");
                 }
             } else {
                 // Phien ban moi: chi chan khi trung voi mot phien ban trong CHINH nhom nay.

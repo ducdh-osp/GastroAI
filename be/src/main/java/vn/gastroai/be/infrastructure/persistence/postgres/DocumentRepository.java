@@ -9,7 +9,6 @@ import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 
@@ -73,7 +72,10 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
                         + "WHERE COALESCE(d.rootId, d.id) = :groupId AND d.currentVersion = true")
         int clearCurrent(@Param("groupId") Long groupId);
 
-        /** Xoa moi phien ban cua 1 nhom bang 1 cau lenh (chunk/embedding tu xoa theo cascade). */
+        /**
+         * Xoa moi phien ban cua 1 nhom bang 1 cau lenh (chunk/embedding tu xoa theo
+         * cascade).
+         */
         @Modifying
         @Transactional
         @Query("DELETE FROM Document d WHERE COALESCE(d.rootId, d.id) = :groupId")

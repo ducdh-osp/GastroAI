@@ -311,7 +311,9 @@ class DocumentUploadServiceTest {
     void uploadRejectsContentDuplicatingAnotherDocument() throws IOException {
         Path stored = storedFile("noi dung trung");
         when(fileStorageService.store(file)).thenReturn(stored);
-        Document existing = document(7L, DocumentStatus.DONE);
+        Document existing = document(71L, DocumentStatus.DONE);
+        existing.setRootId(7L);
+        existing.setVersionNo(2);
         existing.setTitle("ibs.pdf");
         when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
                 .thenReturn(List.of(existing));
@@ -320,7 +322,8 @@ class DocumentUploadServiceTest {
                 () -> service.upload(file, null));
 
         assertTrue(ex.getMessage().contains("ibs.pdf"));
-        assertTrue(ex.getMessage().contains("7"));
+        assertTrue(ex.getMessage().contains("(id 7)"));
+        assertFalse(ex.getMessage().contains("71"));
         verify(fileStorageService).delete(stored);
         verify(documentRepository, never()).saveAndFlush(any());
     }
