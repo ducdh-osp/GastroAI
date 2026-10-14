@@ -14,6 +14,7 @@ import org.springframework.web.client.RestClientResponseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import vn.gastroai.be.application.auth.AccountLockedException;
+import vn.gastroai.be.application.auth.AccountDisabledException;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
@@ -53,6 +54,13 @@ public class GlobalExceptionHandler {
                 "code", "ACCOUNT_TEMPORARILY_LOCKED",
                 "message", exception.getMessage(),
                 "lockedUntil", exception.getLockedUntil()));
+    }
+
+    @ExceptionHandler(AccountDisabledException.class)
+    public ResponseEntity<Map<String, String>> handleDisabledAccount(AccountDisabledException exception) {
+        return ResponseEntity.status(HttpStatus.LOCKED).body(Map.of(
+                "code", "ACCOUNT_DISABLED",
+                "message", exception.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

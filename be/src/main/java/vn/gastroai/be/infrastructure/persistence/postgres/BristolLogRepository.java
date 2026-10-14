@@ -18,6 +18,9 @@ public interface BristolLogRepository extends JpaRepository<BristolLog, Long> {
 
     List<BristolLog> findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(Long patientId, Instant from, Instant to);
 
+    boolean existsByPatientIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(
+            Long patientId, Instant from, Instant to);
+
     /** Danh sach thung rac, moi nhat truoc, gioi han 200 dong de tranh tra ve qua nhieu. */
     @Query(value = "SELECT * FROM bristol_logs " +
             "WHERE patient_id = :patientId AND deleted_at IS NOT NULL AND deleted_at >= :cutoff " +

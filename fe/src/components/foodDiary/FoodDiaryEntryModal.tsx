@@ -2,6 +2,7 @@ import { Form, Input, Modal, DatePicker, InputNumber, Select } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect } from 'react'
 import type { FoodDiaryEntry, FoodDiaryEntryRequest } from '../../api/foodDiary'
+import { disableFutureTime, isFutureDateTime } from '../../lib/dateTime'
 
 interface FoodDiaryEntryModalProps {
   open: boolean
@@ -37,9 +38,17 @@ export function FoodDiaryEntryModal({ open, entry, saving, onCancel, onSubmit }:
 
   function handleOk() {
     form.validateFields().then((values) => {
+      if (isFutureDateTime(values.eatenAt)) {
+        form.setFields([{ name: 'eatenAt', errors: ['Thời điểm không được ở tương lai'] }])
+        return
+      }
+      if (!values.description.trim()) {
+        form.setFields([{ name: 'description', errors: ['Nhập món đã ăn'] }])
+        return
+      }
       onSubmit({
         eatenAt: values.eatenAt.toISOString(),
-        description: values.description,
+        description: values.description.trim(),
         mealType: values.mealType,
         symptomsAfterMeal: values.symptomsAfterMeal || null,
         symptomOnsetMinutes: values.symptomOnsetMinutes ?? null,
@@ -60,9 +69,15 @@ export function FoodDiaryEntryModal({ open, entry, saving, onCancel, onSubmit }:
     >
       <Form<FoodDiaryEntryFormValues> form={form} layout="vertical" className="mt-4">
         <Form.Item label="Thời điểm ăn" name="eatenAt" rules={[{ required: true, message: 'Chọn thời điểm ăn' }]}>
-          <DatePicker showTime className="w-full" format="DD/MM/YYYY HH:mm" disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
+          <DatePicker
+            showTime
+            className="w-full"
+            format="DD/MM/YYYY HH:mm"
+            disabledDate={(d) => d.isAfter(dayjs(), 'day')}
+            disabledTime={disableFutureTime}
+          />
         </Form.Item>
-        <Form.Item label="Món ăn" name="description" rules={[{ required: true, message: 'Nhập món đã ăn' }, { max: 500, message: 'Món ăn tối đa 500 ký tự' }]}>
+        <Form.Item label="Món ăn" name="description" rules={[{ required: true, whitespace: true, message: 'Nhập món đã ăn' }, { max: 500, message: 'Món ăn tối đa 500 ký tự' }]}>
           <Input maxLength={500} showCount placeholder="Vd: Phở bò, cơm gà..." />
         </Form.Item>
         <Form.Item label="Phân loại bữa" name="mealType" rules={[{ required: true, message: 'Chọn loại bữa' }]}>

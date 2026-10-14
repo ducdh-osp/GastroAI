@@ -89,7 +89,7 @@ class SymptomAssessmentHistoryServiceTest {
         SymptomAssessmentResponse response = service.assessAndSave(42L, assessmentInput(Set.of()));
 
         assertFalse(response.emergency());
-        assertEquals(CareRecommendation.SELF_CARE_AT_HOME, response.careRecommendation());
+        assertEquals(CareRecommendation.SEE_DOCTOR, response.careRecommendation());
         verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), anyList());
     }
 
@@ -110,6 +110,7 @@ class SymptomAssessmentHistoryServiceTest {
         record.setMatchedGroups("[\"VANG_DA_KEM_DAU_BUNG\"]");
         record.setReasonCodes("[\"NON_EMERGENCY_WARNING_SIGNS_PRESENT\"]");
         record.setRequiresClinicianReview(true);
+        record.setCareRecommendation(CareRecommendation.SEE_DOCTOR.name());
         record.setAssessedAt(Instant.parse("2026-10-01T10:00:00Z"));
         when(recordRepository.findTop100ByPatientIdOrderByAssessedAtDesc(42L)).thenReturn(List.of(record));
 
@@ -120,6 +121,7 @@ class SymptomAssessmentHistoryServiceTest {
         assertEquals(List.of("JAUNDICE_WITH_ABDOMINAL_PAIN"), history.getFirst().warningSigns());
         assertEquals("MODERATE", history.getFirst().severityLevel());
         assertFalse(history.getFirst().emergency());
+        assertEquals(CareRecommendation.SEE_DOCTOR, history.getFirst().careRecommendation());
         verify(recordRepository).findTop100ByPatientIdOrderByAssessedAtDesc(42L);
     }
 

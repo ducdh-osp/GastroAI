@@ -78,7 +78,7 @@ export default function FoodDiaryPage() {
         notification.open({
           key: `food-diary-undo-${id}`,
           message: 'Đã chuyển vào thùng rác',
-          description: 'Bạn có thể khôi phục mục này trong vòng 30 ngày.',
+          description: 'Bạn có thể khôi phục trong tab Thùng rác.',
           duration: 6,
           actions: (
             <Button
@@ -129,7 +129,7 @@ export default function FoodDiaryPage() {
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm
             title="Chuyển vào thùng rác?"
-            description="Có thể khôi phục trong 30 ngày."
+            description="Có thể khôi phục lại trong tab Thùng rác."
             okText="Chuyển vào thùng rác"
             cancelText="Huỷ"
             onConfirm={() => handleDelete(record.id)}

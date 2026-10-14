@@ -55,7 +55,10 @@ public class BristolLogService {
         log.setLoggedAt(request.loggedAt());
         log.setBristolType(request.bristolType());
         log.setNotes(request.notes());
-        return toResponse(bristolLogRepository.save(log));
+        // UC0068 - saveAndFlush (khong phai save) de loi optimistic lock (version cu da bi
+        // request khac ghi de) nem ra ngay trong transaction nay, thay vi cho den khi
+        // Hibernate tu flush luc commit - luc do GlobalExceptionHandler khong con bat duoc.
+        return toResponse(bristolLogRepository.saveAndFlush(log));
     }
 
     @Transactional("postgresTransactionManager")
@@ -64,7 +67,7 @@ public class BristolLogService {
         // @SQLRestriction da an no khoi findById - dung y muon (khong xoa 2 lan).
         BristolLog log = loadOwned(patientId, logId);
         log.setDeletedAt(Instant.now());
-        bristolLogRepository.save(log);
+        bristolLogRepository.saveAndFlush(log);
     }
 
     /** UC0020 - danh sach thung rac, con trong han 30 ngay (hoac so ngay cau hinh). */
@@ -89,7 +92,7 @@ public class BristolLogService {
                     "Mục này đã nằm trong thùng rác quá " + retentionDays + " ngày nên không thể khôi phục.");
         }
         log.setDeletedAt(null);
-        return toResponse(bristolLogRepository.save(log));
+        return toResponse(bristolLogRepository.saveAndFlush(log));
     }
 
     @Transactional(value = "postgresTransactionManager", readOnly = true)

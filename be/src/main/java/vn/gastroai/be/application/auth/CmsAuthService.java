@@ -13,6 +13,7 @@ import vn.gastroai.be.application.readmodel.CmsAuthResult;
 import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.admin.AdminLoginHistory;
 import vn.gastroai.be.domain.admin.CmsRole;
+import vn.gastroai.be.domain.admin.CmsAccountType;
 import vn.gastroai.be.domain.admin.Doctor;
 import vn.gastroai.be.domain.admin.DoctorLoginHistory;
 import vn.gastroai.be.domain.auth.LoginOutcome;
@@ -37,6 +38,7 @@ public class CmsAuthService {
     // nhập và thuộc loại nào (ADMIN hay DOCTOR) mà không cần tra DB lại mỗi request.
     public static final String AUTH_USER_ID = "AUTH_USER_ID";
     public static final String AUTH_USER_TYPE = "AUTH_USER_TYPE";
+    public static final String AUTH_ACCOUNT_TYPE = "AUTH_ACCOUNT_TYPE";
 
     private static final String DUMMY_BCRYPT_HASH =
             "$2a$10$7EqJtq98hPqEX7fNZaFWoO5sK2PXrAnq3N33CpA6RKpA1MKSO0HsW";
@@ -100,7 +102,7 @@ public class CmsAuthService {
             CmsLoginCommand command,
             HttpServletRequest request) {
 
-        if (command.role() == CmsRole.ADMIN) {
+        if (command.accountType() == CmsAccountType.ADMIN) {
 
             var admin = adminRepository.findByEmailForUpdate(command.email());
 
@@ -111,7 +113,7 @@ public class CmsAuthService {
                         request);
             }
 
-        } else if (command.role() == CmsRole.DOCTOR) {
+        } else if (command.accountType() == CmsAccountType.DOCTOR) {
 
             var doctor = doctorRepository.findByEmailForUpdate(command.email());
 
@@ -194,15 +196,14 @@ public class CmsAuthService {
                 AUTH_USER_ID,
                 user.getId());
 
-        session.setAttribute(
-                AUTH_USER_TYPE,
-                "ADMIN");
+        session.setAttribute(AUTH_USER_TYPE, user.getRole().name());
+        session.setAttribute(AUTH_ACCOUNT_TYPE, CmsAccountType.ADMIN.name());
 
         return new CmsAuthResult(
                 user.getId(),
                 user.getEmail(),
                 user.getFullName(),
-                "ADMIN");
+                user.getRole().name());
     }
 
     private CmsAuthResult loginDoctor(
@@ -261,15 +262,14 @@ public class CmsAuthService {
                 AUTH_USER_ID,
                 user.getId());
 
-        session.setAttribute(
-                AUTH_USER_TYPE,
-                "DOCTOR");
+        session.setAttribute(AUTH_USER_TYPE, user.getRole().name());
+        session.setAttribute(AUTH_ACCOUNT_TYPE, CmsAccountType.DOCTOR.name());
 
         return new CmsAuthResult(
                 user.getId(),
                 user.getEmail(),
                 user.getFullName(),
-                "DOCTOR");
+                user.getRole().name());
     }
 
     private void handleAdminFailure(

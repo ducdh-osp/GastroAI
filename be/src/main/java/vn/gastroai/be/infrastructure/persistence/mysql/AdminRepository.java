@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import vn.gastroai.be.domain.admin.Admin;
 
 import java.util.Optional;
@@ -13,6 +15,18 @@ import java.util.Optional;
 public interface AdminRepository extends JpaRepository<Admin, Long> {
 
     Optional<Admin> findByEmail(String email);
+
+    @Query("""
+            select a from Admin a
+            where lower(a.email) like lower(concat('%', :email, '%')) escape '!'
+               or lower(coalesce(a.fullName, '')) like lower(concat('%', :fullName, '%')) escape '!'
+            """)
+    Page<Admin> findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
+            @Param("email") String email, @Param("fullName") String fullName, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Admin a where a.id = :id")
+    Optional<Admin> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * Giống findByEmail nhưng khoá row (SELECT ... FOR UPDATE) - dùng riêng cho

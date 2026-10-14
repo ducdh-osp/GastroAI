@@ -64,7 +64,10 @@ public class FoodDiaryService {
         entry.setSymptomsAfterMeal(request.symptomsAfterMeal());
         entry.setSymptomOnsetMinutes(request.symptomOnsetMinutes());
         entry.setNotes(request.notes());
-        return toResponse(foodDiaryEntryRepository.save(entry));
+        // UC0068 - saveAndFlush (khong phai save) de loi optimistic lock (version cu da bi
+        // request khac ghi de) nem ra ngay trong transaction nay, thay vi cho den khi
+        // Hibernate tu flush luc commit - luc do GlobalExceptionHandler khong con bat duoc.
+        return toResponse(foodDiaryEntryRepository.saveAndFlush(entry));
     }
 
     @Transactional("postgresTransactionManager")
@@ -73,7 +76,7 @@ public class FoodDiaryService {
         // @SQLRestriction da an no khoi findById - dung y muon (khong xoa 2 lan).
         FoodDiaryEntry entry = loadOwned(patientId, entryId);
         entry.setDeletedAt(Instant.now());
-        foodDiaryEntryRepository.save(entry);
+        foodDiaryEntryRepository.saveAndFlush(entry);
     }
 
     /** UC0020 - danh sach thung rac, con trong han 30 ngay (hoac so ngay cau hinh). */
@@ -98,7 +101,7 @@ public class FoodDiaryService {
                     "Mục này đã nằm trong thùng rác quá " + retentionDays + " ngày nên không thể khôi phục.");
         }
         entry.setDeletedAt(null);
-        return toResponse(foodDiaryEntryRepository.save(entry));
+        return toResponse(foodDiaryEntryRepository.saveAndFlush(entry));
     }
 
     @Transactional(value = "postgresTransactionManager", readOnly = true)

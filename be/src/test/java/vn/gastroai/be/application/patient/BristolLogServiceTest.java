@@ -1,6 +1,7 @@
 package vn.gastroai.be.application.patient;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import vn.gastroai.be.api.patient.BristolLogRequest;
 import vn.gastroai.be.api.patient.BristolLogResponse;
 import vn.gastroai.be.api.patient.BristolTrashItem;
@@ -107,13 +108,42 @@ class BristolLogServiceTest {
         patient.setId(1L);
         BristolLog log = new BristolLog(patient, Instant.now(), 4, null);
         when(bristolLogRepository.findById(99L)).thenReturn(Optional.of(log));
-        when(bristolLogRepository.save(any(BristolLog.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bristolLogRepository.saveAndFlush(any(BristolLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.delete(1L, 99L);
 
         assertNotNull(log.getDeletedAt());
         // Phai la soft-delete: KHONG duoc goi repository.delete(...) that su.
         verify(bristolLogRepository, never()).delete(any());
+    }
+
+    // ===== UC0068 - optimistic lock (@Version), chong "song lai" ban ghi da xoa =====
+
+    @Test
+    void updateThrowsConflictWhenAnotherRequestAlreadyWroteANewerVersion() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        BristolLog log = new BristolLog(patient, Instant.now(), 4, null);
+        when(bristolLogRepository.findById(99L)).thenReturn(Optional.of(log));
+        // Mo phong dung tinh huong Duc mo ta: request xoa da ghi version moi hon truoc, nen
+        // saveAndFlush() cua request sua (dang cam version cu) bi Hibernate tu choi.
+        when(bristolLogRepository.saveAndFlush(any(BristolLog.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(BristolLog.class, 99L));
+
+        assertThrows(ObjectOptimisticLockingFailureException.class,
+                () -> service.update(1L, 99L, new BristolLogRequest(Instant.now(), 5, null)));
+    }
+
+    @Test
+    void deleteThrowsConflictWhenAnotherRequestAlreadyWroteANewerVersion() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        BristolLog log = new BristolLog(patient, Instant.now(), 4, null);
+        when(bristolLogRepository.findById(99L)).thenReturn(Optional.of(log));
+        when(bristolLogRepository.saveAndFlush(any(BristolLog.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(BristolLog.class, 99L));
+
+        assertThrows(ObjectOptimisticLockingFailureException.class, () -> service.delete(1L, 99L));
     }
 
     @Test
@@ -141,12 +171,25 @@ class BristolLogServiceTest {
         BristolLog log = new BristolLog(patient, Instant.now(), 4, null);
         log.setDeletedAt(Instant.now().minus(1, ChronoUnit.DAYS));
         when(bristolLogRepository.findDeletedOwned(99L, 1L)).thenReturn(Optional.of(log));
-        when(bristolLogRepository.save(any(BristolLog.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bristolLogRepository.saveAndFlush(any(BristolLog.class))).thenAnswer(inv -> inv.getArgument(0));
 
         BristolLogResponse response = service.restore(1L, 99L);
 
         assertNull(log.getDeletedAt());
         assertEquals(4, response.bristolType());
+    }
+
+    @Test
+    void restoreThrowsConflictWhenAnotherRequestAlreadyWroteANewerVersion() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        BristolLog log = new BristolLog(patient, Instant.now(), 4, null);
+        log.setDeletedAt(Instant.now().minus(1, ChronoUnit.DAYS));
+        when(bristolLogRepository.findDeletedOwned(99L, 1L)).thenReturn(Optional.of(log));
+        when(bristolLogRepository.saveAndFlush(any(BristolLog.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(BristolLog.class, 99L));
+
+        assertThrows(ObjectOptimisticLockingFailureException.class, () -> service.restore(1L, 99L));
     }
 
     @Test

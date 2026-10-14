@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined, ClockCircleOutlined, FileSearchOutlined, SearchOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, FileSearchOutlined, SearchOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Empty, Input, Pagination, Select, Spin, Tag, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -16,7 +16,6 @@ function KnowledgeArticleCard({ article }: { article: KnowledgeArticleSummary })
         <Tag color="cyan">{article.category}</Tag>
         <h2 className="mb-2 mt-3 text-lg font-semibold text-slate-800">{article.title}</h2>
         <p className="mb-4 text-sm leading-6 text-slate-600">{article.summary}</p>
-        <Text type="secondary" className="text-xs"><ClockCircleOutlined className="mr-1" />{article.readingMinutes} phút đọc</Text>
       </Card>
     </Link>
   )
@@ -57,7 +56,6 @@ function ArticleDetail({ slug }: { slug: string }) {
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Tag color="cyan">{article.category}</Tag>
           <Title level={2} className="mb-2! mt-3!">{article.title}</Title>
-          <Text type="secondary"><ClockCircleOutlined className="mr-1" />{article.readingMinutes} phút đọc</Text>
           <p className="my-5 text-base leading-7 text-slate-600">{article.summary}</p>
           <div className="border-t border-slate-100 pt-5 text-slate-700">
             <MarkdownContent content={article.content} />

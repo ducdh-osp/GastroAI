@@ -11,15 +11,19 @@ const { Title, Text } = Typography
 const DATE_FORMAT = 'DD/MM/YYYY'
 const MAX_RANGE_DAYS = 90
 
+function vnToday(): Dayjs {
+  return dayjs(dayjs().tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD'))
+}
+
 export default function HealthReportPage() {
-  const [range, setRange] = useState<[Dayjs, Dayjs] | null>([dayjs().subtract(29, 'day'), dayjs()])
+  const [range, setRange] = useState<[Dayjs, Dayjs] | null>([vnToday().subtract(29, 'day'), vnToday()])
   const [error, setError] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
 
   // Chi cho chon ngay hom nay tro ve truoc (khong cho xuat du lieu tuong lai) - khop voi
   // validateRange() ben HealthReportService.
   function disabledDate(date: Dayjs) {
-    return date.isAfter(dayjs(), 'day')
+    return date.isAfter(vnToday(), 'day')
   }
 
   async function handleDownload() {
@@ -30,7 +34,7 @@ export default function HealthReportPage() {
     const [from, to] = range
     // Kiem tra truoc o phia FE de bao loi ngay, khong can doi goi API roi moi bao - BE van se
     // kiem tra lai (validateRange trong HealthReportService) neu ai do bo qua FE goi API truc tiep.
-    if (to.diff(from, 'day') + 1 > MAX_RANGE_DAYS) {
+    if (to.startOf('day').diff(from.startOf('day'), 'day') + 1 > MAX_RANGE_DAYS) {
       setError(`Chỉ xuất tối đa ${MAX_RANGE_DAYS} ngày mỗi lần.`)
       return
     }
@@ -70,9 +74,9 @@ export default function HealthReportPage() {
                 format={DATE_FORMAT}
                 disabledDate={disabledDate}
                 presets={[
-                  { label: '7 ngày qua', value: [dayjs().subtract(6, 'day'), dayjs()] },
-                  { label: '30 ngày qua', value: [dayjs().subtract(29, 'day'), dayjs()] },
-                  { label: '90 ngày qua', value: [dayjs().subtract(89, 'day'), dayjs()] },
+                  { label: '7 ngày qua', value: [vnToday().subtract(6, 'day'), vnToday()] },
+                  { label: '30 ngày qua', value: [vnToday().subtract(29, 'day'), vnToday()] },
+                  { label: '90 ngày qua', value: [vnToday().subtract(89, 'day'), vnToday()] },
                 ]}
               />
             </div>

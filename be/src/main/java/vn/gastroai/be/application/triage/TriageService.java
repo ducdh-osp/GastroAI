@@ -6,6 +6,7 @@ import vn.gastroai.be.domain.triage.TriageResult;
 import vn.gastroai.be.domain.triage.StructuredTriageResult;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput.ActivityImpact;
+import vn.gastroai.be.domain.triage.SymptomAssessmentInput.Duration;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput.PatientGroup;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput.Progression;
 import vn.gastroai.be.domain.triage.SymptomAssessmentInput.SeverityLevel;
@@ -171,20 +172,32 @@ public class TriageService {
             }
         }
 
-        CareRecommendation careRecommendation = recommendCare(severity, emergency, needsClinicianReview);
+        CareRecommendation careRecommendation = recommendCare(input, severity, emergency, needsClinicianReview);
         return new StructuredTriageResult(severity, emergency, List.copyOf(matchedGroups),
                 List.copyOf(reasons), needsClinicianReview, careRecommendation);
     }
 
-    private static CareRecommendation recommendCare(SeverityLevel severity, boolean emergency,
-            boolean requiresClinicianReview) {
+    private static CareRecommendation recommendCare(SymptomAssessmentInput input, SeverityLevel severity,
+            boolean emergency, boolean requiresClinicianReview) {
         if (emergency) {
             return CareRecommendation.EMERGENCY_CARE;
         }
         if (requiresClinicianReview || severity == SeverityLevel.SEVERE) {
             return CareRecommendation.SEE_DOCTOR;
         }
+        if (severity == SeverityLevel.MODERATE
+                && (input.activityImpact() == ActivityImpact.PREVENTS_NORMAL_ACTIVITY
+                || input.progression() == Progression.WORSENING)) {
+            return CareRecommendation.SEE_DOCTOR;
+        }
+        if (isPersistentDuration(input.duration())) {
+            return CareRecommendation.SEE_DOCTOR;
+        }
         return CareRecommendation.SELF_CARE_AT_HOME;
+    }
+
+    private static boolean isPersistentDuration(Duration duration) {
+        return duration == Duration.MORE_THAN_THREE_DAYS || duration == Duration.RECURRING;
     }
 
     /**

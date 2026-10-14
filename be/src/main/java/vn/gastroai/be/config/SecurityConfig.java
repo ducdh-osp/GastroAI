@@ -64,6 +64,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/login",
                                 "/api/v1/cms/auth/**",
+                                "/api/v1/faqs/**",
                                 "/error")
                         .permitAll()
                         // Patient endpoints must never accept a CMS HttpSession. MySQL CMS ids
@@ -73,15 +74,29 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
                         .requestMatchers("/api/v1/chat/**").hasRole("PATIENT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
-                        .hasAnyRole("ADMIN", "DOCTOR")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/documents")
-                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/documents/**")
+                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        // SockJS cannot attach the Authorization header during its HTTP handshake.
+                        // This endpoint validates the JWT query token in PatientWebSocketHandshakeInterceptor.
+                        .requestMatchers("/ws/patient/**").permitAll()
                         .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/notifications/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/triage-keywords/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/article-topics/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/articles/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/faqs/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
-                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/backup/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/runtime-config/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/users/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/rbac/**")
                         .hasRole("ADMIN")
                         // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng
                         // của từng nhóm API ở trên.

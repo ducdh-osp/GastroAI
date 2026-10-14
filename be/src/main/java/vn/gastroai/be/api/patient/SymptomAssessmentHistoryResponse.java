@@ -1,5 +1,7 @@
 package vn.gastroai.be.api.patient;
 
+import vn.gastroai.be.domain.triage.CareRecommendation;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -18,5 +20,6 @@ public record SymptomAssessmentHistoryResponse(
         List<String> matchedGroups,
         List<String> reasonCodes,
         boolean requiresClinicianReview,
+        CareRecommendation careRecommendation,
         Instant assessedAt) {
 }

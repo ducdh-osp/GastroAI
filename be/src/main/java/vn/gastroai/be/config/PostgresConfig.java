@@ -67,7 +67,8 @@ public class PostgresConfig {
                         "vn.gastroai.be.domain.triage",
                         "vn.gastroai.be.domain.notification",
                         "vn.gastroai.be.domain.catalog",
-                        "vn.gastroai.be.domain.knowledge")
+                        "vn.gastroai.be.domain.knowledge",
+                        "vn.gastroai.be.domain.config")
                 .persistenceUnit("postgres")
                 .build();
     }

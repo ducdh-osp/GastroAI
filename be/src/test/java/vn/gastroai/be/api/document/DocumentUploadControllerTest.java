@@ -31,89 +31,144 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(SecurityConfig.class)
 class DocumentUploadControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @MockitoBean
-    private DocumentUploadService documentUploadService;
+        @MockitoBean
+        private DocumentUploadService documentUploadService;
 
-    @MockitoBean
-    private DocumentStatusService documentStatusService;
+        @MockitoBean
+        private DocumentStatusService documentStatusService;
 
-    @MockitoBean
-    private JwtService jwtService;
+        @MockitoBean
+        private JwtService jwtService;
 
-    @MockitoBean
-    private PatientRepository patientRepository;
+        @MockitoBean
+        private PatientRepository patientRepository;
 
-    @MockitoBean
-    private RevokedTokenRepository revokedTokenRepository;
+        @MockitoBean
+        private RevokedTokenRepository revokedTokenRepository;
 
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void uploadResponseIncludesInitialStatusAndStage() throws Exception {
-        when(documentUploadService.upload(any(), any()))
-                .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "ibs.pdf", "application/pdf", new byte[]{1});
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void uploadResponseIncludesInitialStatusAndStage() throws Exception {
+                when(documentUploadService.upload(any(), any()))
+                                .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "ibs.pdf", "application/pdf", new byte[] { 1 });
 
-        mockMvc.perform(multipart("/api/v1/documents").file(file))
-                .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.documentId").value(42))
-                .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.processingStage").value("PENDING"));
-    }
+                mockMvc.perform(multipart("/api/v1/documents").file(file))
+                                .andExpect(status().isAccepted())
+                                .andExpect(jsonPath("$.documentId").value(42))
+                                .andExpect(jsonPath("$.status").value("PENDING"))
+                                .andExpect(jsonPath("$.processingStage").value("PENDING"));
+        }
 
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void getStatusReturnsLifecycleStageAndErrorDetails() throws Exception {
-        Document document = document(DocumentStatus.ERROR, DocumentProcessingStage.ERROR);
-        document.setErrorMessage("Embedding failed");
-        when(documentStatusService.findDocument(42L)).thenReturn(Optional.of(document));
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void getStatusReturnsLifecycleStageAndErrorDetails() throws Exception {
+                Document document = document(DocumentStatus.ERROR, DocumentProcessingStage.ERROR);
+                document.setErrorMessage("Embedding failed");
+                when(documentStatusService.findDocument(42L)).thenReturn(Optional.of(document));
 
-        mockMvc.perform(get("/api/v1/documents/42"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.documentId").value(42))
-                .andExpect(jsonPath("$.title").value("IBS guide"))
-                .andExpect(jsonPath("$.status").value("ERROR"))
-                .andExpect(jsonPath("$.processingStage").value("ERROR"))
-                .andExpect(jsonPath("$.errorMessage").value("Embedding failed"));
-    }
+                mockMvc.perform(get("/api/v1/documents/42"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.documentId").value(42))
+                                .andExpect(jsonPath("$.title").value("IBS guide"))
+                                .andExpect(jsonPath("$.status").value("ERROR"))
+                                .andExpect(jsonPath("$.processingStage").value("ERROR"))
+                                .andExpect(jsonPath("$.errorMessage").value("Embedding failed"));
+        }
 
-    @Test
-    @WithMockUser(roles = "DOCTOR")
-    void doctorsCanReadDocumentStatus() throws Exception {
-        when(documentStatusService.findDocument(42L))
-                .thenReturn(Optional.of(document(DocumentStatus.PROCESSING, DocumentProcessingStage.CHUNKING)));
+        @Test
+        @WithMockUser(roles = "DOCTOR")
+        void doctorsCanReadDocumentStatus() throws Exception {
+                when(documentStatusService.findDocument(42L))
+                                .thenReturn(Optional.of(
+                                                document(DocumentStatus.PROCESSING, DocumentProcessingStage.CHUNKING)));
 
-        mockMvc.perform(get("/api/v1/documents/42"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PROCESSING"))
-                .andExpect(jsonPath("$.processingStage").value("CHUNKING"));
-    }
+                mockMvc.perform(get("/api/v1/documents/42"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("PROCESSING"))
+                                .andExpect(jsonPath("$.processingStage").value("CHUNKING"));
+        }
 
-    @Test
-    @WithMockUser(roles = "PATIENT")
-    void patientsCannotReadDocumentStatus() throws Exception {
-        mockMvc.perform(get("/api/v1/documents/42"))
-                .andExpect(status().isForbidden());
-    }
+        @Test
+        @WithMockUser(roles = "PATIENT")
+        void patientsCannotReadDocumentStatus() throws Exception {
+                mockMvc.perform(get("/api/v1/documents/42"))
+                                .andExpect(status().isForbidden());
+        }
 
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void unknownDocumentReturnsNotFound() throws Exception {
-        when(documentStatusService.findDocument(999L)).thenReturn(Optional.empty());
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void unknownDocumentReturnsNotFound() throws Exception {
+                when(documentStatusService.findDocument(999L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/v1/documents/999"))
-                .andExpect(status().isNotFound());
-    }
+                mockMvc.perform(get("/api/v1/documents/999"))
+                                .andExpect(status().isNotFound());
+        }
 
-    private Document document(DocumentStatus status, DocumentProcessingStage stage) {
-        Document document = new Document();
-        document.setId(42L);
-        document.setTitle("IBS guide");
-        document.setStatus(status);
-        document.setProcessingStage(stage);
-        return document;
-    }
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void listReturnsPagedDocuments() throws Exception {
+                DocumentSummaryResponse docSummary = new DocumentSummaryResponse(
+                                42L, "IBS guide", "/path", "https://example.com",
+                                DocumentStatus.DONE, DocumentProcessingStage.DONE,
+                                null, 10L, java.time.Instant.now(), java.time.Instant.now(),
+                                1, 1, 1);
+                when(documentStatusService.list(null, null, 0, 15))
+                                .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15));
+
+                mockMvc.perform(get("/api/v1/documents"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.total").value(1))
+                                .andExpect(jsonPath("$.items[0].id").value(42))
+                                .andExpect(jsonPath("$.items[0].chunkCount").value(10));
+        }
+
+        @Test
+        @WithMockUser(roles = "DOCTOR")
+        void retryDelegatesToStatusService() throws Exception {
+                Document retried = document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING);
+                when(documentStatusService.retry(42L)).thenReturn(retried);
+
+                mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .post("/api/v1/documents/42/retry"))
+                                .andExpect(status().isAccepted())
+                                .andExpect(jsonPath("$.status").value("PENDING"));
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void searchContentAllowedForAdmin() throws Exception {
+                mockMvc.perform(get("/api/v1/documents/search").param("q", "HP"))
+                                .andExpect(status().isOk());
+        }
+
+        // Benh nhan khong duoc vao CMS -> SecurityConfig chan o tang quyen, truoc khi
+        // toi controller.
+        @Test
+        @WithMockUser(roles = "PATIENT")
+        void searchContentForbiddenForPatient() throws Exception {
+                mockMvc.perform(get("/api/v1/documents/search").param("q", "HP"))
+                                .andExpect(status().isForbidden());
+        }
+
+        // Vai tro moi (merge tu dev): bien tap vien noi dung cung duoc tim tai lieu.
+        @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void searchContentAllowedForContentEditor() throws Exception {
+                mockMvc.perform(get("/api/v1/documents/search").param("q", "HP"))
+                                .andExpect(status().isOk());
+        }
+
+        private Document document(DocumentStatus status, DocumentProcessingStage stage) {
+                Document document = new Document();
+                document.setId(42L);
+                document.setTitle("IBS guide");
+                document.setStatus(status);
+                document.setProcessingStage(stage);
+                return document;
+        }
 }

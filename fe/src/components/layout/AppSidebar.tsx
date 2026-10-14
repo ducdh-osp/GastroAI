@@ -1,18 +1,44 @@
-import { BarChartOutlined, BulbOutlined, CoffeeOutlined, CommentOutlined, DownOutlined, ExperimentOutlined, FilePdfOutlined, FileSearchOutlined, FileTextOutlined, HistoryOutlined, HomeOutlined, KeyOutlined, LineChartOutlined, LogoutOutlined, MedicineBoxOutlined, MessageOutlined } from '@ant-design/icons'
-import { Dropdown } from 'antd'
+import {
+  BarChartOutlined,
+  BellOutlined,
+  BulbOutlined,
+  CoffeeOutlined,
+  CommentOutlined,
+  DownOutlined,
+  ExperimentOutlined,
+  FilePdfOutlined,
+  FileSearchOutlined,
+  FileTextOutlined,
+  FireOutlined,
+  HistoryOutlined,
+  HomeOutlined,
+  KeyOutlined,
+  LineChartOutlined,
+  LogoutOutlined,
+  MedicineBoxOutlined,
+  MessageOutlined,
+  QuestionCircleOutlined,
+} from '@ant-design/icons'
+import { Badge, Dropdown, notification } from 'antd'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
 import { Logo } from '../brand/Logo'
+import { getUnreadNotificationCount } from '../../api/notifications'
+import { useNotificationSocket } from '../../hooks/useNotificationSocket'
 
 const NAV_ITEMS = [
+  { key: 'notifications', label: 'Thông báo', icon: <BellOutlined />, to: '/notifications' },
   { key: 'home', label: 'Trang chủ', icon: <HomeOutlined />, to: '/' },
   { key: 'chat', label: 'Tư vấn sức khỏe', icon: <CommentOutlined />, to: '/chat' },
   { key: 'chat-history', label: 'Lịch sử phiên chat', icon: <MessageOutlined />, to: '/chat-history' },
   { key: 'articles', label: 'Bài viết tiêu hoá', icon: <FileSearchOutlined />, to: '/articles' },
+  { key: 'faq', label: 'Hỏi đáp thường gặp', icon: <QuestionCircleOutlined />, to: '/faq' },
   { key: 'medical-profile', label: 'Hồ sơ bệnh lý', icon: <FileTextOutlined />, to: '/medical-profile' },
   { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
   { key: 'food-diary-history', label: 'Lịch sử ăn uống', icon: <BarChartOutlined />, to: '/food-diary-history' },
   { key: 'food-sensitivity', label: 'Nhạy cảm thực phẩm', icon: <BulbOutlined />, to: '/food-sensitivity' },
+  { key: 'adherence', label: 'Streak & tuân thủ', icon: <FireOutlined />, to: '/adherence' },
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
   { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
   { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
@@ -26,9 +52,30 @@ const NAV_ITEMS = [
  * (bên admin) và cùng nền tối, nhưng dùng tông xanh ngọc đậm (#0f2926) thay vì slate để 2
  * cổng vẫn phân biệt được bằng mắt dù cùng kiểu "dashboard tối". */
 export function AppSidebar() {
-  const { email, fullName, logout } = useAuth()
+  const { email, fullName, logout, token } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    const refreshUnreadCount = () => {
+      void getUnreadNotificationCount('patient').then(setUnreadCount).catch(() => {})
+    }
+    refreshUnreadCount()
+    window.addEventListener('gastroai:notification-state', refreshUnreadCount)
+    return () => window.removeEventListener('gastroai:notification-state', refreshUnreadCount)
+  }, [])
+
+  useNotificationSocket({
+    audience: 'patient',
+    enabled: Boolean(token),
+    token,
+    onNotification: useCallback((item) => {
+      setUnreadCount((count) => count + 1)
+      notification.info({ message: item.title, description: item.message, placement: 'topRight' })
+      window.dispatchEvent(new Event('gastroai:notification'))
+    }, []),
+  })
 
   async function handleLogout() {
     await logout()
@@ -54,7 +101,12 @@ export function AppSidebar() {
                 }`}
               >
                 {item.icon}
-                {item.label}
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  {item.label}
+                  {item.key === 'notifications' && unreadCount > 0 && (
+                    <Badge count={unreadCount} overflowCount={99} size="small" />
+                  )}
+                </span>
               </Link>
             )
           })}

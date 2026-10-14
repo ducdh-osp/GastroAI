@@ -14,6 +14,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import vn.gastroai.be.application.support.ResourceNotFoundException;
 
 @Service
 public class DocumentUploadService {
@@ -25,13 +29,30 @@ public class DocumentUploadService {
 
     public DocumentUploadService(
             FileStorageService fileStorageService,
-            DocumentRepository documentRepository
-    ) {
+            DocumentRepository documentRepository) {
         this.fileStorageService = fileStorageService;
         this.documentRepository = documentRepository;
     }
 
     public Document upload(MultipartFile file, String sourceUrl) {
+        return storeNewDocument(file, sourceUrl, null, 1, true);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public Document uploadNewVersion(Long documentId, MultipartFile file, String sourceUrl) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        Long groupId = document.groupId();
+        Document latest = documentRepository.findGroup(groupId).get(0);
+
+        if (latest.getStatus() == DocumentStatus.PENDING || latest.getStatus() == DocumentStatus.PROCESSING) {
+            throw new IllegalStateException("Phiên bản trước đang được xử lý, vui lòng chờ xong rồi tải bản mới");
+        }
+        return storeNewDocument(file, sourceUrl, groupId, latest.getVersionNo() + 1, false);
+    }
+
+    private Document storeNewDocument(MultipartFile file, String sourceUrl, Long rootId, int versionNo,
+            boolean currentVersion) {
 
         // 0. Validate URL nguồn TRƯỚC khi lưu file, để URL sai không để lại file mồ côi
         String normalizedSourceUrl = normalizeSourceUrl(sourceUrl);
@@ -58,7 +79,9 @@ public class DocumentUploadService {
             document.setSourceUrl(normalizedSourceUrl);
             document.setStatus(DocumentStatus.PENDING);
             document.setContentHash(contentHash);
-
+            document.setRootId(rootId);
+            document.setVersionNo(versionNo);
+            document.setCurrentVersion(currentVersion);
             // 3. Lưu document vào database với trạng thái PENDING - không tự gọi
             // worker xử lý ở đây nữa. DocumentProcessingScheduler sẽ định kỳ quét và
             // giành lấy document này để xử lý (xem file DocumentProcessingScheduler).
@@ -76,7 +99,10 @@ public class DocumentUploadService {
         }
     }
 
-    /** Mã băm SHA-256 (dạng hex, 64 ký tự) của nội dung file đã lưu - dùng để phát hiện upload trùng. */
+    /**
+     * Mã băm SHA-256 (dạng hex, 64 ký tự) của nội dung file đã lưu - dùng để phát
+     * hiện upload trùng.
+     */
     private static String computeContentHash(Path storedPath) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -130,22 +156,47 @@ public class DocumentUploadService {
 
         return url;
     }
-    @Transactional
+
+    @Transactional("postgresTransactionManager")
     public void delete(Long documentId) {
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Không tìm thấy document: " + documentId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy tài liệu: " + documentId));
+        Long groupId = document.groupId();
+        List<Document> versions = documentRepository.findGroup(groupId);
 
-        if (document.getStatus() == DocumentStatus.PENDING
-                || document.getStatus() == DocumentStatus.PROCESSING) {
+        boolean anyProcessing = versions.stream().anyMatch(v ->
+                v.getStatus() == DocumentStatus.PENDING || v.getStatus() == DocumentStatus.PROCESSING);
+        if (anyProcessing) {
             throw new IllegalStateException(
-                    "Tài liệu đang được xử lý, vui lòng thử lại sau");
+                    "Tài liệu có phiên bản đang được xử lý, vui lòng thử lại sau");
         }
 
-        documentRepository.delete(document);
+        // Gom duong dan file TRUOC khi xoa DB - sau deleteGroup cac dong khong con de doc.
+        List<Path> files = versions.stream()
+                .map(Document::getSource)
+                .filter(source -> source != null)
+                .map(Path::of)
+                .toList();
 
-        if (document.getSource() != null) {
-            fileStorageService.delete(Path.of(document.getSource()));
+        documentRepository.deleteGroup(groupId);
+        files.forEach(this::deleteFileAfterCommit);
+    }
+
+    /**
+     * Chi xoa file tren dia SAU KHI DB da commit xong viec xoa - commit loi thi giu
+     * file.
+     */
+    private void deleteFileAfterCommit(Path file) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            fileStorageService.delete(file);
+            return;
         }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                fileStorageService.delete(file);
+            }
+        });
     }
 }

@@ -36,6 +36,10 @@ public class Admin {
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CmsRole role = CmsRole.ADMIN;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
