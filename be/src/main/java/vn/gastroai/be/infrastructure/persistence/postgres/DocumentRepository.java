@@ -21,11 +21,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          */
         List<Document> findByStatusIn(List<DocumentStatus> statuses);
 
-        /**
-         * Tim document khac co cung ma bam noi dung, bo qua ban da ERROR (duoc phep
-         * upload lai).
-         */
-        Optional<Document> findFirstByContentHashAndStatusNot(String contentHash, DocumentStatus status);
+        List<Document> findByContentHashAndStatusNot(String contentHash, DocumentStatus status);
 
         /**
          * Gianh quyen xu ly 1 document bang UPDATE nguyen tu - chi doi duoc neu con

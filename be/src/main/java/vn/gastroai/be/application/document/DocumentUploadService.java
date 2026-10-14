@@ -65,11 +65,28 @@ public class DocumentUploadService {
             // upload lại (thường là thử lại sau khi sửa lỗi nguồn).
             String contentHash = computeContentHash(storedPath);
 
-            documentRepository.findFirstByContentHashAndStatusNot(contentHash, DocumentStatus.ERROR)
-                    .ifPresent(existing -> {
-                        throw new IllegalStateException(
-                                "Tài liệu này đã tồn tại (id = " + existing.getId() + ")");
-                    });
+            List<Document> duplicates = documentRepository.findByContentHashAndStatusNot(contentHash,
+                    DocumentStatus.ERROR);
+
+            if (rootId == null) {
+                // Tai lieu moi: trung voi bat ky tai lieu nao (chua ERROR) deu bi chan.
+                if (!duplicates.isEmpty()) {
+                    Document existing = duplicates.get(0);
+                    throw new IllegalStateException(
+                            "Nội dung file này trùng với tài liệu \"" + existing.getTitle()
+                                    + "\" (id " + existing.getId() + ")");
+                }
+            } else {
+                // Phien ban moi: chi chan khi trung voi mot phien ban trong CHINH nhom nay.
+                duplicates.stream()
+                        .filter(d -> d.groupId().equals(rootId))
+                        .findFirst()
+                        .ifPresent(sameGroup -> {
+                            throw new IllegalStateException(
+                                    "Nội dung file này trùng với phiên bản v" + sameGroup.getVersionNo()
+                                            + " của chính tài liệu này");
+                        });
+            }
 
             // 2. Tạo document với trạng thái PENDING
             Document document = new Document();

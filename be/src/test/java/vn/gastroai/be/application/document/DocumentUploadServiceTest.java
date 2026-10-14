@@ -14,7 +14,16 @@ import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -281,5 +290,93 @@ class DocumentUploadServiceTest {
 
         verify(documentRepository).deleteGroup(1L);
         verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
+    }
+
+    @TempDir
+    Path tempDir;
+
+    // Tao file that de service tinh ma bam SHA-256 tu noi dung.
+    private Path storedFile(String content) throws IOException {
+        Path path = tempDir.resolve("upload.pdf");
+        Files.writeString(path, content);
+        return path;
+    }
+
+    // Tai lieu moi trung voi 1 tai lieu khac -> chan, bao ten + id, xoa file vua
+    // luu.
+    @Test
+    void uploadRejectsContentDuplicatingAnotherDocument() throws IOException {
+        Path stored = storedFile("noi dung trung");
+        when(fileStorageService.store(file)).thenReturn(stored);
+        Document existing = document(7L, DocumentStatus.DONE);
+        existing.setTitle("ibs.pdf");
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of(existing));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> service.upload(file, null));
+
+        assertTrue(ex.getMessage().contains("ibs.pdf"));
+        assertTrue(ex.getMessage().contains("7"));
+        verify(fileStorageService).delete(stored);
+        verify(documentRepository, never()).save(any());
+    }
+
+    // Phien ban moi trung voi 1 phien ban trong CHINH nhom -> chan, bao so phien
+    // ban.
+    @Test
+    void uploadNewVersionRejectsContentDuplicatingSameGroup() throws IOException {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setVersionNo(1);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+        Path stored = storedFile("noi dung trung");
+        when(fileStorageService.store(file)).thenReturn(stored);
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of(v1));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> service.uploadNewVersion(1L, file, null));
+
+        assertTrue(ex.getMessage().contains("v1"));
+        verify(fileStorageService).delete(stored);
+        verify(documentRepository, never()).save(any());
+    }
+
+    // Phien ban moi trung voi tai lieu o NHOM KHAC -> van cho tai len.
+    @Test
+    void uploadNewVersionAllowsContentDuplicatingOtherGroup() throws IOException {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setVersionNo(1);
+        Document other = document(50L, DocumentStatus.DONE);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung giong tai lieu khac"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of(other));
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.uploadNewVersion(1L, file, null);
+
+        assertEquals(2, saved.getVersionNo());
+        assertEquals(1L, saved.getRootId());
+        assertFalse(saved.isCurrentVersion());
+        verify(fileStorageService, never()).delete(any());
+    }
+
+    // Tai lieu moi khong trung gi -> luu thanh v1, CHUA la ban dang dung (cho
+    // markDone bat).
+    @Test
+    void uploadCreatesNonCurrentFirstVersionWhenNoDuplicate() throws IOException {
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.upload(file, null);
+
+        assertEquals(1, saved.getVersionNo());
+        assertFalse(saved.isCurrentVersion());
+        assertEquals(DocumentStatus.PENDING, saved.getStatus());
     }
 }
