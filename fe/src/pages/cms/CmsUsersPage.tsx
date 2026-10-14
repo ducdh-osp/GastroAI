@@ -16,7 +16,7 @@ export default function CmsUsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
-  const [busyId, setBusyId] = useState<number | null>(null)
+  const [busyIds, setBusyIds] = useState<Set<number>>(() => new Set())
 
   async function reload(nextPage = page) {
     setLoading(true)
@@ -36,14 +36,18 @@ export default function CmsUsersPage() {
   useEffect(() => { void reload(1) }, [locked])
 
   async function toggle(patient: CmsPatient) {
-    setBusyId(patient.id)
+    setBusyIds((current) => new Set(current).add(patient.id))
     try {
       await setCmsPatientLock(patient.id, !patient.adminLocked)
       await reload()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể cập nhật tài khoản.')
     } finally {
-      setBusyId(null)
+      setBusyIds((current) => {
+        const next = new Set(current)
+        next.delete(patient.id)
+        return next
+      })
     }
   }
 
@@ -52,7 +56,7 @@ export default function CmsUsersPage() {
     { title: 'Điện thoại', dataIndex: 'phone', key: 'phone', render: (value: string | null) => value || '—' },
     { title: 'Trạng thái', key: 'status', render: (_, p) => p.adminLocked ? <Tag color="red">Đã khóa</Tag> : <Tag color="green">Hoạt động</Tag> },
     { title: 'Ngày tạo', dataIndex: 'createdAt', key: 'createdAt', render: formatDateTime },
-    { title: '', key: 'action', render: (_, p) => <Popconfirm title={p.adminLocked ? 'Mở khóa tài khoản này?' : 'Khóa tài khoản này?'} description={p.adminLocked ? 'Bệnh nhân có thể đăng nhập lại sau khi mở khóa.' : 'Mọi phiên đăng nhập hiện có của bệnh nhân sẽ bị thu hồi.'} okText={p.adminLocked ? 'Mở khóa' : 'Khóa'} cancelText="Hủy" okButtonProps={{ danger: !p.adminLocked }} onConfirm={() => void toggle(p)}><Button size="small" danger={p.adminLocked} type={p.adminLocked ? 'primary' : 'default'} icon={p.adminLocked ? <UnlockOutlined /> : <LockOutlined />} loading={busyId === p.id}>{p.adminLocked ? 'Mở khóa' : 'Khóa'}</Button></Popconfirm> },
+    { title: '', key: 'action', render: (_, p) => <Popconfirm title={p.adminLocked ? 'Mở khóa tài khoản này?' : 'Khóa tài khoản này?'} description={p.adminLocked ? 'Bệnh nhân có thể đăng nhập lại sau khi mở khóa.' : 'Mọi phiên đăng nhập hiện có của bệnh nhân sẽ bị thu hồi.'} okText={p.adminLocked ? 'Mở khóa' : 'Khóa'} cancelText="Hủy" okButtonProps={{ danger: !p.adminLocked }} onConfirm={() => void toggle(p)}><Button size="small" danger={p.adminLocked} type={p.adminLocked ? 'primary' : 'default'} icon={p.adminLocked ? <UnlockOutlined /> : <LockOutlined />} loading={busyIds.has(p.id)} disabled={busyIds.has(p.id)}>{p.adminLocked ? 'Mở khóa' : 'Khóa'}</Button></Popconfirm> },
   ]
 
   return <CmsAppShell><div className="mx-auto max-w-6xl">

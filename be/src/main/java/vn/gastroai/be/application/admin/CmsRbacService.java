@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.api.cms.rbac.CmsAccountPageResponse;
 import vn.gastroai.be.api.cms.rbac.CmsAccountResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
+import vn.gastroai.be.application.support.SearchQueryEscaper;
 import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.admin.CmsAccountType;
 import vn.gastroai.be.domain.admin.CmsRole;
@@ -36,7 +37,7 @@ public class CmsRbacService {
      */
     @Transactional(value = "mysqlTransactionManager", readOnly = true)
     public CmsAccountPageResponse list(String query, Pageable pageable) {
-        String normalized = query == null ? "" : query.trim();
+        String normalized = query == null ? "" : SearchQueryEscaper.escapeLike(query.trim());
         List<CmsAccountResponse> accounts = new ArrayList<>();
         admins.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(normalized, normalized,
                         org.springframework.data.domain.Pageable.unpaged())
@@ -60,14 +61,14 @@ public class CmsRbacService {
             if (role != CmsRole.ADMIN) {
                 throw new IllegalArgumentException("Tai khoan Admin phai giu vai tro ADMIN");
             }
-            return from(admins.findById(accountId)
+            return from(admins.findByIdForUpdate(accountId)
                     .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tai khoan CMS")));
         }
 
         if (role != CmsRole.DOCTOR && role != CmsRole.CONTENT_EDITOR) {
             throw new IllegalArgumentException("Tai khoan nay chi co the gan vai tro DOCTOR hoac CONTENT_EDITOR");
         }
-        Doctor doctor = doctors.findById(accountId)
+        Doctor doctor = doctors.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tai khoan CMS"));
         doctor.setRole(role);
         return from(doctor);

@@ -16,8 +16,17 @@ public interface AdminRepository extends JpaRepository<Admin, Long> {
 
     Optional<Admin> findByEmail(String email);
 
+    @Query("""
+            select a from Admin a
+            where lower(a.email) like lower(concat('%', :email, '%')) escape '!'
+               or lower(coalesce(a.fullName, '')) like lower(concat('%', :fullName, '%')) escape '!'
+            """)
     Page<Admin> findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
-            String email, String fullName, Pageable pageable);
+            @Param("email") String email, @Param("fullName") String fullName, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Admin a where a.id = :id")
+    Optional<Admin> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * Giống findByEmail nhưng khoá row (SELECT ... FOR UPDATE) - dùng riêng cho

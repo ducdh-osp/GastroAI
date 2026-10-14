@@ -2,6 +2,8 @@ package vn.gastroai.be.application.admin;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import vn.gastroai.be.domain.admin.CmsAccountType;
 import vn.gastroai.be.domain.admin.CmsRole;
 import vn.gastroai.be.domain.admin.Doctor;
@@ -28,12 +30,13 @@ class CmsRbacServiceTest {
         Doctor doctor = new Doctor();
         doctor.setId(9L);
         doctor.setEmail("editor@gastroai.vn");
-        when(doctors.findById(9L)).thenReturn(Optional.of(doctor));
+        when(doctors.findByIdForUpdate(9L)).thenReturn(Optional.of(doctor));
 
         var result = service.assignRole(CmsAccountType.DOCTOR, 9L, CmsRole.CONTENT_EDITOR);
 
         assertEquals(CmsRole.CONTENT_EDITOR, doctor.getRole());
         assertEquals(CmsRole.CONTENT_EDITOR, result.role());
+        verify(doctors).findByIdForUpdate(9L);
     }
 
     @Test
@@ -42,5 +45,23 @@ class CmsRbacServiceTest {
                 assertThrows(IllegalArgumentException.class,
                         () -> service.assignRole(CmsAccountType.DOCTOR, 9L, CmsRole.ADMIN)).getMessage());
         verifyNoInteractions(doctors);
+    }
+
+    @Test
+    void escapesLikeWildcardsBeforeSearchingAccounts() {
+        String escaped = "100!%!_!\\!!";
+        when(admins.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
+                escaped, escaped, org.springframework.data.domain.Pageable.unpaged()))
+                .thenReturn(Page.empty());
+        when(doctors.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
+                escaped, escaped, org.springframework.data.domain.Pageable.unpaged()))
+                .thenReturn(Page.empty());
+
+        service.list("100%_\\!", PageRequest.of(0, 20));
+
+        verify(admins).findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
+                escaped, escaped, org.springframework.data.domain.Pageable.unpaged());
+        verify(doctors).findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
+                escaped, escaped, org.springframework.data.domain.Pageable.unpaged());
     }
 }
