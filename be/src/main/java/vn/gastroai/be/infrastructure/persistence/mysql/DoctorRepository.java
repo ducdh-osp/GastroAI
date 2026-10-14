@@ -16,8 +16,17 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
 
     Optional<Doctor> findByEmail(String email);
 
+    @Query("""
+            select d from Doctor d
+            where lower(d.email) like lower(concat('%', :email, '%')) escape '!'
+               or lower(coalesce(d.fullName, '')) like lower(concat('%', :fullName, '%')) escape '!'
+            """)
     Page<Doctor> findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
-            String email, String fullName, Pageable pageable);
+            @Param("email") String email, @Param("fullName") String fullName, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from Doctor d where d.id = :id")
+    Optional<Doctor> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * Giống findByEmail nhưng khoá row (SELECT ... FOR UPDATE) - dùng riêng cho
