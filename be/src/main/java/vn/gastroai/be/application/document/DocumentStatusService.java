@@ -74,7 +74,8 @@ public class DocumentStatusService {
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
 
-        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung, TRU KHI admin da
+        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung, TRU KHI admin
+        // da
         // chu dong go tai lieu (dong goc co unpublished_at) - luc do chi danh dau DONE.
         // clearCurrent chay TRUOC, bat ban nay SAU, de khong bao gio co 2 ban cung la
         // hien hanh trong 1 nhom (index uk_documents_group_current).
@@ -234,10 +235,19 @@ public class DocumentStatusService {
     public void unpublish(Long documentId) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+
+        boolean hasDone = documentRepository.findGroup(document.groupId()).stream()
+                .anyMatch(v -> v.getStatus() == DocumentStatus.DONE);
+        if (!hasDone) {
+            throw new IllegalStateException("Tài liệu chưa có phiên bản nào xử lý xong, chưa có gì để gỡ");
+        }
+
         documentRepository.clearCurrent(document.groupId());
 
-        // Danh dau "go co chu dich" tren dong goc. clearCurrent la cau UPDATE hang loat nen
-        // ban trong bo nho co the con ghi "dang dung" (cu) - dong bo lai truoc khi save, neu
+        // Danh dau "go co chu dich" tren dong goc. clearCurrent la cau UPDATE hang loat
+        // nen
+        // ban trong bo nho co the con ghi "dang dung" (cu) - dong bo lai truoc khi
+        // save, neu
         // khong save(root) se ghi de is_current = true tro lai.
         Document root = rootOf(document);
         root.setCurrentVersion(false);

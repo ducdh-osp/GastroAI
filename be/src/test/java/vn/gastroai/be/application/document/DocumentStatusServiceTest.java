@@ -272,7 +272,7 @@ class DocumentStatusServiceTest {
         Document v2 = version(2L, 1L, 2, true, DocumentStatus.DONE);
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
         when(documentRepository.findById(1L)).thenReturn(Optional.of(root));
-
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, root));
         documentStatusService.unpublish(2L);
 
         verify(documentRepository).clearCurrent(1L);
@@ -397,6 +397,7 @@ class DocumentStatusServiceTest {
     void unpublishMarksRootAsUnpublished() {
         Document root = version(1L, null, 1, true, DocumentStatus.DONE);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(root));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(root));
 
         documentStatusService.unpublish(1L);
 
@@ -460,5 +461,18 @@ class DocumentStatusServiceTest {
 
         assertFalse(page.items().get(0).unpublished());
         assertNull(page.items().get(0).currentVersionNo());
+    }
+
+    @Test
+    void unpublishRejectsGroupWithoutDoneVersion() {
+        Document v1 = version(1L, null, 1, false, DocumentStatus.PENDING);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+
+        assertThrows(IllegalStateException.class, () -> documentStatusService.unpublish(1L));
+
+        verify(documentRepository, never()).clearCurrent(any());
+        verify(documentRepository, never()).save(any());
+        assertNull(v1.getUnpublishedAt());
     }
 }
