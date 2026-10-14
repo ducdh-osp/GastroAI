@@ -200,7 +200,6 @@ class DocumentStatusServiceTest {
         order.verify(documentRepository).save(v2);
     }
 
-
     @Test
     void unpublishClearsCurrentForGroup() {
         Document root = version(1L, null, 1, false, DocumentStatus.DONE);
@@ -383,7 +382,7 @@ class DocumentStatusServiceTest {
         verify(documentRepository, never()).save(any());
         assertNull(v1.getUnpublishedAt());
     }
-    
+
     // ===== C4 - tim kiem: bao bi cat + gioi han do dai =====
 
     // Dong ket qua gia: chi can chunkIndex khac nhau, cac truong khac co dinh.
@@ -441,7 +440,8 @@ class DocumentStatusServiceTest {
         assertFalse(result.truncated());
     }
 
-    // Repository tra 51 dong (dong thu 51 chi de biet con ket qua) -> chi giu 50, truncated = true.
+    // Repository tra 51 dong (dong thu 51 chi de biet con ket qua) -> chi giu 50,
+    // truncated = true.
     @Test
     void searchContentMarksTruncatedWhenMoreThan50Rows() {
         when(chunkRepository.searchContent(any())).thenReturn(searchRows(51));
@@ -464,7 +464,6 @@ class DocumentStatusServiceTest {
         assertFalse(result.truncated());
     }
 
-    
     // ===== C6 - danh sach tai lieu: truy van nhe, dem chunk theo trang =====
 
     // Dong nhe cua danh sach (khong co full_text).
@@ -600,7 +599,8 @@ class DocumentStatusServiceTest {
         verify(chunkRepository).countByDocumentIdIn(List.of(2L));
     }
 
-    // Khong ban nao dang dung -> currentVersionNo la null, chunk dem theo dong dang hien.
+    // Khong ban nao dang dung -> currentVersionNo la null, chunk dem theo dong dang
+    // hien.
     @Test
     void listReturnsNullCurrentVersionNoWhenNoVersionIsCurrent() {
         when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
@@ -647,7 +647,8 @@ class DocumentStatusServiceTest {
         assertNull(page.items().get(0).currentVersionNo());
     }
 
-    // Muc tieu chinh cua C6: chi dem chunk cho cac dong cua TRANG HIEN TAI, khong dem ca bang.
+    // Muc tieu chinh cua C6: chi dem chunk cho cac dong cua TRANG HIEN TAI, khong
+    // dem ca bang.
     @Test
     void listCountsChunksOnlyForRowsOfCurrentPage() {
         when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
@@ -665,5 +666,35 @@ class DocumentStatusServiceTest {
         assertEquals(3, page.total());
         assertEquals(2, page.items().size());
         verify(chunkRepository).countByDocumentIdIn(List.of(1L, 2L));
+    }
+
+    // ===== C8 - cac truong hop "khong lam gi" =====
+
+    // Kich hoat dung ban dang dung -> khong dong cham vao co hien hanh cua ai ca.
+    @Test
+    void activateVersionDoesNothingWhenAlreadyCurrent() {
+        Document v1 = version(1L, null, 1, true, DocumentStatus.DONE);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+
+        documentStatusService.activateVersion(1L, 1L);
+
+        assertTrue(v1.isCurrentVersion());
+        verify(documentRepository, never()).clearCurrent(any());
+        verify(documentRepository, never()).save(any());
+    }
+
+    // Ban DONE moi nhat da la ban dang dung -> dang lai khong lam gi.
+    @Test
+    void publishDoesNothingWhenLatestDoneVersionAlreadyCurrent() {
+        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
+        Document v2 = version(2L, 1L, 2, true, DocumentStatus.DONE);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
+
+        documentStatusService.publish(1L);
+
+        assertTrue(v2.isCurrentVersion());
+        verify(documentRepository, never()).clearCurrent(any());
+        verify(documentRepository, never()).save(any());
     }
 }

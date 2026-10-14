@@ -17,7 +17,11 @@ import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
-
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -170,5 +174,85 @@ class DocumentUploadControllerTest {
                 document.setStatus(status);
                 document.setProcessingStage(stage);
                 return document;
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void uploadVersionAcceptedForAdmin() throws Exception {
+                when(documentUploadService.uploadNewVersion(eq(42L), any(), any()))
+                                .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
+                MockMultipartFile file = new MockMultipartFile(
+                                "file", "ibs-v2.pdf", "application/pdf", new byte[] { 1 });
+
+                mockMvc.perform(multipart("/api/v1/documents/42/versions").file(file))
+                                .andExpect(status().isAccepted())
+                                .andExpect(jsonPath("$.documentId").value(42))
+                                .andExpect(jsonPath("$.status").value("PENDING"));
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void listVersionsOkForAdmin() throws Exception {
+                when(documentStatusService.listVersions(42L)).thenReturn(java.util.List.of());
+
+                mockMvc.perform(get("/api/v1/documents/42/versions"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$").isArray());
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void activateVersionReturnsNoContentForAdmin() throws Exception {
+                mockMvc.perform(post("/api/v1/documents/42/versions/7/activate"))
+                                .andExpect(status().isNoContent());
+
+                verify(documentStatusService).activateVersion(42L, 7L);
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void publishReturnsNoContentForAdmin() throws Exception {
+                mockMvc.perform(post("/api/v1/documents/42/publish"))
+                                .andExpect(status().isNoContent());
+
+                verify(documentStatusService).publish(42L);
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void unpublishReturnsNoContentForAdmin() throws Exception {
+                mockMvc.perform(post("/api/v1/documents/42/unpublish"))
+                                .andExpect(status().isNoContent());
+
+                verify(documentStatusService).unpublish(42L);
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void deleteVersionReturnsNoContentForAdmin() throws Exception {
+                mockMvc.perform(delete("/api/v1/documents/42/versions/7"))
+                                .andExpect(status().isNoContent());
+
+                verify(documentUploadService).deleteVersion(42L, 7L);
+        }
+
+        // Benh nhan khong duoc go tai lieu: SecurityConfig chan o tang quyen, service
+        // khong bi goi.
+        @Test
+        @WithMockUser(roles = "PATIENT")
+        void unpublishForbiddenForPatient() throws Exception {
+                mockMvc.perform(post("/api/v1/documents/42/unpublish"))
+                                .andExpect(status().isForbidden());
+
+                verify(documentStatusService, never()).unpublish(any());
+        }
+
+        @Test
+        @WithMockUser(roles = "PATIENT")
+        void deleteVersionForbiddenForPatient() throws Exception {
+                mockMvc.perform(delete("/api/v1/documents/42/versions/7"))
+                                .andExpect(status().isForbidden());
+
+                verify(documentUploadService, never()).deleteVersion(any(), any());
         }
 }

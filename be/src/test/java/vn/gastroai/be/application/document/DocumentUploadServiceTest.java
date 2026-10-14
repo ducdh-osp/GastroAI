@@ -424,4 +424,34 @@ class DocumentUploadServiceTest {
 
         verify(fileStorageService).delete(stored);
     }
+
+    
+    // ===== C8 - tai phien ban moi thanh cong =====
+
+    // Goi bang id cua BAN CON (id 2): ban moi phai la v3 va thuoc nhom 1 (rootId = id cua dong goc),
+    // chua la ban dang dung, tro dung file vua luu.
+    @Test
+    void uploadNewVersionCreatesNextVersionOfSameGroup() throws IOException {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setVersionNo(1);
+        Document v2 = document(2L, DocumentStatus.DONE);
+        v2.setRootId(1L);
+        v2.setVersionNo(2);
+        Path stored = storedFile("noi dung ban 3");
+        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
+        when(fileStorageService.store(file)).thenReturn(stored);
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.uploadNewVersion(2L, file, null);
+
+        assertEquals(3, saved.getVersionNo());
+        assertEquals(1L, saved.getRootId());
+        assertFalse(saved.isCurrentVersion());
+        assertEquals(DocumentStatus.PENDING, saved.getStatus());
+        assertEquals(stored.toString(), saved.getSource());
+        verify(fileStorageService, never()).delete(any());
+    }
 }
