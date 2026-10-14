@@ -16,7 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
+import vn.gastroai.be.infrastructure.persistence.postgres.ChunkSearchRow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -474,5 +474,85 @@ class DocumentStatusServiceTest {
         verify(documentRepository, never()).clearCurrent(any());
         verify(documentRepository, never()).save(any());
         assertNull(v1.getUnpublishedAt());
+    }
+    
+    // ===== C4 - tim kiem: bao bi cat + gioi han do dai =====
+
+    // Dong ket qua gia: chi can chunkIndex khac nhau, cac truong khac co dinh.
+    private ChunkSearchRow searchRow(int chunkIndex) {
+        return new ChunkSearchRow() {
+            @Override
+            public Long getDocumentId() {
+                return 1L;
+            }
+
+            @Override
+            public String getTitle() {
+                return "Phac do HP";
+            }
+
+            @Override
+            public Integer getChunkIndex() {
+                return chunkIndex;
+            }
+
+            @Override
+            public String getContent() {
+                return "Noi dung HP doan " + chunkIndex;
+            }
+        };
+    }
+
+    private List<ChunkSearchRow> searchRows(int count) {
+        List<ChunkSearchRow> rows = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            rows.add(searchRow(i));
+        }
+        return rows;
+    }
+
+    // Tu khoa 201 ky tu -> 400 (IllegalArgumentException), khong cham toi DB.
+    @Test
+    void searchContentRejectsTooLongQuery() {
+        String tooLong = "a".repeat(201);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> documentStatusService.searchContent(tooLong));
+
+        verify(chunkRepository, never()).searchContent(any());
+    }
+
+    // Dung 200 ky tu van duoc chap nhan (ranh gioi).
+    @Test
+    void searchContentAcceptsQueryOfMaxLength() {
+        when(chunkRepository.searchContent(any())).thenReturn(List.of());
+
+        var result = documentStatusService.searchContent("a".repeat(200));
+
+        assertTrue(result.items().isEmpty());
+        assertFalse(result.truncated());
+    }
+
+    // Repository tra 51 dong (dong thu 51 chi de biet con ket qua) -> chi giu 50, truncated = true.
+    @Test
+    void searchContentMarksTruncatedWhenMoreThan50Rows() {
+        when(chunkRepository.searchContent(any())).thenReturn(searchRows(51));
+
+        var result = documentStatusService.searchContent("hp");
+
+        assertEquals(50, result.items().size());
+        assertEquals(49, result.items().get(49).chunkIndex());
+        assertTrue(result.truncated());
+    }
+
+    // Dung 50 dong -> khong co gi bi cat, khong duoc bao "con nua".
+    @Test
+    void searchContentNotTruncatedWhenExactly50Rows() {
+        when(chunkRepository.searchContent(any())).thenReturn(searchRows(50));
+
+        var result = documentStatusService.searchContent("hp");
+
+        assertEquals(50, result.items().size());
+        assertFalse(result.truncated());
     }
 }

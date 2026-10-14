@@ -83,6 +83,11 @@ export interface CmsDocumentSearchHit {
   snippet: string
 }
 
+export interface CmsDocumentSearchResult {
+  items: CmsDocumentSearchHit[]
+  truncated: boolean
+}
+
 export async function uploadCmsDocumentVersion(
   documentId: number,
   file: File,
@@ -117,7 +122,7 @@ export async function unpublishCmsDocument(documentId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/unpublish`)
 }
 
-export async function searchCmsDocumentContent(q: string): Promise<CmsDocumentSearchHit[]> {
-  const { data } = await cmsApiClient.get<CmsDocumentSearchHit[]>('/documents/search', { params: { q } })
+export async function searchCmsDocumentContent(q: string): Promise<CmsDocumentSearchResult> {
+  const { data } = await cmsApiClient.get<CmsDocumentSearchResult>('/documents/search', { params: { q } })
   return data
 }

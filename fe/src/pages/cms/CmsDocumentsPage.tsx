@@ -120,6 +120,8 @@ export default function CmsDocumentsPage() {
   const [contentQuery, setContentQuery] = useState('')
   const [contentHits, setContentHits] = useState<CmsDocumentSearchHit[] | null>(null)
   const [contentSearching, setContentSearching] = useState(false)
+  // C4 - true khi con ket qua chua hien (BE chi tra toi da 50)
+  const [contentTruncated, setContentTruncated] = useState(false)
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -281,7 +283,9 @@ export default function CmsDocumentsPage() {
     }
     setContentSearching(true)
     try {
-      setContentHits(await searchCmsDocumentContent(q))
+      const result = await searchCmsDocumentContent(q)
+      setContentHits(result.items)
+      setContentTruncated(result.truncated)
     } catch (err) {
       message.error(errorMessageOf(err, 'Tìm kiếm thất bại'))
     } finally {
@@ -684,10 +688,19 @@ export default function CmsDocumentsPage() {
           loading={contentSearching}
           enterButton="Tìm"
           allowClear
+          maxLength={200}
         />
         <Text type="secondary" className="text-xs mt-1 block">
           Chỉ tìm trong phiên bản đang được chatbot dùng. Tìm có phân biệt dấu (gõ "dạ dày", không gõ "da day").
         </Text>
+        {contentHits !== null && contentTruncated && (
+          <Alert
+            type="warning"
+            showIcon
+            className="mt-3 text-xs"
+            message="Chỉ hiển thị 50 kết quả đầu tiên. Hãy nhập từ khóa cụ thể hơn để thu hẹp kết quả."
+          />
+        )}
         {contentHits !== null && (
           <List
             className="mt-4"

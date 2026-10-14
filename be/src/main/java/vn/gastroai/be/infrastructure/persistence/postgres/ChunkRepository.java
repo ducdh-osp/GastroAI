@@ -18,13 +18,16 @@ public interface ChunkRepository extends JpaRepository<Chunk, Long> {
 
     void deleteByDocumentId(Long documentId);
 
-        /** UC0055 - tim cum tu trong noi dung chunk cua ban dang dung, toi da 50 ket qua. */
+    /**
+     * UC0055 - tim cum tu trong noi dung chunk cua ban dang dung, toi da 50 ket
+     * qua.
+     */
     @Query(value = "SELECT c.document_id AS documentId, d.title AS title, "
             + "c.chunk_index AS chunkIndex, c.content AS content "
             + "FROM chunks c JOIN documents d ON d.id = c.document_id "
             + "WHERE d.status = 'DONE' AND d.is_current = TRUE "
             + "AND c.content ILIKE CONCAT('%', :q, '%') ESCAPE '\\' "
             + "ORDER BY d.title, c.chunk_index "
-            + "LIMIT 50", nativeQuery = true)
+            + "LIMIT 51", nativeQuery = true)
     List<ChunkSearchRow> searchContent(@Param("q") String q);
 }

@@ -124,7 +124,7 @@ public class DocumentUploadController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<DocumentSearchHit>> search(@RequestParam("q") String q) {
+    public ResponseEntity<DocumentSearchResult> search(@RequestParam("q") String q) {
         return ResponseEntity.ok(documentStatusService.searchContent(q));
     }
 

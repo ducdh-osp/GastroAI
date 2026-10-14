@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import vn.gastroai.be.api.document.DocumentSearchResult;
 
 @Service
 public class DocumentStatusService {
@@ -30,6 +31,8 @@ public class DocumentStatusService {
     private final DocumentRepository documentRepository;
     private final ChunkRepository chunkRepository;
     private static final int SNIPPET_RADIUS = 120;
+    private static final int MAX_QUERY_LENGTH = 200;
+    private static final int MAX_SEARCH_RESULTS = 50;
 
     public DocumentStatusService(DocumentRepository documentRepository, ChunkRepository chunkRepository) {
         this.documentRepository = documentRepository;
@@ -74,11 +77,6 @@ public class DocumentStatusService {
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
 
-        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung, TRU KHI admin
-        // da
-        // chu dong go tai lieu (dong goc co unpublished_at) - luc do chi danh dau DONE.
-        // clearCurrent chay TRUOC, bat ban nay SAU, de khong bao gio co 2 ban cung la
-        // hien hanh trong 1 nhom (index uk_documents_group_current).
         if (!document.isCurrentVersion() && rootOf(document).getUnpublishedAt() == null) {
             documentRepository.clearCurrent(document.groupId());
             document.setCurrentVersion(true);
@@ -279,17 +277,27 @@ public class DocumentStatusService {
      * UC0055 - tim cum tu trong noi dung tai lieu dang dung, tra doan trich quanh
      * cho khop.
      */
-    @Transactional(readOnly = true)
-    public List<DocumentSearchHit> searchContent(String query) {
+     @Transactional(readOnly = true)
+    public DocumentSearchResult searchContent(String query) {
         String q = query == null ? "" : query.trim();
         if (q.length() < 2) {
             throw new IllegalArgumentException("Nhập ít nhất 2 ký tự để tìm kiếm");
         }
+        if (q.length() > MAX_QUERY_LENGTH) {
+            throw new IllegalArgumentException("Từ khóa quá dài (tối đa " + MAX_QUERY_LENGTH + " ký tự)");
+        }
         String escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-        return chunkRepository.searchContent(escaped).stream()
+
+        // SQL lay toi da 51 dong: du 51 nghia la con ket qua chua hien -> truncated.
+        var rows = chunkRepository.searchContent(escaped);
+        boolean truncated = rows.size() > MAX_SEARCH_RESULTS;
+
+        List<DocumentSearchHit> items = rows.stream()
+                .limit(MAX_SEARCH_RESULTS)
                 .map(row -> new DocumentSearchHit(row.getDocumentId(), row.getTitle(),
                         row.getChunkIndex(), snippet(row.getContent(), q)))
                 .toList();
+        return new DocumentSearchResult(items, truncated);
     }
 
     /** Cat ~120 ky tu truoc va sau vi tri khop dau tien, them "…" neu bi cat. */
