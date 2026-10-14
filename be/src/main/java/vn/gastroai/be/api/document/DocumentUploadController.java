@@ -99,6 +99,15 @@ public class DocumentUploadController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Xoa rieng mot phien ban (khong xoa ca tai lieu). */
+    @DeleteMapping("/{documentId}/versions/{versionId}")
+    public ResponseEntity<Void> deleteVersion(
+            @PathVariable Long documentId,
+            @PathVariable Long versionId) {
+        documentUploadService.deleteVersion(documentId, versionId);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{documentId}")
     public ResponseEntity<Void> delete(@PathVariable Long documentId) {
         documentUploadService.delete(documentId);
@@ -115,7 +124,7 @@ public class DocumentUploadController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<DocumentSearchHit>> search(@RequestParam("q") String q) {
+    public ResponseEntity<DocumentSearchResult> search(@RequestParam("q") String q) {
         return ResponseEntity.ok(documentStatusService.searchContent(q));
     }
 

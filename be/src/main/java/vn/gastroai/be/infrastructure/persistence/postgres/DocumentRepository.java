@@ -9,7 +9,6 @@ import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface DocumentRepository extends JpaRepository<Document, Long> {
 
@@ -21,11 +20,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          */
         List<Document> findByStatusIn(List<DocumentStatus> statuses);
 
-        /**
-         * Tim document khac co cung ma bam noi dung, bo qua ban da ERROR (duoc phep
-         * upload lai).
-         */
-        Optional<Document> findFirstByContentHashAndStatusNot(String contentHash, DocumentStatus status);
+        List<Document> findByContentHashAndStatusNot(String contentHash, DocumentStatus status);
 
         /**
          * Gianh quyen xu ly 1 document bang UPDATE nguyen tu - chi doi duoc neu con
@@ -77,9 +72,41 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
                         + "WHERE COALESCE(d.rootId, d.id) = :groupId AND d.currentVersion = true")
         int clearCurrent(@Param("groupId") Long groupId);
 
-        /** Xoa moi phien ban cua 1 nhom bang 1 cau lenh (chunk/embedding tu xoa theo cascade). */
+        /**
+         * Xoa moi phien ban cua 1 nhom bang 1 cau lenh (chunk/embedding tu xoa theo
+         * cascade).
+         */
         @Modifying
         @Transactional
         @Query("DELETE FROM Document d WHERE COALESCE(d.rootId, d.id) = :groupId")
         int deleteGroup(@Param("groupId") Long groupId);
+
+        /**
+         * Moi tai lieu 1 dong: phien ban co versionNo lon nhat trong nhom. KHONG lay
+         * full_text
+         * (cot nay chua toan bo chu cua tai lieu, rat nang) - chi cac cot hien len bang
+         * danh sach.
+         */
+        @Query("SELECT d.id AS id, d.title AS title, d.source AS source, d.sourceUrl AS sourceUrl, "
+                        + "d.status AS status, d.processingStage AS processingStage, "
+                        + "d.errorMessage AS errorMessage, d.uploadedAt AS uploadedAt, "
+                        + "d.updatedAt AS updatedAt, d.versionNo AS versionNo, "
+                        + "COALESCE(d.rootId, d.id) AS groupId "
+                        + "FROM Document d "
+                        + "WHERE d.versionNo = (SELECT MAX(x.versionNo) FROM Document x "
+                        + "WHERE COALESCE(x.rootId, x.id) = COALESCE(d.rootId, d.id)) "
+                        + "ORDER BY d.uploadedAt DESC")
+        List<DocumentListRow> findLatestVersionRows();
+
+        /**
+         * Thong tin tong hop theo nhom (moi tai lieu 1 dong): so phien ban, ban dang
+         * dung,
+         * thoi diem go (chi dong goc moi co unpublished_at).
+         */
+        @Query("SELECT COALESCE(d.rootId, d.id) AS groupId, COUNT(d) AS versionCount, "
+                        + "MAX(CASE WHEN d.currentVersion = TRUE THEN d.versionNo END) AS currentVersionNo, "
+                        + "MAX(CASE WHEN d.currentVersion = TRUE THEN d.id END) AS currentId, "
+                        + "MAX(CASE WHEN d.rootId IS NULL THEN d.unpublishedAt END) AS unpublishedAt "
+                        + "FROM Document d GROUP BY COALESCE(d.rootId, d.id)")
+        List<DocumentGroupRow> findGroupRows();
 }

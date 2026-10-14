@@ -23,6 +23,7 @@ export interface CmsDocumentItem {
   versionNo: number
   currentVersionNo: number | null
   versionCount: number
+  unpublished: boolean
 }
 
 export interface CmsDocumentPage {
@@ -82,6 +83,11 @@ export interface CmsDocumentSearchHit {
   snippet: string
 }
 
+export interface CmsDocumentSearchResult {
+  items: CmsDocumentSearchHit[]
+  truncated: boolean
+}
+
 export async function uploadCmsDocumentVersion(
   documentId: number,
   file: File,
@@ -105,7 +111,9 @@ export async function listCmsDocumentVersions(documentId: number): Promise<CmsDo
 export async function activateCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/activate`)
 }
-
+export async function deleteCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
+  await cmsApiClient.delete(`/documents/${documentId}/versions/${versionId}`)
+}
 export async function publishCmsDocument(documentId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/publish`)
 }
@@ -114,7 +122,7 @@ export async function unpublishCmsDocument(documentId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/unpublish`)
 }
 
-export async function searchCmsDocumentContent(q: string): Promise<CmsDocumentSearchHit[]> {
-  const { data } = await cmsApiClient.get<CmsDocumentSearchHit[]>('/documents/search', { params: { q } })
+export async function searchCmsDocumentContent(q: string): Promise<CmsDocumentSearchResult> {
+  const { data } = await cmsApiClient.get<CmsDocumentSearchResult>('/documents/search', { params: { q } })
   return data
 }

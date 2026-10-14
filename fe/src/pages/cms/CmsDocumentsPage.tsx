@@ -43,10 +43,11 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   activateCmsDocumentVersion,
   deleteCmsDocument,
+  deleteCmsDocumentVersion,
   listCmsDocuments,
   listCmsDocumentVersions,
   publishCmsDocument,
@@ -95,8 +96,13 @@ export default function CmsDocumentsPage() {
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<DocumentStatus | undefined>(undefined)
 
-  // Auto-refresh
-  const [autoRefresh, setAutoRefresh] = useState(true)
+  // Auto-refresh: mac dinh TAT. Van tu dong cap nhat khi co tai lieu dang xu ly (xem useEffect polling).
+  const [autoRefresh, setAutoRefresh] = useState(false)
+
+  // C7 - khoa nut khi mot thao tac dang chay: busyKey de hien spinner / khoa nut,
+  // busyRef de chan bam dup truoc khi React kip ve lai.
+  const [busyKey, setBusyKey] = useState<string | null>(null)
+  const busyRef = useRef<string | null>(null)
 
   // Modal upload
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
@@ -119,6 +125,8 @@ export default function CmsDocumentsPage() {
   const [contentQuery, setContentQuery] = useState('')
   const [contentHits, setContentHits] = useState<CmsDocumentSearchHit[] | null>(null)
   const [contentSearching, setContentSearching] = useState(false)
+  // C4 - true khi con ket qua chua hien (BE chi tra toi da 50)
+  const [contentTruncated, setContentTruncated] = useState(false)
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -147,15 +155,41 @@ export default function CmsDocumentsPage() {
     return items.some((item) => item.status === 'PROCESSING' || item.status === 'PENDING')
   }, [items])
 
+  const isPolling = autoRefresh || hasProcessingDocs
+
   useEffect(() => {
-    if (!autoRefresh && !hasProcessingDocs) return
+    if (!isPolling) return
 
     const interval = setInterval(() => {
+      // C7 - tab dang an thi bo qua, khong goi API vo ich.
+      if (document.visibilityState !== 'visible') return
       loadData(true)
     }, 4000)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, hasProcessingDocs, loadData])
+  }, [isPolling, loadData])
+
+  // C7 - quay lai tab thi cap nhat ngay 1 lan (trong luc an tab da bo qua cac lan poll).
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') loadData(true)
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [loadData])
+
+  // C7 - chay 1 thao tac "doc quyen": dang co thao tac khac thi bo qua.
+  async function runBusy(key: string, action: () => Promise<void>) {
+    if (busyRef.current !== null) return
+    busyRef.current = key
+    setBusyKey(key)
+    try {
+      await action()
+    } finally {
+      busyRef.current = null
+      setBusyKey(null)
+    }
+  }
 
   // KPI stats
   const stats = useMemo(() => {
@@ -193,25 +227,28 @@ export default function CmsDocumentsPage() {
     }
   }
 
-  async function handleRetry(item: CmsDocumentItem) {
-    try {
-      await retryCmsDocument(item.id)
-      message.success(`Đã đưa tài liệu #${item.id} vào hàng đợi xử lý lại`)
-      loadData()
-    } catch {
-      message.error('Không thể thực hiện thử lại')
-    }
+  function handleRetry(item: CmsDocumentItem) {
+    return runBusy(`retry-${item.id}`, async () => {
+      try {
+        await retryCmsDocument(item.id)
+        message.success(`Đã đưa tài liệu #${item.id} vào hàng đợi xử lý lại`)
+        loadData()
+      } catch {
+        message.error('Không thể thực hiện thử lại')
+      }
+    })
   }
 
-  async function handleDelete(item: CmsDocumentItem) {
-    try {
-      await deleteCmsDocument(item.id)
-      message.success('Đã xóa tài liệu và các đoạn trích dẫn RAG liên quan')
-      loadData()
-    } catch (err: unknown) {
-      const errMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      message.error(errMsg || 'Xóa tài liệu thất bại')
-    }
+  function handleDelete(item: CmsDocumentItem) {
+    return runBusy(`delete-${item.id}`, async () => {
+      try {
+        await deleteCmsDocument(item.id)
+        message.success('Đã xóa tài liệu và các đoạn trích dẫn RAG liên quan')
+        loadData()
+      } catch (err: unknown) {
+        message.error(errorMessageOf(err, 'Xóa tài liệu thất bại'))
+      }
+    })
   }
 
   function openUploadVersion(item: CmsDocumentItem) {
@@ -233,31 +270,51 @@ export default function CmsDocumentsPage() {
     }
   }
 
-  async function handleActivate(version: CmsDocumentVersion) {
-    if (!historyItem) return
-    try {
-      await activateCmsDocumentVersion(historyItem.id, version.id)
-      message.success(`Chatbot đã chuyển sang dùng phiên bản v${version.versionNo}`)
-      await openHistory(historyItem)
-      loadData()
-    } catch (err) {
-      message.error(errorMessageOf(err, 'Không đổi được phiên bản'))
-    }
+  function handleActivate(version: CmsDocumentVersion) {
+    if (!historyItem) return Promise.resolve()
+    const target = historyItem
+    return runBusy(`activate-${version.id}`, async () => {
+      try {
+        await activateCmsDocumentVersion(target.id, version.id)
+        message.success(`Chatbot đã chuyển sang dùng phiên bản v${version.versionNo}`)
+        await openHistory(target)
+        loadData()
+      } catch (err) {
+        message.error(errorMessageOf(err, 'Không đổi được phiên bản'))
+      }
+    })
   }
 
-  async function handleTogglePublish(item: CmsDocumentItem) {
-    try {
-      if (item.currentVersionNo === null) {
-        await publishCmsDocument(item.id)
-        message.success('Đã đăng lại tài liệu cho chatbot')
-      } else {
-        await unpublishCmsDocument(item.id)
-        message.success('Đã gỡ tài liệu khỏi chatbot (dữ liệu vẫn được giữ)')
+  function handleDeleteVersion(version: CmsDocumentVersion) {
+    if (!historyItem) return Promise.resolve()
+    const target = historyItem
+    return runBusy(`deleteVersion-${version.id}`, async () => {
+      try {
+        await deleteCmsDocumentVersion(target.id, version.id)
+        message.success(`Đã xóa phiên bản v${version.versionNo}`)
+        await openHistory(target)
+        loadData()
+      } catch (err) {
+        message.error(errorMessageOf(err, 'Không xóa được phiên bản'))
       }
-      loadData()
-    } catch (err) {
-      message.error(errorMessageOf(err, 'Thao tác thất bại'))
-    }
+    })
+  }
+
+  function handleTogglePublish(item: CmsDocumentItem) {
+    return runBusy(`publish-${item.id}`, async () => {
+      try {
+        if (item.unpublished) {
+          await publishCmsDocument(item.id)
+          message.success('Đã đăng lại tài liệu cho chatbot')
+        } else {
+          await unpublishCmsDocument(item.id)
+          message.success('Đã gỡ tài liệu khỏi chatbot (dữ liệu vẫn được giữ)')
+        }
+        loadData()
+      } catch (err) {
+        message.error(errorMessageOf(err, 'Thao tác thất bại'))
+      }
+    })
   }
 
   async function handleContentSearch(value: string) {
@@ -268,7 +325,9 @@ export default function CmsDocumentsPage() {
     }
     setContentSearching(true)
     try {
-      setContentHits(await searchCmsDocumentContent(q))
+      const result = await searchCmsDocumentContent(q)
+      setContentHits(result.items)
+      setContentTruncated(result.truncated)
     } catch (err) {
       message.error(errorMessageOf(err, 'Tìm kiếm thất bại'))
     } finally {
@@ -375,10 +434,12 @@ export default function CmsDocumentsPage() {
       render: (_, record) => (
         <Space direction="vertical" size={2}>
           <Text className="text-xs">v{record.versionNo} · {record.versionCount} phiên bản</Text>
-          {record.currentVersionNo === null ? (
+          {record.unpublished ? (
             <Tag color="default">Đã gỡ</Tag>
-          ) : (
+          ) : record.currentVersionNo !== null ? (
             <Tag color="green">Đang dùng v{record.currentVersionNo}</Tag>
+          ) : (
+            <Tag color="orange">Chưa sẵn sàng</Tag>
           )}
         </Space>
       ),
@@ -440,6 +501,8 @@ export default function CmsDocumentsPage() {
               icon={<RedoOutlined />}
               title="Thử xử lý lại"
               className="text-amber-600 hover:text-amber-700"
+              loading={busyKey === `retry-${record.id}`}
+              disabled={busyKey !== null}
               onClick={() => handleRetry(record)}
             />
           )}
@@ -451,39 +514,45 @@ export default function CmsDocumentsPage() {
               type="text"
               size="small"
               icon={<CloudUploadOutlined />}
-              disabled={record.status === 'PENDING' || record.status === 'PROCESSING'}
+              disabled={busyKey !== null || record.status === 'PENDING' || record.status === 'PROCESSING'}
               onClick={() => openUploadVersion(record)}
             />
           </Tooltip>
           <Popconfirm
-            title={record.currentVersionNo === null ? 'Đăng lại tài liệu?' : 'Gỡ tài liệu khỏi chatbot?'}
-            description={record.currentVersionNo === null
+            title={record.unpublished ? 'Đăng lại tài liệu?' : 'Gỡ tài liệu khỏi chatbot?'}
+            description={record.unpublished
               ? 'Chatbot sẽ dùng lại phiên bản đã xử lý xong mới nhất.'
               : 'Chatbot sẽ không trích dẫn tài liệu này nữa. Dữ liệu vẫn được giữ, có thể đăng lại.'}
             okText="Đồng ý"
             cancelText="Hủy"
             onConfirm={() => handleTogglePublish(record)}
+            disabled={busyKey !== null || (!record.unpublished && record.currentVersionNo === null)}
           >
-            <Tooltip title={record.currentVersionNo === null ? 'Đăng lại' : 'Gỡ khỏi chatbot'}>
+            <Tooltip title={record.unpublished ? 'Đăng lại' : 'Gỡ khỏi chatbot'}>
               <Button
                 type="text"
                 size="small"
-                icon={record.currentVersionNo === null ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                loading={busyKey === `publish-${record.id}`}
+                disabled={busyKey !== null || (!record.unpublished && record.currentVersionNo === null)}
+                icon={record.unpublished ? <EyeOutlined /> : <EyeInvisibleOutlined />}
               />
             </Tooltip>
           </Popconfirm>
           <Popconfirm
-            title="Xóa tài liệu này?"
-            description="Mọi phiên bản của tài liệu và toàn bộ vector embeddings liên quan sẽ bị xóa khỏi hệ thống RAG."
-            okText="Xóa"
+            title={`Xóa tài liệu và tất cả ${record.versionCount} phiên bản?`}
+            description="Mọi phiên bản, file gốc và toàn bộ vector embeddings liên quan sẽ bị xóa khỏi hệ thống RAG. Không khôi phục được. Muốn xóa riêng một phiên bản, hãy mở Lịch sử phiên bản."
+            okText="Xóa tất cả"
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
             onConfirm={() => handleDelete(record)}
+            disabled={busyKey !== null}
           >
             <Button
               type="text"
               size="small"
               danger
+              loading={busyKey === `delete-${record.id}`}
+              disabled={busyKey !== null}
               icon={<DeleteOutlined />}
               title="Xóa tài liệu"
             />
@@ -608,11 +677,11 @@ export default function CmsDocumentsPage() {
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span
               className={`inline-block w-2 h-2 rounded-full ${
-                hasProcessingDocs && autoRefresh ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'
+                isPolling ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'
               }`}
             />
             <span>
-              {hasProcessingDocs && autoRefresh
+              {isPolling
                 ? 'Đang tự động đồng bộ tiến trình (mỗi 4s)...'
                 : 'Hệ thống ở trạng thái ổn định'}
             </span>
@@ -667,10 +736,19 @@ export default function CmsDocumentsPage() {
           loading={contentSearching}
           enterButton="Tìm"
           allowClear
+          maxLength={200}
         />
         <Text type="secondary" className="text-xs mt-1 block">
           Chỉ tìm trong phiên bản đang được chatbot dùng. Tìm có phân biệt dấu (gõ "dạ dày", không gõ "da day").
         </Text>
+        {contentHits !== null && contentTruncated && (
+          <Alert
+            type="warning"
+            showIcon
+            className="mt-3 text-xs"
+            message="Chỉ hiển thị 50 kết quả đầu tiên. Hãy nhập từ khóa cụ thể hơn để thu hẹp kết quả."
+          />
+        )}
         {contentHits !== null && (
           <List
             className="mt-4"
@@ -712,12 +790,57 @@ export default function CmsDocumentsPage() {
             {
               title: '',
               key: 'action',
-              width: 130,
-              render: (_, v) => v.currentVersion
-                ? <Tag color="green">Đang dùng</Tag>
-                : v.status === 'DONE'
-                  ? <Button size="small" onClick={() => handleActivate(v)}>Dùng bản này</Button>
-                  : null,
+              width: 190,
+              render: (_, v) => {
+                const canDelete = !v.currentVersion
+                  && v.versionNo !== 1
+                  && v.status !== 'PENDING'
+                  && v.status !== 'PROCESSING'
+                return (
+                  <Space size={4}>
+                    {v.currentVersion ? (
+                      <Tag color="green">Đang dùng</Tag>
+                    ) : v.status === 'DONE' ? (
+                      <Popconfirm
+                        title={`Chuyển chatbot sang dùng phiên bản v${v.versionNo}?`}
+                        description="Từ giờ chatbot sẽ trích dẫn nội dung của phiên bản này thay cho bản đang dùng."
+                        okText="Dùng bản này"
+                        cancelText="Hủy"
+                        disabled={busyKey !== null}
+                        onConfirm={() => handleActivate(v)}
+                      >
+                        <Button
+                          size="small"
+                          loading={busyKey === `activate-${v.id}`}
+                          disabled={busyKey !== null}
+                        >
+                          Dùng bản này
+                        </Button>
+                      </Popconfirm>
+                    ) : null}
+                    {canDelete && (
+                      <Popconfirm
+                        title={`Xóa phiên bản v${v.versionNo}?`}
+                        description="Chỉ phiên bản này bị xóa (kèm file và dữ liệu RAG của nó). Các phiên bản khác giữ nguyên."
+                        okText="Xóa"
+                        cancelText="Hủy"
+                        okButtonProps={{ danger: true }}
+                        disabled={busyKey !== null}
+                        onConfirm={() => handleDeleteVersion(v)}
+                      >
+                        <Button
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                          title="Xóa phiên bản này"
+                          loading={busyKey === `deleteVersion-${v.id}`}
+                          disabled={busyKey !== null}
+                        />
+                      </Popconfirm>
+                    )}
+                  </Space>
+                )
+              },
             },
           ]}
         />
@@ -757,6 +880,16 @@ export default function CmsDocumentsPage() {
         destroyOnClose
       >
         <div className="space-y-4 py-2">
+          {versionTarget && (
+            <Alert
+              type="warning"
+              showIcon
+              message={`Bạn đang tải phiên bản mới cho: ${versionTarget.title}`}
+              description="File này sẽ trở thành một phiên bản mới của tài liệu trên, không phải một tài liệu riêng. Muốn thêm tài liệu khác, hãy đóng hộp này và bấm 'Tải lên tài liệu mới'."
+              className="text-xs"
+            />
+          )}
+
           <Alert
             type="info"
             showIcon
