@@ -151,9 +151,8 @@ class ChatExportServiceTest {
 
         String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
 
-        assertTrue(text.contains("Chúc bạn mau khỏe"));
-        assertFalse(text.contains("□□"), "Khong duoc co 2 dau thay the dinh lien nhau");
-        assertFalse(text.contains("??"), "Khong duoc co 2 dau thay the dinh lien nhau");
+       assertTrue(text.contains("Chúc bạn mau khỏe \uFFFD"), "Emoji phai duoc thay bang dau \uFFFD, khong bi bo am tham");
+       assertFalse(text.contains("\uFFFD\uFFFD"), "Khong duoc co 2 dau thay the dinh lien nhau");
     }
 
     @Test

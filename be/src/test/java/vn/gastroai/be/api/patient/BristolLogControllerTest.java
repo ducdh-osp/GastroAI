@@ -27,84 +27,94 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(SecurityConfig.class)
 class BristolLogControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @MockitoBean
-    private BristolLogService bristolLogService;
+        @MockitoBean
+        private BristolLogService bristolLogService;
 
-    @MockitoBean
-    private JwtService jwtService;
+        @MockitoBean
+        private JwtService jwtService;
 
-    @MockitoBean
-    private PatientRepository patientRepository;
+        @MockitoBean
+        private PatientRepository patientRepository;
 
-    @MockitoBean
-    private RevokedTokenRepository revokedTokenRepository;
+        @MockitoBean
+        private RevokedTokenRepository revokedTokenRepository;
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void createRejectsBristolTypeOutOfRange() throws Exception {
-        mockMvc.perform(post("/api/v1/patient/bristol-logs")
-                        .with(csrf())
-                        .contentType("application/json")
-                        .content("{\"loggedAt\":\"2026-01-01T08:00:00Z\",\"bristolType\":9}"))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void createRejectsBristolTypeOutOfRange() throws Exception {
+                mockMvc.perform(post("/api/v1/patient/bristol-logs")
+                                .with(csrf())
+                                .contentType("application/json")
+                                .content("{\"loggedAt\":\"2026-01-01T08:00:00Z\",\"bristolType\":9}"))
+                                .andExpect(status().isBadRequest());
+        }
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void trendRejectsDaysAboveMax() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/bristol-logs/trend").with(csrf()).param("days", "9999"))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void trendRejectsDaysAboveMax() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/bristol-logs/trend").with(csrf()).param("days", "9999"))
+                                .andExpect(status().isBadRequest());
+        }
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void createRejectsFutureLoggedAt() throws Exception {
-        mockMvc.perform(post("/api/v1/patient/bristol-logs")
-                        .with(csrf())
-                        .contentType("application/json")
-                        .content("{\"loggedAt\":\"2999-01-01T08:00:00Z\",\"bristolType\":4}"))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void createRejectsFutureLoggedAt() throws Exception {
+                mockMvc.perform(post("/api/v1/patient/bristol-logs")
+                                .with(csrf())
+                                .contentType("application/json")
+                                .content("{\"loggedAt\":\"2999-01-01T08:00:00Z\",\"bristolType\":4}"))
+                                .andExpect(status().isBadRequest());
+        }
 
-    // ===== UC0020 - thung rac (soft-delete) =====
+        // ===== UC0020 - thung rac (soft-delete) =====
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void trashReturnsOk() throws Exception {
-        when(bristolLogService.listTrash(1L)).thenReturn(List.of());
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void trashReturnsOk() throws Exception {
+                when(bristolLogService.listTrash(1L, 0, 20))
+                                .thenReturn(new BristolTrashPage(List.of(), 0, 20, 0, 0));
 
-        mockMvc.perform(get("/api/v1/patient/bristol-logs/trash").with(csrf()))
-                .andExpect(status().isOk());
-    }
+                mockMvc.perform(get("/api/v1/patient/bristol-logs/trash").with(csrf()))
+                                .andExpect(status().isOk());
+        }
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void restoreReturnsOkWhenWithinRetentionWindow() throws Exception {
-        when(bristolLogService.restore(1L, 99L)).thenReturn(
-                new BristolLogResponse(99L, java.time.Instant.now(), 4, null));
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void trashRejectsOversizedPage() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/bristol-logs/trash?size=101").with(csrf()))
+                                .andExpect(status().isBadRequest());
+        }
 
-        mockMvc.perform(post("/api/v1/patient/bristol-logs/99/restore").with(csrf()))
-                .andExpect(status().isOk());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void restoreReturnsOkWhenWithinRetentionWindow() throws Exception {
+                when(bristolLogService.restore(1L, 99L)).thenReturn(
+                                new BristolLogResponse(99L, java.time.Instant.now(), 4, null));
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void restoreReturnsConflictWhenPastRetentionWindow() throws Exception {
-        when(bristolLogService.restore(anyLong(), anyLong()))
-                .thenThrow(new IllegalStateException("Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
+                mockMvc.perform(post("/api/v1/patient/bristol-logs/99/restore").with(csrf()))
+                                .andExpect(status().isOk());
+        }
 
-        mockMvc.perform(post("/api/v1/patient/bristol-logs/99/restore").with(csrf()))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void restoreReturnsConflictWhenPastRetentionWindow() throws Exception {
+                when(bristolLogService.restore(anyLong(), anyLong()))
+                                .thenThrow(new IllegalStateException(
+                                                "Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
 
-    @Test
-    @WithMockUser(username = "1", roles = "ADMIN")
-    void trashRejectsAdminRole() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/bristol-logs/trash").with(csrf()))
-                .andExpect(status().isForbidden());
-    }
+                mockMvc.perform(post("/api/v1/patient/bristol-logs/99/restore").with(csrf()))
+                                .andExpect(status().isConflict())
+                                .andExpect(jsonPath("$.message").value(
+                                                "Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
+        }
+
+        @Test
+        @WithMockUser(username = "1", roles = "ADMIN")
+        void trashRejectsAdminRole() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/bristol-logs/trash").with(csrf()))
+                                .andExpect(status().isForbidden());
+        }
 }

@@ -62,7 +62,7 @@ import {
   type DocumentProcessingStage,
   type DocumentStatus,
 } from '../../api/cmsDocuments'
-
+import { CmsAppShell } from '../../components/cms/CmsAppShell'
 const { Title, Text } = Typography
 const { Dragger } = Upload
 
@@ -563,444 +563,445 @@ export default function CmsDocumentsPage() {
   ]
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <Title level={3} className="!mb-1 flex items-center gap-2">
-            <FileTextOutlined className="text-teal-600" />
-            Tài liệu y khoa & Số hóa RAG
-          </Title>
-          <Text type="secondary">
-            Quản lý tài liệu phác đồ y khoa, giám sát tiến trình số hóa & chia chunking dùng cho trợ lý AI (UC0061)
-          </Text>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => loadData()}
-            loading={loading}
-          >
-            Làm mới
-          </Button>
-          <Button
-            type="primary"
-            icon={<UploadOutlined />}
-            className="bg-teal-600 hover:bg-teal-700"
-            onClick={() => {
-              setUploadFileList([])
-              setSourceUrlInput('')
-              setVersionTarget(null)
-              setUploadModalOpen(true)
-            }}
-          >
-            Tải lên tài liệu mới
-          </Button>
-        </div>
-      </div>
-
-      {/* KPI Stats */}
-      <Row gutter={[16, 16]}>
-        <Col xs={12} sm={6}>
-          <Card className="rounded-xl shadow-xs">
-            <Statistic title="Tổng số tài liệu" value={stats.total} />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20">
-            <Statistic
-              title="Sẵn sàng cho RAG"
-              value={stats.done}
-              valueStyle={{ color: '#16a34a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20">
-            <Statistic
-              title="Đang trong tiến trình"
-              value={stats.processing}
-              valueStyle={{ color: '#2563eb' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20">
-            <Statistic
-              title="Lỗi cần xử lý lại"
-              value={stats.error}
-              valueStyle={{ color: '#dc2626' }}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Filter bar */}
-      <Card bodyStyle={{ padding: 16 }}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
-              prefix={<SearchOutlined className="text-slate-400" />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              allowClear
-              className="w-72"
-            />
-            <Select
-              placeholder="Trạng thái"
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              allowClear
-              className="w-44"
-              options={[
-                { label: 'Tất cả trạng thái', value: undefined as unknown as DocumentStatus },
-                { label: 'Sẵn sàng (RAG)', value: 'DONE' },
-                { label: 'Đang xử lý', value: 'PROCESSING' },
-                { label: 'Chờ xử lý', value: 'PENDING' },
-                { label: 'Lỗi', value: 'ERROR' },
-              ]}
-            />
-            {(search || selectedStatus !== undefined) && (
-              <Button
-                type="link"
-                onClick={() => {
-                  setSearch('')
-                  setSelectedStatus(undefined)
-                }}
-              >
-                Đặt lại bộ lọc
-              </Button>
-            )}
+    <CmsAppShell>
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <Title level={3} className="!mb-1 flex items-center gap-2">
+              <FileTextOutlined className="text-teal-600" />
+              Tài liệu y khoa & Số hóa RAG
+            </Title>
+            <Text type="secondary">
+              Quản lý tài liệu phác đồ y khoa, giám sát tiến trình số hóa & chia chunking dùng cho trợ lý AI (UC0061)
+            </Text>
           </div>
-
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span
-              className={`inline-block w-2 h-2 rounded-full ${
-                isPolling ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'
-              }`}
-            />
-            <span>
-              {isPolling
-                ? 'Đang tự động đồng bộ tiến trình (mỗi 4s)...'
-                : 'Hệ thống ở trạng thái ổn định'}
-            </span>
-            <Switch
-              size="small"
-              checked={autoRefresh}
-              onChange={setAutoRefresh}
-              checkedChildren="Tự động"
-              unCheckedChildren="Tắt"
-            />
+          <div className="flex items-center gap-2">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => loadData()}
+              loading={loading}
+            >
+              Làm mới
+            </Button>
+            <Button
+              type="primary"
+              icon={<UploadOutlined />}
+              className="bg-teal-600 hover:bg-teal-700"
+              onClick={() => {
+                setUploadFileList([])
+                setSourceUrlInput('')
+                setVersionTarget(null)
+                setUploadModalOpen(true)
+              }}
+            >
+              Tải lên tài liệu mới
+            </Button>
           </div>
         </div>
-      </Card>
 
-      {/* Table */}
-      <Card bodyStyle={{ padding: 0 }}>
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={items}
-          loading={loading}
-          pagination={{
-            current: page + 1,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '15', '30'],
-            showTotal: (totalCount) => `Tổng cộng ${totalCount} tài liệu`,
-            onChange: (p, ps) => {
-              setPage(p - 1)
-              setPageSize(ps)
-            },
-          }}
-          locale={{
-            emptyText: (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Chưa có tài liệu y khoa nào được tải lên"
+        {/* KPI Stats */}
+        <Row gutter={[16, 16]}>
+          <Col xs={12} sm={6}>
+            <Card className="rounded-xl shadow-xs">
+              <Statistic title="Tổng số tài liệu" value={stats.total} />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20">
+              <Statistic
+                title="Sẵn sàng cho RAG"
+                value={stats.done}
+                valueStyle={{ color: '#16a34a' }}
               />
-            ),
-          }}
-        />
-      </Card>
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20">
+              <Statistic
+                title="Đang trong tiến trình"
+                value={stats.processing}
+                valueStyle={{ color: '#2563eb' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20">
+              <Statistic
+                title="Lỗi cần xử lý lại"
+                value={stats.error}
+                valueStyle={{ color: '#dc2626' }}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-      {/* UC0055 - Tìm trong nội dung tài liệu */}
-      <Card title="Tìm trong nội dung tài liệu" bodyStyle={{ padding: 16 }}>
-        <Input.Search
-          placeholder="VD: Helicobacter pylori, liều PPI..."
-          value={contentQuery}
-          onChange={(e) => setContentQuery(e.target.value)}
-          onSearch={handleContentSearch}
-          loading={contentSearching}
-          enterButton="Tìm"
-          allowClear
-          maxLength={200}
-        />
-        <Text type="secondary" className="text-xs mt-1 block">
-          Chỉ tìm trong phiên bản đang được chatbot dùng. Tìm có phân biệt dấu (gõ "dạ dày", không gõ "da day").
-        </Text>
-        {contentHits !== null && contentTruncated && (
-          <Alert
-            type="warning"
-            showIcon
-            className="mt-3 text-xs"
-            message="Chỉ hiển thị 50 kết quả đầu tiên. Hãy nhập từ khóa cụ thể hơn để thu hẹp kết quả."
-          />
-        )}
-        {contentHits !== null && (
-          <List
-            className="mt-4"
-            dataSource={contentHits}
-            locale={{ emptyText: 'Không tìm thấy đoạn nào chứa cụm từ này' }}
-            renderItem={(hit) => (
-              <List.Item>
-                <List.Item.Meta
-                  title={<span>{hit.title} <Text type="secondary" className="text-xs">· Đoạn #{hit.chunkIndex}</Text></span>}
-                  description={highlight(hit.snippet, contentQuery.trim())}
-                />
-              </List.Item>
-            )}
-          />
-        )}
-      </Card>
+        {/* Filter bar */}
+        <Card bodyStyle={{ padding: 16 }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
+                prefix={<SearchOutlined className="text-slate-400" />}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                allowClear
+                className="w-72"
+              />
+              <Select
+                placeholder="Trạng thái"
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                allowClear
+                className="w-44"
+                options={[
+                  { label: 'Tất cả trạng thái', value: undefined as unknown as DocumentStatus },
+                  { label: 'Sẵn sàng (RAG)', value: 'DONE' },
+                  { label: 'Đang xử lý', value: 'PROCESSING' },
+                  { label: 'Chờ xử lý', value: 'PENDING' },
+                  { label: 'Lỗi', value: 'ERROR' },
+                ]}
+              />
+              {(search || selectedStatus !== undefined) && (
+                <Button
+                  type="link"
+                  onClick={() => {
+                    setSearch('')
+                    setSelectedStatus(undefined)
+                  }}
+                >
+                  Đặt lại bộ lọc
+                </Button>
+              )}
+            </div>
 
-      {/* UC0049 - Ngăn kéo lịch sử phiên bản */}
-      <Drawer
-        title={historyItem ? `Lịch sử phiên bản — ${historyItem.title}` : ''}
-        open={historyItem !== null}
-        onClose={() => setHistoryItem(null)}
-        width={560}
-      >
-        <Table<CmsDocumentVersion>
-          rowKey="id"
-          size="small"
-          loading={versionsLoading}
-          dataSource={versions}
-          pagination={false}
-          columns={[
-            { title: 'Bản', dataIndex: 'versionNo', width: 60, render: (v: number) => `v${v}` },
-            { title: 'Trạng thái', dataIndex: 'status', width: 120, render: (s: DocumentStatus) => renderStatusTag(s) },
-            {
-              title: 'Tải lên',
-              dataIndex: 'uploadedAt',
-              render: (val: string) => dayjs(val).format('DD/MM/YYYY HH:mm'),
-            },
-            {
-              title: '',
-              key: 'action',
-              width: 190,
-              render: (_, v) => {
-                const canDelete = !v.currentVersion
-                  && v.versionNo !== 1
-                  && v.status !== 'PENDING'
-                  && v.status !== 'PROCESSING'
-                return (
-                  <Space size={4}>
-                    {v.currentVersion ? (
-                      <Tag color="green">Đang dùng</Tag>
-                    ) : v.status === 'DONE' ? (
-                      <Popconfirm
-                        title={`Chuyển chatbot sang dùng phiên bản v${v.versionNo}?`}
-                        description="Từ giờ chatbot sẽ trích dẫn nội dung của phiên bản này thay cho bản đang dùng."
-                        okText="Dùng bản này"
-                        cancelText="Hủy"
-                        disabled={busyKey !== null}
-                        onConfirm={() => handleActivate(v)}
-                      >
-                        <Button
-                          size="small"
-                          loading={busyKey === `activate-${v.id}`}
-                          disabled={busyKey !== null}
-                        >
-                          Dùng bản này
-                        </Button>
-                      </Popconfirm>
-                    ) : null}
-                    {canDelete && (
-                      <Popconfirm
-                        title={`Xóa phiên bản v${v.versionNo}?`}
-                        description="Chỉ phiên bản này bị xóa (kèm file và dữ liệu RAG của nó). Các phiên bản khác giữ nguyên."
-                        okText="Xóa"
-                        cancelText="Hủy"
-                        okButtonProps={{ danger: true }}
-                        disabled={busyKey !== null}
-                        onConfirm={() => handleDeleteVersion(v)}
-                      >
-                        <Button
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          title="Xóa phiên bản này"
-                          loading={busyKey === `deleteVersion-${v.id}`}
-                          disabled={busyKey !== null}
-                        />
-                      </Popconfirm>
-                    )}
-                  </Space>
-                )
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <span
+                className={`inline-block w-2 h-2 rounded-full ${isPolling ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'
+                  }`}
+              />
+              <span>
+                {isPolling
+                  ? 'Đang tự động đồng bộ tiến trình (mỗi 4s)...'
+                  : 'Hệ thống ở trạng thái ổn định'}
+              </span>
+              <Switch
+                size="small"
+                checked={autoRefresh}
+                onChange={setAutoRefresh}
+                checkedChildren="Tự động"
+                unCheckedChildren="Tắt"
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Table */}
+        <Card bodyStyle={{ padding: 0 }}>
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={items}
+            loading={loading}
+            pagination={{
+              current: page + 1,
+              pageSize,
+              total,
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '15', '30'],
+              showTotal: (totalCount) => `Tổng cộng ${totalCount} tài liệu`,
+              onChange: (p, ps) => {
+                setPage(p - 1)
+                setPageSize(ps)
               },
-            },
-          ]}
-        />
-      </Drawer>
-
-      {/* Modal Tải lên tài liệu */}
-      <Modal
-        title={versionTarget ? `Tải phiên bản mới cho "${versionTarget.title}"` : 'Tải lên tài liệu phác đồ y khoa mới'}
-        open={uploadModalOpen}
-        onCancel={() => {
-          if (uploading) return
-          setUploadModalOpen(false)
-          setVersionTarget(null)
-        }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setUploadModalOpen(false)
-              setVersionTarget(null)
             }}
-            disabled={uploading}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            className="bg-teal-600 hover:bg-teal-700"
-            loading={uploading}
-            onClick={handleUpload}
-          >
-            Bắt đầu tải lên & số hóa
-          </Button>,
-        ]}
-        width={580}
-        destroyOnClose
-      >
-        <div className="space-y-4 py-2">
-          {versionTarget && (
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Chưa có tài liệu y khoa nào được tải lên"
+                />
+              ),
+            }}
+          />
+        </Card>
+
+        {/* UC0055 - Tìm trong nội dung tài liệu */}
+        <Card title="Tìm trong nội dung tài liệu" bodyStyle={{ padding: 16 }}>
+          <Input.Search
+            placeholder="VD: Helicobacter pylori, liều PPI..."
+            value={contentQuery}
+            onChange={(e) => setContentQuery(e.target.value)}
+            onSearch={handleContentSearch}
+            loading={contentSearching}
+            enterButton="Tìm"
+            allowClear
+            maxLength={200}
+          />
+          <Text type="secondary" className="text-xs mt-1 block">
+            Chỉ tìm trong phiên bản đang được chatbot dùng. Tìm có phân biệt dấu (gõ "dạ dày", không gõ "da day").
+          </Text>
+          {contentHits !== null && contentTruncated && (
             <Alert
               type="warning"
               showIcon
-              message={`Bạn đang tải phiên bản mới cho: ${versionTarget.title}`}
-              description="File này sẽ trở thành một phiên bản mới của tài liệu trên, không phải một tài liệu riêng. Muốn thêm tài liệu khác, hãy đóng hộp này và bấm 'Tải lên tài liệu mới'."
-              className="text-xs"
+              className="mt-3 text-xs"
+              message="Chỉ hiển thị 50 kết quả đầu tiên. Hãy nhập từ khóa cụ thể hơn để thu hẹp kết quả."
             />
           )}
-
-          <Alert
-            type="info"
-            showIcon
-            message="Định dạng hỗ trợ: PDF, DOCX, TXT"
-            description="Sau khi tải lên, hệ thống sẽ tự động trích xuất nội dung văn bản, chia đoạn thông minh (Chunking) và sinh vector embeddings phục vụ RAG tư vấn tiêu hóa."
-            className="text-xs"
-          />
-
-          <div>
-            <Text className="font-semibold text-slate-700 block mb-1">
-              Chọn tệp tài liệu:
-            </Text>
-            <Dragger
-              fileList={uploadFileList}
-              beforeUpload={(file) => {
-                setUploadFileList([file as UploadFile])
-                return false
-              }}
-              onRemove={() => setUploadFileList([])}
-              maxCount={1}
-            >
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined className="text-teal-600 text-3xl" />
-              </p>
-              <p className="ant-upload-text text-sm font-medium">
-                Kéo thả file vào đây hoặc bấm để chọn tệp từ máy tính
-              </p>
-              <p className="ant-upload-hint text-xs text-slate-400">
-                Khuyên dùng các phác đồ điều trị chính thống từ Bệnh viện Nhân Dân 115, Bạch Mai hoặc Bộ Y Tế.
-              </p>
-            </Dragger>
-          </div>
-
-          <div>
-            <Text className="font-semibold text-slate-700 block mb-1">
-              URL nguồn công khai (Tùy chọn):
-            </Text>
-            <Input
-              placeholder="VD: https://benhvientanphu.vn/phac-do-dieu-tri-ibs.pdf"
-              value={sourceUrlInput}
-              onChange={(e) => setSourceUrlInput(e.target.value)}
-              prefix={<LinkOutlined className="text-slate-400" />}
+          {contentHits !== null && (
+            <List
+              className="mt-4"
+              dataSource={contentHits}
+              locale={{ emptyText: 'Không tìm thấy đoạn nào chứa cụm từ này' }}
+              renderItem={(hit) => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={<span>{hit.title} <Text type="secondary" className="text-xs">· Đoạn #{hit.chunkIndex}</Text></span>}
+                    description={highlight(hit.snippet, contentQuery.trim())}
+                  />
+                </List.Item>
+              )}
             />
-            <Text type="secondary" className="text-xs mt-1 block">
-              URL nguồn sẽ được lưu để AI trích dẫn nguồn minh bạch cho bệnh nhân khi trả lời.
-            </Text>
-          </div>
-        </div>
-      </Modal>
+          )}
+        </Card>
 
-      {/* Modal Xem chi tiết lỗi */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2 text-red-600">
-            <CloseCircleOutlined />
-            <span>Chi tiết lỗi xử lý tài liệu</span>
-          </div>
-        }
-        open={Boolean(errorModalItem)}
-        onCancel={() => setErrorModalItem(null)}
-        footer={[
-          <Button key="close" onClick={() => setErrorModalItem(null)}>
-            Đóng
-          </Button>,
-          errorModalItem && (
+        {/* UC0049 - Ngăn kéo lịch sử phiên bản */}
+        <Drawer
+          title={historyItem ? `Lịch sử phiên bản — ${historyItem.title}` : ''}
+          open={historyItem !== null}
+          onClose={() => setHistoryItem(null)}
+          width={560}
+        >
+          <Table<CmsDocumentVersion>
+            rowKey="id"
+            size="small"
+            loading={versionsLoading}
+            dataSource={versions}
+            pagination={false}
+            columns={[
+              { title: 'Bản', dataIndex: 'versionNo', width: 60, render: (v: number) => `v${v}` },
+              { title: 'Trạng thái', dataIndex: 'status', width: 120, render: (s: DocumentStatus) => renderStatusTag(s) },
+              {
+                title: 'Tải lên',
+                dataIndex: 'uploadedAt',
+                render: (val: string) => dayjs(val).format('DD/MM/YYYY HH:mm'),
+              },
+              {
+                title: '',
+                key: 'action',
+                width: 190,
+                render: (_, v) => {
+                  const canDelete = !v.currentVersion
+                    && v.versionNo !== 1
+                    && v.status !== 'PENDING'
+                    && v.status !== 'PROCESSING'
+                  return (
+                    <Space size={4}>
+                      {v.currentVersion ? (
+                        <Tag color="green">Đang dùng</Tag>
+                      ) : v.status === 'DONE' ? (
+                        <Popconfirm
+                          title={`Chuyển chatbot sang dùng phiên bản v${v.versionNo}?`}
+                          description="Từ giờ chatbot sẽ trích dẫn nội dung của phiên bản này thay cho bản đang dùng."
+                          okText="Dùng bản này"
+                          cancelText="Hủy"
+                          disabled={busyKey !== null}
+                          onConfirm={() => handleActivate(v)}
+                        >
+                          <Button
+                            size="small"
+                            loading={busyKey === `activate-${v.id}`}
+                            disabled={busyKey !== null}
+                          >
+                            Dùng bản này
+                          </Button>
+                        </Popconfirm>
+                      ) : null}
+                      {canDelete && (
+                        <Popconfirm
+                          title={`Xóa phiên bản v${v.versionNo}?`}
+                          description="Chỉ phiên bản này bị xóa (kèm file và dữ liệu RAG của nó). Các phiên bản khác giữ nguyên."
+                          okText="Xóa"
+                          cancelText="Hủy"
+                          okButtonProps={{ danger: true }}
+                          disabled={busyKey !== null}
+                          onConfirm={() => handleDeleteVersion(v)}
+                        >
+                          <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            title="Xóa phiên bản này"
+                            loading={busyKey === `deleteVersion-${v.id}`}
+                            disabled={busyKey !== null}
+                          />
+                        </Popconfirm>
+                      )}
+                    </Space>
+                  )
+                },
+              },
+            ]}
+          />
+        </Drawer>
+
+        {/* Modal Tải lên tài liệu */}
+        <Modal
+          title={versionTarget ? `Tải phiên bản mới cho "${versionTarget.title}"` : 'Tải lên tài liệu phác đồ y khoa mới'}
+          open={uploadModalOpen}
+          onCancel={() => {
+            if (uploading) return
+            setUploadModalOpen(false)
+            setVersionTarget(null)
+          }}
+          footer={[
             <Button
-              key="retry"
-              type="primary"
-              className="bg-amber-600"
+              key="cancel"
               onClick={() => {
-                const current = errorModalItem
-                setErrorModalItem(null)
-                if (current) handleRetry(current)
+                setUploadModalOpen(false)
+                setVersionTarget(null)
               }}
+              disabled={uploading}
             >
-              Thử xử lý lại ngay
-            </Button>
-          ),
-        ]}
-      >
-        {errorModalItem && (
-          <div className="space-y-3 py-2">
+              Hủy
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              className="bg-teal-600 hover:bg-teal-700"
+              loading={uploading}
+              onClick={handleUpload}
+            >
+              Bắt đầu tải lên & số hóa
+            </Button>,
+          ]}
+          width={580}
+          destroyOnClose
+        >
+          <div className="space-y-4 py-2">
+            {versionTarget && (
+              <Alert
+                type="warning"
+                showIcon
+                message={`Bạn đang tải phiên bản mới cho: ${versionTarget.title}`}
+                description="File này sẽ trở thành một phiên bản mới của tài liệu trên, không phải một tài liệu riêng. Muốn thêm tài liệu khác, hãy đóng hộp này và bấm 'Tải lên tài liệu mới'."
+                className="text-xs"
+              />
+            )}
+
+            <Alert
+              type="info"
+              showIcon
+              message="Định dạng hỗ trợ: PDF, DOCX, TXT"
+              description="Sau khi tải lên, hệ thống sẽ tự động trích xuất nội dung văn bản, chia đoạn thông minh (Chunking) và sinh vector embeddings phục vụ RAG tư vấn tiêu hóa."
+              className="text-xs"
+            />
+
             <div>
-              <Text className="text-xs uppercase text-slate-400 font-medium">
-                Tài liệu
+              <Text className="font-semibold text-slate-700 block mb-1">
+                Chọn tệp tài liệu:
               </Text>
-              <div className="font-semibold text-slate-800">
-                {errorModalItem.title} (#{errorModalItem.id})
-              </div>
+              <Dragger
+                fileList={uploadFileList}
+                beforeUpload={(file) => {
+                  setUploadFileList([file as UploadFile])
+                  return false
+                }}
+                onRemove={() => setUploadFileList([])}
+                maxCount={1}
+              >
+                <p className="ant-upload-drag-icon">
+                  <InboxOutlined className="text-teal-600 text-3xl" />
+                </p>
+                <p className="ant-upload-text text-sm font-medium">
+                  Kéo thả file vào đây hoặc bấm để chọn tệp từ máy tính
+                </p>
+                <p className="ant-upload-hint text-xs text-slate-400">
+                  Khuyên dùng các phác đồ điều trị chính thống từ Bệnh viện Nhân Dân 115, Bạch Mai hoặc Bộ Y Tế.
+                </p>
+              </Dragger>
             </div>
 
             <div>
-              <Text className="text-xs uppercase text-slate-400 font-medium">
-                Giai đoạn phát sinh lỗi
+              <Text className="font-semibold text-slate-700 block mb-1">
+                URL nguồn công khai (Tùy chọn):
               </Text>
-              <div>
-                <Tag color="error">{errorModalItem.processingStage}</Tag>
-              </div>
-            </div>
-
-            <div>
-              <Text className="text-xs uppercase text-slate-400 font-medium">
-                Thông báo lỗi từ hệ thống
+              <Input
+                placeholder="VD: https://benhvientanphu.vn/phac-do-dieu-tri-ibs.pdf"
+                value={sourceUrlInput}
+                onChange={(e) => setSourceUrlInput(e.target.value)}
+                prefix={<LinkOutlined className="text-slate-400" />}
+              />
+              <Text type="secondary" className="text-xs mt-1 block">
+                URL nguồn sẽ được lưu để AI trích dẫn nguồn minh bạch cho bệnh nhân khi trả lời.
               </Text>
-              <div className="mt-1 rounded-lg bg-red-50 border border-red-200 p-3 text-red-800 font-mono text-xs whitespace-pre-wrap">
-                {errorModalItem.errorMessage || 'Không có thông tin lỗi chi tiết.'}
-              </div>
             </div>
           </div>
-        )}
-      </Modal>
-    </div>
+        </Modal>
+
+        {/* Modal Xem chi tiết lỗi */}
+        <Modal
+          title={
+            <div className="flex items-center gap-2 text-red-600">
+              <CloseCircleOutlined />
+              <span>Chi tiết lỗi xử lý tài liệu</span>
+            </div>
+          }
+          open={Boolean(errorModalItem)}
+          onCancel={() => setErrorModalItem(null)}
+          footer={[
+            <Button key="close" onClick={() => setErrorModalItem(null)}>
+              Đóng
+            </Button>,
+            errorModalItem && (
+              <Button
+                key="retry"
+                type="primary"
+                className="bg-amber-600"
+                onClick={() => {
+                  const current = errorModalItem
+                  setErrorModalItem(null)
+                  if (current) handleRetry(current)
+                }}
+              >
+                Thử xử lý lại ngay
+              </Button>
+            ),
+          ]}
+        >
+          {errorModalItem && (
+            <div className="space-y-3 py-2">
+              <div>
+                <Text className="text-xs uppercase text-slate-400 font-medium">
+                  Tài liệu
+                </Text>
+                <div className="font-semibold text-slate-800">
+                  {errorModalItem.title} (#{errorModalItem.id})
+                </div>
+              </div>
+
+              <div>
+                <Text className="text-xs uppercase text-slate-400 font-medium">
+                  Giai đoạn phát sinh lỗi
+                </Text>
+                <div>
+                  <Tag color="error">{errorModalItem.processingStage}</Tag>
+                </div>
+              </div>
+
+              <div>
+                <Text className="text-xs uppercase text-slate-400 font-medium">
+                  Thông báo lỗi từ hệ thống
+                </Text>
+                <div className="mt-1 rounded-lg bg-red-50 border border-red-200 p-3 text-red-800 font-mono text-xs whitespace-pre-wrap">
+                  {errorModalItem.errorMessage || 'Không có thông tin lỗi chi tiết.'}
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal>
+      </div>
+    </CmsAppShell>
   )
 }

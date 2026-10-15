@@ -42,6 +42,14 @@ export interface FoodDiaryTrashItem {
   purgeAt: string
 }
 
+export interface FoodDiaryTrashPage {
+  items: FoodDiaryTrashItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
 export async function listFoodDiary(page = 0, size = 20): Promise<FoodDiaryListResponse> {
   try {
     const { data } = await apiClient.get<FoodDiaryListResponse>('/patient/food-diary', { params: { page, size } })
@@ -86,10 +94,9 @@ export async function deleteFoodDiaryEntry(id: number): Promise<void> {
   }
 }
 
-/** UC0020 - danh sach cac muc dang nam trong thung rac (con trong han 30 ngay). */
-export async function listFoodDiaryTrash(): Promise<FoodDiaryTrashItem[]> {
+export async function listFoodDiaryTrash(page = 0, size = 20): Promise<FoodDiaryTrashPage> {
   try {
-    const { data } = await apiClient.get<FoodDiaryTrashItem[]>('/patient/food-diary/trash')
+    const { data } = await apiClient.get<FoodDiaryTrashPage>('/patient/food-diary/trash', { params: { page, size } })
     return data
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể tải thùng rác. Vui lòng thử lại.')

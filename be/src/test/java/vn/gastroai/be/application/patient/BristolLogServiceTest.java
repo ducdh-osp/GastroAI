@@ -4,14 +4,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import vn.gastroai.be.api.patient.BristolLogRequest;
 import vn.gastroai.be.api.patient.BristolLogResponse;
-import vn.gastroai.be.api.patient.BristolTrashItem;
+import org.mockito.ArgumentCaptor;
 import vn.gastroai.be.api.patient.BristolTrendResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.patient.BristolLog;
 import vn.gastroai.be.infrastructure.persistence.postgres.BristolLogRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
-
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import vn.gastroai.be.api.patient.BristolTrashPage;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -77,7 +80,8 @@ class BristolLogServiceTest {
 
         BristolTrendResponse trend = service.trend(1L, 7);
 
-        // 2 lan ghi nhan cung 1 ngay phai la 2 diem rieng, khong gop lam 1 nhu food-diary.
+        // 2 lan ghi nhan cung 1 ngay phai la 2 diem rieng, khong gop lam 1 nhu
+        // food-diary.
         assertEquals(2, trend.points().size());
         assertEquals(3, trend.points().get(0).bristolType());
         assertEquals(5, trend.points().get(1).bristolType());
@@ -117,7 +121,8 @@ class BristolLogServiceTest {
         verify(bristolLogRepository, never()).delete(any());
     }
 
-    // ===== UC0068 - optimistic lock (@Version), chong "song lai" ban ghi da xoa =====
+    // ===== UC0068 - optimistic lock (@Version), chong "song lai" ban ghi da xoa
+    // =====
 
     @Test
     void updateThrowsConflictWhenAnotherRequestAlreadyWroteANewerVersion() {
@@ -125,7 +130,8 @@ class BristolLogServiceTest {
         patient.setId(1L);
         BristolLog log = new BristolLog(patient, Instant.now(), 4, null);
         when(bristolLogRepository.findById(99L)).thenReturn(Optional.of(log));
-        // Mo phong dung tinh huong Duc mo ta: request xoa da ghi version moi hon truoc, nen
+        // Mo phong dung tinh huong Duc mo ta: request xoa da ghi version moi hon truoc,
+        // nen
         // saveAndFlush() cua request sua (dang cam version cu) bi Hibernate tu choi.
         when(bristolLogRepository.saveAndFlush(any(BristolLog.class)))
                 .thenThrow(new ObjectOptimisticLockingFailureException(BristolLog.class, 99L));
@@ -199,12 +205,38 @@ class BristolLogServiceTest {
         BristolLog log = new BristolLog(patient, Instant.now(), 4, null);
         Instant deletedAt = Instant.parse("2026-01-01T00:00:00Z");
         log.setDeletedAt(deletedAt);
-        when(bristolLogRepository.findTrash(anyLong(), any())).thenReturn(List.of(log));
+        when(bristolLogRepository.findTrash(anyLong(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(log), PageRequest.of(0, 20), 1));
 
-        List<BristolTrashItem> trash = service.listTrash(1L);
+        BristolTrashPage trash = service.listTrash(1L, 0, 20);
 
-        assertEquals(1, trash.size());
-        assertEquals(deletedAt, trash.get(0).deletedAt());
-        assertEquals(deletedAt.plus(30, ChronoUnit.DAYS), trash.get(0).purgeAt());
+        assertEquals(1, trash.items().size());
+        assertEquals(1, trash.totalElements());
+        assertEquals(deletedAt, trash.items().get(0).deletedAt());
+        assertEquals(deletedAt.plus(30, ChronoUnit.DAYS), trash.items().get(0).purgeAt());
+    }
+
+    @Test
+    void listTrashReportsTotalBeyondCurrentPage() {
+        when(bristolLogRepository.findTrash(anyLong(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(1, 20), 250));
+
+        BristolTrashPage trash = service.listTrash(1L, 1, 20);
+
+        assertEquals(250, trash.totalElements());
+        assertEquals(13, trash.totalPages());
+    }
+
+    @Test
+    void listTrashPassesPageAndSizeToRepository() {
+        when(bristolLogRepository.findTrash(anyLong(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(2, 50), 0));
+
+        service.listTrash(1L, 2, 50);
+
+        ArgumentCaptor<Pageable> captor = forClass(Pageable.class);
+        verify(bristolLogRepository).findTrash(anyLong(), any(), captor.capture());
+        assertEquals(2, captor.getValue().getPageNumber());
+        assertEquals(50, captor.getValue().getPageSize());
     }
 }

@@ -76,10 +76,15 @@ public class FoodDiaryController {
         foodDiaryService.delete(AuthenticatedRequest.patientId(principal, authentication), id);
     }
 
-    @GetMapping("/trash")
-    public List<FoodDiaryTrashItem> trash(
+   @GetMapping("/trash")
+    public FoodDiaryTrashPage trash(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             Principal principal, Authentication authentication) {
-        return foodDiaryService.listTrash(AuthenticatedRequest.patientId(principal, authentication));
+        if (page < 0 || size < 1 || size > 100) {
+            throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
+        }
+        return foodDiaryService.listTrash(AuthenticatedRequest.patientId(principal, authentication), page, size);
     }
 
     @PostMapping("/{id}/restore")

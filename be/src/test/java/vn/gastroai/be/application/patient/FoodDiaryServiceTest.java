@@ -1,18 +1,21 @@
 package vn.gastroai.be.application.patient;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import vn.gastroai.be.api.patient.DailyCountPoint;
 import vn.gastroai.be.api.patient.FoodDiaryEntryRequest;
 import vn.gastroai.be.api.patient.FoodDiaryEntryResponse;
-import vn.gastroai.be.api.patient.FoodDiaryTrashItem;
 import vn.gastroai.be.api.patient.FoodDiaryTrendResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.patient.FoodDiaryEntry;
 import vn.gastroai.be.infrastructure.persistence.postgres.FoodDiaryEntryRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
-
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import vn.gastroai.be.api.patient.FoodDiaryTrashPage;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -71,14 +74,16 @@ class FoodDiaryServiceTest {
         Instant now = Instant.now();
         Patient patient = new Patient();
         patient.setId(1L);
-        // Chi 1 entry duy nhat, dung gio hien tai - cac ngay con lai trong khoang phai tra ve 0.
+        // Chi 1 entry duy nhat, dung gio hien tai - cac ngay con lai trong khoang phai
+        // tra ve 0.
         FoodDiaryEntry entry = new FoodDiaryEntry(patient, now, "Com trua", null);
         when(foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(anyLong(), any(), any()))
                 .thenReturn(List.of(entry));
 
         FoodDiaryTrendResponse trend = service.trend(1L, 7);
 
-        // days=7 phai ra DUNG 7 diem (ke ca hom nay) - truoc day co bug off-by-one ra 8.
+        // days=7 phai ra DUNG 7 diem (ke ca hom nay) - truoc day co bug off-by-one ra
+        // 8.
         assertEquals(7, trend.points().size());
         long totalCount = trend.points().stream().mapToLong(DailyCountPoint::count).sum();
         assertEquals(1, totalCount); // dung 1 entry duy nhat trong toan bo khoang
@@ -101,7 +106,8 @@ class FoodDiaryServiceTest {
         verify(foodDiaryEntryRepository, never()).delete(any());
     }
 
-    // ===== UC0068 - optimistic lock (@Version), chong "song lai" ban ghi da xoa =====
+    // ===== UC0068 - optimistic lock (@Version), chong "song lai" ban ghi da xoa
+    // =====
 
     @Test
     void updateThrowsConflictWhenAnotherRequestAlreadyWroteANewerVersion() {
@@ -110,7 +116,8 @@ class FoodDiaryServiceTest {
         FoodDiaryEntry entry = new FoodDiaryEntry(patient, Instant.now(), "Pho bo", null);
         when(foodDiaryEntryRepository.findById(99L)).thenReturn(Optional.of(entry));
         // Mo phong dung tinh huong Duc mo ta: request xoa da ghi version moi hon truoc,
-        // nen saveAndFlush() cua request sua (dang cam version cu) bi Hibernate tu choi.
+        // nen saveAndFlush() cua request sua (dang cam version cu) bi Hibernate tu
+        // choi.
         when(foodDiaryEntryRepository.saveAndFlush(any(FoodDiaryEntry.class)))
                 .thenThrow(new ObjectOptimisticLockingFailureException(FoodDiaryEntry.class, 99L));
 
@@ -183,12 +190,38 @@ class FoodDiaryServiceTest {
         FoodDiaryEntry entry = new FoodDiaryEntry(patient, Instant.now(), "Pho bo", null);
         Instant deletedAt = Instant.parse("2026-01-01T00:00:00Z");
         entry.setDeletedAt(deletedAt);
-        when(foodDiaryEntryRepository.findTrash(anyLong(), any())).thenReturn(List.of(entry));
+        when(foodDiaryEntryRepository.findTrash(anyLong(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(entry), PageRequest.of(0, 20), 1));
 
-        List<FoodDiaryTrashItem> trash = service.listTrash(1L);
+        FoodDiaryTrashPage trash = service.listTrash(1L, 0, 20);
 
-        assertEquals(1, trash.size());
-        assertEquals(deletedAt, trash.get(0).deletedAt());
-        assertEquals(deletedAt.plus(30, ChronoUnit.DAYS), trash.get(0).purgeAt());
+        assertEquals(1, trash.items().size());
+        assertEquals(1, trash.totalElements());
+        assertEquals(deletedAt, trash.items().get(0).deletedAt());
+        assertEquals(deletedAt.plus(30, ChronoUnit.DAYS), trash.items().get(0).purgeAt());
+    }
+
+    @Test
+    void listTrashReportsTotalBeyondCurrentPage() {
+        when(foodDiaryEntryRepository.findTrash(anyLong(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(1, 20), 250));
+
+        FoodDiaryTrashPage trash = service.listTrash(1L, 1, 20);
+
+        assertEquals(250, trash.totalElements());
+        assertEquals(13, trash.totalPages());
+    }
+
+    @Test
+    void listTrashPassesPageAndSizeToRepository() {
+        when(foodDiaryEntryRepository.findTrash(anyLong(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(2, 50), 0));
+
+        service.listTrash(1L, 2, 50);
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(foodDiaryEntryRepository).findTrash(anyLong(), any(), captor.capture());
+        assertEquals(2, captor.getValue().getPageNumber());
+        assertEquals(50, captor.getValue().getPageSize());
     }
 }
