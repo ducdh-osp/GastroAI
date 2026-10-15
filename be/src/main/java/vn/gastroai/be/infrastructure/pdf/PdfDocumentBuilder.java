@@ -76,7 +76,7 @@ public class PdfDocumentBuilder {
             this.titleFont = new Font(boldBase, 18, Font.NORMAL);
             this.smallGrayFont = new Font(regularBaseFont, 8, Font.NORMAL, GRAY_TEXT);
             this.warningFont = new Font(boldBase, 10, Font.NORMAL, WARNING_RED);
-            this.missingCharReplacement = regularBaseFont.charExists('□') ? "□" : "?";
+            this.missingCharReplacement = regularBaseFont.charExists(0xFFFD) ? "\uFFFD" : "[?]";
             // Font đánh số trang chỉ cần in số 0-9, dùng Helvetica mặc định (không tiếng
             // Việt)
             // là đủ, tạo 1 lần ở đây để PageNumberEvent dùng lại, tránh gọi lại
