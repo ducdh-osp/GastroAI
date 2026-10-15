@@ -3,13 +3,13 @@ import { Alert, Button, Spin, Table, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { listBristolTrash, restoreBristolLog } from '../../api/bristol'
-import type { BristolTrashItem } from '../../api/bristol'
+import type { BristolTrashItem, BristolTrashPage } from '../../api/bristol'
 import { BRISTOL_TYPE_LABELS } from '../../constants/bristol'
 import { useInFlightGuard } from '../../hooks/useInFlightGuard'
 import { formatDateTime } from '../../lib/format'
 
 const { Text } = Typography
-
+const PAGE_SIZE = 20
 /** UC0020 - so ngay con lai truoc khi bi xoa han, tinh tu purgeAt. Lam tron len (ceil) de
  * "con 0 ngay" chi hien thi dung luc sap het han trong hom nay, khong phai da qua han. */
 function daysRemaining(purgeAt: string): number {
@@ -25,14 +25,26 @@ interface BristolTrashTableProps {
 export function BristolTrashTable({ onRestored }: BristolTrashTableProps) {
   const [items, setItems] = useState<BristolTrashItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
+  const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const restoreGuard = useInFlightGuard<number>()
 
-  function reload() {
+  function reload(targetPage = page) {
     setLoading(true)
     setError(null)
-    listBristolTrash()
-      .then(setItems)
+    listBristolTrash(targetPage, PAGE_SIZE)
+      .then((result: BristolTrashPage) => {
+        // Khoi phuc muc cuoi cung cua 1 trang -> trang do rong, lui ve trang truoc.
+        if (result.items.length === 0 && targetPage > 0) {
+          setPage(targetPage - 1)
+          reload(targetPage - 1)
+          return
+        }
+        setItems(result.items)
+        setTotal(result.totalElements)
+        setPage(targetPage)
+      })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Không thể tải thùng rác.'))
       .finally(() => setLoading(false))
   }
@@ -95,7 +107,15 @@ export function BristolTrashTable({ onRestored }: BristolTrashTableProps) {
           dataSource={items}
           rowKey={(record) => record.entry.id}
           size="small"
-          pagination={false}
+          pagination={{
+            current: page + 1,
+            pageSize: PAGE_SIZE,
+            total,
+            hideOnSinglePage: true,
+            showSizeChanger: false,
+            showTotal: (t) => `${t} mục trong thùng rác`,
+            onChange: (p) => reload(p - 1),
+          }}
           locale={{ emptyText: 'Thùng rác trống' }}
         />
       </Spin>

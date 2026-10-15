@@ -10,7 +10,10 @@ import vn.gastroai.be.api.support.AuthenticatedRequest;
 import java.security.Principal;
 import java.util.List;
 
-/** UC0013 (ghi nhan Bristol) + UC0014 (xem xu huong theo thoi gian) + UC0020 (thung rac). */
+/**
+ * UC0013 (ghi nhan Bristol) + UC0014 (xem xu huong theo thoi gian) + UC0020
+ * (thung rac).
+ */
 @RestController
 @RequestMapping("/api/v1/patient/bristol-logs")
 public class BristolLogController {
@@ -68,9 +71,14 @@ public class BristolLogController {
     }
 
     @GetMapping("/trash")
-    public List<BristolTrashItem> trash(
+    public BristolTrashPage trash(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             Principal principal, Authentication authentication) {
-        return bristolLogService.listTrash(AuthenticatedRequest.patientId(principal, authentication));
+        if (page < 0 || size < 1 || size > 100) {
+            throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
+        }
+        return bristolLogService.listTrash(AuthenticatedRequest.patientId(principal, authentication), page, size);
     }
 
     @PostMapping("/{id}/restore")

@@ -19,23 +19,27 @@ import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.patient.BristolLog;
 import vn.gastroai.be.infrastructure.persistence.postgres.BristolLogRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
-
+import vn.gastroai.be.api.patient.BristolTrashPage;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-/** UC0013 (ghi nhan Bristol) + UC0014 (xem xu huong theo thoi gian) + UC0020 (thung rac). */
+/**
+ * UC0013 (ghi nhan Bristol) + UC0014 (xem xu huong theo thoi gian) + UC0020
+ * (thung rac).
+ */
 @Service
 public class BristolLogService {
 
     private final BristolLogRepository bristolLogRepository;
     private final PatientRepository patientRepository;
-    // UC0020 - so ngay giu trong thung rac truoc khi bi don dep that su (xem application.yml).
+    // UC0020 - so ngay giu trong thung rac truoc khi bi don dep that su (xem
+    // application.yml).
     private final int retentionDays;
 
     public BristolLogService(BristolLogRepository bristolLogRepository,
-                             PatientRepository patientRepository,
-                             @Value("${app.journal.trash-retention-days:30}") int retentionDays) {
+            PatientRepository patientRepository,
+            @Value("${app.journal.trash-retention-days:30}") int retentionDays) {
         this.bristolLogRepository = bristolLogRepository;
         this.patientRepository = patientRepository;
         this.retentionDays = retentionDays;
@@ -55,9 +59,11 @@ public class BristolLogService {
         log.setLoggedAt(request.loggedAt());
         log.setBristolType(request.bristolType());
         log.setNotes(request.notes());
-        // UC0068 - saveAndFlush (khong phai save) de loi optimistic lock (version cu da bi
+        // UC0068 - saveAndFlush (khong phai save) de loi optimistic lock (version cu da
+        // bi
         // request khac ghi de) nem ra ngay trong transaction nay, thay vi cho den khi
-        // Hibernate tu flush luc commit - luc do GlobalExceptionHandler khong con bat duoc.
+        // Hibernate tu flush luc commit - luc do GlobalExceptionHandler khong con bat
+        // duoc.
         return toResponse(bristolLogRepository.saveAndFlush(log));
     }
 
@@ -70,17 +76,20 @@ public class BristolLogService {
         bristolLogRepository.saveAndFlush(log);
     }
 
-    /** UC0020 - danh sach thung rac, con trong han 30 ngay (hoac so ngay cau hinh). */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
-    public List<BristolTrashItem> listTrash(Long patientId) {
+    public BristolTrashPage listTrash(Long patientId, int page, int size) {
         Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
-        return bristolLogRepository.findTrash(patientId, cutoff).stream()
-                .map(this::toTrashItem)
-                .toList();
+        Page<BristolLog> result = bristolLogRepository.findTrash(patientId, cutoff, PageRequest.of(page, size));
+        List<BristolTrashItem> items = result.getContent().stream().map(this::toTrashItem).toList();
+        return new BristolTrashPage(items, result.getNumber(), result.getSize(),
+                result.getTotalElements(), result.getTotalPages());
     }
 
-    /** UC0020 - khoi phuc 1 ban ghi tu thung rac. 404 neu khong thay/khong phai cua benh nhan
-     * nay, 409 neu da qua han giu (thuong la job don dep chua kip chay). */
+    /**
+     * UC0020 - khoi phuc 1 ban ghi tu thung rac. 404 neu khong thay/khong phai cua
+     * benh nhan
+     * nay, 409 neu da qua han giu (thuong la job don dep chua kip chay).
+     */
     @Transactional("postgresTransactionManager")
     public BristolLogResponse restore(Long patientId, Long logId) {
         BristolLog log = bristolLogRepository.findDeletedOwned(logId, patientId)
@@ -104,17 +113,20 @@ public class BristolLogService {
                 result.getTotalElements(), result.getTotalPages());
     }
 
-    /** UC0014 - moi lan ghi nhan la 1 diem tren bieu do (khong group/dem theo ngay nhu
-     * food-diary, vi Bristol quan tam dung "gia tri tai thoi diem nao" chu khong phai
-     * "tan suat/ngay"). */
+    /**
+     * UC0014 - moi lan ghi nhan la 1 diem tren bieu do (khong group/dem theo ngay
+     * nhu
+     * food-diary, vi Bristol quan tam dung "gia tri tai thoi diem nao" chu khong
+     * phai
+     * "tan suat/ngay").
+     */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public BristolTrendResponse trend(Long patientId, int days) {
         VietnamDateRange.Range range = VietnamDateRange.recentDaysIncludingToday(days);
-        List<BristolLogPoint> points =
-                bristolLogRepository.findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(
-                        patientId, range.fromInclusive(), range.toExclusive()).stream()
-                        .map(log -> new BristolLogPoint(log.getLoggedAt(), log.getBristolType()))
-                        .toList();
+        List<BristolLogPoint> points = bristolLogRepository.findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(
+                patientId, range.fromInclusive(), range.toExclusive()).stream()
+                .map(log -> new BristolLogPoint(log.getLoggedAt(), log.getBristolType()))
+                .toList();
         return new BristolTrendResponse(points);
     }
 
