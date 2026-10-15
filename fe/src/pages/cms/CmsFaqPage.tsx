@@ -44,6 +44,7 @@ import {
   type CmsFaqItem,
 } from '../../api/cmsFaqs'
 import { listArticleTopics } from '../../api/cmsArticleTopics'
+import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 
 const { Title, Text, Paragraph } = Typography
@@ -442,7 +443,8 @@ export default function CmsFaqPage() {
   ]
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <CmsAppShell>
+      <div className="mx-auto max-w-7xl space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -862,6 +864,7 @@ export default function CmsFaqPage() {
           </Form>
         )}
       </Modal>
-    </div>
+      </div>
+    </CmsAppShell>
   )
 }
