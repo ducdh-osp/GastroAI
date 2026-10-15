@@ -30,121 +30,132 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(SecurityConfig.class)
 class FoodDiaryControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @MockitoBean
-    private FoodDiaryService foodDiaryService;
+        @MockitoBean
+        private FoodDiaryService foodDiaryService;
 
-    @MockitoBean
-    private FoodSymptomCorrelationService foodSymptomCorrelationService;
+        @MockitoBean
+        private FoodSymptomCorrelationService foodSymptomCorrelationService;
 
-    @MockitoBean
-    private JwtService jwtService;
+        @MockitoBean
+        private JwtService jwtService;
 
-    @MockitoBean
-    private PatientRepository patientRepository;
+        @MockitoBean
+        private PatientRepository patientRepository;
 
-    @MockitoBean
-    private RevokedTokenRepository revokedTokenRepository;
+        @MockitoBean
+        private RevokedTokenRepository revokedTokenRepository;
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void listRejectsSizeAboveHundred() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/food-diary").with(csrf()).param("size", "1000"))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void listRejectsSizeAboveHundred() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/food-diary").with(csrf()).param("size", "1000"))
+                                .andExpect(status().isBadRequest());
+        }
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void trendRejectsDaysAboveMax() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/food-diary/trend").with(csrf()).param("days", "100000000"))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void trendRejectsDaysAboveMax() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/food-diary/trend").with(csrf()).param("days", "100000000"))
+                                .andExpect(status().isBadRequest());
+        }
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void trendRejectsNonPositiveDays() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/food-diary/trend").with(csrf()).param("days", "0"))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void trendRejectsNonPositiveDays() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/food-diary/trend").with(csrf()).param("days", "0"))
+                                .andExpect(status().isBadRequest());
+        }
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void createRejectsFutureEatenAt() throws Exception {
-        mockMvc.perform(post("/api/v1/patient/food-diary")
-                        .with(csrf())
-                        .contentType("application/json")
-                        .content("{\"eatenAt\":\"2999-01-01T08:00:00Z\",\"description\":\"Pho bo\"}"))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void createRejectsFutureEatenAt() throws Exception {
+                mockMvc.perform(post("/api/v1/patient/food-diary")
+                                .with(csrf())
+                                .contentType("application/json")
+                                .content("{\"eatenAt\":\"2999-01-01T08:00:00Z\",\"description\":\"Pho bo\"}"))
+                                .andExpect(status().isBadRequest());
+        }
 
-    // ===== UC0020 - thung rac (soft-delete) =====
+        // ===== UC0020 - thung rac (soft-delete) =====
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void trashReturnsOk() throws Exception {
-        when(foodDiaryService.listTrash(1L)).thenReturn(List.of());
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void trashReturnsOk() throws Exception {
+                when(foodDiaryService.listTrash(1L, 0, 20))
+                                .thenReturn(new FoodDiaryTrashPage(List.of(), 0, 20, 0, 0));
 
-        mockMvc.perform(get("/api/v1/patient/food-diary/trash").with(csrf()))
-                .andExpect(status().isOk());
-    }
+                mockMvc.perform(get("/api/v1/patient/food-diary/trash").with(csrf()))
+                                .andExpect(status().isOk());
+        }
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void restoreReturnsOkWhenWithinRetentionWindow() throws Exception {
-        when(foodDiaryService.restore(1L, 99L)).thenReturn(
-                new FoodDiaryEntryResponse(99L, java.time.Instant.now(), "Pho bo", null, null, null, null));
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void trashRejectsOversizedPage() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/food-diary/trash?size=101").with(csrf()))
+                                .andExpect(status().isBadRequest());
+        }
 
-        mockMvc.perform(post("/api/v1/patient/food-diary/99/restore").with(csrf()))
-                .andExpect(status().isOk());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void restoreReturnsOkWhenWithinRetentionWindow() throws Exception {
+                when(foodDiaryService.restore(1L, 99L)).thenReturn(
+                                new FoodDiaryEntryResponse(99L, java.time.Instant.now(), "Pho bo", null, null, null,
+                                                null));
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void restoreReturnsConflictWhenPastRetentionWindow() throws Exception {
-        when(foodDiaryService.restore(anyLong(), anyLong()))
-                .thenThrow(new IllegalStateException("Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
+                mockMvc.perform(post("/api/v1/patient/food-diary/99/restore").with(csrf()))
+                                .andExpect(status().isOk());
+        }
 
-        mockMvc.perform(post("/api/v1/patient/food-diary/99/restore").with(csrf()))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void restoreReturnsConflictWhenPastRetentionWindow() throws Exception {
+                when(foodDiaryService.restore(anyLong(), anyLong()))
+                                .thenThrow(new IllegalStateException(
+                                                "Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
 
-    @Test
-    @WithMockUser(username = "1", roles = "ADMIN")
-    void trashRejectsAdminRole() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/food-diary/trash").with(csrf()))
-                .andExpect(status().isForbidden());
-    }
+                mockMvc.perform(post("/api/v1/patient/food-diary/99/restore").with(csrf()))
+                                .andExpect(status().isConflict())
+                                .andExpect(jsonPath("$.message").value(
+                                                "Mục này đã nằm trong thùng rác quá 30 ngày nên không thể khôi phục."));
+        }
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void sensitivityProfileReturnsOkWithDefaultDays() throws Exception {
-        when(foodSymptomCorrelationService.analyze(1L, 90))
-                .thenReturn(new FoodSensitivityProfileResponse(true, 20, 90, 25.0, List.of(
-                        new FoodCorrelationItem("sua", 4, 3, 75.0))));
+        @Test
+        @WithMockUser(username = "1", roles = "ADMIN")
+        void trashRejectsAdminRole() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/food-diary/trash").with(csrf()))
+                                .andExpect(status().isForbidden());
+        }
 
-        mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").with(csrf()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.hasEnoughData").value(true))
-                .andExpect(jsonPath("$.topCorrelations[0].foodKeyword").value("sua"));
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void sensitivityProfileReturnsOkWithDefaultDays() throws Exception {
+                when(foodSymptomCorrelationService.analyze(1L, 90))
+                                .thenReturn(new FoodSensitivityProfileResponse(true, 20, 90, 25.0, List.of(
+                                                new FoodCorrelationItem("sua", 4, 3, 75.0))));
 
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void sensitivityProfileRejectsDaysOutOfRange() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").param("days", "0").with(csrf()))
-                .andExpect(status().isBadRequest());
+                mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").with(csrf()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.hasEnoughData").value(true))
+                                .andExpect(jsonPath("$.topCorrelations[0].foodKeyword").value("sua"));
+        }
 
-        mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").param("days", "366").with(csrf()))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void sensitivityProfileRejectsDaysOutOfRange() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").param("days", "0").with(csrf()))
+                                .andExpect(status().isBadRequest());
 
-    @Test
-    @WithMockUser(username = "1", roles = "ADMIN")
-    void sensitivityProfileRejectsAdminRole() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").with(csrf()))
-                .andExpect(status().isForbidden());
-    }
+                mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").param("days", "366").with(csrf()))
+                                .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @WithMockUser(username = "1", roles = "ADMIN")
+        void sensitivityProfileRejectsAdminRole() throws Exception {
+                mockMvc.perform(get("/api/v1/patient/food-diary/sensitivity-profile").with(csrf()))
+                                .andExpect(status().isForbidden());
+        }
 }

@@ -19,7 +19,7 @@ import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.patient.FoodDiaryEntry;
 import vn.gastroai.be.infrastructure.persistence.postgres.FoodDiaryEntryRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
-
+import vn.gastroai.be.api.patient.FoodDiaryTrashPage;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -27,20 +27,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/** UC0011 (CRUD nhat ky an uong) + UC0012 (xem lich su/bieu do) + UC0020 (thung rac). */
+/**
+ * UC0011 (CRUD nhat ky an uong) + UC0012 (xem lich su/bieu do) + UC0020 (thung
+ * rac).
+ */
 @Service
 public class FoodDiaryService {
 
-    // Gom nhom theo ngay theo gio Viet Nam (khong dung gio server) - benh nhan quan tam
+    // Gom nhom theo ngay theo gio Viet Nam (khong dung gio server) - benh nhan quan
+    // tam
     // "an luc may gio theo dong ho cua ho", khong phai UTC.
     private final FoodDiaryEntryRepository foodDiaryEntryRepository;
     private final PatientRepository patientRepository;
-    // UC0020 - so ngay giu trong thung rac truoc khi bi don dep that su (xem application.yml).
+    // UC0020 - so ngay giu trong thung rac truoc khi bi don dep that su (xem
+    // application.yml).
     private final int retentionDays;
 
     public FoodDiaryService(FoodDiaryEntryRepository foodDiaryEntryRepository,
-                            PatientRepository patientRepository,
-                            @Value("${app.journal.trash-retention-days:30}") int retentionDays) {
+            PatientRepository patientRepository,
+            @Value("${app.journal.trash-retention-days:30}") int retentionDays) {
         this.foodDiaryEntryRepository = foodDiaryEntryRepository;
         this.patientRepository = patientRepository;
         this.retentionDays = retentionDays;
@@ -64,9 +69,11 @@ public class FoodDiaryService {
         entry.setSymptomsAfterMeal(request.symptomsAfterMeal());
         entry.setSymptomOnsetMinutes(request.symptomOnsetMinutes());
         entry.setNotes(request.notes());
-        // UC0068 - saveAndFlush (khong phai save) de loi optimistic lock (version cu da bi
+        // UC0068 - saveAndFlush (khong phai save) de loi optimistic lock (version cu da
+        // bi
         // request khac ghi de) nem ra ngay trong transaction nay, thay vi cho den khi
-        // Hibernate tu flush luc commit - luc do GlobalExceptionHandler khong con bat duoc.
+        // Hibernate tu flush luc commit - luc do GlobalExceptionHandler khong con bat
+        // duoc.
         return toResponse(foodDiaryEntryRepository.saveAndFlush(entry));
     }
 
@@ -79,17 +86,23 @@ public class FoodDiaryService {
         foodDiaryEntryRepository.saveAndFlush(entry);
     }
 
-    /** UC0020 - danh sach thung rac, con trong han 30 ngay (hoac so ngay cau hinh). */
+    /**
+     * UC0020 - danh sach thung rac, con trong han 30 ngay (hoac so ngay cau hinh).
+     */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
-    public List<FoodDiaryTrashItem> listTrash(Long patientId) {
+    public FoodDiaryTrashPage listTrash(Long patientId, int page, int size) {
         Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
-        return foodDiaryEntryRepository.findTrash(patientId, cutoff).stream()
-                .map(this::toTrashItem)
-                .toList();
+        Page<FoodDiaryEntry> result = foodDiaryEntryRepository.findTrash(patientId, cutoff, PageRequest.of(page, size));
+        List<FoodDiaryTrashItem> items = result.getContent().stream().map(this::toTrashItem).toList();
+        return new FoodDiaryTrashPage(items, result.getNumber(), result.getSize(),
+                result.getTotalElements(), result.getTotalPages());
     }
 
-    /** UC0020 - khoi phuc 1 muc tu thung rac. 404 neu khong thay/khong phai cua benh nhan nay,
-     * 409 neu da qua han giu (thuong la job don dep chua kip chay). */
+    /**
+     * UC0020 - khoi phuc 1 muc tu thung rac. 404 neu khong thay/khong phai cua benh
+     * nhan nay,
+     * 409 neu da qua han giu (thuong la job don dep chua kip chay).
+     */
     @Transactional("postgresTransactionManager")
     public FoodDiaryEntryResponse restore(Long patientId, Long entryId) {
         FoodDiaryEntry entry = foodDiaryEntryRepository.findDeletedOwned(entryId, patientId)
@@ -113,23 +126,29 @@ public class FoodDiaryService {
                 result.getTotalElements(), result.getTotalPages());
     }
 
-    /** UC0012 - so bua an ghi nhan moi ngay trong dung `days` ngay gan nhat (ke ca hom nay),
+    /**
+     * UC0012 - so bua an ghi nhan moi ngay trong dung `days` ngay gan nhat (ke ca
+     * hom nay),
      * fill 0 cho ngay khong co du lieu de bieu do lien tuc khong bi dut quang.
-     * Tinh start/end truc tiep tu LocalDate (khong suy tu Instant.now().minus(days)) de
-     * chac chan co dung `days` diem - truoc day tinh end tu `to` va start tu `to - days`
-     * roi lay ca 2 dau nen ra `days + 1` diem (off-by-one da phat hien qua code review). */
+     * Tinh start/end truc tiep tu LocalDate (khong suy tu
+     * Instant.now().minus(days)) de
+     * chac chan co dung `days` diem - truoc day tinh end tu `to` va start tu `to -
+     * days`
+     * roi lay ca 2 dau nen ra `days + 1` diem (off-by-one da phat hien qua code
+     * review).
+     */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public FoodDiaryTrendResponse trend(Long patientId, int days) {
         VietnamDateRange.Range range = VietnamDateRange.recentDaysIncludingToday(days);
         LocalDate start = range.startDate();
         LocalDate endExclusive = range.endExclusiveDate();
 
-        List<FoodDiaryEntry> entries =
-                foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(
-                        patientId, range.fromInclusive(), range.toExclusive());
+        List<FoodDiaryEntry> entries = foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(
+                patientId, range.fromInclusive(), range.toExclusive());
 
         Map<LocalDate, Long> countByDate = entries.stream()
-                .collect(Collectors.groupingBy(e -> e.getEatenAt().atZone(VietnamDateRange.ZONE).toLocalDate(), Collectors.counting()));
+                .collect(Collectors.groupingBy(e -> e.getEatenAt().atZone(VietnamDateRange.ZONE).toLocalDate(),
+                        Collectors.counting()));
 
         List<DailyCountPoint> points = start.datesUntil(endExclusive)
                 .map(day -> new DailyCountPoint(day, countByDate.getOrDefault(day, 0L)))
