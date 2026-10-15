@@ -273,11 +273,11 @@ export default function CmsArticleEditorPage() {
                           </span>
                         ),
                         children: (
-                          <div className="min-h-[400px] rounded-xl border border-slate-200 bg-white p-6">
+                          <div className="min-h-[400px] rounded-xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900">
                             {contentWatch.trim() ? (
                               <MarkdownContent content={contentWatch} />
                             ) : (
-                              <div className="py-20 text-center text-slate-400">Chưa có nội dung để xem trước</div>
+                              <div className="py-20 text-center text-slate-400 dark:text-slate-500">Chưa có nội dung để xem trước</div>
                             )}
                           </div>
                         ),

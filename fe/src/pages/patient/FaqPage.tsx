@@ -70,7 +70,7 @@ export default function FaqPage() {
         </div>
       ),
       children: (
-        <div className="pt-2 pb-4 text-slate-700 leading-relaxed border-t border-slate-100">
+        <div className="pt-2 pb-4 text-slate-700 leading-relaxed border-t border-slate-100 dark:text-slate-300 dark:border-white/10">
           <MarkdownContent content={faq.answer} />
         </div>
       ),
@@ -115,7 +115,7 @@ export default function FaqPage() {
             className={`cursor-pointer rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all shrink-0 ${
               selectedCategory === 'all'
                 ? 'bg-teal-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-white/10 dark:hover:bg-slate-700'
             }`}
           >
             Tất cả ({faqs.length})
@@ -130,7 +130,7 @@ export default function FaqPage() {
                 className={`cursor-pointer rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all shrink-0 ${
                   selectedCategory === cat
                     ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-white/10 dark:hover:bg-slate-700'
                 }`}
               >
                 {cat} ({count})
@@ -161,10 +161,10 @@ export default function FaqPage() {
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
                   <div className="space-y-1">
-                    <Text className="text-slate-600 font-medium">
+                    <Text className="text-slate-600 font-medium dark:text-slate-300">
                       Không tìm thấy câu hỏi phù hợp với "{search}"
                     </Text>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                       Hãy thử từ khóa khác hoặc đặt câu hỏi trực tiếp cho Trợ lý AI GastroAI bên dưới.
                     </p>
                   </div>
@@ -203,16 +203,16 @@ export default function FaqPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border-slate-200 bg-white hover:bg-slate-50/50 transition-colors">
+          <Card className="rounded-xl border-slate-200 bg-white hover:bg-slate-50/50 transition-colors dark:border-white/10 dark:bg-slate-900 dark:hover:bg-slate-800/50">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-slate-800 p-2.5 text-white">
                 <BookOutlined className="text-lg" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-semibold text-slate-900 text-sm">
+                <h4 className="font-semibold text-slate-900 text-sm dark:text-slate-100">
                   Đọc bài viết kiến thức chuyên sâu
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Tìm hiểu các bài viết phân tích y khoa chi tiết về dinh dưỡng, phác đồ điều trị và chăm sóc dạ dày.
                 </p>
                 <div className="pt-2">

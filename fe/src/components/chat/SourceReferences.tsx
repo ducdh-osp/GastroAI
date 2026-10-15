@@ -9,7 +9,7 @@ function SourceReferenceItem({ source, index }: { source: SourceRef; index: numb
   const isLong = source.snippet.length > 200
 
   return (
-    <li className="rounded-lg border border-current/10 bg-white/40 p-2.5 leading-5">
+    <li className="rounded-lg border border-current/10 bg-white/40 p-2.5 leading-5 dark:bg-black/20">
       <span className="font-semibold">Tài liệu tham khảo {index + 1}</span>
       <p className={`m-0 mt-1 whitespace-pre-wrap ${expanded ? '' : 'line-clamp-3'}`}>{source.snippet}</p>
       {isLong && (
