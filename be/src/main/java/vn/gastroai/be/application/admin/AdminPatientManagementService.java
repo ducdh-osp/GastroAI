@@ -24,7 +24,7 @@ public class AdminPatientManagementService {
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public Page<CmsPatientResponse> list(String query, Boolean adminLocked, Pageable pageable) {
         String normalizedQuery = query == null || query.isBlank()
-                ? null
+                ? ""
                 : SearchQueryEscaper.escapeLike(query.trim());
         return patients.searchForAdmin(normalizedQuery, adminLocked, pageable).map(CmsPatientResponse::from);
     }
