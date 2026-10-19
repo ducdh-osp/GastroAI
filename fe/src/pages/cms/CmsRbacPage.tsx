@@ -16,6 +16,14 @@ const ROLE_LABEL: Record<CmsPermissionRole, string> = {
 
 type PendingRoleChange = { account: CmsAccount; role: CmsPermissionRole }
 
+function roleOptions(account: CmsAccount) {
+  const allowedRoles: CmsPermissionRole[] = account.accountType === 'ADMIN'
+    ? ['ADMIN', 'CONTENT_EDITOR']
+    : ['DOCTOR']
+
+  return allowedRoles.map((value) => ({ value, label: ROLE_LABEL[value] }))
+}
+
 function accountKey(account: CmsAccount) {
   return `${account.accountType}-${account.id}`
 }
@@ -91,9 +99,9 @@ export default function CmsRbacPage() {
           <Select
             value={a.role}
             loading={busy.has(key)}
-            disabled={a.accountType === 'ADMIN' || busy.has(key)}
+            disabled={a.accountType === 'DOCTOR' || busy.has(key)}
             onChange={(role: CmsPermissionRole) => setPending({ account: a, role })}
-            options={Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label, disabled: value === 'ADMIN' }))}
+            options={roleOptions(a)}
             style={{ width: 190 }}
           />
         </Popconfirm>
@@ -103,7 +111,7 @@ export default function CmsRbacPage() {
   ]
 
   return <CmsAppShell><div className="mx-auto max-w-6xl">
-    <div className="mb-6"><Text type="secondary">Người dùng</Text><Title level={2} className="mb-1! mt-1!"><SafetyCertificateOutlined className="mr-2" />Phân quyền RBAC</Title><Text type="secondary">Ba vai trò thực thi: Admin, Bác sĩ và Biên tập nội dung. Thay đổi có hiệu lực ngay ở request kế tiếp.</Text></div>
+    <div className="mb-6"><Text type="secondary">Người dùng</Text><Title level={2} className="mb-1! mt-1!"><SafetyCertificateOutlined className="mr-2" />Phân quyền RBAC</Title><Text type="secondary">Tài khoản Admin có thể mang vai trò Admin hoặc Biên tập nội dung; tài khoản Bác sĩ luôn giữ vai trò Bác sĩ. Thay đổi có hiệu lực ngay ở request kế tiếp.</Text></div>
     {error && <Alert type="error" message={error} showIcon className="mb-4" closable onClose={() => setError(null)} />}
     <Card className="rounded-2xl border-black/5 shadow-sm">
       <Space className="mb-4" wrap><Input.Search placeholder="Tìm theo tên hoặc email" allowClear value={query} onChange={(e) => setQuery(e.target.value)} onSearch={() => void reload(1)} style={{ width: 300 }} /></Space>
