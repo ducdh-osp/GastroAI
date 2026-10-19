@@ -275,7 +275,7 @@ export default function SymptomAssessmentPage() {
               {result.reasonCodes.length > 0 && (
                 <div className="mt-4 border-t border-slate-100 dark:border-white/10 pt-3">
                   <Text strong>Vì sao có kết quả này</Text>
-                  <ul className="mb-0 mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                  <ul className="mb-0 mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-white">
                     {result.reasonCodes.map((code) => <li key={code}>{reasonExplanations[code] ?? 'Một số câu trả lời đã ảnh hưởng đến kết quả đánh giá.'}</li>)}
                   </ul>
                 </div>

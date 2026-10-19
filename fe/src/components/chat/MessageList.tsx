@@ -26,7 +26,7 @@ export function MessageList({ messages, isReplying, isLoadingHistory, onQuickPro
     <section className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6" aria-label="Nội dung hội thoại" aria-live="polite">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         {isLoadingHistory && (
-          <div className="flex min-h-72 items-center justify-center text-sm text-slate-500" role="status">
+          <div className="flex min-h-72 items-center justify-center text-sm text-slate-500 dark:text-white" role="status">
             Đang tải lịch sử cuộc trò chuyện…
           </div>
         )}

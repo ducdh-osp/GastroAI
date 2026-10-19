@@ -61,7 +61,7 @@ export default function FaqPage() {
       key: String(faq.id),
       label: (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-1 pr-2">
-          <span className="font-semibold text-slate-800 text-base">
+          <span className="font-semibold text-slate-800 dark:text-white text-base">
             {faq.question}
           </span>
           <Tag color="cyan" className="self-start sm:self-auto shrink-0">
@@ -70,7 +70,7 @@ export default function FaqPage() {
         </div>
       ),
       children: (
-        <div className="pt-2 pb-4 text-slate-700 leading-relaxed border-t border-slate-100 dark:text-white dark:border-white/10">
+        <div className="pt-2 pb-4 text-slate-700 dark:text-white leading-relaxed border-t border-slate-100 dark:text-white dark:border-white/10">
           <MarkdownContent content={faq.answer} />
         </div>
       ),
@@ -115,7 +115,7 @@ export default function FaqPage() {
             className={`cursor-pointer rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all shrink-0 ${
               selectedCategory === 'all'
                 ? 'bg-teal-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-neutral-800 dark:text-white dark:border-white/10 dark:hover:bg-neutral-700'
+                : 'bg-white text-slate-600 dark:text-white border border-slate-200 hover:bg-slate-50 dark:bg-neutral-800 dark:text-white dark:border-white/10 dark:hover:bg-neutral-700'
             }`}
           >
             Tất cả ({faqs.length})
@@ -130,7 +130,7 @@ export default function FaqPage() {
                 className={`cursor-pointer rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all shrink-0 ${
                   selectedCategory === cat
                     ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-neutral-800 dark:text-white dark:border-white/10 dark:hover:bg-neutral-700'
+                    : 'bg-white text-slate-600 dark:text-white border border-slate-200 hover:bg-slate-50 dark:bg-neutral-800 dark:text-white dark:border-white/10 dark:hover:bg-neutral-700'
                 }`}
               >
                 {cat} ({count})
@@ -161,7 +161,7 @@ export default function FaqPage() {
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
                   <div className="space-y-1">
-                    <Text className="text-slate-600 font-medium dark:text-white">
+                    <Text className="text-slate-600 dark:text-white font-medium dark:text-white">
                       Không tìm thấy câu hỏi phù hợp với "{search}"
                     </Text>
                     <p className="text-xs text-slate-400 dark:text-white">
@@ -176,16 +176,16 @@ export default function FaqPage() {
 
         {/* Call to action: Chat bot & Articles */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <Card className="rounded-xl border-teal-100 bg-teal-50/50 hover:bg-teal-50 transition-colors">
+          <Card className="rounded-xl border-teal-100 bg-teal-50/50 hover:bg-teal-50 transition-colors dark:border-teal-800 dark:bg-teal-900/30 dark:hover:bg-teal-900/50">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-teal-600 p-2.5 text-white">
                 <CommentOutlined className="text-lg" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-semibold text-teal-950 text-sm">
+                <h4 className="font-semibold text-teal-950 text-sm dark:text-white">
                   Vẫn còn thắc mắc về triệu chứng?
                 </h4>
-                <p className="text-xs text-teal-800/80">
+                <p className="text-xs text-teal-800/80 dark:text-teal-200/80">
                   Trò chuyện riêng tư với Trợ lý AI GastroAI để được giải đáp và sàng lọc triệu chứng ngay tức thì.
                 </p>
                 <div className="pt-2">
@@ -209,7 +209,7 @@ export default function FaqPage() {
                 <BookOutlined className="text-lg" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-semibold text-slate-900 text-sm dark:text-white">
+                <h4 className="font-semibold text-slate-900 dark:text-white text-sm dark:text-white">
                   Đọc bài viết kiến thức chuyên sâu
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-white">

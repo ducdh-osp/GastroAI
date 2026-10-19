@@ -127,10 +127,10 @@ export default function CmsArticlesPage() {
       key: 'title',
       render: (_, record) => (
         <div className="max-w-md">
-          <Link to={`/cms/articles/${record.id}/edit`} className="font-medium text-slate-800 hover:text-teal-600">
+          <Link to={`/cms/articles/${record.id}/edit`} className="font-medium text-slate-800 dark:text-white hover:text-teal-600">
             {record.title}
           </Link>
-          <div className="mt-0.5 text-xs text-slate-400">/{record.slug}</div>
+          <div className="mt-0.5 text-xs text-slate-400 dark:text-white">/{record.slug}</div>
         </div>
       ),
     },
@@ -175,13 +175,13 @@ export default function CmsArticlesPage() {
       render: (_, record) =>
         record.medicalReviewer ? (
           <div>
-            <div className="text-xs font-medium text-slate-700">{record.medicalReviewer}</div>
+            <div className="text-xs font-medium text-slate-700 dark:text-white">{record.medicalReviewer}</div>
             {record.medicalReviewedAt && (
-              <div className="text-[11px] text-slate-400">{formatDateTime(record.medicalReviewedAt)}</div>
+              <div className="text-[11px] text-slate-400 dark:text-white">{formatDateTime(record.medicalReviewedAt)}</div>
             )}
           </div>
         ) : (
-          <span className="text-xs text-slate-400">Chưa ghi nhận</span>
+          <span className="text-xs text-slate-400 dark:text-white">Chưa ghi nhận</span>
         ),
     },
     {
@@ -189,7 +189,7 @@ export default function CmsArticlesPage() {
       dataIndex: 'updatedAt',
       key: 'updatedAt',
       width: 150,
-      render: (val: string) => <span className="text-xs text-slate-500">{formatDateTime(val)}</span>,
+      render: (val: string) => <span className="text-xs text-slate-500 dark:text-white">{formatDateTime(val)}</span>,
     },
     {
       title: 'Thao tác',

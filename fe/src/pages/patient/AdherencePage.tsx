@@ -105,7 +105,7 @@ export default function AdherencePage() {
                     </Tooltip>
                   ))}
                 </div>
-                <div className="mt-3 flex gap-4 text-xs text-gray-500">
+                <div className="mt-3 flex gap-4 text-xs text-gray-500 dark:text-white">
                   <span><span className="mr-1 inline-block h-3 w-3 rounded align-middle" style={{ background: '#13a89e' }} />Đã ghi</span>
                   <span><span className="mr-1 inline-block h-3 w-3 rounded align-middle" style={{ background: '#e5e7eb' }} />Chưa ghi</span>
                 </div>

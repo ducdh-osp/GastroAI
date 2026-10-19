@@ -347,7 +347,7 @@ export default function CmsFaqPage() {
           <button
             type="button"
             onClick={() => setDetailItem(record)}
-            className="text-left font-medium text-slate-800 hover:text-teal-600 transition-colors cursor-pointer"
+            className="text-left font-medium text-slate-800 dark:text-white hover:text-teal-600 transition-colors cursor-pointer"
           >
             {record.question}
           </button>
@@ -363,7 +363,7 @@ export default function CmsFaqPage() {
       key: 'answer',
       ellipsis: true,
       render: (answer: string) => (
-        <span className="text-slate-500 text-xs line-clamp-2 max-w-md">
+        <span className="text-slate-500 dark:text-white text-xs line-clamp-2 max-w-md">
           {answer.replace(/[#*`_]/g, '')}
         </span>
       ),
@@ -382,7 +382,7 @@ export default function CmsFaqPage() {
             )}
             {renderPublishAction(record)}
           </div>
-          <div className="text-xs text-slate-400">
+          <div className="text-xs text-slate-400 dark:text-white">
             {hasValidReview(record)
               ? `Duyệt: ${record.medicalReviewer}`
               : 'Chưa kiểm duyệt y khoa'}
@@ -396,7 +396,7 @@ export default function CmsFaqPage() {
       key: 'updatedAt',
       width: 140,
       render: (val: string) => (
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-slate-400 dark:text-white">
           {dayjs(val).format('DD/MM/YYYY HH:mm')}
         </span>
       ),
@@ -471,7 +471,7 @@ export default function CmsFaqPage() {
         <div className="flex flex-wrap items-center gap-3">
           <Input
             placeholder="Tìm kiếm theo câu hỏi hoặc câu trả lời..."
-            prefix={<SearchOutlined className="text-slate-400" />}
+            prefix={<SearchOutlined className="text-slate-400 dark:text-white" />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             allowClear
@@ -614,10 +614,10 @@ export default function CmsFaqPage() {
           />
 
           {editingItem && (
-            <div className="mb-4 text-xs text-slate-500">
+            <div className="mb-4 text-xs text-slate-500 dark:text-white">
               Kiểm duyệt hiện tại:{' '}
               {hasValidReview(editingItem) ? (
-                <span className="font-medium text-slate-700">
+                <span className="font-medium text-slate-700 dark:text-white">
                   {editingItem.medicalReviewer} ({dayjs(editingItem.medicalReviewedAt).format('DD/MM/YYYY HH:mm')})
                 </span>
               ) : (
@@ -672,7 +672,7 @@ export default function CmsFaqPage() {
           })()}
 
           <div className="mb-2 flex items-center justify-between">
-            <span className="font-semibold text-slate-700">
+            <span className="font-semibold text-slate-700 dark:text-white">
               Câu trả lời y khoa (Hỗ trợ định dạng Markdown):
             </span>
             <Radio.Group
@@ -771,7 +771,7 @@ export default function CmsFaqPage() {
               </Text>
               <div className="mt-1 text-sm">
                 {hasValidReview(detailItem) ? (
-                  <span className="text-slate-700">
+                  <span className="text-slate-700 dark:text-white">
                     <SafetyCertificateOutlined className="mr-1 text-teal-600" />
                     {detailItem.medicalReviewer} — {dayjs(detailItem.medicalReviewedAt).format('DD/MM/YYYY HH:mm')}
                   </span>
@@ -785,7 +785,7 @@ export default function CmsFaqPage() {
               <Text type="secondary" className="text-xs uppercase font-medium">
                 Câu hỏi
               </Text>
-              <Paragraph className="!mt-1 !mb-0 font-semibold text-slate-800 text-base">
+              <Paragraph className="!mt-1 !mb-0 font-semibold text-slate-800 dark:text-white text-base">
                 {detailItem.question}
               </Paragraph>
             </div>
@@ -799,7 +799,7 @@ export default function CmsFaqPage() {
               </div>
             </div>
 
-            <div className="text-xs text-slate-400 pt-2 border-t border-slate-100 flex justify-between">
+            <div className="text-xs text-slate-400 dark:text-white pt-2 border-t border-slate-100 flex justify-between">
               <span>Mã câu hỏi: #{detailItem.id}</span>
               <span>Cập nhật: {dayjs(detailItem.updatedAt).format('DD/MM/YYYY HH:mm')}</span>
             </div>
@@ -830,7 +830,7 @@ export default function CmsFaqPage() {
               message="Nội dung này sẽ hiển thị cho bệnh nhân"
               description="Chỉ xuất bản khi bác sĩ độc lập đã đọc và xác nhận tính chính xác y khoa của câu trả lời bên dưới."
             />
-            <Paragraph className="!mb-2 font-semibold text-slate-800">{reviewItem.question}</Paragraph>
+            <Paragraph className="!mb-2 font-semibold text-slate-800 dark:text-white">{reviewItem.question}</Paragraph>
             <div className="mb-4 max-h-[260px] overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-4">
               <MarkdownContent content={reviewItem.answer} />
             </div>

@@ -109,7 +109,7 @@ export function ChatInput({ disabled = false, onSend }: ChatInputProps) {
               <div key={attachment.id} className="relative flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1.5 pr-8 dark:border-white/10 dark:bg-neutral-800">
                 {attachment.previewUrl ? <img src={attachment.previewUrl} alt={attachment.name} className="h-10 w-10 rounded object-cover" /> : <FileTextOutlined className="px-2 text-2xl text-teal-700" />}
                 <span className="max-w-40 truncate text-xs text-slate-700 dark:text-white">{attachment.name}</span>
-                <button type="button" aria-label={`Xóa tệp ${attachment.name}`} onClick={() => removeAttachment(attachment.id)} className="absolute right-1 top-1 rounded p-1 text-slate-400 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"><CloseOutlined /></button>
+                <button type="button" aria-label={`Xóa tệp ${attachment.name}`} onClick={() => removeAttachment(attachment.id)} className="absolute right-1 top-1 rounded p-1 text-slate-400 dark:text-white hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"><CloseOutlined /></button>
               </div>
             ))}
           </div>
@@ -118,10 +118,10 @@ export function ChatInput({ disabled = false, onSend }: ChatInputProps) {
         <div className="flex items-end gap-2 rounded-2xl border border-slate-300 bg-slate-50 p-2 transition focus-within:border-teal-500 focus-within:ring-2 focus-within:ring-teal-100 dark:border-neutral-600 dark:bg-neutral-800">
           <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx" multiple className="hidden" onChange={handleFiles} />
           <Button type="text" shape="circle" icon={<PaperClipOutlined />} aria-label="Đính kèm ảnh hoặc tài liệu" disabled={disabled} onClick={() => fileInputRef.current?.click()} />
-          <textarea ref={textareaRef} value={content} rows={1} maxLength={MAX_LENGTH} disabled={disabled} onChange={(event) => setContent(event.target.value)} onKeyDown={handleKeyDown} placeholder="Nhập câu hỏi sức khỏe của bạn..." aria-label="Nội dung câu hỏi" className="max-h-[136px] min-h-8 flex-1 resize-none bg-transparent px-1 py-1.5 text-[15px] leading-6 text-slate-800 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-neutral-500" />
+          <textarea ref={textareaRef} value={content} rows={1} maxLength={MAX_LENGTH} disabled={disabled} onChange={(event) => setContent(event.target.value)} onKeyDown={handleKeyDown} placeholder="Nhập câu hỏi sức khỏe của bạn..." aria-label="Nội dung câu hỏi" className="max-h-[136px] min-h-8 flex-1 resize-none bg-transparent px-1 py-1.5 text-[15px] leading-6 text-slate-800 dark:text-white outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-neutral-500" />
           <Button type="primary" shape="circle" icon={<SendOutlined />} aria-label="Gửi câu hỏi" disabled={disabled || !content.trim()} onClick={submit} />
         </div>
-        <div className="mt-1 flex justify-between px-1 text-xs text-slate-400"><span>Enter để gửi · Shift + Enter để xuống dòng</span><span className={content.length >= MAX_LENGTH ? 'text-red-600' : ''}>{content.length}/{MAX_LENGTH}</span></div>
+        <div className="mt-1 flex justify-between px-1 text-xs text-slate-400 dark:text-white"><span>Enter để gửi · Shift + Enter để xuống dòng</span><span className={content.length >= MAX_LENGTH ? 'text-red-600' : ''}>{content.length}/{MAX_LENGTH}</span></div>
       </div>
     </div>
   )

@@ -113,7 +113,7 @@ export default function ChatHistoryPage() {
             <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
               <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-white/10">
                 <ClockCircleOutlined className="text-teal-600" />
-                <span className="font-medium text-slate-700 text-sm dark:text-white">Danh sách phiên</span>
+                <span className="font-medium text-slate-700 dark:text-white text-sm dark:text-white">Danh sách phiên</span>
               </div>
 
               {loadingSessions ? (

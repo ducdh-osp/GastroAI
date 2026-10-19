@@ -393,7 +393,7 @@ export default function CmsDocumentsPage() {
       key: 'id',
       width: 65,
       align: 'center',
-      render: (id: number) => <span className="text-slate-400 text-xs">#{id}</span>,
+      render: (id: number) => <span className="text-slate-400 dark:text-white text-xs">#{id}</span>,
     },
     {
       title: 'Tài liệu & Nguồn',
@@ -402,7 +402,7 @@ export default function CmsDocumentsPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <FilePdfOutlined className="text-red-500 text-base" />
-            <span className="font-semibold text-slate-800">{record.title}</span>
+            <span className="font-semibold text-slate-800 dark:text-white">{record.title}</span>
           </div>
           {record.sourceUrl && (
             <div className="flex items-center gap-1 text-xs text-teal-700">
@@ -482,7 +482,7 @@ export default function CmsDocumentsPage() {
       key: 'uploadedAt',
       width: 150,
       render: (val: string) => (
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-500 dark:text-white">
           {dayjs(val).format('DD/MM/YYYY HH:mm')}
         </span>
       ),
@@ -608,7 +608,7 @@ export default function CmsDocumentsPage() {
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20">
+            <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20 dark:border-green-900 dark:bg-green-900/20">
               <Statistic
                 title="Sẵn sàng cho RAG"
                 value={stats.done}
@@ -617,7 +617,7 @@ export default function CmsDocumentsPage() {
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20">
+            <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20 dark:border-blue-900 dark:bg-blue-900/20">
               <Statistic
                 title="Đang trong tiến trình"
                 value={stats.processing}
@@ -626,7 +626,7 @@ export default function CmsDocumentsPage() {
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20">
+            <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20 dark:border-red-900 dark:bg-red-900/20">
               <Statistic
                 title="Lỗi cần xử lý lại"
                 value={stats.error}
@@ -642,7 +642,7 @@ export default function CmsDocumentsPage() {
             <div className="flex flex-wrap items-center gap-3">
               <Input
                 placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
-                prefix={<SearchOutlined className="text-slate-400" />}
+                prefix={<SearchOutlined className="text-slate-400 dark:text-white" />}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 allowClear
@@ -675,7 +675,7 @@ export default function CmsDocumentsPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-white">
               <span
                 className={`inline-block w-2 h-2 rounded-full ${isPolling ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'
                   }`}
@@ -899,7 +899,7 @@ export default function CmsDocumentsPage() {
             />
 
             <div>
-              <Text className="font-semibold text-slate-700 block mb-1">
+              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
                 Chọn tệp tài liệu:
               </Text>
               <Dragger
@@ -917,21 +917,21 @@ export default function CmsDocumentsPage() {
                 <p className="ant-upload-text text-sm font-medium">
                   Kéo thả file vào đây hoặc bấm để chọn tệp từ máy tính
                 </p>
-                <p className="ant-upload-hint text-xs text-slate-400">
+                <p className="ant-upload-hint text-xs text-slate-400 dark:text-white">
                   Khuyên dùng các phác đồ điều trị chính thống từ Bệnh viện Nhân Dân 115, Bạch Mai hoặc Bộ Y Tế.
                 </p>
               </Dragger>
             </div>
 
             <div>
-              <Text className="font-semibold text-slate-700 block mb-1">
+              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
                 URL nguồn công khai (Tùy chọn):
               </Text>
               <Input
                 placeholder="VD: https://benhvientanphu.vn/phac-do-dieu-tri-ibs.pdf"
                 value={sourceUrlInput}
                 onChange={(e) => setSourceUrlInput(e.target.value)}
-                prefix={<LinkOutlined className="text-slate-400" />}
+                prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
               />
               <Text type="secondary" className="text-xs mt-1 block">
                 URL nguồn sẽ được lưu để AI trích dẫn nguồn minh bạch cho bệnh nhân khi trả lời.
@@ -973,16 +973,16 @@ export default function CmsDocumentsPage() {
           {errorModalItem && (
             <div className="space-y-3 py-2">
               <div>
-                <Text className="text-xs uppercase text-slate-400 font-medium">
+                <Text className="text-xs uppercase text-slate-400 dark:text-white font-medium">
                   Tài liệu
                 </Text>
-                <div className="font-semibold text-slate-800">
+                <div className="font-semibold text-slate-800 dark:text-white">
                   {errorModalItem.title} (#{errorModalItem.id})
                 </div>
               </div>
 
               <div>
-                <Text className="text-xs uppercase text-slate-400 font-medium">
+                <Text className="text-xs uppercase text-slate-400 dark:text-white font-medium">
                   Giai đoạn phát sinh lỗi
                 </Text>
                 <div>
@@ -991,10 +991,10 @@ export default function CmsDocumentsPage() {
               </div>
 
               <div>
-                <Text className="text-xs uppercase text-slate-400 font-medium">
+                <Text className="text-xs uppercase text-slate-400 dark:text-white font-medium">
                   Thông báo lỗi từ hệ thống
                 </Text>
-                <div className="mt-1 rounded-lg bg-red-50 border border-red-200 p-3 text-red-800 font-mono text-xs whitespace-pre-wrap">
+                <div className="mt-1 rounded-lg bg-red-50 border border-red-200 p-3 text-red-800 font-mono text-xs whitespace-pre-wrap dark:bg-red-900/20 dark:border-red-900 dark:text-red-300">
                   {errorModalItem.errorMessage || 'Không có thông tin lỗi chi tiết.'}
                 </div>
               </div>

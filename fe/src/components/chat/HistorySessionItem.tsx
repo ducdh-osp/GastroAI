@@ -48,7 +48,7 @@ export function HistorySessionItem({
       <div className="flex items-start gap-2.5">
         <span
           className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm ${
-            isSelected ? 'bg-teal-100 text-teal-700 dark:bg-teal-800 dark:text-teal-300' : 'bg-slate-100 text-slate-500 dark:bg-neutral-700 dark:text-white'
+            isSelected ? 'bg-teal-100 text-teal-700 dark:bg-teal-800 dark:text-teal-300' : 'bg-slate-100 text-slate-500 dark:text-white dark:bg-neutral-700 dark:text-white'
           }`}
         >
           <CommentOutlined />

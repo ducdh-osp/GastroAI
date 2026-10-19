@@ -109,7 +109,7 @@ export function AuthShell({
           <div className="space-y-2">
             <div className="rule-accent w-16" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
             <h2 className="font-display text-2xl leading-tight font-bold text-[#0f2926] sm:text-3xl dark:text-white">{title}</h2>
-            {subtitle ? <p className="text-sm leading-6 text-gray-500 sm:text-base dark:text-white">{subtitle}</p> : null}
+            {subtitle ? <p className="text-sm leading-6 text-gray-500 dark:text-white sm:text-base dark:text-white">{subtitle}</p> : null}
           </div>
 
           <div className="rounded-2xl border border-black/5 bg-white/95 p-5 shadow-xl shadow-teal-900/5 backdrop-blur-sm sm:p-8 dark:border-white/10 dark:bg-neutral-900/95">
