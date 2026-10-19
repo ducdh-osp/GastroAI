@@ -90,7 +90,7 @@ export default function VerifyEmailPage() {
             {resendError && <Alert type="error" showIcon message={resendError} />}
             <div className="text-center">
               <Text type="secondary">Hoặc </Text>
-              <Link to="/login" className="text-teal-700 hover:text-teal-800">quay lại đăng nhập</Link>
+              <Link to="/login" className="text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300">quay lại đăng nhập</Link>
             </div>
           </div>
         )}

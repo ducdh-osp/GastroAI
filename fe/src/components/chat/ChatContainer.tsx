@@ -207,14 +207,14 @@ export function ChatContainer() {
       </div>
 
       <Card className="flex h-[min(760px,calc(100svh-180px))] min-h-[560px] flex-col overflow-hidden rounded-2xl border-black/5 p-0! shadow-sm" styles={{ body: { display: 'flex', minHeight: 0, height: '100%', flexDirection: 'column', padding: 0 } }}>
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 sm:px-6 dark:border-white/10 dark:bg-slate-900">
+        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4 sm:px-6 dark:border-white/10 dark:bg-neutral-900">
           <div className="flex items-center gap-3">
             <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-lg text-white shadow-sm shadow-teal-700/20" aria-hidden="true">
               <SafetyOutlined />
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400 dark:border-slate-900" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400 dark:border-neutral-900" />
             </span>
             <div>
-              <h3 className="m-0 text-base font-semibold tracking-tight text-slate-800 dark:text-slate-100">Trợ lý GastroAI</h3>
+              <h3 className="m-0 text-base font-semibold tracking-tight text-slate-800 dark:text-white">Trợ lý GastroAI</h3>
               <span className="mt-0.5 block text-xs font-medium text-emerald-600">Đang hoạt động</span>
             </div>
           </div>

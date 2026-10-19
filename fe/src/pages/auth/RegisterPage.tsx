@@ -68,7 +68,7 @@ export default function RegisterPage() {
         </Form.Item>
         <Button type="primary" htmlType="submit" block loading={loading}>Đăng ký</Button>
       </Form>
-      <div className="text-center mt-4"><Text type="secondary">Đã có tài khoản? </Text><Link to="/login" className="text-teal-700 hover:text-teal-800">Đăng nhập</Link></div>
+      <div className="text-center mt-4"><Text type="secondary">Đã có tài khoản? </Text><Link to="/login" className="text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300">Đăng nhập</Link></div>
     </AuthShell>
   )
 }

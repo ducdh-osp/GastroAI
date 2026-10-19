@@ -135,8 +135,8 @@ export default function LoginPage() {
         </Form.Item>
       </Form>
       <div className="flex justify-between text-sm">
-        <Link to="/register" className="text-teal-700 hover:text-teal-800">Đăng ký tài khoản</Link>
-        <Link to="/forgot-password" className="text-teal-700 hover:text-teal-800">Quên mật khẩu?</Link>
+        <Link to="/register" className="text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300">Đăng ký tài khoản</Link>
+        <Link to="/forgot-password" className="text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300">Quên mật khẩu?</Link>
       </div>
     </AuthShell>
   )

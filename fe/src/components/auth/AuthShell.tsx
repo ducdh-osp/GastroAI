@@ -1,6 +1,7 @@
 import type { ComponentType, CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../brand/Logo'
+import { useTheme } from '../../stores/themeStore'
 
 interface TrustItem {
   icon: ComponentType<{ className?: string; style?: CSSProperties }>
@@ -60,9 +61,10 @@ export function AuthShell({
   trustItems,
 }: AuthShellProps) {
   const { gradient, accent, logoTo } = TONES[tone]
+  const { mode } = useTheme()
 
   return (
-    <div className="grid min-h-svh bg-[#f7faf9] lg:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.9fr)]">
+    <div className="grid min-h-svh bg-[#f7faf9] dark:bg-[#0a0a0a] lg:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.9fr)]">
       {/* Panel thương hiệu */}
       <section
         className="relative hidden overflow-hidden text-white lg:flex lg:flex-col lg:justify-between"
@@ -100,21 +102,21 @@ export function AuthShell({
         <div className="w-full max-w-md space-y-6">
           <div className="flex items-center gap-3 lg:hidden">
             <Link to={logoTo}>
-              <Logo />
+              <Logo variant={mode === 'dark' ? 'light' : 'dark'} />
             </Link>
           </div>
 
           <div className="space-y-2">
             <div className="rule-accent w-16" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
-            <h2 className="font-display text-2xl leading-tight font-bold text-[#0f2926] sm:text-3xl">{title}</h2>
-            {subtitle ? <p className="text-sm leading-6 text-gray-500 sm:text-base">{subtitle}</p> : null}
+            <h2 className="font-display text-2xl leading-tight font-bold text-[#0f2926] sm:text-3xl dark:text-white">{title}</h2>
+            {subtitle ? <p className="text-sm leading-6 text-gray-500 sm:text-base dark:text-white">{subtitle}</p> : null}
           </div>
 
-          <div className="rounded-2xl border border-black/5 bg-white/95 p-5 shadow-xl shadow-teal-900/5 backdrop-blur-sm sm:p-8">
+          <div className="rounded-2xl border border-black/5 bg-white/95 p-5 shadow-xl shadow-teal-900/5 backdrop-blur-sm sm:p-8 dark:border-white/10 dark:bg-neutral-900/95">
             {children}
           </div>
 
-          {footer ? <div className="text-center text-sm text-gray-500">{footer}</div> : null}
+          {footer ? <div className="text-center text-sm text-gray-500 dark:text-white">{footer}</div> : null}
         </div>
       </section>
     </div>

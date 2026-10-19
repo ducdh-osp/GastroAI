@@ -259,15 +259,15 @@ export default function SymptomAssessmentPage() {
 
             <Card title="Tóm tắt câu trả lời" className="rounded-2xl border-black/5 shadow-sm">
               <dl className="grid gap-4 sm:grid-cols-2">
-                <div><dt className="text-xs text-slate-500 dark:text-slate-400">Triệu chứng chính</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-slate-100">{symptomLabel(answers.primarySymptom)}{answers.primarySymptomDetail ? `: ${answers.primarySymptomDetail}` : ''}</dd></div>
-                <div><dt className="text-xs text-slate-500 dark:text-slate-400">Thời gian</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-slate-100">{durationLabel(answers.duration)}</dd></div>
-                <div><dt className="text-xs text-slate-500 dark:text-slate-400">Đối tượng</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-slate-100">{groupLabel(answers.patientGroup)}</dd></div>
-                <div><dt className="text-xs text-slate-500 dark:text-slate-400">Mức độ tự đánh giá</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-slate-100">{titleForSeverity}</dd></div>
-                <div><dt className="text-xs text-slate-500 dark:text-slate-400">Ảnh hưởng sinh hoạt</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-slate-100">{activityImpactLabel(answers.activityImpact)}</dd></div>
-                <div><dt className="text-xs text-slate-500 dark:text-slate-400">Diễn tiến</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-slate-100">{progressionLabel(answers.progression)}</dd></div>
+                <div><dt className="text-xs text-slate-500 dark:text-white">Triệu chứng chính</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-white">{symptomLabel(answers.primarySymptom)}{answers.primarySymptomDetail ? `: ${answers.primarySymptomDetail}` : ''}</dd></div>
+                <div><dt className="text-xs text-slate-500 dark:text-white">Thời gian</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-white">{durationLabel(answers.duration)}</dd></div>
+                <div><dt className="text-xs text-slate-500 dark:text-white">Đối tượng</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-white">{groupLabel(answers.patientGroup)}</dd></div>
+                <div><dt className="text-xs text-slate-500 dark:text-white">Mức độ tự đánh giá</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-white">{titleForSeverity}</dd></div>
+                <div><dt className="text-xs text-slate-500 dark:text-white">Ảnh hưởng sinh hoạt</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-white">{activityImpactLabel(answers.activityImpact)}</dd></div>
+                <div><dt className="text-xs text-slate-500 dark:text-white">Diễn tiến</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-white">{progressionLabel(answers.progression)}</dd></div>
                 <div className="sm:col-span-2">
-                  <dt className="text-xs text-slate-500 dark:text-slate-400">Dấu hiệu đã chọn</dt>
-                  <dd className="mb-0 mt-1 text-slate-800 dark:text-slate-100">
+                  <dt className="text-xs text-slate-500 dark:text-white">Dấu hiệu đã chọn</dt>
+                  <dd className="mb-0 mt-1 text-slate-800 dark:text-white">
                     {warningSet.size ? [...warningSet].map(warningLabel).join('; ') : 'Không chọn dấu hiệu cảnh báo nào'}
                   </dd>
                 </div>
@@ -280,7 +280,7 @@ export default function SymptomAssessmentPage() {
                   </ul>
                 </div>
               )}
-              <p className="mb-0 mt-4 border-t border-slate-100 dark:border-white/10 pt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              <p className="mb-0 mt-4 border-t border-slate-100 dark:border-white/10 pt-3 text-xs leading-5 text-slate-500 dark:text-white">
                 Mức đánh giá lấy mức độ bạn tự khai làm cơ sở; dấu hiệu cảnh báo, mức ảnh hưởng sinh hoạt và diễn tiến có thể làm thay đổi kết quả. Thời gian và triệu chứng chính được ghi nhận để cung cấp ngữ cảnh.
               </p>
             </Card>
@@ -306,10 +306,10 @@ export default function SymptomAssessmentPage() {
                           type="button"
                           aria-pressed={selected}
                           onClick={() => update('primarySymptom', option.value)}
-                          className={`rounded-xl border p-4 text-left transition-colors ${selected ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700'}`}
+                          className={`rounded-xl border p-4 text-left transition-colors ${selected ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-800 dark:hover:bg-neutral-700'}`}
                         >
-                          <span className="block font-medium text-slate-800 dark:text-slate-100">{option.label}</span>
-                          <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">{option.description}</span>
+                          <span className="block font-medium text-slate-800 dark:text-white">{option.label}</span>
+                          <span className="mt-1 block text-sm text-slate-500 dark:text-white">{option.description}</span>
                         </button>
                       )
                     })}
@@ -353,7 +353,7 @@ export default function SymptomAssessmentPage() {
                       </Button>
                     ))}
                   </div>
-                  <p className="mb-0 mt-3 text-sm leading-5 text-slate-500 dark:text-slate-400">
+                  <p className="mb-0 mt-3 text-sm leading-5 text-slate-500 dark:text-white">
                     “Không chắc” dùng khi bạn chưa xác định được người có triệu chứng thuộc nhóm nào trong ba nhóm còn lại.
                   </p>
                   {answers.patientGroup === 'UNSURE' && (
@@ -383,10 +383,10 @@ export default function SymptomAssessmentPage() {
                           type="button"
                           aria-pressed={selected}
                           onClick={() => update('reportedSeverity', option.value)}
-                          className={`min-h-28 rounded-xl border p-4 text-left transition-colors ${selected ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700'}`}
+                          className={`min-h-28 rounded-xl border p-4 text-left transition-colors ${selected ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-800 dark:hover:bg-neutral-700'}`}
                         >
-                          <span className="block font-semibold text-slate-800 dark:text-slate-100">{option.label}</span>
-                          <span className="mt-2 block text-sm leading-5 text-slate-500 dark:text-slate-400">{option.description}</span>
+                          <span className="block font-semibold text-slate-800 dark:text-white">{option.label}</span>
+                          <span className="mt-2 block text-sm leading-5 text-slate-500 dark:text-white">{option.description}</span>
                         </button>
                       )
                     })}
@@ -411,9 +411,9 @@ export default function SymptomAssessmentPage() {
                     {activityImpactOptions.map((option) => (
                       <button key={option.value} type="button" aria-pressed={answers.activityImpact === option.value}
                         onClick={() => update('activityImpact', option.value)}
-                        className={`rounded-xl border p-4 text-left transition-colors ${answers.activityImpact === option.value ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700'}`}>
-                        <span className="block font-semibold text-slate-800 dark:text-slate-100">{option.label}</span>
-                        <span className="mt-2 block text-sm leading-5 text-slate-500 dark:text-slate-400">{option.description}</span>
+                        className={`rounded-xl border p-4 text-left transition-colors ${answers.activityImpact === option.value ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-800 dark:hover:bg-neutral-700'}`}>
+                        <span className="block font-semibold text-slate-800 dark:text-white">{option.label}</span>
+                        <span className="mt-2 block text-sm leading-5 text-slate-500 dark:text-white">{option.description}</span>
                       </button>
                     ))}
                   </div>
@@ -442,7 +442,7 @@ export default function SymptomAssessmentPage() {
                     className="grid w-full gap-2 sm:grid-cols-2"
                   >
                     {emergencyWarningOptions.map((option) => (
-                      <Checkbox key={option.value} value={option.value} className="!m-0 rounded-lg border border-red-100 bg-white px-3 py-2.5 leading-5 dark:border-red-900/50 dark:bg-slate-800">
+                      <Checkbox key={option.value} value={option.value} className="!m-0 rounded-lg border border-red-100 bg-white px-3 py-2.5 leading-5 dark:border-red-900/50 dark:bg-neutral-800">
                         {option.label}
                       </Checkbox>
                     ))}
@@ -460,7 +460,7 @@ export default function SymptomAssessmentPage() {
                     className="grid w-full gap-2 sm:grid-cols-2"
                   >
                     {clinicianReviewWarningOptions.map((option) => (
-                      <Checkbox key={option.value} value={option.value} className="!m-0 rounded-lg border border-amber-100 bg-white px-3 py-2.5 leading-5 dark:border-amber-900/50 dark:bg-slate-800">
+                      <Checkbox key={option.value} value={option.value} className="!m-0 rounded-lg border border-amber-100 bg-white px-3 py-2.5 leading-5 dark:border-amber-900/50 dark:bg-neutral-800">
                         {option.label}
                       </Checkbox>
                     ))}

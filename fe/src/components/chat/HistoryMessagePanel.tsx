@@ -85,7 +85,7 @@ function HistoryAttachment({ attachment }: { attachment: ChatAttachmentDto }) {
 
   const isImage = attachment.contentType.startsWith('image/')
   return (
-    <div className="max-w-60 rounded-lg bg-white/90 px-2.5 py-2 text-xs text-slate-700 dark:bg-slate-700/90 dark:text-slate-100">
+    <div className="max-w-60 rounded-lg bg-white/90 px-2.5 py-2 text-xs text-slate-700 dark:bg-neutral-700/90 dark:text-white">
       {isImage && previewUrl ? (
         <a href={previewUrl} target="_blank" rel="noreferrer" className="block">
           <img src={previewUrl} alt={`Tệp đính kèm ${attachment.originalFilename}`} className="max-h-48 max-w-full rounded object-contain" />
@@ -113,20 +113,20 @@ export function HistoryMessagePanel({
 }: HistoryMessagePanelProps) {
   if (!session) {
     return (
-      <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center px-8 py-16 dark:border-white/10 dark:bg-slate-900">
-        <MessageOutlined className="mb-4 text-4xl text-slate-300 dark:text-slate-600" />
-        <p className="m-0 text-base font-medium text-slate-500 dark:text-slate-300">Chọn một phiên chat để xem nội dung</p>
-        <p className="m-0 mt-2 text-sm text-slate-400 dark:text-slate-500">Nhấn vào phiên chat bên trái để xem lại hội thoại</p>
+      <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white text-center px-8 py-16 dark:border-white/10 dark:bg-neutral-900">
+        <MessageOutlined className="mb-4 text-4xl text-slate-300 dark:text-white" />
+        <p className="m-0 text-base font-medium text-slate-500 dark:text-white">Chọn một phiên chat để xem nội dung</p>
+        <p className="m-0 mt-2 text-sm text-slate-400 dark:text-white">Nhấn vào phiên chat bên trái để xem lại hội thoại</p>
       </div>
     )
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/10">
         <div className="min-w-0">
-          <p className="m-0 truncate font-semibold text-slate-800 dark:text-slate-100">{session.title}</p>
+          <p className="m-0 truncate font-semibold text-slate-800 dark:text-white">{session.title}</p>
           <p className="m-0 text-xs text-slate-400">
             {new Intl.DateTimeFormat('vi-VN', {
               day: '2-digit',
@@ -206,7 +206,7 @@ export function HistoryMessagePanel({
                     className={`rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
                       isPatient
                         ? 'rounded-br-md bg-teal-700 text-white'
-                        : 'rounded-bl-md bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100'
+                        : 'rounded-bl-md bg-slate-100 text-slate-800 dark:bg-neutral-700 dark:text-white'
                     }`}
                   >
                     <MarkdownContent content={msg.content} />
@@ -223,10 +223,10 @@ export function HistoryMessagePanel({
                     {/* Câu hỏi gợi ý */}
                     {!isPatient && msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
                       <div className="mt-3 border-t border-slate-200 pt-3 dark:border-white/10">
-                        <p className="m-0 text-xs text-slate-500 font-medium mb-1 dark:text-slate-400">Câu hỏi liên quan:</p>
+                        <p className="m-0 text-xs text-slate-500 font-medium mb-1 dark:text-white">Câu hỏi liên quan:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {msg.relatedQuestions.map((q) => (
-                            <span key={q} className="rounded-full border border-teal-200 bg-white px-2 py-0.5 text-xs text-teal-800 dark:border-teal-700 dark:bg-slate-800 dark:text-teal-300">
+                            <span key={q} className="rounded-full border border-teal-200 bg-white px-2 py-0.5 text-xs text-teal-800 dark:border-teal-700 dark:bg-neutral-800 dark:text-teal-300">
                               {q}
                             </span>
                           ))}
