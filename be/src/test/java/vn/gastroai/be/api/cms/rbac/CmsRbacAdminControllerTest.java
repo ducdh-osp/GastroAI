@@ -30,11 +30,11 @@ class CmsRbacAdminControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void adminCanAssignContentEditor() throws Exception {
-        mockMvc.perform(put("/api/v1/cms/rbac/accounts/DOCTOR/9/role")
+        mockMvc.perform(put("/api/v1/cms/rbac/accounts/ADMIN/9/role")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"role\":\"CONTENT_EDITOR\"}"))
                 .andExpect(status().isOk());
-        verify(service).assignRole(vn.gastroai.be.domain.admin.CmsAccountType.DOCTOR, 9L,
+        verify(service).assignRole(vn.gastroai.be.domain.admin.CmsAccountType.ADMIN, 9L,
                 vn.gastroai.be.domain.admin.CmsRole.CONTENT_EDITOR);
     }
 

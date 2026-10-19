@@ -58,15 +58,17 @@ public class CmsRbacService {
     @Transactional("mysqlTransactionManager")
     public CmsAccountResponse assignRole(CmsAccountType accountType, Long accountId, CmsRole role) {
         if (accountType == CmsAccountType.ADMIN) {
-            if (role != CmsRole.ADMIN) {
-                throw new IllegalArgumentException("Tai khoan Admin phai giu vai tro ADMIN");
+            if (role != CmsRole.ADMIN && role != CmsRole.CONTENT_EDITOR) {
+                throw new IllegalArgumentException("Tai khoan Admin chi co the gan vai tro ADMIN hoac CONTENT_EDITOR");
             }
-            return from(admins.findByIdForUpdate(accountId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tai khoan CMS")));
+            Admin admin = admins.findByIdForUpdate(accountId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tai khoan CMS"));
+            admin.setRole(role);
+            return from(admin);
         }
 
-        if (role != CmsRole.DOCTOR && role != CmsRole.CONTENT_EDITOR) {
-            throw new IllegalArgumentException("Tai khoan nay chi co the gan vai tro DOCTOR hoac CONTENT_EDITOR");
+        if (role != CmsRole.DOCTOR) {
+            throw new IllegalArgumentException("Tai khoan Bac si phai giu vai tro DOCTOR");
         }
         Doctor doctor = doctors.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tai khoan CMS"));
