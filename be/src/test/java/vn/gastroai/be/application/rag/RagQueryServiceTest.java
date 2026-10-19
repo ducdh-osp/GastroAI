@@ -135,6 +135,73 @@ class RagQueryServiceTest {
         assertTrue(result.relatedQuestions().isEmpty());
     }
 
+    @Test
+    void answerWithSourcesUsesRewrittenSnippetWhenGeminiReturnsExpectedFormat() {
+        GeminiEmbeddingClient embeddingClient = mock(GeminiEmbeddingClient.class);
+        EmbeddingStore embeddingStore = mock(EmbeddingStore.class);
+        GeminiChatClient chatClient = mock(GeminiChatClient.class);
+
+        float[] queryVector = {0.1f, 0.2f};
+        when(embeddingClient.embed(anyString())).thenReturn(queryVector);
+        when(embeddingStore.findTopK(queryVector, 5)).thenReturn(List.of(
+                new SimilarChunk(1L, 10L, "Cam nang tieu hoa", "trieu chung kho chiu vi tri thuong gap", 0.05, null)));
+        when(chatClient.generate(anyString(), anyString(), any())).thenReturn("Ban nen di kham.");
+        when(chatClient.generate(anyString(), eq("===1===\ntrieu chung kho chiu vi tri thuong gap\n")))
+                .thenReturn("===1===\nTrieu chung kho chiu o vi tri thuong gap.\n");
+
+        RagQueryService ragQueryService = ragQueryServiceWithTopK(embeddingClient, embeddingStore, chatClient, 5);
+
+        RagAnswer result = ragQueryService.answerWithSources("Dau bung la sao?");
+
+        assertEquals("Trieu chung kho chiu o vi tri thuong gap.", result.sources().get(0).snippet());
+    }
+
+    @Test
+    void answerWithSourcesFallsBackToOriginalSnippetWhenRewriteFormatIsMalformed() {
+        GeminiEmbeddingClient embeddingClient = mock(GeminiEmbeddingClient.class);
+        EmbeddingStore embeddingStore = mock(EmbeddingStore.class);
+        GeminiChatClient chatClient = mock(GeminiChatClient.class);
+
+        float[] queryVector = {0.1f, 0.2f};
+        when(embeddingClient.embed(anyString())).thenReturn(queryVector);
+        when(embeddingStore.findTopK(queryVector, 5)).thenReturn(List.of(
+                new SimilarChunk(1L, 10L, "Cam nang tieu hoa", "noi dung goc khong bi doi", 0.05, null)));
+        when(chatClient.generate(anyString(), anyString(), any())).thenReturn("Ban nen di kham.");
+        // Thieu dung dinh dang "===N===" - phai giu nguyen ban goc, khong doan mo noi dung.
+        when(chatClient.generate(anyString(), eq("===1===\nnoi dung goc khong bi doi\n")))
+                .thenReturn("Xin loi, toi khong hieu yeu cau.");
+
+        RagQueryService ragQueryService = ragQueryServiceWithTopK(embeddingClient, embeddingStore, chatClient, 5);
+
+        RagAnswer result = ragQueryService.answerWithSources("Dau bung la sao?");
+
+        assertEquals("noi dung goc khong bi doi", result.sources().get(0).snippet());
+    }
+
+    @Test
+    void answerWithSourcesRedactsDosageFromRewrittenSnippetToo() {
+        GeminiEmbeddingClient embeddingClient = mock(GeminiEmbeddingClient.class);
+        EmbeddingStore embeddingStore = mock(EmbeddingStore.class);
+        GeminiChatClient chatClient = mock(GeminiChatClient.class);
+
+        float[] queryVector = {0.1f, 0.2f};
+        when(embeddingClient.embed(anyString())).thenReturn(queryVector);
+        when(embeddingStore.findTopK(queryVector, 5)).thenReturn(List.of(
+                new SimilarChunk(1L, 10L, "Phac do dieu tri", "uong thuoc theo chi dinh", 0.05, null)));
+        when(chatClient.generate(anyString(), anyString(), any())).thenReturn("Ban nen di kham.");
+        // Gia lap truong hop Gemini "lam muot" cau chu nhung lo dien lai lieu luong - phong ngua
+        // bang cach che lieu LAN NUA tren chinh van ban da viet lai, khong chi tin ban goc da
+        // sach la xong.
+        when(chatClient.generate(anyString(), eq("===1===\nuong thuoc theo chi dinh\n")))
+                .thenReturn("===1===\nUong 25mg moi ngay theo chi dinh.\n");
+
+        RagQueryService ragQueryService = ragQueryServiceWithTopK(embeddingClient, embeddingStore, chatClient, 5);
+
+        RagAnswer result = ragQueryService.answerWithSources("Thuoc nay uong the nao?");
+
+        assertFalse(result.sources().get(0).snippet().contains("25mg"));
+    }
+
     /** UC0059 - topK gio doc tu AppRuntimeConfigService (co the doi qua CMS) thay vi hardcode -
      * mock san 1 config co dinh (threshold=null = khong loc gi them) cho cac test logic RAG o
      * tren, vi chung khong nham kiem tra UC0059. */
