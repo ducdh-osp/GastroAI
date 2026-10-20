@@ -129,12 +129,13 @@ public class DocumentStatusService {
                 .collect(Collectors.toMap(DocumentGroupRow::getGroupId, g -> g));
 
         DocumentStats stats = new DocumentStats(
-        latestPerGroup.size(),
-        (int) groups.values().stream().filter(g -> g.getCurrentVersionNo() != null).count(),
-        (int) latestPerGroup.stream()
-                .filter(d -> d.getStatus() == DocumentStatus.PENDING || d.getStatus() == DocumentStatus.PROCESSING)
-                .count(),
-        (int) latestPerGroup.stream().filter(d -> d.getStatus() == DocumentStatus.ERROR).count());
+                latestPerGroup.size(),
+                (int) groups.values().stream().filter(g -> g.getCurrentVersionNo() != null).count(),
+                (int) latestPerGroup.stream()
+                        .filter(d -> d.getStatus() == DocumentStatus.PENDING
+                                || d.getStatus() == DocumentStatus.PROCESSING)
+                        .count(),
+                (int) latestPerGroup.stream().filter(d -> d.getStatus() == DocumentStatus.ERROR).count());
 
         List<DocumentListRow> filtered = latestPerGroup.stream()
                 .filter(d -> status == null || d.getStatus() == status)
@@ -310,7 +311,7 @@ public class DocumentStatusService {
         List<DocumentSearchHit> items = rows.stream()
                 .limit(MAX_SEARCH_RESULTS)
                 .map(row -> new DocumentSearchHit(row.getDocumentId(), row.getTitle(),
-                        row.getChunkIndex(), snippet(row.getContent(), q)))
+                        row.getChunkIndex(), snippet(row.getContent(), q), row.getContent()))
                 .toList();
         return new DocumentSearchResult(items, truncated);
     }

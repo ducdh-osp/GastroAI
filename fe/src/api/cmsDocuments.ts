@@ -95,6 +95,7 @@ export interface CmsDocumentSearchHit {
   title: string
   chunkIndex: number
   snippet: string
+  content: string
 }
 
 export interface CmsDocumentSearchResult {

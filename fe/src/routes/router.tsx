@@ -41,7 +41,7 @@ import NotificationsPage from '../pages/patient/NotificationsPage'
 import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 import CmsUsersPage from '../pages/cms/CmsUsersPage'
 import CmsRbacPage from '../pages/cms/CmsRbacPage'
-import CmsDocumentSearchPage from '../pages/cms/CmsDocumentSearchPage'
+
 
 export const router = createBrowserRouter([
   {
@@ -277,14 +277,6 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsDocumentsPage />
-              </CmsProtectedRoute>
-            ),
-          },
-          {
-            path: '/cms/documents/search',
-            element: (
-              <CmsProtectedRoute>
-                <CmsDocumentSearchPage />
               </CmsProtectedRoute>
             ),
           },
