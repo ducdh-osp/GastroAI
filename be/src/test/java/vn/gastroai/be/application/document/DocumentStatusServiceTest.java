@@ -451,6 +451,7 @@ class DocumentStatusServiceTest {
 
         assertEquals(50, result.items().size());
         assertEquals(49, result.items().get(49).chunkIndex());
+        assertEquals("Noi dung HP doan 0", result.items().get(0).content());
         assertTrue(result.truncated());
     }
 
