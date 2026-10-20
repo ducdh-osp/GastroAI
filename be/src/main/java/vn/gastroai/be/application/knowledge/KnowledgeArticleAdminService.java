@@ -30,7 +30,6 @@ public class KnowledgeArticleAdminService {
 
     private static final String TX = "postgresTransactionManager";
     private static final int SORT_STEP = 10;
-    private static final int WORDS_PER_MINUTE = 200;
 
     private final KnowledgeArticleRepository articleRepository;
     private final ArticleTopicRepository topicRepository;
@@ -87,7 +86,6 @@ public class KnowledgeArticleAdminService {
         String sourceUrl = validateSourceUrl(request.sourceUrl());
 
         String slug = resolveNewSlug(request.slug(), title);
-        int readingMinutes = resolveReadingMinutes(request.readingMinutes(), content);
         LocalDate sourceCheckedAt = request.sourceCheckedAt() != null ? request.sourceCheckedAt() : LocalDate.now();
         if (sourceCheckedAt.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("Ngày kiểm tra nguồn không được lớn hơn thời điểm hiện tại");
@@ -101,7 +99,6 @@ public class KnowledgeArticleAdminService {
         article.setSummary(summary);
         article.setCategory(category);
         article.setContent(content);
-        article.setReadingMinutes(readingMinutes);
         article.setSourceName(sourceName);
         article.setSourceUrl(sourceUrl);
         article.setSourceCheckedAt(sourceCheckedAt);
@@ -143,7 +140,6 @@ public class KnowledgeArticleAdminService {
         String sourceUrl = validateSourceUrl(request.sourceUrl());
 
         String newSlug = resolveUpdatedSlug(request.slug(), title, article);
-        int readingMinutes = resolveReadingMinutes(request.readingMinutes(), content);
 
         boolean contentChanged = !content.equals(article.getContent())
                 || !title.equals(article.getTitle())
@@ -156,7 +152,6 @@ public class KnowledgeArticleAdminService {
         article.setSummary(summary);
         article.setCategory(category);
         article.setContent(content);
-        article.setReadingMinutes(readingMinutes);
         article.setSourceName(sourceName);
         article.setSourceUrl(sourceUrl);
         if (request.sourceCheckedAt() != null) {
@@ -305,15 +300,6 @@ public class KnowledgeArticleAdminService {
         String slug = normalized.replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
         if (slug.isBlank()) return "bai-viet";
         return slug.length() > 100 ? slug.substring(0, 100).replaceAll("-+$", "") : slug;
-    }
-
-    static int resolveReadingMinutes(Integer custom, String content) {
-        if (custom != null && custom >= 1 && custom <= 30) {
-            return custom;
-        }
-        String[] words = content.trim().split("\\s+");
-        int est = (int) Math.ceil((double) words.length / WORDS_PER_MINUTE);
-        return Math.max(1, Math.min(30, est));
     }
 
     private int nextSortOrder() {

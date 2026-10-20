@@ -9,7 +9,6 @@ public record KnowledgeArticleDetail(
         String title,
         String summary,
         String category,
-        Integer readingMinutes,
         String content,
         String sourceName,
         String sourceUrl,
@@ -17,7 +16,7 @@ public record KnowledgeArticleDetail(
 
     public static KnowledgeArticleDetail from(KnowledgeArticle article) {
         return new KnowledgeArticleDetail(article.getSlug(), article.getTitle(), article.getSummary(),
-                article.getCategory(), article.getReadingMinutes(), article.getContent(),
+                article.getCategory(), article.getContent(),
                 article.getSourceName(), article.getSourceUrl(), article.getSourceCheckedAt());
     }
 }

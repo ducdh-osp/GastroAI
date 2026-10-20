@@ -40,9 +40,6 @@ public class KnowledgeArticle {
     @Column(nullable = false, length = 80)
     private String category;
 
-    @Column(name = "reading_minutes", nullable = false)
-    private Integer readingMinutes;
-
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 

@@ -142,13 +142,6 @@ export default function CmsArticlesPage() {
       render: (cat: string) => <Tag color="cyan">{cat}</Tag>,
     },
     {
-      title: 'Thời lượng',
-      dataIndex: 'readingMinutes',
-      key: 'readingMinutes',
-      width: 110,
-      render: (minutes: number) => `${minutes} phút đọc`,
-    },
-    {
       title: 'Trạng thái',
       key: 'published',
       width: 140,

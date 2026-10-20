@@ -7,7 +7,6 @@ export interface CmsArticleSummary {
   title: string
   summary: string
   category: string
-  readingMinutes: number
   published: boolean
   medicalReviewer: string | null
   medicalReviewedAt: string | null
@@ -38,7 +37,6 @@ export interface CmsArticleInput {
   slug?: string | null
   summary: string
   category: string
-  readingMinutes?: number | null
   content: string
   sourceName: string
   sourceUrl: string

@@ -53,7 +53,6 @@ class KnowledgeArticleServiceTest {
         article.setSummary("Tóm tắt");
         article.setContent(content);
         article.setCategory("Dạ dày");
-        article.setReadingMinutes(3);
         article.setSortOrder(0);
         article.setPublished(true);
         return article;

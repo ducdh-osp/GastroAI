@@ -53,7 +53,6 @@ class KnowledgeArticleControllerTest {
         article.setTitle("Bài thử");
         article.setSummary("Tóm tắt");
         article.setCategory(category);
-        article.setReadingMinutes(3);
         return article;
     }
 }

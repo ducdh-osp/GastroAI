@@ -12,7 +12,6 @@ public record CmsArticleDetailResponse(
         String title,
         String summary,
         String category,
-        Integer readingMinutes,
         String content,
         String sourceName,
         String sourceUrl,
@@ -31,7 +30,6 @@ public record CmsArticleDetailResponse(
             String title,
             String summary,
             String category,
-            Integer readingMinutes,
             String content,
             String sourceName,
             String sourceUrl,
@@ -43,7 +41,7 @@ public record CmsArticleDetailResponse(
             Instant createdAt,
             Instant updatedAt
     ) {
-        this(id, slug, title, summary, category, readingMinutes, content, sourceName, sourceUrl, sourceCheckedAt, published, medicalReviewer, medicalReviewedAt, sortOrder, createdAt, updatedAt, 0L);
+        this(id, slug, title, summary, category, content, sourceName, sourceUrl, sourceCheckedAt, published, medicalReviewer, medicalReviewedAt, sortOrder, createdAt, updatedAt, 0L);
     }
 
     public static CmsArticleDetailResponse from(KnowledgeArticle article) {
@@ -53,7 +51,6 @@ public record CmsArticleDetailResponse(
                 article.getTitle(),
                 article.getSummary(),
                 article.getCategory(),
-                article.getReadingMinutes(),
                 article.getContent(),
                 article.getSourceName(),
                 article.getSourceUrl(),

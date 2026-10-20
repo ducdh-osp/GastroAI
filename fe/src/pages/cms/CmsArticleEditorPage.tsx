@@ -37,7 +37,6 @@ interface FormValues {
   slug?: string
   category: string
   summary: string
-  readingMinutes?: number
   content: string
   sourceName: string
   sourceUrl: string
@@ -75,7 +74,6 @@ export default function CmsArticleEditorPage() {
         published: false,
         sourceCheckedAt: dayjs(),
         medicalReviewer: undefined,
-        readingMinutes: undefined,
       })
       return
     }
@@ -90,7 +88,6 @@ export default function CmsArticleEditorPage() {
           slug: article.slug,
           category: article.category,
           summary: article.summary,
-          readingMinutes: article.readingMinutes,
           content: article.content,
           sourceName: article.sourceName,
           sourceUrl: article.sourceUrl,
@@ -107,15 +104,8 @@ export default function CmsArticleEditorPage() {
       .finally(() => setLoading(false))
   }, [id, form])
 
-  // Tự động tính thời gian đọc khi người dùng nhập nội dung nếu chưa nhập số thủ công
   function handleContentChange(val: string) {
     setContentWatch(val)
-    const currentCustomMinutes = form.getFieldValue('readingMinutes')
-    if (!currentCustomMinutes && val.trim().length > 0) {
-      const words = val.trim().split(/\s+/).length
-      const est = Math.max(1, Math.min(30, Math.ceil(words / 200)))
-      form.setFieldsValue({ readingMinutes: est })
-    }
   }
 
   async function handleSubmit(values: FormValues) {
@@ -127,7 +117,6 @@ export default function CmsArticleEditorPage() {
         slug: values.slug?.trim() || undefined,
         summary: values.summary.trim(),
         category: values.category,
-        readingMinutes: values.readingMinutes,
         content: values.content.trim(),
         sourceName: values.sourceName.trim(),
         sourceUrl: values.sourceUrl.trim(),
@@ -334,13 +323,6 @@ export default function CmsArticleEditorPage() {
                     }}
                   </Form.Item>
 
-                  <Form.Item
-                    name="readingMinutes"
-                    label="Thời lượng đọc (phút)"
-                    extra="Ước tính tự động dựa trên số từ nếu để trống."
-                  >
-                    <InputNumber min={1} max={30} className="w-full" placeholder="1 - 30" />
-                  </Form.Item>
 
                   <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn sẽ hiển thị trước.">
                     <InputNumber min={0} className="w-full" placeholder="0" />
