@@ -727,4 +727,29 @@ class DocumentStatusServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> documentStatusService.rename(99L, "Tên mới"));
     }
+    @Test
+    void listStatsCountAllDocumentsRegardlessOfFilterAndPage() {
+        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
+                listRow(1L, "Dang dung", DocumentStatus.DONE, 1, 1L),
+                listRow(2L, "Bi loi", DocumentStatus.ERROR, 1, 2L),
+                listRow(3L, "Cho xu ly", DocumentStatus.PENDING, 1, 3L),
+                listRow(4L, "Da go", DocumentStatus.DONE, 1, 4L)));
+        when(documentRepository.findGroupRows()).thenReturn(List.of(
+                groupRow(1L, 1, 1, 1L, null),
+                groupRow(2L, 1, null, null, null),
+                groupRow(3L, 1, null, null, null),
+                groupRow(4L, 1, null, null, Instant.now())));
+        when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
+
+        var page = documentStatusService.list(null, DocumentStatus.DONE, 0, 1);
+
+        // Danh sach: chi 2 tai lieu DONE, trang chi lay 1 dong.
+        assertEquals(2, page.total());
+        assertEquals(1, page.items().size());
+        // Thong ke: van dem tren ca 4 tai lieu.
+        assertEquals(4, page.stats().total());
+        assertEquals(1, page.stats().ready());
+        assertEquals(1, page.stats().processing());
+        assertEquals(1, page.stats().error());
+    }
 }

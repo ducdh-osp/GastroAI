@@ -454,4 +454,59 @@ class DocumentUploadServiceTest {
         assertEquals(stored.toString(), saved.getSource());
         verify(fileStorageService, never()).delete(any());
     }
+
+    @Test
+    void uploadUsesGivenTitleInsteadOfFileName() throws IOException {
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.upload(file, null, "  Trào ngược   dạ dày  ");
+
+        assertEquals("Trào ngược dạ dày", saved.getTitle());
+    }
+
+    // De trong ten -> dung ten file nhu truoc day.
+    @Test
+    void uploadFallsBackToFileNameWhenTitleBlank() throws IOException {
+        when(file.getOriginalFilename()).thenReturn("trao-nguoc.pdf");
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.upload(file, null, "   ");
+
+        assertEquals("trao-nguoc.pdf", saved.getTitle());
+    }
+
+    // Ten qua 255 ky tu -> bao loi NGAY, chua luu file (khong de lai file mo coi).
+    @Test
+    void uploadRejectsTooLongTitleBeforeStoringFile() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.upload(file, null, "a".repeat(256)));
+
+        verify(fileStorageService, never()).store(any());
+        verify(documentRepository, never()).saveAndFlush(any());
+    }
+
+    // Phien ban moi giu ten hien tai cua tai lieu, khong lay ten file moi.
+    @Test
+    void uploadNewVersionKeepsDocumentTitle() throws IOException {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setVersionNo(1);
+        v1.setTitle("Trào ngược dạ dày");
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung ban 2"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.uploadNewVersion(1L, file, null);
+
+        assertEquals("Trào ngược dạ dày", saved.getTitle());
+        assertEquals(2, saved.getVersionNo());
+    }
 }

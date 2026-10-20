@@ -26,13 +26,6 @@ export interface CmsDocumentItem {
   unpublished: boolean
 }
 
-export interface CmsDocumentPage {
-  items: CmsDocumentItem[]
-  total: number
-  page: number
-  pageSize: number
-}
-
 export async function listCmsDocuments(params: {
   q?: string
   status?: DocumentStatus
