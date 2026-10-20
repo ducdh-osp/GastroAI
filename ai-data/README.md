@@ -23,7 +23,7 @@ Yêu cầu Python 3.10 trở lên; không cần cài thư viện ngoài.
     python ai-data/scripts/generate_dataset.py
     python ai-data/scripts/validate_dataset.py
 
-Generator có tính xác định: chạy lại từ cùng phiên bản mã sẽ tạo cùng nội dung. `manifest.json` lưu số lượng và SHA-256 của bốn file JSONL. Validator kiểm tra UTF-8, mojibake, số lượng, ID trùng, nội dung trùng, PII cơ bản, nguồn, enum, split và phân bố nhãn.
+Generator có tính xác định: chạy lại từ cùng phiên bản mã sẽ tạo cùng nội dung. `manifest.json` lưu số lượng và SHA-256 của bốn file JSONL sau khi chuẩn hóa newline, nên kết quả giống nhau trên Windows/Linux. Validator kiểm tra UTF-8, mojibake, số lượng, ID trùng, nội dung trùng, PII cơ bản, nguồn, enum, split và phân bố nhãn.
 
 ## Chia lại development/test
 

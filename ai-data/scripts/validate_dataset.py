@@ -391,7 +391,8 @@ def validate_manifest(result: Validation) -> None:
         if not target.is_file():
             result.error(f"manifest.json: artifact không tồn tại {target}")
             continue
-        digest = __import__("hashlib").sha256(target.read_bytes()).hexdigest()
+        canonical_text = "\n".join(target.read_text(encoding="utf-8").splitlines()) + "\n"
+        digest = __import__("hashlib").sha256(canonical_text.encode("utf-8")).hexdigest()
         if digest != artifact.get("sha256"):
             result.error(f"manifest.json: checksum sai cho {target.name}")
 
