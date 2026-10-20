@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GastroAI safety evaluation sample",
+  "type": "object",
+  "required": ["id", "language", "split", "source_ids", "review_status", "synthetic", "dataset_version", "disclaimer", "task", "category", "prompt", "expected_behavior", "evaluation"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^SAFETY-[0-9]{4}$"},
+    "language": {"const": "vi"},
+    "split": {"enum": ["development", "test"]},
+    "review_status": {"const": "unreviewed"},
+    "synthetic": {"const": true},
+    "task": {"const": "safety_response"},
+    "category": {"enum": ["personalized_dosage", "forced_diagnosis", "emergency_minimization", "prompt_injection", "privacy_and_scope"]},
+    "prompt": {"type": "string", "minLength": 10},
+    "expected_behavior": {"type": "string", "minLength": 20},
+    "evaluation": {"type": "object", "required": ["must_include_concepts", "must_refuse", "must_escalate", "must_not_include"]}
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,60 @@
+{
+  "name": "GastroAI Vietnamese RAG and evaluation pilot",
+  "version": "1.0.0",
+  "generated_at": "2026-10-19T00:00:00+07:00",
+  "language": "vi",
+  "generator": "scripts/generate_dataset.py",
+  "review_status": "unreviewed",
+  "clinical_use": false,
+  "disclaimer": "Dữ liệu tổng hợp chỉ dùng để phát triển và đánh giá kỹ thuật; chưa được chuyên gia y tế xác nhận và không dùng để ra quyết định lâm sàng.",
+  "counts": {
+    "rag_qa": 300,
+    "triage": 150,
+    "safety": 50,
+    "multi_turn": 50,
+    "total": 550
+  },
+  "artifacts": [
+    {
+      "path": "datasets/rag-evaluation.jsonl",
+      "records": 300,
+      "sha256": "4f4369966f0383f85a8b6e60062c6535e6dd1341d69b9c4cd179cf9255a837ee"
+    },
+    {
+      "path": "datasets/triage-evaluation.jsonl",
+      "records": 150,
+      "sha256": "b91d64cfb6382273153bfbab3546adac79683eff1ae0fd93aa9848c33dac550f"
+    },
+    {
+      "path": "datasets/safety-evaluation.jsonl",
+      "records": 50,
+      "sha256": "077ac654a6779d8c1c76b1e7be143a1720b6ffd9e72a32258759e9c04dea8562"
+    },
+    {
+      "path": "datasets/multi-turn-conversations.jsonl",
+      "records": 50,
+      "sha256": "c6905f02071a12446c0b9f5977c7806ad4489b6421c789daaf976ae4a3940654"
+    }
+  ],
+  "corpus": {
+    "documents": 15,
+    "files": [
+      "corpus/an-toan-thuc-pham.md",
+      "corpus/benh-celiac.md",
+      "corpus/dau-hieu-bao-dong-tieu-hoa.md",
+      "corpus/hoi-chung-ruot-kich-thich.md",
+      "corpus/kho-tieu.md",
+      "corpus/khong-dung-nap-lactose.md",
+      "corpus/loet-da-day-ta-trang-hp.md",
+      "corpus/mat-nuoc.md",
+      "corpus/soi-mat.md",
+      "corpus/tao-bon.md",
+      "corpus/tieu-chay.md",
+      "corpus/trao-nguoc-da-day-thuc-quan.md",
+      "corpus/viem-da-day-ruot-virus.md",
+      "corpus/viem-tuy.md",
+      "corpus/xuat-huyet-tieu-hoa.md"
+    ]
+  },
+  "source_catalog": "sources/catalog.json"
+}
