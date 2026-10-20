@@ -1,0 +1,139 @@
+{
+  "sources": [
+    {
+      "source_id": "NIDDK_GERD",
+      "title": "Symptoms & Causes of GER & GERD in Adults",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/acid-reflux-ger-gerd-adults/symptoms-causes",
+      "accessed_at": "2026-10-19",
+      "topic": "Trào ngược dạ dày - thực quản",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_DYSPEPSIA",
+      "title": "Indigestion (Dyspepsia)",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/indigestion-dyspepsia",
+      "accessed_at": "2026-10-19",
+      "topic": "Khó tiêu",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_PEPTIC_ULCER",
+      "title": "Peptic Ulcers (Stomach or Duodenal Ulcers)",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/peptic-ulcers-stomach-ulcers",
+      "accessed_at": "2026-10-19",
+      "topic": "Loét dạ dày - tá tràng và H. pylori",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_IBS",
+      "title": "Irritable Bowel Syndrome",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/irritable-bowel-syndrome",
+      "accessed_at": "2026-10-19",
+      "topic": "Hội chứng ruột kích thích",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_CONSTIPATION",
+      "title": "Constipation",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/constipation",
+      "accessed_at": "2026-10-19",
+      "topic": "Táo bón",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_DIARRHEA",
+      "title": "Diarrhea",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/diarrhea",
+      "accessed_at": "2026-10-19",
+      "topic": "Tiêu chảy",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NHS_DEHYDRATION",
+      "title": "Dehydration",
+      "publisher": "National Health Service (NHS)",
+      "url": "https://www.nhs.uk/conditions/dehydration/",
+      "accessed_at": "2026-10-19",
+      "topic": "Mất nước",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_LACTOSE",
+      "title": "Lactose Intolerance",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/lactose-intolerance",
+      "accessed_at": "2026-10-19",
+      "topic": "Không dung nạp lactose",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_CELIAC",
+      "title": "Celiac Disease",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/celiac-disease",
+      "accessed_at": "2026-10-19",
+      "topic": "Bệnh celiac",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_GALLSTONES",
+      "title": "Gallstones",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/gallstones",
+      "accessed_at": "2026-10-19",
+      "topic": "Sỏi mật",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_PANCREATITIS",
+      "title": "Pancreatitis",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/pancreatitis",
+      "accessed_at": "2026-10-19",
+      "topic": "Viêm tụy",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_GI_BLEEDING",
+      "title": "Gastrointestinal Bleeding",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/gastrointestinal-bleeding",
+      "accessed_at": "2026-10-19",
+      "topic": "Xuất huyết tiêu hóa",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NIDDK_GASTROENTERITIS",
+      "title": "Viral Gastroenteritis",
+      "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/viral-gastroenteritis",
+      "accessed_at": "2026-10-19",
+      "topic": "Viêm dạ dày ruột do vi-rút",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "WHO_FOOD_SAFETY",
+      "title": "Food safety",
+      "publisher": "World Health Organization (WHO)",
+      "url": "https://www.who.int/news-room/fact-sheets/detail/food-safety",
+      "accessed_at": "2026-10-19",
+      "topic": "An toàn thực phẩm",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    },
+    {
+      "source_id": "NICE_DYSPEPSIA_GERD",
+      "title": "Gastro-oesophageal reflux disease and dyspepsia in adults",
+      "publisher": "National Institute for Health and Care Excellence (NICE)",
+      "url": "https://www.nice.org.uk/guidance/cg184",
+      "accessed_at": "2026-10-19",
+      "topic": "Đánh giá trào ngược và khó tiêu ở người lớn",
+      "reuse_note": "Chỉ diễn giải ngắn, dẫn nguồn; không sao chép nguyên văn dài."
+    }
+  ]
+}
