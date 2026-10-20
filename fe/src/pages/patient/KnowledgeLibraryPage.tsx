@@ -14,8 +14,8 @@ function KnowledgeArticleCard({ article }: { article: KnowledgeArticleSummary })
     <Link to={`/articles/${article.slug}`} className="block h-full no-underline">
       <Card hoverable className="h-full rounded-2xl border-black/5 shadow-sm">
         <Tag color="cyan">{article.category}</Tag>
-        <h2 className="mb-2 mt-3 text-lg font-semibold text-slate-800">{article.title}</h2>
-        <p className="mb-4 text-sm leading-6 text-slate-600">{article.summary}</p>
+        <h2 className="mb-2 mt-3 text-lg font-semibold text-slate-800 dark:text-white">{article.title}</h2>
+        <p className="mb-4 text-sm leading-6 text-slate-600 dark:text-white">{article.summary}</p>
       </Card>
     </Link>
   )
@@ -56,8 +56,8 @@ function ArticleDetail({ slug }: { slug: string }) {
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Tag color="cyan">{article.category}</Tag>
           <Title level={2} className="mb-2! mt-3!">{article.title}</Title>
-          <p className="my-5 text-base leading-7 text-slate-600">{article.summary}</p>
-          <div className="border-t border-slate-100 pt-5 text-slate-700">
+          <p className="my-5 text-base leading-7 text-slate-600 dark:text-white">{article.summary}</p>
+          <div className="border-t border-slate-100 pt-5 text-slate-700 dark:text-white">
             <MarkdownContent content={article.content} />
           </div>
           <div className="mt-8 rounded-xl bg-slate-50 p-4 text-sm">
@@ -65,7 +65,7 @@ function ArticleDetail({ slug }: { slug: string }) {
             <p className="mb-1 mt-2"><a href={article.sourceUrl} target="_blank" rel="noreferrer" className="text-teal-700 underline">{article.sourceName}</a></p>
             <Text type="secondary">Đường dẫn nguồn được kiểm tra ngày {new Intl.DateTimeFormat('vi-VN').format(new Date(`${article.sourceCheckedAt}T00:00:00`))}.</Text>
           </div>
-          <p className="mb-0 mt-4 text-xs text-slate-500">Thông tin tham khảo không thay thế chẩn đoán hoặc tư vấn của nhân viên y tế.</p>
+          <p className="mb-0 mt-4 text-xs text-slate-500 dark:text-white">Thông tin tham khảo không thay thế chẩn đoán hoặc tư vấn của nhân viên y tế.</p>
         </Card>
       )}
     </div>

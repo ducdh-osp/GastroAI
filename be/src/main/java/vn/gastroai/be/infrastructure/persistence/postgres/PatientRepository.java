@@ -23,7 +23,7 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
 
     @Query("""
             select p from Patient p
-            where (:q is null
+            where (:q = ''
                     or lower(p.email) like lower(concat('%', :q, '%')) escape '!'
                     or lower(coalesce(p.fullName, '')) like lower(concat('%', :q, '%')) escape '!')
               and (:adminLocked is null or p.adminLocked = :adminLocked)

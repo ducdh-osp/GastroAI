@@ -2,6 +2,8 @@ import {
   AuditOutlined,
   BellOutlined,
   BookOutlined,
+  BulbFilled,
+  BulbOutlined,
   DashboardOutlined,
   DownOutlined,
   FileTextOutlined,
@@ -15,11 +17,12 @@ import {
   TagsOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
-import { Badge, Dropdown, notification, Tag } from 'antd'
+import { Badge, Dropdown, notification, Switch, Tag } from 'antd'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Logo } from '../brand/Logo'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
+import { useTheme } from '../../stores/themeStore'
 import { getUnreadNotificationCount } from '../../api/notifications'
 import { useNotificationSocket } from '../../hooks/useNotificationSocket'
 
@@ -94,6 +97,7 @@ const ROLE_LABEL: Record<string, string> = {
  */
 export function CmsSidebar() {
   const { user, logout } = useCmsAuth()
+  const { mode, toggle: toggleTheme } = useTheme()
   const location = useLocation()
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -190,6 +194,13 @@ export function CmsSidebar() {
       </div>
 
       <div className="border-t border-white/10 p-3">
+        <div className="mb-1 flex items-center justify-between gap-2.5 rounded-lg px-2 py-2 text-sm text-white/80">
+          <span className="flex items-center gap-2.5">
+            {mode === 'dark' ? <BulbFilled /> : <BulbOutlined />}
+            Chế độ tối
+          </span>
+          <Switch size="small" checked={mode === 'dark'} onChange={toggleTheme} />
+        </div>
         <Dropdown
           menu={{
             items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true, onClick: logout }],

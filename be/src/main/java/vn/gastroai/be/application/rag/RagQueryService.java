@@ -9,7 +9,10 @@ import vn.gastroai.be.infrastructure.ai.ImagePart;
 import vn.gastroai.be.infrastructure.rag.EmbeddingStore;
 import vn.gastroai.be.infrastructure.rag.SimilarChunk;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -90,10 +93,7 @@ public class RagQueryService {
         String systemPrompt = SYSTEM_PROMPT_PREFIX + contextText + attachmentContext;
         String generatedAnswer = chatClient.generate(systemPrompt, question, images);
 
-        List<RagSource> sources = context.stream()
-                .limit(MAX_DISPLAYED_SOURCES)
-                .map(chunk -> new RagSource(chunk.documentTitle(), DosageRedactor.redact(chunk.content()), chunk.sourceUrl()))
-                .toList();
+        List<RagSource> sources = buildSources(chatClient, context);
         return new RagAnswer(generatedAnswer, sources, generateRelatedQuestions(question, generatedAnswer));
     }
      /**
@@ -120,6 +120,77 @@ public class RagQueryService {
         }
         return chunks.stream().filter(chunk -> chunk.distance() <= threshold).toList();
     }
+
+    /**
+     * Danh sach nguon hien cho nguoi dung (UC0029) - chunk goc bi cat theo so tu luc chunking
+     * (UC0031/032) nen co the bat dau/ket thuc giua cau, lai cong voi loi chinh ta co san trong
+     * tai lieu goc. Goi Gemini VIET LAI cho de doc hon (sua cau cut, loi chinh ta) truoc khi
+     * hien - neu buoc nay loi/tra ve sai so luong thi fallback ve chunk da che lieu nguyen van,
+     * GIONG HET pattern cua generateRelatedQuestions: khong duoc lam hong cau tra loi chinh.
+     * Tach static de StreamingRagQueryService dung lai y het.
+     */
+    public static List<RagSource> buildSources(GeminiChatClient chatClient, List<SimilarChunk> context) {
+        List<SimilarChunk> topChunks = context.stream().limit(MAX_DISPLAYED_SOURCES).toList();
+        List<String> redactedOriginals = topChunks.stream()
+                .map(chunk -> DosageRedactor.redact(chunk.content()))
+                .toList();
+        List<String> readable = rewriteSnippetsForReadability(chatClient, redactedOriginals);
+
+        List<RagSource> sources = new ArrayList<>();
+        for (int i = 0; i < topChunks.size(); i++) {
+            sources.add(new RagSource(topChunks.get(i).documentTitle(), readable.get(i), topChunks.get(i).sourceUrl()));
+        }
+        return sources;
+    }
+
+    private static final Pattern SOURCE_MARKER = Pattern.compile("===\\s*(\\d+)\\s*===");
+
+    private static List<String> rewriteSnippetsForReadability(GeminiChatClient chatClient, List<String> redactedOriginals) {
+        if (redactedOriginals.isEmpty()) {
+            return redactedOriginals;
+        }
+        try {
+            StringBuilder prompt = new StringBuilder();
+            for (int i = 0; i < redactedOriginals.size(); i++) {
+                prompt.append("===").append(i + 1).append("===\n").append(redactedOriginals.get(i)).append('\n');
+            }
+            String raw = chatClient.generate(SYSTEM_PROMPT_REWRITE_SOURCES, prompt.toString());
+            List<String> rewritten = parseNumberedBlocks(raw, redactedOriginals.size());
+            if (rewritten.size() != redactedOriginals.size()) {
+                // Gemini tra ve khong du/sai dinh dang - khong doan mo, dung nguyen ban goc.
+                return redactedOriginals;
+            }
+            // Che lieu lan 2 tren chinh VAN BAN DA VIET LAI - phong truong hop Gemini vo tinh
+            // dien lai so lieu/lieu luong khi "lam muot" cau chu (xem DosageRedactor javadoc).
+            return rewritten.stream().map(DosageRedactor::redact).toList();
+        } catch (RuntimeException exception) {
+            return redactedOriginals;
+        }
+    }
+
+    private static List<String> parseNumberedBlocks(String raw, int expectedCount) {
+        Matcher matcher = SOURCE_MARKER.matcher(raw);
+        // markerStarts[i] = vi tri bat dau cua marker "===N===" thu i, contentStarts[i] = vi tri
+        // ngay sau marker do - noi dung cua khoi i la tu contentStarts[i] den markerStarts[i+1]
+        // (hoac het chuoi voi khoi cuoi), tranh an ca marker tiep theo vao noi dung.
+        List<Integer> markerStarts = new ArrayList<>();
+        List<Integer> contentStarts = new ArrayList<>();
+        while (matcher.find()) {
+            markerStarts.add(matcher.start());
+            contentStarts.add(matcher.end());
+        }
+        List<String> blocks = new ArrayList<>();
+        for (int i = 0; i < contentStarts.size(); i++) {
+            int start = contentStarts.get(i);
+            int end = i + 1 < markerStarts.size() ? markerStarts.get(i + 1) : raw.length();
+            String block = raw.substring(start, Math.min(end, raw.length())).trim();
+            if (!block.isBlank()) {
+                blocks.add(block);
+            }
+        }
+        return blocks.size() == expectedCount ? blocks : List.of();
+    }
+
     /**
      * Goi y cau hoi lien quan la tinh nang phu (khong phai ly do chinh nguoi dung
      * hoi) - goi
@@ -164,6 +235,22 @@ public class RagQueryService {
             Ban la tro ly AI cua GastroAI, chuyen tu van ve suc khoe tieu hoa. Kho tri thuc \
             hien chua co tai lieu nao lien quan. Hay noi ro la chua co du lieu de tra loi \
             chinh xac, va khuyen nguoi dung gap bac si neu can thiet. Khong tu bia thong tin y khoa.
+            """;
+
+    private static final String SYSTEM_PROMPT_REWRITE_SOURCES = """
+            Ban se nhan mot hoac vai doan trich NGUYEN VAN tu tai lieu y khoa, moi doan danh so \
+            theo dinh dang "===N===". Cac doan nay bi cat theo so tu luc xu ly tai lieu nen co \
+            the bat dau/ket thuc giua cau, va co the lan loi chinh ta co san trong tai lieu goc.
+
+            Hay viet lai TUNG doan cho ro rang, mach lac va de doc hon: noi lien cau bi cat o \
+            dau/cuoi doan, sua loi chinh ta/dau cau, nhung TUYET DOI KHONG duoc them, bot, suy \
+            dien, hay dien vao bat ky thong tin y khoa/so lieu/lieu luong nao khong co san trong \
+            doan goc - kem ca khi doan goc dang bi cat cut, cung KHONG duoc tu "doan" noi dung \
+            con thieu. Neu 1 doan da du ro rang thi giu gan nhu nguyen van.
+
+            Tra ve DUNG so doan vua nhan, DUNG dinh dang danh so "===N===" nhu dau vao (N bat dau \
+            tu 1), khong them loi dan, khong giai thich gi them ngoai noi dung da viet lai cua \
+            tung doan.
             """;
 
     private static final String SYSTEM_PROMPT_RELATED_QUESTIONS = """

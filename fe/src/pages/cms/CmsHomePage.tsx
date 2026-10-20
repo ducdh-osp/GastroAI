@@ -38,7 +38,7 @@ export default function CmsHomePage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         {visibleUpcoming.map(({ icon: Icon, title, desc }) => (
           <Card key={title} className="rounded-2xl border-black/5 shadow-sm">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:text-white">
               <Icon />
             </span>
             <Title level={5} className="mt-3 mb-1!">{title}</Title>

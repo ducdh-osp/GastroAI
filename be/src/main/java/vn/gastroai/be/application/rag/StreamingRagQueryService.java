@@ -19,8 +19,6 @@ import java.util.stream.Collectors;
 @Service
 public class StreamingRagQueryService {
 
-    private static final int MAX_DISPLAYED_SOURCES = 2;
-
     private final GeminiEmbeddingClient embeddingClient;
     private final EmbeddingStore embeddingStore;
     private final GeminiStreamingChatClient streamingChatClient;
@@ -69,11 +67,6 @@ public class StreamingRagQueryService {
         List<SimilarChunk> context = RagQueryService.applySimilarityThreshold(
                 embeddingStore.findTopK(queryVector, config.ragTopK()), config.ragSimilarityThreshold());
 
-        List<RagSource> sources = context.stream()
-                .limit(MAX_DISPLAYED_SOURCES)
-                .map(chunk -> new RagSource(chunk.documentTitle(), DosageRedactor.redact(chunk.content()), chunk.sourceUrl()))
-                .toList();
-
         String attachmentContext = RagQueryService.buildAttachmentContext(attachedDocumentText);
 
         String systemPrompt;
@@ -100,6 +93,9 @@ public class StreamingRagQueryService {
         );
 
         List<String> relatedQuestions = generateRelatedQuestions(question, answer.toString());
+        // Viet lai nguon THAM KHAO sau khi stream xong (khong lam cham thoi diem bat dau stream
+        // cau tra loi chinh) - xem RagQueryService.buildSources().
+        List<RagSource> sources = RagQueryService.buildSources(chatClient, context);
 
         return new StreamingResult(
                 answer.toString(),

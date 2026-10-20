@@ -69,7 +69,7 @@ export default function ChangePasswordPage() {
             </Form.Item>
             <Button type="primary" htmlType="submit" block loading={loading}>Đổi mật khẩu</Button>
           </Form>
-          <div className="text-center mt-4"><Link to="/" className="text-teal-700 hover:text-teal-800">Quay lại trang chủ</Link></div>
+          <div className="text-center mt-4"><Link to="/" className="text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300">Quay lại trang chủ</Link></div>
         </Card>
       </div>
     </AppShell>

@@ -1,6 +1,7 @@
 import {
   BarChartOutlined,
   BellOutlined,
+  BulbFilled,
   BulbOutlined,
   CoffeeOutlined,
   CommentOutlined,
@@ -19,10 +20,11 @@ import {
   MessageOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons'
-import { Badge, Dropdown, notification } from 'antd'
+import { Badge, Dropdown, notification, Switch } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
+import { useTheme } from '../../stores/themeStore'
 import { Logo } from '../brand/Logo'
 import { getUnreadNotificationCount } from '../../api/notifications'
 import { useNotificationSocket } from '../../hooks/useNotificationSocket'
@@ -53,6 +55,7 @@ const NAV_ITEMS = [
  * cổng vẫn phân biệt được bằng mắt dù cùng kiểu "dashboard tối". */
 export function AppSidebar() {
   const { email, fullName, logout, token } = useAuth()
+  const { mode, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
   const [unreadCount, setUnreadCount] = useState(0)
@@ -114,6 +117,13 @@ export function AppSidebar() {
       </div>
 
       <div className="border-t border-white/10 p-3">
+        <div className="mb-1 flex items-center justify-between gap-2.5 rounded-lg px-2 py-2 text-sm text-white/80">
+          <span className="flex items-center gap-2.5">
+            {mode === 'dark' ? <BulbFilled /> : <BulbOutlined />}
+            Chế độ tối
+          </span>
+          <Switch size="small" checked={mode === 'dark'} onChange={toggleTheme} />
+        </div>
         <Dropdown
           menu={{
             items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true, onClick: handleLogout }],

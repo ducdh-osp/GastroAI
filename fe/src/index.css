@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Doi "dark:" sang bat theo class .dark tren <html> (do ThemeProvider toggle) thay vi
+   theo prefers-color-scheme mac dinh cua Tailwind - de nut bat/tat trong sidebar co tac
+   dung thuc su, khong bi he dieu hanh ghi de. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Bảng màu GastroAI — xanh ngọc (sức khỏe, tin cậy) + điểm nhấn hổ phách ấm.
    Định nghĩa qua @theme để dùng được như class Tailwind chuẩn (bg-brand, text-brand...). */
 @theme {
@@ -18,6 +23,28 @@
 
 body {
   margin: 0;
+}
+
+/* Tong mau chinh cua che do toi: den-xam trung tinh (neutral), khong nghieng xanh/navy nhu
+   slate - dung lai o day (body + scrollbar) de khop voi dark:bg-neutral-* dang dung trong
+   cac trang. */
+.dark body {
+  background: #0a0a0a;
+}
+
+/* Thanh cuộn theo trình duyệt (Chrome/Edge) không tự đổi theo theme - đổi tay cho chế độ tối,
+   nếu không track vẫn trắng dù nội dung đã tối. Firefox dùng scrollbar-color riêng bên dưới. */
+.dark {
+  scrollbar-color: #525252 #0a0a0a;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #525252;
+  border-radius: 8px;
 }
 
 @layer utilities {

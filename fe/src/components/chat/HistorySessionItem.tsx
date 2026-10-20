@@ -41,14 +41,14 @@ export function HistorySessionItem({
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
-      className={`group relative border-b border-slate-100 px-4 py-3 cursor-pointer transition-colors last:border-b-0 ${
-        isSelected ? 'bg-teal-50' : 'hover:bg-slate-50'
+      className={`group relative border-b border-slate-100 px-4 py-3 cursor-pointer transition-colors last:border-b-0 dark:border-white/5 ${
+        isSelected ? 'bg-teal-50 dark:bg-teal-900/30' : 'hover:bg-slate-50 dark:hover:bg-neutral-800'
       }`}
     >
       <div className="flex items-start gap-2.5">
         <span
           className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm ${
-            isSelected ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-500'
+            isSelected ? 'bg-teal-100 text-teal-700 dark:bg-teal-800 dark:text-teal-300' : 'bg-slate-100 text-slate-500 dark:text-white dark:bg-neutral-700 dark:text-white'
           }`}
         >
           <CommentOutlined />
@@ -56,12 +56,12 @@ export function HistorySessionItem({
         <div className="min-w-0 flex-1">
           <p
             className={`m-0 line-clamp-2 text-sm leading-5 font-medium ${
-              isSelected ? 'text-teal-800' : 'text-slate-700'
+              isSelected ? 'text-teal-800 dark:text-teal-200' : 'text-slate-700 dark:text-white'
             }`}
           >
             {session.title}
           </p>
-          <p className="m-0 mt-0.5 text-xs text-slate-400">{formatRelativeTime(session.updatedAt)}</p>
+          <p className="m-0 mt-0.5 text-xs text-slate-400 dark:text-white">{formatRelativeTime(session.updatedAt)}</p>
         </div>
       </div>
 

@@ -34,6 +34,14 @@ export interface BristolTrashItem {
   purgeAt: string
 }
 
+export interface BristolTrashPage {
+  items: BristolTrashItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
 export async function listBristolLogs(page = 0, size = 20): Promise<BristolListResponse> {
   try {
     const { data } = await apiClient.get<BristolListResponse>('/patient/bristol-logs', { params: { page, size } })
@@ -78,16 +86,14 @@ export async function deleteBristolLog(id: number): Promise<void> {
   }
 }
 
-/** UC0020 - danh sach cac ban ghi dang nam trong thung rac (con trong han 30 ngay). */
-export async function listBristolTrash(): Promise<BristolTrashItem[]> {
+export async function listBristolTrash(page = 0, size = 20): Promise<BristolTrashPage> {
   try {
-    const { data } = await apiClient.get<BristolTrashItem[]>('/patient/bristol-logs/trash')
+    const { data } = await apiClient.get<BristolTrashPage>('/patient/bristol-logs/trash', { params: { page, size } })
     return data
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể tải thùng rác. Vui lòng thử lại.')
   }
 }
-
 /** UC0020 - khoi phuc 1 ban ghi tu thung rac. */
 export async function restoreBristolLog(id: number): Promise<BristolLog> {
   try {

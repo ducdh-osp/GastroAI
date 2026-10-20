@@ -69,6 +69,10 @@ public class Document {
     @Column(name = "is_current", nullable = false)
     private boolean currentVersion = true;
 
+    // Chi co y nghia tren dong goc cua nhom (rootId == null). Co gia tri = admin chu dong go.
+    @Column(name = "unpublished_at")
+    private Instant unpublishedAt;
+
     public Long groupId() {
         return rootId != null ? rootId : id;
     }

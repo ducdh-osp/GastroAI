@@ -21,11 +21,16 @@ public interface BristolLogRepository extends JpaRepository<BristolLog, Long> {
     boolean existsByPatientIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(
             Long patientId, Instant from, Instant to);
 
-    /** Danh sach thung rac, moi nhat truoc, gioi han 200 dong de tranh tra ve qua nhieu. */
+       /** Thung rac co phan trang, moi nhat truoc. countQuery de biet tong so muc. */
     @Query(value = "SELECT * FROM bristol_logs " +
             "WHERE patient_id = :patientId AND deleted_at IS NOT NULL AND deleted_at >= :cutoff " +
-            "ORDER BY deleted_at DESC LIMIT 200", nativeQuery = true)
-    List<BristolLog> findTrash(@Param("patientId") Long patientId, @Param("cutoff") Instant cutoff);
+            "ORDER BY deleted_at DESC",
+            countQuery = "SELECT COUNT(*) FROM bristol_logs " +
+            "WHERE patient_id = :patientId AND deleted_at IS NOT NULL AND deleted_at >= :cutoff",
+            nativeQuery = true)
+    Page<BristolLog> findTrash(@Param("patientId") Long patientId,
+                               @Param("cutoff") Instant cutoff,
+                               Pageable pageable);
 
     /** Tim 1 dong DA XOA thuoc dung benh nhan - dung khi khoi phuc (findById se khong thay vi bi @SQLRestriction an). */
     @Query(value = "SELECT * FROM bristol_logs " +

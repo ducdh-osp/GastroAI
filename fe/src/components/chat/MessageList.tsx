@@ -26,19 +26,19 @@ export function MessageList({ messages, isReplying, isLoadingHistory, onQuickPro
     <section className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6" aria-label="Nội dung hội thoại" aria-live="polite">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         {isLoadingHistory && (
-          <div className="flex min-h-72 items-center justify-center text-sm text-slate-500" role="status">
+          <div className="flex min-h-72 items-center justify-center text-sm text-slate-500 dark:text-white" role="status">
             Đang tải lịch sử cuộc trò chuyện…
           </div>
         )}
 
         {!isLoadingHistory && messages.length === 0 && (
           <div className="flex min-h-72 flex-col items-center justify-center text-center">
-            <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-2xl text-teal-700" aria-hidden="true"><MessageOutlined /></span>
-            <h2 className="m-0 text-xl font-semibold text-slate-800">Bạn cần tư vấn điều gì?</h2>
-            <p className="mb-5 mt-2 max-w-md text-sm leading-6 text-slate-500">Hãy mô tả triệu chứng hoặc chọn một câu hỏi gợi ý để bắt đầu cuộc trò chuyện.</p>
+            <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-2xl text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" aria-hidden="true"><MessageOutlined /></span>
+            <h2 className="m-0 text-xl font-semibold text-slate-800 dark:text-white">Bạn cần tư vấn điều gì?</h2>
+            <p className="mb-5 mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-white">Hãy mô tả triệu chứng hoặc chọn một câu hỏi gợi ý để bắt đầu cuộc trò chuyện.</p>
             <div className="flex flex-wrap justify-center gap-2">
               {QUICK_PROMPTS.map((prompt) => (
-                <button key={prompt} type="button" onClick={() => onQuickPrompt(prompt)} className="rounded-full border border-teal-200 bg-white px-3.5 py-2 text-sm text-teal-800 transition hover:border-teal-400 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">
+                <button key={prompt} type="button" onClick={() => onQuickPrompt(prompt)} className="rounded-full border border-teal-200 bg-white px-3.5 py-2 text-sm text-teal-800 transition hover:border-teal-400 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 dark:border-teal-700 dark:bg-neutral-800 dark:text-teal-300 dark:hover:bg-neutral-700">
                   {prompt}
                 </button>
               ))}

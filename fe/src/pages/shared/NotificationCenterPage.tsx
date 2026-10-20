@@ -138,7 +138,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
           {data.items.map((item) => (
             <Card
               key={item.id}
-              className={`rounded-2xl shadow-sm ${item.readAt ? 'border-black/5' : 'border-teal-200 bg-teal-50/40'}`}
+              className={`rounded-2xl shadow-sm ${item.readAt ? 'border-black/5' : 'border-teal-200 bg-teal-50/40 dark:border-teal-800 dark:bg-teal-900/30'}`}
               onClick={() => void markRead(item, true)}
               styles={{ body: { cursor: item.actionUrl ? 'pointer' : 'default' } }}
             >

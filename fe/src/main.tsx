@@ -1,14 +1,15 @@
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, theme as antdTheme } from 'antd'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-import { StrictMode } from 'react'
+import { StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import { router } from './routes/router'
 import { AuthProvider } from './stores/authStore'
+import { ThemeProvider, useTheme } from './stores/themeStore'
 
 // Bat buoc cho dayjs(str, format) parse dung dinh dang (vd "HH:mm:ss") - khong co plugin
 // nay dayjs bo qua tham so format va roi ve parse bang Date native, luon ra Invalid Date
@@ -17,10 +18,14 @@ dayjs.extend(customParseFormat)
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+/** Doc ThemeProvider (mode sang/toi) de doi algorithm cua antd - tach rieng component vi
+ * createRoot().render() o duoi khong the goi hook truc tiep. */
+function AntdThemeConfig({ children }: { children: ReactNode }) {
+  const { mode } = useTheme()
+  return (
     <ConfigProvider
       theme={{
+        algorithm: mode === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
           colorPrimary: '#0d9488',
           borderRadius: 8,
@@ -29,9 +34,19 @@ createRoot(document.getElementById('root')!).render(
         },
       }}
     >
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      {children}
     </ConfigProvider>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <ThemeProvider>
+      <AntdThemeConfig>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </AntdThemeConfig>
+    </ThemeProvider>
   </StrictMode>,
 )

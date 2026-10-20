@@ -2,6 +2,8 @@ package vn.gastroai.be.application.admin;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 
@@ -49,6 +51,16 @@ class AdminPatientManagementServiceTest {
         assertFalse(result.adminLocked());
         assertNull(result.adminLockedAt());
         assertEquals(5, patient.getTokenVersion());
+    }
+
+    @Test
+    void listUsesTypedEmptyStringWhenSearchIsOmitted() {
+        when(patients.searchForAdmin("", null, PageRequest.of(0, 20)))
+                .thenReturn(Page.empty(PageRequest.of(0, 20)));
+
+        service.list(null, null, PageRequest.of(0, 20));
+
+        verify(patients).searchForAdmin("", null, PageRequest.of(0, 20));
     }
 
     private Patient patient() {

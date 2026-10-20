@@ -13,6 +13,7 @@ import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 import vn.gastroai.be.api.document.DocumentSearchHit;
 import vn.gastroai.be.api.document.DocumentVersionResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -20,6 +21,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import vn.gastroai.be.api.document.DocumentSearchResult;
+import vn.gastroai.be.infrastructure.persistence.postgres.DocumentGroupRow;
+import vn.gastroai.be.infrastructure.persistence.postgres.DocumentListRow;
 
 @Service
 public class DocumentStatusService {
@@ -29,6 +33,8 @@ public class DocumentStatusService {
     private final DocumentRepository documentRepository;
     private final ChunkRepository chunkRepository;
     private static final int SNIPPET_RADIUS = 120;
+    private static final int MAX_QUERY_LENGTH = 200;
+    private static final int MAX_SEARCH_RESULTS = 50;
 
     public DocumentStatusService(DocumentRepository documentRepository, ChunkRepository chunkRepository) {
         this.documentRepository = documentRepository;
@@ -73,12 +79,7 @@ public class DocumentStatusService {
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
 
-        // UC0049 - phien ban moi xu ly xong thi tro thanh ban dang dung. clearCurrent
-        // chay
-        // TRUOC, bat ban nay SAU, de khong bao gio co 2 ban cung la hien hanh trong 1
-        // nhom
-        // (index uk_documents_group_current).
-        if (!document.isCurrentVersion()) {
+        if (!document.isCurrentVersion() && rootOf(document).getUnpublishedAt() == null) {
             documentRepository.clearCurrent(document.groupId());
             document.setCurrentVersion(true);
         }
@@ -119,22 +120,18 @@ public class DocumentStatusService {
                 ? ""
                 : vn.gastroai.be.application.support.VietnameseText.normalize(query.trim());
 
-        List<Document> all = documentRepository.findAllByOrderByUploadedAtDesc();
+        // Moi tai lieu 1 dong (phien ban moi nhat), KHONG co full_text - nhe hon nhieu
+        // so voi
+        // tai moi phien ban cua moi tai lieu.
+        List<DocumentListRow> latestPerGroup = documentRepository.findLatestVersionRows();
 
-        // UC0049 - moi phien ban la 1 dong rieng, nen gom theo ma nhom de moi tai lieu
-        // chi
-        // hien 1 dong (ban moi nhat). LinkedHashMap giu thu tu "tai len moi nhat
-        // truoc".
-        Map<Long, List<Document>> groups = all.stream()
-                .collect(Collectors.groupingBy(Document::groupId, LinkedHashMap::new, Collectors.toList()));
+        // Thong tin theo nhom: so phien ban, ban dang dung, da go hay chua.
+        Map<Long, DocumentGroupRow> groups = documentRepository.findGroupRows().stream()
+                .collect(Collectors.toMap(DocumentGroupRow::getGroupId, g -> g));
 
-        List<Document> latestPerGroup = groups.values().stream()
-                .map(versions -> versions.stream()
-                        .max(Comparator.comparingInt(Document::getVersionNo))
-                        .orElseThrow())
-                .toList();
-
-        List<Document> filtered = latestPerGroup.stream()
+        // Loc trang thai + tim khong dau trong Java (SQL khong lam duoc neu thieu
+        // extension unaccent).
+        List<DocumentListRow> filtered = latestPerGroup.stream()
                 .filter(d -> status == null || d.getStatus() == status)
                 .filter(d -> normalizedQuery.isEmpty()
                         || (d.getTitle() != null && vn.gastroai.be.application.support.VietnameseText
@@ -142,12 +139,6 @@ public class DocumentStatusService {
                         || (d.getSourceUrl() != null && vn.gastroai.be.application.support.VietnameseText
                                 .normalize(d.getSourceUrl()).contains(normalizedQuery)))
                 .toList();
-
-        // Lấy số lượng chunks cho từng document
-        java.util.Map<Long, Long> chunkCounts = chunkRepository.countByDocumentIdGrouped().stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (Long) row[1]));
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         long offset = pageable.getOffset();
@@ -157,29 +148,49 @@ public class DocumentStatusService {
 
         int start = Math.toIntExact(offset);
         int end = Math.min(start + size, filtered.size());
+        List<DocumentListRow> pageRows = filtered.subList(start, end);
 
-        List<vn.gastroai.be.api.document.DocumentSummaryResponse> items = filtered.subList(start, end).stream()
-                .map(d -> new vn.gastroai.be.api.document.DocumentSummaryResponse(
-                        d.getId(),
-                        d.getTitle(),
-                        d.getSource(),
-                        d.getSourceUrl(),
-                        d.getStatus(),
-                        d.getProcessingStage(),
-                        d.getErrorMessage(),
-                        chunkCounts.getOrDefault(d.getId(), 0L),
-                        d.getUploadedAt(),
-                        d.getUpdatedAt(),
-                        d.getVersionNo(),
-                        groups.get(d.groupId()).stream()
-                                .filter(Document::isCurrentVersion)
-                                .map(Document::getVersionNo)
-                                .findFirst()
-                                .orElse(null),
-                        groups.get(d.groupId()).size()))
+        // Dem chunk CHI cho cac dong cua trang hien tai, theo ban dang dung (neu co),
+        // khong co thi theo ban moi nhat.
+        List<Long> chunkOwnerIds = pageRows.stream()
+                .map(row -> chunkOwnerId(row, groups.get(row.getGroupId())))
+                .distinct()
+                .toList();
+        Map<Long, Long> chunkCounts = chunkRepository.countByDocumentIdIn(chunkOwnerIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]));
+
+        List<vn.gastroai.be.api.document.DocumentSummaryResponse> items = pageRows.stream()
+                .map(row -> {
+                    DocumentGroupRow group = groups.get(row.getGroupId());
+                    return new vn.gastroai.be.api.document.DocumentSummaryResponse(
+                            row.getId(),
+                            row.getTitle(),
+                            row.getSource(),
+                            row.getSourceUrl(),
+                            row.getStatus(),
+                            row.getProcessingStage(),
+                            row.getErrorMessage(),
+                            chunkCounts.getOrDefault(chunkOwnerId(row, group), 0L),
+                            row.getUploadedAt(),
+                            row.getUpdatedAt(),
+                            row.getVersionNo(),
+                            group == null ? null : group.getCurrentVersionNo(),
+                            group == null ? 1 : group.getVersionCount().intValue(),
+                            group != null && group.getUnpublishedAt() != null);
+                })
                 .toList();
 
         return new vn.gastroai.be.api.document.DocumentPageResponse(items, filtered.size(), page, size);
+    }
+
+    /**
+     * id cua dong ma so chunk duoc tinh: ban dang dung neu co, khong thi chinh dong
+     * dang hien.
+     */
+    private static Long chunkOwnerId(DocumentListRow row, DocumentGroupRow group) {
+        return group != null && group.getCurrentId() != null ? group.getCurrentId() : row.getId();
     }
 
     @Transactional
@@ -215,6 +226,7 @@ public class DocumentStatusService {
         if (target.getStatus() != DocumentStatus.DONE) {
             throw new IllegalStateException("Chỉ dùng được phiên bản đã xử lý xong");
         }
+        clearUnpublishedFlag(target);
         if (target.isCurrentVersion()) {
             return;
         }
@@ -231,7 +243,24 @@ public class DocumentStatusService {
     public void unpublish(Long documentId) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+
+        boolean hasDone = documentRepository.findGroup(document.groupId()).stream()
+                .anyMatch(v -> v.getStatus() == DocumentStatus.DONE);
+        if (!hasDone) {
+            throw new IllegalStateException("Tài liệu chưa có phiên bản nào xử lý xong, chưa có gì để gỡ");
+        }
+
         documentRepository.clearCurrent(document.groupId());
+
+        // Danh dau "go co chu dich" tren dong goc. clearCurrent la cau UPDATE hang loat
+        // nen
+        // ban trong bo nho co the con ghi "dang dung" (cu) - dong bo lai truoc khi
+        // save, neu
+        // khong save(root) se ghi de is_current = true tro lai.
+        Document root = rootOf(document);
+        root.setCurrentVersion(false);
+        root.setUnpublishedAt(Instant.now());
+        documentRepository.save(root);
     }
 
     /** UC0050 - dang lai: bat phien ban DONE moi nhat cua nhom. */
@@ -245,6 +274,7 @@ public class DocumentStatusService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Chưa có phiên bản nào xử lý xong để đăng"));
 
+        clearUnpublishedFlag(latestDone);
         if (latestDone.isCurrentVersion()) {
             return;
         }
@@ -258,16 +288,26 @@ public class DocumentStatusService {
      * cho khop.
      */
     @Transactional(readOnly = true)
-    public List<DocumentSearchHit> searchContent(String query) {
+    public DocumentSearchResult searchContent(String query) {
         String q = query == null ? "" : query.trim();
         if (q.length() < 2) {
             throw new IllegalArgumentException("Nhập ít nhất 2 ký tự để tìm kiếm");
         }
+        if (q.length() > MAX_QUERY_LENGTH) {
+            throw new IllegalArgumentException("Từ khóa quá dài (tối đa " + MAX_QUERY_LENGTH + " ký tự)");
+        }
         String escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-        return chunkRepository.searchContent(escaped).stream()
+
+        // SQL lay toi da 51 dong: du 51 nghia la con ket qua chua hien -> truncated.
+        var rows = chunkRepository.searchContent(escaped);
+        boolean truncated = rows.size() > MAX_SEARCH_RESULTS;
+
+        List<DocumentSearchHit> items = rows.stream()
+                .limit(MAX_SEARCH_RESULTS)
                 .map(row -> new DocumentSearchHit(row.getDocumentId(), row.getTitle(),
                         row.getChunkIndex(), snippet(row.getContent(), q)))
                 .toList();
+        return new DocumentSearchResult(items, truncated);
     }
 
     /** Cat ~120 ky tu truoc va sau vi tri khop dau tien, them "…" neu bi cat. */
@@ -280,6 +320,25 @@ public class DocumentStatusService {
         int start = Math.max(0, index - SNIPPET_RADIUS);
         int end = Math.min(text.length(), index + q.length() + SNIPPET_RADIUS);
         return (start > 0 ? "…" : "") + text.substring(start, end) + (end < text.length() ? "…" : "");
+    }
+
+    /** Dong goc cua nhom chua phien ban nay (chinh no neu no la ban goc). */
+    private Document rootOf(Document version) {
+        Long groupId = version.groupId();
+        if (groupId.equals(version.getId())) {
+            return version;
+        }
+        return documentRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + groupId));
+    }
+
+    /** Dang lai / dung 1 ban cu thi bo co "da go" tren dong goc. */
+    private void clearUnpublishedFlag(Document version) {
+        Document root = rootOf(version);
+        if (root.getUnpublishedAt() != null) {
+            root.setUnpublishedAt(null);
+            documentRepository.save(root);
+        }
     }
 
     private Document getDocument(Long documentId) {

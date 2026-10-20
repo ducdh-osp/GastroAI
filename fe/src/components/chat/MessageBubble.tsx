@@ -86,22 +86,22 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
               ? isFailed
                 ? 'rounded-br-md border border-red-200 bg-red-50 text-red-900'
                 : 'rounded-br-md bg-teal-700 text-white'
-              : 'rounded-bl-md bg-slate-100 text-slate-800'
+              : 'rounded-bl-md bg-slate-100 text-slate-800 dark:text-white dark:bg-neutral-700 dark:text-white'
           }`}
         >
           <MarkdownContent content={message.content} />
 
           {message.attachments && message.attachments.length > 0 && (
-            <div className={`mt-3 flex flex-wrap gap-2 border-t pt-3 ${isPatient && !isFailed ? 'border-white/20' : 'border-slate-200'}`}>
+            <div className={`mt-3 flex flex-wrap gap-2 border-t pt-3 ${isPatient && !isFailed ? 'border-white/20' : 'border-slate-200 dark:border-white/10'}`}>
               {message.attachments.map((attachment) =>
                 attachment.previewUrl ? (
                   <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="block">
                     <img src={attachment.previewUrl} alt={`Tệp đính kèm ${attachment.name}`} className="h-20 w-20 rounded-lg object-cover" />
                   </a>
                 ) : (
-                  <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="flex max-w-52 items-center gap-2 rounded-lg bg-white/90 px-2.5 py-2 text-xs text-slate-700 no-underline">
+                  <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer" className="flex max-w-52 items-center gap-2 rounded-lg bg-white/90 px-2.5 py-2 text-xs text-slate-700 dark:text-white no-underline dark:bg-neutral-800/90 dark:text-white">
                     <FileTextOutlined className="text-base text-teal-700" />
-                    <span className="min-w-0"><span className="block truncate">{attachment.name}</span><span className="text-slate-400">{formatFileSize(attachment.size)}</span></span>
+                    <span className="min-w-0"><span className="block truncate">{attachment.name}</span><span className="text-slate-400 dark:text-white">{formatFileSize(attachment.size)}</span></span>
                   </a>
                 ),
               )}
@@ -119,7 +119,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
                 type="button"
                 disabled={suggestionsDisabled}
                 onClick={() => onSuggestionClick(question)}
-                className="rounded-full border border-teal-200 bg-white px-2.5 py-1 text-xs text-teal-800 transition hover:border-teal-400 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-full border border-teal-200 bg-white px-2.5 py-1 text-xs text-teal-800 transition hover:border-teal-400 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-teal-700 dark:bg-neutral-800 dark:text-teal-300 dark:hover:bg-neutral-700"
               >
                 {question}
               </button>
@@ -127,7 +127,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
           </div>
         )}
 
-        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-white">
           <time dateTime={message.createdAt}>{formatTimestamp(message.createdAt)}</time>
           {message.status === 'sending' && <span>· Đang gửi</span>}
           {message.status === 'sent' && isPatient && <><CheckCircleOutlined className="text-teal-600" /><span>Đã gửi</span></>}
@@ -144,7 +144,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
                   className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
                     message.rating === 'HELPFUL'
                       ? 'bg-teal-100 text-teal-700'
-                      : 'text-slate-400 hover:bg-slate-100 hover:text-teal-600'
+                      : 'text-slate-400 dark:text-white hover:bg-slate-100 hover:text-teal-600'
                   }`}
                 >
                   <LikeOutlined className="text-xs" />
@@ -158,7 +158,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
                   className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
                     message.rating === 'UNHELPFUL'
                       ? 'bg-red-100 text-red-600'
-                      : 'text-slate-400 hover:bg-slate-100 hover:text-red-500'
+                      : 'text-slate-400 dark:text-white hover:bg-slate-100 hover:text-red-500'
                   }`}
                 >
                   <DislikeOutlined className="text-xs" />
