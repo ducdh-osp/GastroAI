@@ -109,4 +109,12 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
                         + "MAX(CASE WHEN d.rootId IS NULL THEN d.unpublishedAt END) AS unpublishedAt "
                         + "FROM Document d GROUP BY COALESCE(d.rootId, d.id)")
         List<DocumentGroupRow> findGroupRows();
+
+        @Modifying
+        @Transactional
+        @Query("UPDATE Document d SET d.title = :title, d.updatedAt = :now "
+                        + "WHERE COALESCE(d.rootId, d.id) = :groupId")
+        int renameGroup(@Param("groupId") Long groupId,
+                        @Param("title") String title,
+                        @Param("now") java.time.Instant now);
 }

@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -696,5 +697,34 @@ class DocumentStatusServiceTest {
         assertTrue(v2.isCurrentVersion());
         verify(documentRepository, never()).clearCurrent(any());
         verify(documentRepository, never()).save(any());
+    }
+
+    @Test
+    void renameUpdatesWholeVersionGroup() {
+        Document v2 = new Document();
+        v2.setId(2L);
+        v2.setRootId(1L);
+        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
+
+        documentStatusService.rename(2L, "  Trào ngược   dạ dày  ");
+
+        verify(documentRepository).renameGroup(eq(1L), eq("Trào ngược dạ dày"), any());
+    }
+
+    @Test
+    void renameRejectsBlankTitle() {
+        Document doc = new Document();
+        doc.setId(1L);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+
+        assertThrows(IllegalArgumentException.class, () -> documentStatusService.rename(1L, "   "));
+        verify(documentRepository, never()).renameGroup(any(), any(), any());
+    }
+
+    @Test
+    void renameThrowsNotFoundForUnknownDocument() {
+        when(documentRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> documentStatusService.rename(99L, "Tên mới"));
     }
 }

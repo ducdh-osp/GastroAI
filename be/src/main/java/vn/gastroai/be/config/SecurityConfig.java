@@ -98,6 +98,8 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/rbac/**")
                         .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/documents/**")
+                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng
                         // của từng nhóm API ở trên.
                         .anyRequest().authenticated())

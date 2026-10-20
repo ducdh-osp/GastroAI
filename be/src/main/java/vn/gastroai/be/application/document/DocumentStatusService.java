@@ -289,6 +289,14 @@ public class DocumentStatusService {
         documentRepository.save(latestDone);
     }
 
+    @Transactional
+    public void rename(Long documentId, String rawTitle) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        String title = DocumentTitle.normalize(rawTitle);
+        documentRepository.renameGroup(document.groupId(), title, Instant.now());
+    }
+
     /**
      * UC0055 - tim cum tu trong noi dung tai lieu dang dung, tra doan trich quanh
      * cho khop.

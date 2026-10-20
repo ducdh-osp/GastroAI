@@ -319,7 +319,7 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of(existing));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.upload(file, null));
+                () -> service.upload(file, null, "Tài liệu test"));
 
         assertTrue(ex.getMessage().contains("ibs.pdf"));
         assertTrue(ex.getMessage().contains("(id 7)"));
@@ -379,7 +379,7 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Document saved = service.upload(file, null);
+        Document saved = service.upload(file, null, "Tài liệu test");
 
         assertEquals(1, saved.getVersionNo());
         assertFalse(saved.isCurrentVersion());
@@ -420,7 +420,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.saveAndFlush(any(Document.class)))
                 .thenThrow(new DataIntegrityViolationException("loi rang buoc"));
 
-        assertThrows(DataIntegrityViolationException.class, () -> service.upload(file, null));
+        assertThrows(DataIntegrityViolationException.class, () -> service.upload(file, null, "Tài liệu test"));
 
         verify(fileStorageService).delete(stored);
     }
