@@ -75,6 +75,20 @@ export interface CmsDocumentVersion {
   uploadedAt: string
   errorMessage: string | null
 }
+export interface CmsDocumentStats {
+  total: number
+  ready: number
+  processing: number
+  error: number
+}
+
+export interface CmsDocumentPage {
+  items: CmsDocumentItem[]
+  total: number
+  page: number
+  pageSize: number
+  stats: CmsDocumentStats
+}
 
 export interface CmsDocumentSearchHit {
   documentId: number

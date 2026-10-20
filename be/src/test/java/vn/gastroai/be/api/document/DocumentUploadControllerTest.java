@@ -122,7 +122,7 @@ class DocumentUploadControllerTest {
                                 null, 10L, java.time.Instant.now(), java.time.Instant.now(),
                                 1, 1, 1, false);
                 when(documentStatusService.list(null, null, 0, 15))
-                                .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15));
+                                .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15,new DocumentStats(1, 1, 0, 0)));
 
                 mockMvc.perform(get("/api/v1/documents"))
                                 .andExpect(status().isOk())
