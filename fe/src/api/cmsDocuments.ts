@@ -43,11 +43,14 @@ export async function listCmsDocuments(params: {
   return data
 }
 
-export async function uploadCmsDocument(file: File, sourceUrl?: string): Promise<CmsDocumentItem> {
+export async function uploadCmsDocument(file: File, sourceUrl?: string, title?: string): Promise<CmsDocumentItem> {
   const formData = new FormData()
   formData.append('file', file)
   if (sourceUrl && sourceUrl.trim()) {
     formData.append('sourceUrl', sourceUrl.trim())
+  }
+  if (title && title.trim()) {
+    formData.append('title', title.trim())
   }
 
   const { data } = await cmsApiClient.post<CmsDocumentItem>('/documents', formData, {
@@ -128,6 +131,9 @@ export async function activateCmsDocumentVersion(documentId: number, versionId: 
 }
 export async function deleteCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.delete(`/documents/${documentId}/versions/${versionId}`)
+}
+export async function renameCmsDocument(documentId: number, title: string): Promise<void> {
+  await cmsApiClient.patch(`/documents/${documentId}/title`, { title })
 }
 export async function publishCmsDocument(documentId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/publish`)

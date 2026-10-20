@@ -4,6 +4,7 @@ import {
   CloseCircleOutlined,
   CloudUploadOutlined,
   DeleteOutlined,
+  EditOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
   FilePdfOutlined,
@@ -49,27 +50,37 @@ import {
   listCmsDocuments,
   listCmsDocumentVersions,
   publishCmsDocument,
+  renameCmsDocument,
   retryCmsDocument,
   unpublishCmsDocument,
   uploadCmsDocument,
   uploadCmsDocumentVersion,
   type CmsDocumentItem,
+  type CmsDocumentStats,
   type CmsDocumentVersion,
   type DocumentProcessingStage,
   type DocumentStatus,
-  type CmsDocumentStats
 } from '../../api/cmsDocuments'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { DocumentContentSearch } from '../../components/cms/DocumentContentSearch'
+
 const { Title, Text } = Typography
 const { Dragger } = Upload
+
+const PAGE_SIZE = 15
+const EMPTY_STATS: CmsDocumentStats = { total: 0, ready: 0, processing: 0, error: 0 }
 
 // Code cu viet lap (err as {...})?.response?.data?.message o nhieu cho - gom thanh 1 ham.
 function errorMessageOf(err: unknown, fallback: string): string {
   return (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback
 }
 
-const PAGE_SIZE = 15
+// "trao-nguoc-da-day.pdf" -> "trao-nguoc-da-day": goi y ten mac dinh khi chon file.
+function fileNameWithoutExtension(name: string) {
+  const dot = name.lastIndexOf('.')
+  return dot > 0 ? name.slice(0, dot) : name
+}
+
 export default function CmsDocumentsPage() {
   const [items, setItems] = useState<CmsDocumentItem[]>([])
   const [total, setTotal] = useState(0)
@@ -79,8 +90,12 @@ export default function CmsDocumentsPage() {
   // Filters
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<DocumentStatus | undefined>(undefined)
-  const [stats, setStats] = useState<CmsDocumentStats>({ total: 0, ready: 0, processing: 0, error: 0 })
 
+  // So lieu 4 o thong ke - BE tinh tren TOAN BO tai lieu, khong theo bo loc/trang.
+  const [stats, setStats] = useState<CmsDocumentStats>(EMPTY_STATS)
+
+  // C7 - khoa nut khi mot thao tac dang chay: busyKey de hien spinner / khoa nut,
+  // busyRef de chan bam dup truoc khi React kip ve lai.
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const busyRef = useRef<string | null>(null)
 
@@ -88,7 +103,12 @@ export default function CmsDocumentsPage() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([])
   const [sourceUrlInput, setSourceUrlInput] = useState('')
+  const [titleInput, setTitleInput] = useState('')
   const [uploading, setUploading] = useState(false)
+
+  // Doi ten tai lieu
+  const [renameTarget, setRenameTarget] = useState<CmsDocumentItem | null>(null)
+  const [renameValue, setRenameValue] = useState('')
 
   // Modal xem lỗi chi tiết
   const [errorModalItem, setErrorModalItem] = useState<CmsDocumentItem | null>(null)
@@ -112,22 +132,20 @@ export default function CmsDocumentsPage() {
       })
       setItems(res.items)
       setTotal(res.total)
-      setStats(res.stats ?? { total: 0, ready: 0, processing: 0, error: 0 })
+      setStats(res.stats ?? EMPTY_STATS)
     } catch {
       if (!silent) message.error('Không thể tải danh sách tài liệu y khoa')
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [search, selectedStatus, page, PAGE_SIZE])
+  }, [search, selectedStatus, page])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
-  // Polling tự động mỗi 4s nếu có tài liệu đang xử lý
-  const hasProcessingDocs = stats.processing > 0
-
-  const isPolling = hasProcessingDocs
+  // Tu dong cap nhat moi 4s khi co tai lieu dang xu ly (dem tren toan bo, khong chi trang dang xem).
+  const isPolling = stats.processing > 0
 
   useEffect(() => {
     if (!isPolling) return
@@ -163,7 +181,26 @@ export default function CmsDocumentsPage() {
     }
   }
 
-  // KPI stats
+  function openUploadNew() {
+    setVersionTarget(null)
+    setUploadFileList([])
+    setSourceUrlInput('')
+    setTitleInput('')
+    setUploadModalOpen(true)
+  }
+
+  function openUploadVersion(item: CmsDocumentItem) {
+    setVersionTarget(item)
+    setUploadFileList([])
+    setSourceUrlInput(item.sourceUrl ?? '')
+    setTitleInput('')
+    setUploadModalOpen(true)
+  }
+
+  function closeUploadModal() {
+    setUploadModalOpen(false)
+    setVersionTarget(null)
+  }
 
   async function handleUpload() {
     if (uploadFileList.length === 0) {
@@ -176,19 +213,24 @@ export default function CmsDocumentsPage() {
       message.warning('Không đọc được tệp đã chọn, vui lòng chọn lại')
       return
     }
+    if (!versionTarget && !titleInput.trim()) {
+      message.warning('Vui lòng nhập tên tài liệu')
+      return
+    }
+
     setUploading(true)
     try {
       if (versionTarget) {
         await uploadCmsDocumentVersion(versionTarget.id, file, sourceUrlInput || undefined)
         message.success(`Đã tải phiên bản mới cho "${versionTarget.title}". Bản cũ vẫn được dùng cho tới khi bản mới xử lý xong.`)
       } else {
-        await uploadCmsDocument(file, sourceUrlInput || undefined)
+        await uploadCmsDocument(file, sourceUrlInput || undefined, titleInput)
         message.success('Đã tải lên tài liệu thành công. Hệ thống đang tiến hành số hóa tự động.')
       }
-      setUploadModalOpen(false)
-      setVersionTarget(null)
+      closeUploadModal()
       setUploadFileList([])
       setSourceUrlInput('')
+      setTitleInput('')
       loadData()
     } catch (err: unknown) {
       message.error(errorMessageOf(err, 'Tải lên tài liệu thất bại'))
@@ -203,8 +245,8 @@ export default function CmsDocumentsPage() {
         await retryCmsDocument(item.id)
         message.success(`Đã đưa tài liệu #${item.id} vào hàng đợi xử lý lại`)
         loadData()
-      } catch {
-        message.error('Không thể thực hiện thử lại')
+      } catch (err) {
+        message.error(errorMessageOf(err, 'Không thể thực hiện thử lại'))
       }
     })
   }
@@ -219,13 +261,6 @@ export default function CmsDocumentsPage() {
         message.error(errorMessageOf(err, 'Xóa tài liệu thất bại'))
       }
     })
-  }
-
-  function openUploadVersion(item: CmsDocumentItem) {
-    setVersionTarget(item)
-    setUploadFileList([])
-    setSourceUrlInput(item.sourceUrl ?? '')
-    setUploadModalOpen(true)
   }
 
   async function openHistory(item: CmsDocumentItem) {
@@ -286,6 +321,36 @@ export default function CmsDocumentsPage() {
       }
     })
   }
+
+  function openRename(item: CmsDocumentItem) {
+    setRenameTarget(item)
+    setRenameValue(item.title)
+  }
+
+  function handleRename() {
+    if (!renameTarget) return Promise.resolve()
+    const target = renameTarget
+    const title = renameValue.trim()
+    if (!title) {
+      message.warning('Tên tài liệu không được để trống')
+      return Promise.resolve()
+    }
+    if (title === target.title) {
+      setRenameTarget(null)
+      return Promise.resolve()
+    }
+    return runBusy(`rename-${target.id}`, async () => {
+      try {
+        await renameCmsDocument(target.id, title)
+        message.success('Đã đổi tên tài liệu')
+        setRenameTarget(null)
+        loadData()
+      } catch (err) {
+        message.error(errorMessageOf(err, 'Không đổi được tên tài liệu'))
+      }
+    })
+  }
+
   function renderStatusTag(status: DocumentStatus) {
     switch (status) {
       case 'DONE':
@@ -383,7 +448,7 @@ export default function CmsDocumentsPage() {
       key: 'version',
       width: 140,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           <Text className="text-xs">v{record.versionNo} · {record.versionCount} phiên bản</Text>
           {record.unpublished ? (
             <Tag color="default">Đã gỡ</Tag>
@@ -441,7 +506,7 @@ export default function CmsDocumentsPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 200,
+      width: 230,
       align: 'center',
       render: (_, record) => (
         <Space size="small">
@@ -460,6 +525,15 @@ export default function CmsDocumentsPage() {
           <Tooltip title="Lịch sử phiên bản">
             <Button type="text" size="small" icon={<HistoryOutlined />} onClick={() => openHistory(record)} />
           </Tooltip>
+          <Tooltip title="Đổi tên">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              disabled={busyKey !== null}
+              onClick={() => openRename(record)}
+            />
+          </Tooltip>
           <Tooltip title="Tải phiên bản mới">
             <Button
               type="text"
@@ -473,7 +547,7 @@ export default function CmsDocumentsPage() {
             title={record.unpublished ? 'Đăng lại tài liệu?' : 'Gỡ tài liệu khỏi chatbot?'}
             description={record.unpublished
               ? 'Chatbot sẽ dùng lại phiên bản đã xử lý xong mới nhất.'
-              : 'Chatbot sẽ không trích dẫn tài liệu này nữa. Dữ liệu vẫn được giữ, có thể đăng lại.'}
+              : 'Chatbot sẽ không trích dẫn tài liệu này nữa.'}
             okText="Đồng ý"
             cancelText="Hủy"
             onConfirm={() => handleTogglePublish(record)}
@@ -538,12 +612,7 @@ export default function CmsDocumentsPage() {
               type="primary"
               icon={<UploadOutlined />}
               className="bg-teal-600 hover:bg-teal-700"
-              onClick={() => {
-                setUploadFileList([])
-                setSourceUrlInput('')
-                setVersionTarget(null)
-                setUploadModalOpen(true)
-              }}
+              onClick={openUploadNew}
             >
               Tải lên tài liệu mới
             </Button>
@@ -570,7 +639,7 @@ export default function CmsDocumentsPage() {
                         <Statistic
                           title="Sẵn sàng cho RAG"
                           value={stats.ready}
-                          valueStyle={{ color: '#16a34a' }}
+                          styles={{ content: { color: '#16a34a' } }}
                         />
                       </Card>
                     </Col>
@@ -579,7 +648,7 @@ export default function CmsDocumentsPage() {
                         <Statistic
                           title="Đang trong tiến trình"
                           value={stats.processing}
-                          valueStyle={{ color: '#2563eb' }}
+                          styles={{ content: { color: '#2563eb' } }}
                         />
                       </Card>
                     </Col>
@@ -588,14 +657,14 @@ export default function CmsDocumentsPage() {
                         <Statistic
                           title="Lỗi cần xử lý lại"
                           value={stats.error}
-                          valueStyle={{ color: '#dc2626' }}
+                          styles={{ content: { color: '#dc2626' } }}
                         />
                       </Card>
                     </Col>
                   </Row>
 
                   {/* Filter bar */}
-                  <Card bodyStyle={{ padding: 16 }}>
+                  <Card styles={{ body: { padding: 16 } }}>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-3">
                         <Input
@@ -607,7 +676,7 @@ export default function CmsDocumentsPage() {
                           className="w-72"
                         />
                         <Select
-                          placeholder="Trạng thái"
+                          placeholder="Tất cả trạng thái"
                           value={selectedStatus}
                           onChange={setSelectedStatus}
                           allowClear
@@ -642,7 +711,7 @@ export default function CmsDocumentsPage() {
                   </Card>
 
                   {/* Table */}
-                  <Card bodyStyle={{ padding: 0 }}>
+                  <Card styles={{ body: { padding: 0 } }}>
                     <Table
                       rowKey="id"
                       columns={columns}
@@ -676,6 +745,7 @@ export default function CmsDocumentsPage() {
             },
           ]}
         />
+
         {/* UC0049 - Ngăn kéo lịch sử phiên bản */}
         <Drawer
           title={historyItem ? `Lịch sử phiên bản — ${historyItem.title}` : ''}
@@ -731,7 +801,6 @@ export default function CmsDocumentsPage() {
                       {canDelete && (
                         <Popconfirm
                           title={`Xóa phiên bản v${v.versionNo}?`}
-                          description="Chỉ phiên bản này bị xóa (kèm file và dữ liệu RAG của nó). Các phiên bản khác giữ nguyên."
                           okText="Xóa"
                           cancelText="Hủy"
                           okButtonProps={{ danger: true }}
@@ -762,18 +831,10 @@ export default function CmsDocumentsPage() {
           open={uploadModalOpen}
           onCancel={() => {
             if (uploading) return
-            setUploadModalOpen(false)
-            setVersionTarget(null)
+            closeUploadModal()
           }}
           footer={[
-            <Button
-              key="cancel"
-              onClick={() => {
-                setUploadModalOpen(false)
-                setVersionTarget(null)
-              }}
-              disabled={uploading}
-            >
+            <Button key="cancel" onClick={closeUploadModal} disabled={uploading}>
               Hủy
             </Button>,
             <Button
@@ -787,7 +848,7 @@ export default function CmsDocumentsPage() {
             </Button>,
           ]}
           width={580}
-          destroyOnClose
+          destroyOnHidden
         >
           <div className="space-y-4 py-2">
             <div>
@@ -795,6 +856,7 @@ export default function CmsDocumentsPage() {
                 Chọn tệp tài liệu:
               </Text>
               <Dragger
+                accept=".pdf,.docx"
                 fileList={uploadFileList}
                 beforeUpload={(file) => {
                   setUploadFileList([{
@@ -805,6 +867,10 @@ export default function CmsDocumentsPage() {
                     status: 'done',
                     originFileObj: file,
                   }])
+                  // Goi y ten tu ten file - chi khi la tai lieu moi va nguoi dung chua tu go ten.
+                  if (!versionTarget && !titleInput.trim()) {
+                    setTitleInput(fileNameWithoutExtension(file.name))
+                  }
                   return false
                 }}
                 onRemove={() => setUploadFileList([])}
@@ -816,7 +882,24 @@ export default function CmsDocumentsPage() {
                 <p className="ant-upload-text text-sm font-medium">
                   Kéo thả file vào đây hoặc bấm để chọn tệp từ máy tính
                 </p>
+                <p className="ant-upload-hint text-xs text-slate-400 dark:text-white">
+                  Chỉ nhận PDF hoặc DOCX, tối đa 20MB.
+                </p>
               </Dragger>
+            </div>
+
+            <div>
+              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
+                Tên tài liệu:
+              </Text>
+              <Input
+                placeholder="VD: Trào ngược dạ dày thực quản (GERD)"
+                value={versionTarget ? versionTarget.title : titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                disabled={!!versionTarget}
+                maxLength={255}
+                showCount
+              />
             </div>
 
             <div>
@@ -834,6 +917,27 @@ export default function CmsDocumentsPage() {
               </Text>
             </div>
           </div>
+        </Modal>
+
+        {/* Modal Đổi tên tài liệu */}
+        <Modal
+          title="Đổi tên tài liệu"
+          open={renameTarget !== null}
+          onOk={handleRename}
+          onCancel={() => setRenameTarget(null)}
+          okText="Lưu"
+          cancelText="Hủy"
+          confirmLoading={renameTarget !== null && busyKey === `rename-${renameTarget.id}`}
+          destroyOnHidden
+        >
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onPressEnter={handleRename}
+            maxLength={255}
+            showCount
+            autoFocus
+          />
         </Modal>
 
         {/* Modal Xem chi tiết lỗi */}
