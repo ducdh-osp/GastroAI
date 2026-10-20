@@ -836,7 +836,8 @@ def make_conversations() -> list[dict[str, Any]]:
 
 
 def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    canonical_text = "\n".join(path.read_text(encoding="utf-8").splitlines()) + "\n"
+    return hashlib.sha256(canonical_text.encode("utf-8")).hexdigest()
 
 
 def make_manifest(dataset_paths: list[Path]) -> None:
