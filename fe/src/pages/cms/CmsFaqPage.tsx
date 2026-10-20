@@ -300,7 +300,7 @@ export default function CmsFaqPage() {
           cancelText="Hủy"
           onConfirm={() => handleUnpublish(record)}
         >
-          <Button size="small" icon={<EyeInvisibleOutlined />} loading={togglingId === record.id}>
+          <Button size="small" icon={<EyeInvisibleOutlined />} loading={togglingId === record.id} className="whitespace-nowrap shrink-0">
             Ẩn
           </Button>
         </Popconfirm>
@@ -315,7 +315,7 @@ export default function CmsFaqPage() {
           cancelText="Hủy"
           onConfirm={() => handlePublishWithExistingReview(record)}
         >
-          <Button size="small" type="primary" ghost icon={<CheckCircleOutlined />} loading={togglingId === record.id}>
+          <Button size="small" type="primary" ghost icon={<CheckCircleOutlined />} loading={togglingId === record.id} className="whitespace-nowrap shrink-0">
             Xuất bản
           </Button>
         </Popconfirm>
@@ -323,7 +323,7 @@ export default function CmsFaqPage() {
     }
     return (
       <Tooltip title="Nội dung chưa được bác sĩ kiểm duyệt - cần duyệt trước khi xuất bản">
-        <Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => handleOpenReview(record)}>
+        <Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => handleOpenReview(record)} className="whitespace-nowrap shrink-0">
           Duyệt & xuất bản
         </Button>
       </Tooltip>
@@ -371,18 +371,18 @@ export default function CmsFaqPage() {
     {
       title: 'Xuất bản & Kiểm duyệt',
       key: 'published',
-      width: 220,
+      width: 280,
       render: (_, record) => (
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
+        <div className="space-y-1.5 py-0.5">
+          <div className="flex items-center gap-2 flex-wrap">
             {record.published ? (
-              <Tag color="green">Đang xuất bản</Tag>
+              <Tag color="green" className="m-0 shrink-0">Đang xuất bản</Tag>
             ) : (
-              <Tag color="orange">Bản nháp</Tag>
+              <Tag color="orange" className="m-0 shrink-0">Bản nháp</Tag>
             )}
             {renderPublishAction(record)}
           </div>
-          <div className="text-xs text-slate-400 dark:text-white">
+          <div className="text-xs text-slate-400 dark:text-slate-300">
             {hasValidReview(record)
               ? `Duyệt: ${record.medicalReviewer}`
               : 'Chưa kiểm duyệt y khoa'}
@@ -404,7 +404,7 @@ export default function CmsFaqPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 130,
+      width: 110,
       align: 'center',
       render: (_, record) => (
         <Space size="small">
@@ -522,6 +522,7 @@ export default function CmsFaqPage() {
           columns={columns}
           dataSource={items}
           loading={loading}
+          scroll={{ x: 1080 }}
           pagination={{
             current: page + 1,
             pageSize,
