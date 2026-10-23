@@ -535,7 +535,7 @@ export default function CmsDocumentsPage() {
           <Tooltip title="Lịch sử phiên bản">
             <Button type="text" size="small" icon={<HistoryOutlined />} onClick={() => openHistory(record)} />
           </Tooltip>
-          <Tooltip title="Đổi tên">
+          <Tooltip title="Đổi thông tin">
             <Button
               type="text"
               size="small"
@@ -886,32 +886,34 @@ export default function CmsDocumentsPage() {
               </Dragger>
             </div>
 
-            <div>
-              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
-                Tên tài liệu:
-              </Text>
-              <Input
-                placeholder="VD: Trào ngược dạ dày thực quản (GERD)"
-                value={versionTarget ? versionTarget.title : titleInput}
-                onChange={(e) => setTitleInput(e.target.value)}
-                disabled={!!versionTarget}
-                maxLength={255}
-                showCount
-              />
-            </div>
+            {!versionTarget && (
+              <div>
+                <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
+                  Tên tài liệu:
+                </Text>
+                <Input
+                  placeholder="VD: Trào ngược dạ dày thực quản (GERD)"
+                  value={titleInput}
+                  onChange={(e) => setTitleInput(e.target.value)}
+                  maxLength={255}
+                  showCount
+                />
+              </div>
+            )}
 
-            <div>
-              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
-                URL nguồn công khai (Tùy chọn):
-              </Text>
-              <Input
-                placeholder="VD: https://benhvien.vn/phac-do-dieu-tri-ibs.pdf"
-                value={versionTarget ? (versionTarget.sourceUrl ?? '') : sourceUrlInput}
-                onChange={(e) => setSourceUrlInput(e.target.value)}
-                disabled={!!versionTarget}
-                prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
-              />
-            </div>
+            {!versionTarget && (
+              <div>
+                <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
+                  URL nguồn công khai (Tùy chọn):
+                </Text>
+                <Input
+                  placeholder="VD: https://benhvien.vn/phac-do-dieu-tri-ibs.pdf"
+                  value={sourceUrlInput}
+                  onChange={(e) => setSourceUrlInput(e.target.value)}
+                  prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
+                />
+              </div>
+            )}
           </div>
         </Modal>
 

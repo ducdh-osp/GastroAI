@@ -49,7 +49,7 @@ function upsertAlert(alerts: TriageAlert[], event: TriageAlertSocketEvent): Tria
     messageContent: event.messageContent,
     matchedGroups: event.matchedGroups,
     status: event.status,
-    
+
     claimedById: alerts.find((a) => a.id === event.id)?.claimedById ?? null,
     claimedByType: alerts.find((a) => a.id === event.id)?.claimedByType ?? null,
     claimedAt: alerts.find((a) => a.id === event.id)?.claimedAt ?? null,
@@ -69,15 +69,15 @@ function applyStatusChange(alerts: TriageAlert[], event: TriageAlertStatusChange
   return alerts.map((alert) =>
     alert.id === event.id
       ? {
-          ...alert,
-          status: event.status,
-          claimedById: event.claimedById,
-          claimedByType: event.claimedByType,
-          claimedAt: event.status === 'IN_PROGRESS' ? event.statusChangedAt : alert.claimedAt,
-          resolvedAt: event.status === 'RESOLVED' ? event.statusChangedAt : alert.resolvedAt,
-          resolvedById: event.status === 'RESOLVED' ? event.resolvedById : alert.resolvedById,
-          resolvedByType: event.status === 'RESOLVED' ? event.resolvedByType : alert.resolvedByType,
-        }
+        ...alert,
+        status: event.status,
+        claimedById: event.claimedById,
+        claimedByType: event.claimedByType,
+        claimedAt: event.status === 'IN_PROGRESS' ? event.statusChangedAt : alert.claimedAt,
+        resolvedAt: event.status === 'RESOLVED' ? event.statusChangedAt : alert.resolvedAt,
+        resolvedById: event.status === 'RESOLVED' ? event.resolvedById : alert.resolvedById,
+        resolvedByType: event.status === 'RESOLVED' ? event.resolvedByType : alert.resolvedByType,
+      }
       : alert,
   )
 }
@@ -121,7 +121,7 @@ export default function CmsTriageAlertsPage() {
         }
       })
       .finally(() => {
-         if (mySeq === loadSeq.current) setLoading(false)
+        if (mySeq === loadSeq.current) setLoading(false)
       })
   }, [])
 
@@ -281,16 +281,6 @@ export default function CmsTriageAlertsPage() {
               </Title>
               <Text type="secondary">Tin nhắn trợ lý AI nhận diện có dấu hiệu khẩn cấp</Text>
             </div>
-            <Badge
-              status={connectionState === 'connected' ? 'success' : connectionState === 'connecting' ? 'processing' : 'error'}
-              text={
-                connectionState === 'connected'
-                  ? 'Đang nhận cảnh báo realtime'
-                  : connectionState === 'connecting'
-                    ? 'Đang kết nối...'
-                    : 'Mất kết nối realtime - đang thử lại'
-              }
-            />
           </div>
         </div>
 
