@@ -12,7 +12,7 @@ export type DocumentProcessingStage =
 export interface CmsDocumentItem {
   id: number
   title: string
-  source: string
+  source: string | null
   sourceUrl: string | null
   status: DocumentStatus
   processingStage: DocumentProcessingStage

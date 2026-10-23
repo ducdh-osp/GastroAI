@@ -17,6 +17,7 @@ import {
   ReloadOutlined,
   SearchOutlined,
   UploadOutlined,
+  FileWordOutlined,
 } from '@ant-design/icons'
 import {
   Button,
@@ -79,6 +80,13 @@ function errorMessageOf(err: unknown, fallback: string): string {
 function fileNameWithoutExtension(name: string) {
   const dot = name.lastIndexOf('.')
   return dot > 0 ? name.slice(0, dot) : name
+}
+
+function fileIconOf(source: string | null) {
+  const ext = source?.split('.').pop()?.toLowerCase()
+  if (ext === 'pdf') return <FilePdfOutlined className="text-red-500 text-base" />
+  if (ext === 'docx') return <FileWordOutlined className="text-blue-600 text-base" />
+  return <FileTextOutlined className="text-slate-400 text-base dark:text-white" />
 }
 
 export default function CmsDocumentsPage() {
@@ -417,7 +425,7 @@ export default function CmsDocumentsPage() {
       render: (_, record) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <FilePdfOutlined className="text-red-500 text-base" />
+            {fileIconOf(record.source)}
             <span className="font-semibold text-slate-800 dark:text-white">{record.title}</span>
           </div>
           {record.sourceUrl && (
