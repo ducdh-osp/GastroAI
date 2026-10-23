@@ -112,9 +112,10 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 
         @Modifying
         @Transactional
-        @Query("UPDATE Document d SET d.title = :title, d.updatedAt = :now "
+        @Query("UPDATE Document d SET d.title = :title, d.sourceUrl = :sourceUrl, d.updatedAt = :now "
                         + "WHERE COALESCE(d.rootId, d.id) = :groupId")
-        int renameGroup(@Param("groupId") Long groupId,
+        int updateGroupInfo(@Param("groupId") Long groupId,
                         @Param("title") String title,
+                        @Param("sourceUrl") String sourceUrl,
                         @Param("now") java.time.Instant now);
 }

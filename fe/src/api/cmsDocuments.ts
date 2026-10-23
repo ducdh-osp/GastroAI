@@ -99,16 +99,9 @@ export interface CmsDocumentSearchResult {
   truncated: boolean
 }
 
-export async function uploadCmsDocumentVersion(
-  documentId: number,
-  file: File,
-  sourceUrl?: string,
-): Promise<void> {
+export async function uploadCmsDocumentVersion(documentId: number, file: File): Promise<void> {
   const formData = new FormData()
   formData.append('file', file)
-  if (sourceUrl && sourceUrl.trim()) {
-    formData.append('sourceUrl', sourceUrl.trim())
-  }
   await cmsApiClient.post(`/documents/${documentId}/versions`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
@@ -125,8 +118,11 @@ export async function activateCmsDocumentVersion(documentId: number, versionId: 
 export async function deleteCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.delete(`/documents/${documentId}/versions/${versionId}`)
 }
-export async function renameCmsDocument(documentId: number, title: string): Promise<void> {
-  await cmsApiClient.patch(`/documents/${documentId}/title`, { title })
+export async function updateCmsDocumentInfo(
+  documentId: number,
+  payload: { title: string; sourceUrl: string | null },
+): Promise<void> {
+  await cmsApiClient.patch(`/documents/${documentId}`, payload)
 }
 export async function publishCmsDocument(documentId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/publish`)

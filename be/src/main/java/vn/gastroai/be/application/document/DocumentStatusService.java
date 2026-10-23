@@ -290,11 +290,12 @@ public class DocumentStatusService {
     }
 
     @Transactional
-    public void rename(Long documentId, String rawTitle) {
+    public void updateInfo(Long documentId, String rawTitle, String rawSourceUrl) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
         String title = DocumentTitle.normalize(rawTitle);
-        documentRepository.renameGroup(document.groupId(), title, Instant.now());
+        String sourceUrl = DocumentUploadService.normalizeSourceUrl(rawSourceUrl);
+        documentRepository.updateGroupInfo(document.groupId(), title, sourceUrl, Instant.now());
     }
 
     /**
