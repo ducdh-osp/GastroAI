@@ -662,47 +662,38 @@ export default function CmsDocumentsPage() {
 
                   {/* Filter bar */}
                   <Card styles={{ body: { padding: 16 } }}>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Input
-                          placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
-                          prefix={<SearchOutlined className="text-slate-400 dark:text-white" />}
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                          allowClear
-                          className="w-72"
-                        />
-                        <Select
-                          placeholder="Tất cả trạng thái"
-                          value={selectedStatus}
-                          onChange={setSelectedStatus}
-                          allowClear
-                          className="w-44"
-                          options={[
-                            { label: 'Sẵn sàng (RAG)', value: 'DONE' },
-                            { label: 'Đang xử lý', value: 'PROCESSING' },
-                            { label: 'Chờ xử lý', value: 'PENDING' },
-                            { label: 'Lỗi', value: 'ERROR' },
-                          ]}
-                        />
-                        {(search || selectedStatus !== undefined) && (
-                          <Button
-                            type="link"
-                            onClick={() => {
-                              setSearch('')
-                              setSelectedStatus(undefined)
-                            }}
-                          >
-                            Đặt lại bộ lọc
-                          </Button>
-                        )}
-                      </div>
-
-                      {isPolling && (
-                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-white">
-                          <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                          <span>Đang tự động cập nhật tiến độ xử lý (mỗi 4 giây)...</span>
-                        </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Input
+                        placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
+                        prefix={<SearchOutlined className="text-slate-400 dark:text-white" />}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        allowClear
+                        style={{ flex: 1, minWidth: 240 }}
+                      />
+                      <Select
+                        placeholder="Tất cả trạng thái"
+                        value={selectedStatus}
+                        onChange={setSelectedStatus}
+                        allowClear
+                        style={{ width: 180 }}
+                        options={[
+                          { label: 'Sẵn sàng (RAG)', value: 'DONE' },
+                          { label: 'Đang xử lý', value: 'PROCESSING' },
+                          { label: 'Chờ xử lý', value: 'PENDING' },
+                          { label: 'Lỗi', value: 'ERROR' },
+                        ]}
+                      />
+                      {(search || selectedStatus !== undefined) && (
+                        <Button
+                          type="link"
+                          onClick={() => {
+                            setSearch('')
+                            setSelectedStatus(undefined)
+                          }}
+                        >
+                          Đặt lại bộ lọc
+                        </Button>
                       )}
                     </div>
                   </Card>
