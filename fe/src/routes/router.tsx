@@ -34,7 +34,6 @@ import CmsArticlesPage from '../pages/cms/CmsArticlesPage'
 import CmsArticleEditorPage from '../pages/cms/CmsArticleEditorPage'
 import CmsDocumentsPage from '../pages/cms/CmsDocumentsPage'
 import CmsFaqPage from '../pages/cms/CmsFaqPage'
-import HealthReportPage from '../pages/patient/HealthReportPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 import FaqPage from '../pages/patient/FaqPage'
 import NotificationsPage from '../pages/patient/NotificationsPage'
@@ -97,14 +96,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <MedicalProfilePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/health-report',
-        element: (
-          <ProtectedRoute>
-            <HealthReportPage />
           </ProtectedRoute>
         ),
       },
