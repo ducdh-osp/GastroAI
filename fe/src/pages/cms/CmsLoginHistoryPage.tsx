@@ -1,4 +1,4 @@
-import { Alert, Card, Pagination, Spin, Table, Tag, Typography } from 'antd'
+import { Alert, Card, Pagination, Spin, Table, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useRef, useState } from 'react'
 import { getCmsLoginHistory } from '../../api/cmsAuth'
@@ -55,14 +55,9 @@ const columns: ColumnsType<LoginHistoryItem> = [
     key: 'device',
     width: 280,
     render: (_, record) => (
-      <div className="min-w-0">
-        <Text strong>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
-        <div>
-          <Text type="secondary" className="block truncate" title={record.userAgent ?? undefined}>
-            {record.userAgent ?? '—'}
-          </Text>
-        </div>
-      </div>
+      <Tooltip title={record.userAgent ?? undefined}>
+        <Text strong className="cursor-help">{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
+      </Tooltip>
     ),
   },
   {
@@ -168,17 +163,19 @@ export default function CmsLoginHistoryPage() {
           className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm"
           styles={{ body: { display: 'flex', height: '100%', minHeight: 0, flexDirection: 'column', overflow: 'hidden' } }}
         >
-          <Spin spinning={loading}>
-            <Table<LoginHistoryItem>
-              columns={columns}
-              dataSource={items}
-              rowKey="id"
-              pagination={false}
-              scroll={{ x: 970 }}
-              tableLayout="fixed"
-              locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
-            />
-          </Spin>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Spin spinning={loading}>
+              <Table<LoginHistoryItem>
+                columns={columns}
+                dataSource={items}
+                rowKey="id"
+                pagination={false}
+                scroll={{ x: 970 }}
+                tableLayout="fixed"
+                locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
+              />
+            </Spin>
+          </div>
 
           {totalElements > pageSize && (
             <div className="mt-auto flex shrink-0 justify-end pt-4">
