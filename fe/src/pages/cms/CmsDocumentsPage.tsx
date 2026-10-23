@@ -51,9 +51,9 @@ import {
   listCmsDocuments,
   listCmsDocumentVersions,
   publishCmsDocument,
-  renameCmsDocument,
   retryCmsDocument,
   unpublishCmsDocument,
+  updateCmsDocumentInfo,
   uploadCmsDocument,
   uploadCmsDocumentVersion,
   type CmsDocumentItem,
@@ -117,7 +117,7 @@ export default function CmsDocumentsPage() {
   // Doi ten tai lieu
   const [renameTarget, setRenameTarget] = useState<CmsDocumentItem | null>(null)
   const [renameValue, setRenameValue] = useState('')
-
+  const [renameUrl, setRenameUrl] = useState('')
   // Modal xem lỗi chi tiết
   const [errorModalItem, setErrorModalItem] = useState<CmsDocumentItem | null>(null)
 
@@ -229,7 +229,7 @@ export default function CmsDocumentsPage() {
     setUploading(true)
     try {
       if (versionTarget) {
-        await uploadCmsDocumentVersion(versionTarget.id, file, sourceUrlInput || undefined)
+        await uploadCmsDocumentVersion(versionTarget.id, file)
         message.success(`Đã tải phiên bản mới cho "${versionTarget.title}". Bản cũ vẫn được dùng cho tới khi bản mới xử lý xong.`)
       } else {
         await uploadCmsDocument(file, sourceUrlInput || undefined, titleInput)
@@ -333,28 +333,30 @@ export default function CmsDocumentsPage() {
   function openRename(item: CmsDocumentItem) {
     setRenameTarget(item)
     setRenameValue(item.title)
+    setRenameUrl(item.sourceUrl ?? '')
   }
 
   function handleRename() {
     if (!renameTarget) return Promise.resolve()
     const target = renameTarget
     const title = renameValue.trim()
+    const sourceUrl = renameUrl.trim() || null
     if (!title) {
       message.warning('Tên tài liệu không được để trống')
       return Promise.resolve()
     }
-    if (title === target.title) {
+    if (title === target.title && sourceUrl === (target.sourceUrl ?? null)) {
       setRenameTarget(null)
       return Promise.resolve()
     }
     return runBusy(`rename-${target.id}`, async () => {
       try {
-        await renameCmsDocument(target.id, title)
-        message.success('Đã đổi tên tài liệu')
+        await updateCmsDocumentInfo(target.id, { title, sourceUrl })
+        message.success('Đã cập nhật thông tin tài liệu')
         setRenameTarget(null)
         loadData()
       } catch (err) {
-        message.error(errorMessageOf(err, 'Không đổi được tên tài liệu'))
+        message.error(errorMessageOf(err, 'Không cập nhật được thông tin tài liệu'))
       }
     })
   }
@@ -904,17 +906,17 @@ export default function CmsDocumentsPage() {
               </Text>
               <Input
                 placeholder="VD: https://benhvien.vn/phac-do-dieu-tri-ibs.pdf"
-                value={sourceUrlInput}
+                value={versionTarget ? (versionTarget.sourceUrl ?? '') : sourceUrlInput}
                 onChange={(e) => setSourceUrlInput(e.target.value)}
+                disabled={!!versionTarget}
                 prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
               />
             </div>
           </div>
         </Modal>
 
-        {/* Modal Đổi tên tài liệu */}
         <Modal
-          title="Đổi tên tài liệu"
+          title="Sửa thông tin tài liệu"
           open={renameTarget !== null}
           onOk={handleRename}
           onCancel={() => setRenameTarget(null)}
@@ -923,14 +925,30 @@ export default function CmsDocumentsPage() {
           confirmLoading={renameTarget !== null && busyKey === `rename-${renameTarget.id}`}
           destroyOnHidden
         >
-          <Input
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onPressEnter={handleRename}
-            maxLength={255}
-            showCount
-            autoFocus
-          />
+          <div className="space-y-4 py-2">
+            <div>
+              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">Tên tài liệu:</Text>
+              <Input
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onPressEnter={handleRename}
+                maxLength={255}
+                showCount
+                autoFocus
+              />
+            </div>
+            <div>
+              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">URL nguồn công khai (Tùy chọn):</Text>
+              <Input
+                placeholder="VD: https://benhvien.vn/phac-do-dieu-tri-ibs.pdf"
+                value={renameUrl}
+                onChange={(e) => setRenameUrl(e.target.value)}
+                onPressEnter={handleRename}
+                prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
+                allowClear
+              />
+            </div>
+          </div>
         </Modal>
 
         {/* Modal Xem chi tiết lỗi */}

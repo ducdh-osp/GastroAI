@@ -181,7 +181,7 @@ class DocumentUploadControllerTest {
         @Test
         @WithMockUser(roles = "ADMIN")
         void uploadVersionAcceptedForAdmin() throws Exception {
-                when(documentUploadService.uploadNewVersion(eq(42L), any(), any()))
+                when(documentUploadService.uploadNewVersion(eq(42L), any()))
                                 .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
                 MockMultipartFile file = new MockMultipartFile(
                                 "file", "ibs-v2.pdf", "application/pdf", new byte[] { 1 });
@@ -260,21 +260,22 @@ class DocumentUploadControllerTest {
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        void renameReturnsNoContentForAdmin() throws Exception {
-                mockMvc.perform(patch("/api/v1/documents/42/title")
+        void updateInfoReturnsNoContentForAdmin() throws Exception {
+                mockMvc.perform(patch("/api/v1/documents/42")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"title\":\"Trào ngược dạ dày\"}"))
+                                .content("{\"title\":\"Trào ngược dạ dày\",\"sourceUrl\":\"https://moh.gov.vn/gerd\"}"))
                                 .andExpect(status().isNoContent());
-                verify(documentStatusService).rename(42L, "Trào ngược dạ dày");
+                verify(documentStatusService).updateInfo(42L, "Trào ngược dạ dày", "https://moh.gov.vn/gerd");
         }
 
         @Test
         @WithMockUser(roles = "PATIENT")
-        void renameForbiddenForPatient() throws Exception {
-                mockMvc.perform(patch("/api/v1/documents/42/title")
+        void updateInfoForbiddenForPatient() throws Exception {
+                mockMvc.perform(patch("/api/v1/documents/42")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"title\":\"x\"}"))
+                                .content("{\"title\":\"x\",\"sourceUrl\":null}"))
                                 .andExpect(status().isForbidden());
+                verify(documentStatusService, never()).updateInfo(any(), any(), any());
         }
 
 }
