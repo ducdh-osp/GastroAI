@@ -36,6 +36,9 @@ public class Doctor {
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
+    @Column(name = "session_version", nullable = false)
+    private int sessionVersion = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CmsRole role = CmsRole.DOCTOR;

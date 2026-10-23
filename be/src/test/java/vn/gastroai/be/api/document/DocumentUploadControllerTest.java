@@ -22,8 +22,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import java.util.Optional;
-
+import org.springframework.http.MediaType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -56,7 +57,7 @@ class DocumentUploadControllerTest {
         @Test
         @WithMockUser(roles = "ADMIN")
         void uploadResponseIncludesInitialStatusAndStage() throws Exception {
-                when(documentUploadService.upload(any(), any()))
+                when(documentUploadService.upload(any(), any(), any()))
                                 .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
                 MockMultipartFile file = new MockMultipartFile(
                                 "file", "ibs.pdf", "application/pdf", new byte[] { 1 });
@@ -122,7 +123,8 @@ class DocumentUploadControllerTest {
                                 null, 10L, java.time.Instant.now(), java.time.Instant.now(),
                                 1, 1, 1, false);
                 when(documentStatusService.list(null, null, 0, 15))
-                                .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15));
+                                .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15,
+                                                new DocumentStats(1, 1, 0, 0)));
 
                 mockMvc.perform(get("/api/v1/documents"))
                                 .andExpect(status().isOk())
@@ -179,7 +181,7 @@ class DocumentUploadControllerTest {
         @Test
         @WithMockUser(roles = "ADMIN")
         void uploadVersionAcceptedForAdmin() throws Exception {
-                when(documentUploadService.uploadNewVersion(eq(42L), any(), any()))
+                when(documentUploadService.uploadNewVersion(eq(42L), any()))
                                 .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
                 MockMultipartFile file = new MockMultipartFile(
                                 "file", "ibs-v2.pdf", "application/pdf", new byte[] { 1 });
@@ -255,4 +257,25 @@ class DocumentUploadControllerTest {
 
                 verify(documentUploadService, never()).deleteVersion(any(), any());
         }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void updateInfoReturnsNoContentForAdmin() throws Exception {
+                mockMvc.perform(patch("/api/v1/documents/42")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"title\":\"Trào ngược dạ dày\",\"sourceUrl\":\"https://moh.gov.vn/gerd\"}"))
+                                .andExpect(status().isNoContent());
+                verify(documentStatusService).updateInfo(42L, "Trào ngược dạ dày", "https://moh.gov.vn/gerd");
+        }
+
+        @Test
+        @WithMockUser(roles = "PATIENT")
+        void updateInfoForbiddenForPatient() throws Exception {
+                mockMvc.perform(patch("/api/v1/documents/42")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"title\":\"x\",\"sourceUrl\":null}"))
+                                .andExpect(status().isForbidden());
+                verify(documentStatusService, never()).updateInfo(any(), any(), any());
+        }
+
 }

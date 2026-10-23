@@ -27,8 +27,9 @@ public class DocumentUploadController {
     @PostMapping
     public ResponseEntity<DocumentStatusResponse> upload(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "sourceUrl", required = false) String sourceUrl) {
-        Document document = documentUploadService.upload(file, sourceUrl);
+            @RequestParam(value = "sourceUrl", required = false) String sourceUrl,
+            @RequestParam(value = "title", required = false) String title) {
+        Document document = documentUploadService.upload(file, sourceUrl, title);
 
         return ResponseEntity.accepted().body(toResponse(document));
     }
@@ -64,9 +65,8 @@ public class DocumentUploadController {
     @PostMapping("/{documentId}/versions")
     public ResponseEntity<DocumentStatusResponse> uploadVersion(
             @PathVariable Long documentId,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "sourceUrl", required = false) String sourceUrl) {
-        Document document = documentUploadService.uploadNewVersion(documentId, file, sourceUrl);
+            @RequestParam("file") MultipartFile file) {
+        Document document = documentUploadService.uploadNewVersion(documentId, file);
         return ResponseEntity.accepted().body(toResponse(document));
     }
 
@@ -96,6 +96,14 @@ public class DocumentUploadController {
     @PostMapping("/{documentId}/publish")
     public ResponseEntity<Void> publish(@PathVariable Long documentId) {
         documentStatusService.publish(documentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{documentId}")
+    public ResponseEntity<Void> updateInfo(
+            @PathVariable Long documentId,
+            @RequestBody UpdateDocumentInfoRequest request) {
+        documentStatusService.updateInfo(documentId, request.title(), request.sourceUrl());
         return ResponseEntity.noContent().build();
     }
 

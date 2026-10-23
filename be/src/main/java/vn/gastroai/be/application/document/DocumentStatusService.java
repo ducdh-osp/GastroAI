@@ -15,13 +15,12 @@ import vn.gastroai.be.api.document.DocumentVersionResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import java.time.Instant;
 import java.util.Locale;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import vn.gastroai.be.api.document.DocumentSearchResult;
+import vn.gastroai.be.api.document.DocumentStats;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentGroupRow;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentListRow;
 
@@ -129,8 +128,15 @@ public class DocumentStatusService {
         Map<Long, DocumentGroupRow> groups = documentRepository.findGroupRows().stream()
                 .collect(Collectors.toMap(DocumentGroupRow::getGroupId, g -> g));
 
-        // Loc trang thai + tim khong dau trong Java (SQL khong lam duoc neu thieu
-        // extension unaccent).
+        DocumentStats stats = new DocumentStats(
+                latestPerGroup.size(),
+                (int) groups.values().stream().filter(g -> g.getCurrentVersionNo() != null).count(),
+                (int) latestPerGroup.stream()
+                        .filter(d -> d.getStatus() == DocumentStatus.PENDING
+                                || d.getStatus() == DocumentStatus.PROCESSING)
+                        .count(),
+                (int) latestPerGroup.stream().filter(d -> d.getStatus() == DocumentStatus.ERROR).count());
+
         List<DocumentListRow> filtered = latestPerGroup.stream()
                 .filter(d -> status == null || d.getStatus() == status)
                 .filter(d -> normalizedQuery.isEmpty()
@@ -143,7 +149,7 @@ public class DocumentStatusService {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         long offset = pageable.getOffset();
         if (offset >= filtered.size()) {
-            return new vn.gastroai.be.api.document.DocumentPageResponse(List.of(), filtered.size(), page, size);
+            return new vn.gastroai.be.api.document.DocumentPageResponse(List.of(), filtered.size(), page, size, stats);
         }
 
         int start = Math.toIntExact(offset);
@@ -182,7 +188,7 @@ public class DocumentStatusService {
                 })
                 .toList();
 
-        return new vn.gastroai.be.api.document.DocumentPageResponse(items, filtered.size(), page, size);
+        return new vn.gastroai.be.api.document.DocumentPageResponse(items, filtered.size(), page, size, stats);
     }
 
     /**
@@ -283,6 +289,15 @@ public class DocumentStatusService {
         documentRepository.save(latestDone);
     }
 
+    @Transactional
+    public void updateInfo(Long documentId, String rawTitle, String rawSourceUrl) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        String title = DocumentTitle.normalize(rawTitle);
+        String sourceUrl = DocumentUploadService.normalizeSourceUrl(rawSourceUrl);
+        documentRepository.updateGroupInfo(document.groupId(), title, sourceUrl, Instant.now());
+    }
+
     /**
      * UC0055 - tim cum tu trong noi dung tai lieu dang dung, tra doan trich quanh
      * cho khop.
@@ -305,7 +320,7 @@ public class DocumentStatusService {
         List<DocumentSearchHit> items = rows.stream()
                 .limit(MAX_SEARCH_RESULTS)
                 .map(row -> new DocumentSearchHit(row.getDocumentId(), row.getTitle(),
-                        row.getChunkIndex(), snippet(row.getContent(), q)))
+                        row.getChunkIndex(), snippet(row.getContent(), q), row.getContent()))
                 .toList();
         return new DocumentSearchResult(items, truncated);
     }

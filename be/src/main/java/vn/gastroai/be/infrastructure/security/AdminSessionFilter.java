@@ -51,10 +51,10 @@ public class AdminSessionFilter extends OncePerRequestFilter {
                         Object userType = session.getAttribute(CmsAuthService.AUTH_USER_TYPE);
 
                         Object accountType = session.getAttribute(CmsAuthService.AUTH_ACCOUNT_TYPE);
-
+                        Object sessionVersion = session.getAttribute(CmsAuthService.AUTH_SESSION_VERSION);
                         if (userId != null && userType != null) {
 
-                                String role = currentRole(userId, accountType, userType);
+                                String role = currentRole(userId, accountType, userType, sessionVersion);
 
                                 if (isCmsRole(role)) {
 
@@ -88,8 +88,10 @@ public class AdminSessionFilter extends OncePerRequestFilter {
                                 || "CONTENT_EDITOR".equals(role));
         }
 
-        /** Role duoc doc lai tu DB de thay doi RBAC co hieu luc o request ke tiep theo. */
-        private String currentRole(Object userId, Object accountType, Object legacyRole) {
+        /**
+         * Role duoc doc lai tu DB de thay doi RBAC co hieu luc o request ke tiep theo.
+         */
+       private String currentRole(Object userId, Object accountType, Object legacyRole, Object sessionVersion) {
                 if (accountType == null) {
                         return isCmsRole(legacyRole.toString()) ? legacyRole.toString() : null;
                 }
@@ -99,16 +101,31 @@ public class AdminSessionFilter extends OncePerRequestFilter {
                 } catch (NumberFormatException exception) {
                         return null;
                 }
+                int version = sessionVersionOf(sessionVersion);
                 if (CmsAccountType.ADMIN.name().equals(accountType.toString())) {
                         AdminRepository repository = admins.getIfAvailable();
                         return repository == null ? null : repository.findById(id)
+                                        .filter(admin -> admin.getSessionVersion() == version)
                                         .map(admin -> admin.getRole().name()).orElse(null);
                 }
                 if (CmsAccountType.DOCTOR.name().equals(accountType.toString())) {
                         DoctorRepository repository = doctors.getIfAvailable();
                         return repository == null ? null : repository.findById(id)
+                                        .filter(doctor -> doctor.getSessionVersion() == version)
                                         .map(doctor -> doctor.getRole().name()).orElse(null);
                 }
                 return null;
+        }
+
+        /** Session tao truoc khi co tinh nang nay khong co so phien -> coi la 0 (khop gia tri mac dinh). */
+        private static int sessionVersionOf(Object value) {
+                if (value == null) {
+                        return 0;
+                }
+                try {
+                        return Integer.parseInt(value.toString());
+                } catch (NumberFormatException exception) {
+                        return -1;
+                }
         }
 }

@@ -9,6 +9,7 @@ import {
   FileTextOutlined,
   HistoryOutlined,
   HomeOutlined,
+  KeyOutlined,
   LogoutOutlined,
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
@@ -19,7 +20,7 @@ import {
 } from '@ant-design/icons'
 import { Badge, Dropdown, notification, Switch, Tag } from 'antd'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Logo } from '../brand/Logo'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
 import { useTheme } from '../../stores/themeStore'
@@ -68,7 +69,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Giám sát',
     items: [
-       { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts', roles: ['ADMIN', 'DOCTOR'] },
+      { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts', roles: ['ADMIN', 'DOCTOR'] },
       { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true, adminOnly: true },
       { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
     ],
@@ -97,6 +98,7 @@ const ROLE_LABEL: Record<string, string> = {
  */
 export function CmsSidebar() {
   const { user, logout } = useCmsAuth()
+  const navigate = useNavigate()
   const { mode, toggle: toggleTheme } = useTheme()
   const location = useLocation()
   const [unreadCount, setUnreadCount] = useState(0)
@@ -104,7 +106,7 @@ export function CmsSidebar() {
   useEffect(() => {
     if (user?.userType !== 'ADMIN') return
     const refreshUnreadCount = () => {
-      void getUnreadNotificationCount('admin').then(setUnreadCount).catch(() => {})
+      void getUnreadNotificationCount('admin').then(setUnreadCount).catch(() => { })
     }
     refreshUnreadCount()
     window.addEventListener('gastroai:notification-state', refreshUnreadCount)
@@ -141,9 +143,8 @@ export function CmsSidebar() {
           {user?.userType === 'ADMIN' && (
             <Link
               to="/cms/notifications"
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                location.pathname === '/cms/notifications' ? 'bg-teal-500/15 text-teal-300' : 'text-white/80 hover:bg-white/5'
-              }`}
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${location.pathname === '/cms/notifications' ? 'bg-teal-500/15 text-teal-300' : 'text-white/80 hover:bg-white/5'
+                }`}
             >
               <BellOutlined />
               <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
@@ -178,9 +179,8 @@ export function CmsSidebar() {
                     <Link
                       key={item.key}
                       to={item.to}
-                      className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                        active ? 'bg-teal-500/15 text-teal-300' : 'text-white/80 hover:bg-white/5'
-                      }`}
+                      className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${active ? 'bg-teal-500/15 text-teal-300' : 'text-white/80 hover:bg-white/5'
+                        }`}
                     >
                       {item.icon}
                       {item.label}
@@ -203,7 +203,11 @@ export function CmsSidebar() {
         </div>
         <Dropdown
           menu={{
-            items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true, onClick: logout }],
+            items: [
+              { key: 'change-password', icon: <KeyOutlined />, label: 'Đổi mật khẩu', onClick: () => navigate('/cms/change-password') },
+              { type: 'divider' },
+              { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true, onClick: logout },
+            ],
           }}
           trigger={['click']}
         >
