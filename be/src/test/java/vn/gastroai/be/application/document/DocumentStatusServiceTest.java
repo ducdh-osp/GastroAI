@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -701,33 +702,62 @@ class DocumentStatusServiceTest {
     }
 
     @Test
-    void renameUpdatesWholeVersionGroup() {
+    void updateInfoUpdatesWholeVersionGroup() {
         Document v2 = new Document();
         v2.setId(2L);
         v2.setRootId(1L);
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
 
-        documentStatusService.rename(2L, "  Trào ngược   dạ dày  ");
+        documentStatusService.updateInfo(2L, "  Trào ngược   dạ dày  ", " https://moh.gov.vn/gerd ");
 
-        verify(documentRepository).renameGroup(eq(1L), eq("Trào ngược dạ dày"), any());
+        verify(documentRepository).updateGroupInfo(eq(1L), eq("Trào ngược dạ dày"),
+                eq("https://moh.gov.vn/gerd"), any());
     }
 
+    // Ten rong -> 400, khong ghi gi.
     @Test
-    void renameRejectsBlankTitle() {
+    void updateInfoRejectsBlankTitle() {
         Document doc = new Document();
         doc.setId(1L);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
 
-        assertThrows(IllegalArgumentException.class, () -> documentStatusService.rename(1L, "   "));
-        verify(documentRepository, never()).renameGroup(any(), any(), any());
+        assertThrows(IllegalArgumentException.class, () -> documentStatusService.updateInfo(1L, "   ", null));
+        verify(documentRepository, never()).updateGroupInfo(any(), any(), any(), any());
     }
 
+    // Tai lieu khong ton tai -> 404.
     @Test
-    void renameThrowsNotFoundForUnknownDocument() {
+    void updateInfoThrowsNotFoundForUnknownDocument() {
         when(documentRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> documentStatusService.rename(99L, "Tên mới"));
+        assertThrows(ResourceNotFoundException.class,
+                () -> documentStatusService.updateInfo(99L, "Tên mới", null));
     }
+
+    // URL de trong -> ghi null (xoa URL), ten van cap nhat binh thuong.
+    @Test
+    void updateInfoClearsSourceUrlWhenBlank() {
+        Document doc = new Document();
+        doc.setId(1L);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+
+        documentStatusService.updateInfo(1L, "Tên mới", "   ");
+
+        verify(documentRepository).updateGroupInfo(eq(1L), eq("Tên mới"), isNull(), any());
+    }
+
+    // URL khong phai http/https -> 400, khong ghi gi xuong DB.
+    @Test
+    void updateInfoRejectsInvalidSourceUrl() {
+        Document doc = new Document();
+        doc.setId(1L);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(doc));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> documentStatusService.updateInfo(1L, "Tên mới", "javascript:alert(1)"));
+        verify(documentRepository, never()).updateGroupInfo(any(), any(), any(), any());
+    }
+
     @Test
     void listStatsCountAllDocumentsRegardlessOfFilterAndPage() {
         when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
