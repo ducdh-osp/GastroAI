@@ -3,7 +3,7 @@ import { cmsApiClient } from '../lib/cmsAxios'
 
 export interface AppNotification {
   id: number
-  type: 'JOURNAL_REMINDER' | 'TRIAGE_ALERT' | 'SYSTEM'
+  type: NotificationType
   title: string
   message: string
   sourceType: string | null
@@ -23,6 +23,12 @@ export interface NotificationPage {
 }
 
 export type NotificationAudience = 'patient' | 'admin'
+export type NotificationType = 'JOURNAL_REMINDER' | 'MEDICATION_REMINDER' | 'TRIAGE_ALERT' | 'SYSTEM'
+
+export interface NotificationFilters {
+  unreadOnly?: boolean
+  type?: NotificationType
+}
 
 function client(audience: NotificationAudience) {
   return audience === 'patient' ? apiClient : cmsApiClient
@@ -32,9 +38,14 @@ function basePath(audience: NotificationAudience) {
   return audience === 'patient' ? '/patient/notifications' : '/cms/notifications'
 }
 
-export async function getNotifications(audience: NotificationAudience, page = 0, size = 20) {
+export async function getNotifications(
+  audience: NotificationAudience,
+  page = 0,
+  size = 20,
+  filters: NotificationFilters = {},
+) {
   const { data } = await client(audience).get<NotificationPage>(basePath(audience), {
-    params: { page, size },
+    params: { page, size, unreadOnly: filters.unreadOnly ?? false, type: filters.type },
   })
   return data
 }
@@ -48,6 +59,10 @@ export async function getUnreadNotificationCount(audience: NotificationAudience)
 
 export async function markNotificationRead(audience: NotificationAudience, id: number) {
   await client(audience).post(`${basePath(audience)}/${id}/read`)
+}
+
+export async function markNotificationUnread(audience: NotificationAudience, id: number) {
+  await client(audience).post(`${basePath(audience)}/${id}/unread`)
 }
 
 export async function markAllNotificationsRead(audience: NotificationAudience) {

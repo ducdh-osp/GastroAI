@@ -52,6 +52,23 @@ public class AppNotificationService {
         return Optional.of(response);
     }
 
+    @Transactional("postgresTransactionManager")
+    public Optional<NotificationResponse> createMedicationReminder(Long patientId, Long reminderId,
+                                                                    String title, String message,
+                                                                    String dedupeKey) {
+        if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
+            return Optional.empty();
+        }
+        AppNotification notification = new AppNotification(
+                NotificationRecipientType.PATIENT, patientId, NotificationType.MEDICATION_REMINDER,
+                title, message, "MEDICATION_REMINDER", reminderId, "/medications", dedupeKey);
+        notification = notificationRepository.save(notification);
+        NotificationResponse response = toResponse(notification, null);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                NotificationRecipientType.PATIENT, patientId, response));
+        return Optional.of(response);
+    }
+
     /** Notification triage là broadcast cho CMS Admin và được lưu cùng transaction với alert. */
     @Transactional("postgresTransactionManager")
     public Optional<NotificationResponse> recordTriageAlert(TriageAlertEvent event) {
@@ -71,15 +88,17 @@ public class AppNotificationService {
     }
 
     @Transactional(value = "postgresTransactionManager", readOnly = true)
-    public NotificationPageResponse listPatient(Long patientId, Pageable pageable) {
-        return list(notificationRepository.findVisibleForPatient(patientId, pageable),
+    public NotificationPageResponse listPatient(Long patientId, NotificationType type,
+                                                boolean unreadOnly, Pageable pageable) {
+        return list(notificationRepository.findVisibleForPatient(patientId, type, unreadOnly, pageable),
                 NotificationRecipientType.PATIENT, patientId,
                 notificationRepository.countUnreadForPatient(patientId));
     }
 
     @Transactional(value = "postgresTransactionManager", readOnly = true)
-    public NotificationPageResponse listAdmin(Long adminId, Pageable pageable) {
-        return list(notificationRepository.findVisibleForAdmin(adminId, pageable),
+    public NotificationPageResponse listAdmin(Long adminId, NotificationType type,
+                                              boolean unreadOnly, Pageable pageable) {
+        return list(notificationRepository.findVisibleForAdmin(adminId, type, unreadOnly, pageable),
                 NotificationRecipientType.ADMIN, adminId,
                 notificationRepository.countUnreadForAdmin(adminId));
     }
@@ -92,6 +111,16 @@ public class AppNotificationService {
                 .orElseGet(() -> new NotificationState(notification, type, recipientId));
         state.setReadAt(state.getReadAt() == null ? Instant.now() : state.getReadAt());
         stateRepository.save(state);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public void markUnread(Long notificationId, NotificationRecipientType type, Long recipientId) {
+        visibleNotification(notificationId, type, recipientId);
+        stateRepository.findByNotificationIdAndRecipientTypeAndRecipientId(notificationId, type, recipientId)
+                .ifPresent(state -> {
+                    state.setReadAt(null);
+                    stateRepository.save(state);
+                });
     }
 
     @Transactional("postgresTransactionManager")

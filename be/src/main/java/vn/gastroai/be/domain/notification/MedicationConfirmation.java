@@ -9,8 +9,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-/** UC0016 - 1 lan benh nhan bam "da uong thuoc" cho 1 MedicationReminder. GD4 chi la log
- * don gian (test thu cong), chua noi voi notification/scheduler that (GD7). */
+/** UC0016 - mot lan benh nhan bam "da uong thuoc" cho mot lieu cua MedicationReminder.
+ * Scheduler dung ban ghi nay de khong nhac lai lieu da duoc xac nhan trong ngay. */
 @Entity
 @Table(name = "medication_confirmations")
 @Getter

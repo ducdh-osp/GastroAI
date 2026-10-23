@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,6 +60,26 @@ class AppNotificationServiceTest {
     }
 
     @Test
+    void medicationReminderUsesDoseSpecificNotificationTypeAndSource() {
+        when(notificationRepository.findByDedupeKey("med-key")).thenReturn(Optional.empty());
+        when(notificationRepository.save(any(AppNotification.class))).thenAnswer(invocation -> {
+            AppNotification notification = invocation.getArgument(0);
+            notification.setId(6L);
+            return notification;
+        });
+
+        assertTrue(service.createMedicationReminder(
+                1L, 9L, "Đến giờ uống thuốc", "message", "med-key").isPresent());
+
+        org.mockito.ArgumentCaptor<AppNotification> notification =
+                org.mockito.ArgumentCaptor.forClass(AppNotification.class);
+        verify(notificationRepository).save(notification.capture());
+        assertTrue(notification.getValue().getNotificationType() == NotificationType.MEDICATION_REMINDER);
+        assertTrue(notification.getValue().getSourceId().equals(9L));
+        assertTrue("/medications".equals(notification.getValue().getActionUrl()));
+    }
+
+    @Test
     void patientCannotMarkAnotherPatientsNotificationRead() {
         AppNotification notification = patientNotification(2L);
         when(notificationRepository.findById(5L)).thenReturn(Optional.of(notification));
@@ -82,6 +103,22 @@ class AppNotificationServiceTest {
                 org.mockito.ArgumentCaptor.forClass(NotificationState.class);
         verify(stateRepository).save(state.capture());
         assertNotNull(state.getValue().getDeletedAt());
+    }
+
+    @Test
+    void readNotificationCanBeMarkedUnreadAgain() {
+        AppNotification notification = patientNotification(1L);
+        NotificationState state = new NotificationState(
+                notification, NotificationRecipientType.PATIENT, 1L);
+        state.setReadAt(Instant.now());
+        when(notificationRepository.findById(5L)).thenReturn(Optional.of(notification));
+        when(stateRepository.findByNotificationIdAndRecipientTypeAndRecipientId(
+                5L, NotificationRecipientType.PATIENT, 1L)).thenReturn(Optional.of(state));
+
+        service.markUnread(5L, NotificationRecipientType.PATIENT, 1L);
+
+        assertNull(state.getReadAt());
+        verify(stateRepository).save(state);
     }
 
     @Test

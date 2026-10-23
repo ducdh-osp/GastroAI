@@ -9,6 +9,7 @@ import vn.gastroai.be.domain.notification.MedicationConfirmation;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 
 public interface MedicationConfirmationRepository extends JpaRepository<MedicationConfirmation, Long> {
@@ -20,6 +21,12 @@ public interface MedicationConfirmationRepository extends JpaRepository<Medicati
             + "where c.reminder.patient.id = :patientId and c.confirmationDate = :confirmationDate")
     List<MedicationConfirmation> findByPatientIdAndConfirmationDate(
             @Param("patientId") Long patientId, @Param("confirmationDate") LocalDate confirmationDate);
+
+    @Query("select c from MedicationConfirmation c join fetch c.reminder r "
+            + "where r.id in :reminderIds and c.confirmationDate = :confirmationDate")
+    List<MedicationConfirmation> findByReminderIdInAndConfirmationDate(
+            @Param("reminderIds") Collection<Long> reminderIds,
+            @Param("confirmationDate") LocalDate confirmationDate);
 
     // JOIN FETCH reminder - service.listConfirmations() doc reminder.getMedicineName() cho
     // moi dong, reminder la LAZY nen khong fetch san se gay N+1 query (1 SELECT/dong).
