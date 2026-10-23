@@ -909,8 +909,6 @@ export default function CmsDocumentsPage() {
                 onChange={(e) => setSourceUrlInput(e.target.value)}
                 prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
               />
-              <Text type="secondary" className="text-xs mt-1 block">
-              </Text>
             </div>
           </div>
         </Modal>
