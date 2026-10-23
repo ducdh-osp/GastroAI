@@ -1,5 +1,5 @@
 import { CheckOutlined, SafetyOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Spin, Table, Tag, Typography } from 'antd'
+import { Alert, Badge, Button, Card, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -280,6 +280,12 @@ export default function CmsTriageAlertsPage() {
                 Cảnh báo khẩn cấp
               </Title>
               <Text type="secondary">Tin nhắn trợ lý AI nhận diện có dấu hiệu khẩn cấp</Text>
+              {connectionState !== 'connected' && (
+                <Badge
+                  status={connectionState === 'connecting' ? 'processing' : 'error'}
+                  text={connectionState === 'connecting' ? 'Đang kết nối...' : 'Mất kết nối realtime - đang thử lại'}
+                />
+              )}
             </div>
           </div>
         </div>
