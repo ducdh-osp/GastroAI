@@ -279,7 +279,7 @@ export default function CmsTriageAlertsPage() {
                 <SafetyOutlined className="mr-2" />
                 Cảnh báo khẩn cấp
               </Title>
-              <Text type="secondary">Tin nhắn trợ lý AI nhận diện có dấu hiệu khẩn cấp (UC0034/036).</Text>
+              <Text type="secondary">Tin nhắn trợ lý AI nhận diện có dấu hiệu khẩn cấp</Text>
             </div>
             <Badge
               status={connectionState === 'connected' ? 'success' : connectionState === 'connecting' ? 'processing' : 'error'}

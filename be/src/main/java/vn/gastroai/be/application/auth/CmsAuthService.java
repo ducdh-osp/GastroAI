@@ -8,11 +8,11 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 import vn.gastroai.be.application.commands.CmsLoginCommand;
 import vn.gastroai.be.application.readmodel.CmsAuthResult;
 import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.admin.AdminLoginHistory;
-import vn.gastroai.be.domain.admin.CmsRole;
 import vn.gastroai.be.domain.admin.CmsAccountType;
 import vn.gastroai.be.domain.admin.Doctor;
 import vn.gastroai.be.domain.admin.DoctorLoginHistory;
@@ -24,13 +24,7 @@ import vn.gastroai.be.infrastructure.persistence.mysql.DoctorRepository;
 
 import java.time.Instant;
 
-/**
- * Đăng nhập cho Admin/Bác sĩ (UC0045) — dùng HttpSession, khác hẳn JWT của Bệnh nhân, vì
- * Admin/Doctor lưu ở MySQL (2 bảng riêng: admins, doctors), không dùng chung
- * PatientRepository/AuthService. Logic khoá tài khoản (UC0008) tái dùng chung
- * LoginSecurityPolicy với AuthService để nhất quán chính sách trên toàn hệ thống,
- * dù dữ liệu tách bảng.
- */
+
 @Service
 public class CmsAuthService {
 
@@ -39,6 +33,7 @@ public class CmsAuthService {
     public static final String AUTH_USER_ID = "AUTH_USER_ID";
     public static final String AUTH_USER_TYPE = "AUTH_USER_TYPE";
     public static final String AUTH_ACCOUNT_TYPE = "AUTH_ACCOUNT_TYPE";
+    public static final String AUTH_SESSION_VERSION = "AUTH_SESSION_VERSION";
 
     private static final String DUMMY_BCRYPT_HASH =
             "$2a$10$7EqJtq98hPqEX7fNZaFWoO5sK2PXrAnq3N33CpA6RKpA1MKSO0HsW";
@@ -69,10 +64,6 @@ public class CmsAuthService {
         this.clientRequestInfoResolver = clientRequestInfoResolver;
     }
 
-    // Chống session fixation: huỷ session cũ (nếu có) rồi tạo session MỚI hoàn toàn sau khi
-    // xác thực thành công, thay vì tái sử dụng session đã tồn tại từ trước khi đăng nhập —
-    // nếu không, kẻ tấn công có thể "gài" sẵn 1 session ID cho nạn nhân rồi chiếm quyền
-    // ngay khi nạn nhân đăng nhập vào chính session ID đó.
     private HttpSession rotateSession(HttpServletRequest request) {
         HttpSession oldSession = request.getSession(false);
 
@@ -83,18 +74,7 @@ public class CmsAuthService {
         return request.getSession(true);
     }
 
-    /**
-     * FE phải tự khai báo role (ADMIN/DOCTOR) muốn đăng nhập — không tự dò cả 2 bảng như
-     * cách cũ, vì email admin và doctor có thể trùng nhau ở 2 bảng khác nhau, dò cả 2 sẽ
-     * mơ hồ nên đăng nhập vào tài khoản nào.
-     *
-     * noRollbackFor giống hệt AuthService.login() (bên bệnh nhân) — các exception nghiệp vụ
-     * (sai mật khẩu, bị khoá) không được rollback transaction, phải giữ lại thay đổi (tăng
-     * failedLoginAttempts, ghi lịch sử) dù request kết thúc bằng exception. Dùng
-     * findByEmailForUpdate (SELECT ... FOR UPDATE) để khoá row khi đọc, tránh race condition
-     * khi 2 request đăng nhập sai cùng lúc làm đếm sai số lần thất bại — trước đây chỗ này
-     * dùng findByEmail thường (không khoá), khác bên Patient đã làm đúng.
-     */
+ 
     @Transactional(value = "mysqlTransactionManager", noRollbackFor = {
             BadCredentialsException.class, AccountLockedException.class
     })
@@ -198,7 +178,7 @@ public class CmsAuthService {
 
         session.setAttribute(AUTH_USER_TYPE, user.getRole().name());
         session.setAttribute(AUTH_ACCOUNT_TYPE, CmsAccountType.ADMIN.name());
-
+        session.setAttribute(AUTH_SESSION_VERSION, user.getSessionVersion());
         return new CmsAuthResult(
                 user.getId(),
                 user.getEmail(),
@@ -264,7 +244,7 @@ public class CmsAuthService {
 
         session.setAttribute(AUTH_USER_TYPE, user.getRole().name());
         session.setAttribute(AUTH_ACCOUNT_TYPE, CmsAccountType.DOCTOR.name());
-
+        session.setAttribute(AUTH_SESSION_VERSION, user.getSessionVersion());
         return new CmsAuthResult(
                 user.getId(),
                 user.getEmail(),
@@ -390,6 +370,90 @@ public class CmsAuthService {
                         requestInfo.ipAddress(),
                         requestInfo.userAgent(),
                         requestInfo.deviceLabel()));
+    }
+    
+    @Transactional(value = "mysqlTransactionManager", noRollbackFor = {
+            IllegalArgumentException.class, AccountLockedException.class
+    })
+    public void changePassword(CmsAccountType accountType, Long accountId, String currentPassword,
+            String newPassword, HttpServletRequest request) {
+        if (accountType == CmsAccountType.ADMIN) {
+            Admin user = adminRepository.findByIdForUpdate(accountId)
+                    .orElseThrow(() -> new AccessDeniedException("Tai khoan khong ton tai"));
+            changeAdminPassword(user, currentPassword, newPassword, request);
+        } else {
+            Doctor user = doctorRepository.findByIdForUpdate(accountId)
+                    .orElseThrow(() -> new AccessDeniedException("Tai khoan khong ton tai"));
+            changeDoctorPassword(user, currentPassword, newPassword, request);
+        }
+    }
+
+    private void changeAdminPassword(Admin user, String currentPassword, String newPassword,
+            HttpServletRequest request) {
+        Instant now = Instant.now();
+        if (isLocked(user.getLockedUntil(), now)) {
+            saveAdminHistory(user, now, LoginOutcome.BLOCKED, "Đổi mật khẩu khi tài khoản đang bị khóa", request);
+            throw new AccountLockedException(user.getLockedUntil());
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            int attempts = user.getFailedLoginAttempts() + 1;
+            user.setFailedLoginAttempts(attempts);
+            boolean locked = attempts >= loginSecurityPolicy.maxFailedAttempts();
+            if (locked) {
+                user.setLockedUntil(now.plus(loginSecurityPolicy.lockDuration()));
+            }
+            adminRepository.save(user);
+            saveAdminHistory(user, now, locked ? LoginOutcome.BLOCKED : LoginOutcome.FAILURE,
+                    locked ? "Đổi mật khẩu sai quá số lần, tài khoản bị khóa"
+                            : "Đổi mật khẩu: sai mật khẩu hiện tại",
+                    request);
+            if (locked) {
+                throw new AccountLockedException(user.getLockedUntil());
+            }
+            throw new IllegalArgumentException("Mật khẩu hiện tại không đúng");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+        user.setSessionVersion(user.getSessionVersion() + 1);
+        adminRepository.save(user);
+    }
+
+    private void changeDoctorPassword(Doctor user, String currentPassword, String newPassword,
+            HttpServletRequest request) {
+        Instant now = Instant.now();
+        if (isLocked(user.getLockedUntil(), now)) {
+            saveDoctorHistory(user, now, LoginOutcome.BLOCKED, "Đổi mật khẩu khi tài khoản đang bị khóa", request);
+            throw new AccountLockedException(user.getLockedUntil());
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            int attempts = user.getFailedLoginAttempts() + 1;
+            user.setFailedLoginAttempts(attempts);
+            boolean locked = attempts >= loginSecurityPolicy.maxFailedAttempts();
+            if (locked) {
+                user.setLockedUntil(now.plus(loginSecurityPolicy.lockDuration()));
+            }
+            doctorRepository.save(user);
+            saveDoctorHistory(user, now, locked ? LoginOutcome.BLOCKED : LoginOutcome.FAILURE,
+                    locked ? "Đổi mật khẩu sai quá số lần, tài khoản bị khóa"
+                            : "Đổi mật khẩu: sai mật khẩu hiện tại",
+                    request);
+            if (locked) {
+                throw new AccountLockedException(user.getLockedUntil());
+            }
+            throw new IllegalArgumentException("Mật khẩu hiện tại không đúng");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+        user.setSessionVersion(user.getSessionVersion() + 1);
+        doctorRepository.save(user);
     }
 
     /** UC0045 - Đăng xuất Admin/Bác sĩ: chỉ cần huỷ session, không có token nào cần thu hồi. */

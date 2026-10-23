@@ -89,7 +89,7 @@ public class ChatExportService {
         }
     }
 
-    private void appendSources(PdfDocumentBuilder builder, String sourcesJson) {
+        private void appendSources(PdfDocumentBuilder builder, String sourcesJson) {
         if (sourcesJson == null || sourcesJson.isBlank())
             return;
         List<ChatSourceResponse> sources;
@@ -99,13 +99,23 @@ public class ChatExportService {
         } catch (Exception e) {
             return;
         }
-        if (sources.isEmpty())
-            return;
+
+        // Chi in nguon co duong dan cong khai de bac si kiem chung duoc. Tai lieu seed / noi bo
+        // (khong co sourceUrl) bi bo; khong con nguon nao thi khong in dong "Nguon tham khao".
         String joined = sources.stream()
-                .map(s -> s.sourceUrl() == null || s.sourceUrl().isBlank()
-                        ? s.documentTitle()
-                        : s.documentTitle() + " (" + s.sourceUrl() + ")")
+                .filter(s -> s.sourceUrl() != null && !s.sourceUrl().isBlank())
+                .map(s -> displayTitle(s.documentTitle()) + " (" + s.sourceUrl().trim() + ")")
+                .distinct()
                 .collect(Collectors.joining("; "));
+        if (joined.isEmpty())
+            return;
         builder.keyValue("Nguồn tham khảo", joined);
+    }
+
+    /** Bo duoi file (.pdf / .docx, khong phan biet hoa thuong) khoi ten tai lieu khi in. */
+    static String displayTitle(String title) {
+        if (title == null)
+            return "";
+        return title.replaceAll("(?i)\\.(pdf|docx)$", "").trim();
     }
 }

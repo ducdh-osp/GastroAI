@@ -42,7 +42,7 @@ class ChatExportServiceTest {
     }
 
     private ChatMessage message(ChatSession session, long id, String sender, String content,
-                                 String sourcesJson, boolean emergency) {
+            String sourcesJson, boolean emergency) {
         ChatMessage message = new ChatMessage(session, sender, content, sourcesJson, null, emergency, null);
         message.setId(id);
         message.setCreatedAt(Instant.parse("2026-09-01T08:05:00Z"));
@@ -95,7 +95,8 @@ class ChatExportServiceTest {
         Patient patient = patient();
         ChatSession session = session(patient);
         ChatMessage patientMsg = message(session, 100L, "patient", "Đây là ảnh nội soi của tôi", null, false);
-        ChatAttachment attachment = new ChatAttachment(patientMsg, "stored-123.png", "anh-noi-soi.png", "image/png", 2048);
+        ChatAttachment attachment = new ChatAttachment(patientMsg, "stored-123.png", "anh-noi-soi.png", "image/png",
+                2048);
 
         when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
         when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(patientMsg));
@@ -138,7 +139,7 @@ class ChatExportServiceTest {
 
         assertTrue(text.contains("Chúc bạn mau khỏe"));
     }
-    
+
     @Test
     void exportCollapsesConsecutiveMissingCharsIntoOneReplacementSymbol() throws IOException {
         Patient patient = patient();
@@ -151,8 +152,9 @@ class ChatExportServiceTest {
 
         String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
 
-       assertTrue(text.contains("Chúc bạn mau khỏe \uFFFD"), "Emoji phai duoc thay bang dau \uFFFD, khong bi bo am tham");
-       assertFalse(text.contains("\uFFFD\uFFFD"), "Khong duoc co 2 dau thay the dinh lien nhau");
+        assertTrue(text.contains("Chúc bạn mau khỏe \uFFFD"),
+                "Emoji phai duoc thay bang dau \uFFFD, khong bi bo am tham");
+        assertFalse(text.contains("\uFFFD\uFFFD"), "Khong duoc co 2 dau thay the dinh lien nhau");
     }
 
     @Test
@@ -175,5 +177,62 @@ class ChatExportServiceTest {
                 .thenThrow(new ResourceNotFoundException("Khong tim thay phien chat hoac ban khong co quyen truy cap"));
 
         assertThrows(ResourceNotFoundException.class, () -> service.exportSession(PATIENT_ID, SESSION_ID));
+    }
+
+    @Test
+    void exportStripsFileExtensionFromSourceTitle() throws IOException {
+        Patient patient = patient();
+        ChatSession session = session(patient);
+        String sourcesJson = objectMapper.writeValueAsString(
+                List.of(new ChatSourceResponse("Phac do HP.PDF", "doan trich", "https://example.com/hp")));
+        ChatMessage aiMsg = message(session, 101L, "assistant", "Tra loi co nguon", sourcesJson, false);
+
+        when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(aiMsg));
+        when(chatHistoryService.listAttachments(List.of(101L))).thenReturn(List.of());
+
+        String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
+
+        assertTrue(text.contains("Phac do HP"));
+        assertFalse(text.contains(".PDF"));
+    }
+
+    // Nguon khong co duong dan cong khai (vd tai lieu seed) bi bo, nguon co URL van
+    // in.
+    @Test
+    void exportSkipsSourcesWithoutPublicUrl() throws IOException {
+        Patient patient = patient();
+        ChatSession session = session(patient);
+        String sourcesJson = objectMapper.writeValueAsString(List.of(
+                new ChatSourceResponse("01-trao-nguoc-da-day.pdf", "doan trich", null),
+                new ChatSourceResponse("Huong dan Bo Y te", "doan trich", "https://moh.gov.vn/gerd")));
+        ChatMessage aiMsg = message(session, 101L, "assistant", "Tra loi co nguon", sourcesJson, false);
+
+        when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(aiMsg));
+        when(chatHistoryService.listAttachments(List.of(101L))).thenReturn(List.of());
+
+        String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
+
+        assertTrue(text.contains("Huong dan Bo Y te"));
+        assertFalse(text.contains("01-trao-nguoc-da-day"));
+    }
+
+    // Moi nguon deu khong co URL -> khong in dong "Nguon tham khao".
+    @Test
+    void exportOmitsSourceLineWhenNoPublicSource() throws IOException {
+        Patient patient = patient();
+        ChatSession session = session(patient);
+        String sourcesJson = objectMapper.writeValueAsString(
+                List.of(new ChatSourceResponse("01-trao-nguoc-da-day.pdf", "doan trich", null)));
+        ChatMessage aiMsg = message(session, 101L, "assistant", "Tra loi co nguon", sourcesJson, false);
+
+        when(chatHistoryService.getOwnedSession(PATIENT_ID, SESSION_ID)).thenReturn(session);
+        when(chatHistoryService.listMessagesForSession(session)).thenReturn(List.of(aiMsg));
+        when(chatHistoryService.listAttachments(List.of(101L))).thenReturn(List.of());
+
+        String text = extractText(service.exportSession(PATIENT_ID, SESSION_ID));
+
+        assertFalse(text.contains("Nguồn tham khảo"));
     }
 }

@@ -12,7 +12,7 @@ export type DocumentProcessingStage =
 export interface CmsDocumentItem {
   id: number
   title: string
-  source: string
+  source: string | null
   sourceUrl: string | null
   status: DocumentStatus
   processingStage: DocumentProcessingStage
@@ -26,13 +26,6 @@ export interface CmsDocumentItem {
   unpublished: boolean
 }
 
-export interface CmsDocumentPage {
-  items: CmsDocumentItem[]
-  total: number
-  page: number
-  pageSize: number
-}
-
 export async function listCmsDocuments(params: {
   q?: string
   status?: DocumentStatus
@@ -43,11 +36,14 @@ export async function listCmsDocuments(params: {
   return data
 }
 
-export async function uploadCmsDocument(file: File, sourceUrl?: string): Promise<CmsDocumentItem> {
+export async function uploadCmsDocument(file: File, sourceUrl?: string, title?: string): Promise<CmsDocumentItem> {
   const formData = new FormData()
   formData.append('file', file)
   if (sourceUrl && sourceUrl.trim()) {
     formData.append('sourceUrl', sourceUrl.trim())
+  }
+  if (title && title.trim()) {
+    formData.append('title', title.trim())
   }
 
   const { data } = await cmsApiClient.post<CmsDocumentItem>('/documents', formData, {
@@ -75,12 +71,27 @@ export interface CmsDocumentVersion {
   uploadedAt: string
   errorMessage: string | null
 }
+export interface CmsDocumentStats {
+  total: number
+  ready: number
+  processing: number
+  error: number
+}
+
+export interface CmsDocumentPage {
+  items: CmsDocumentItem[]
+  total: number
+  page: number
+  pageSize: number
+  stats: CmsDocumentStats
+}
 
 export interface CmsDocumentSearchHit {
   documentId: number
   title: string
   chunkIndex: number
   snippet: string
+  content: string
 }
 
 export interface CmsDocumentSearchResult {
@@ -113,6 +124,9 @@ export async function activateCmsDocumentVersion(documentId: number, versionId: 
 }
 export async function deleteCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.delete(`/documents/${documentId}/versions/${versionId}`)
+}
+export async function renameCmsDocument(documentId: number, title: string): Promise<void> {
+  await cmsApiClient.patch(`/documents/${documentId}/title`, { title })
 }
 export async function publishCmsDocument(documentId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/publish`)

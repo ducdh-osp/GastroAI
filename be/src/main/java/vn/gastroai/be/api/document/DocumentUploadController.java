@@ -9,6 +9,8 @@ import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import java.util.List;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/v1/documents")
@@ -27,8 +29,9 @@ public class DocumentUploadController {
     @PostMapping
     public ResponseEntity<DocumentStatusResponse> upload(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "sourceUrl", required = false) String sourceUrl) {
-        Document document = documentUploadService.upload(file, sourceUrl);
+            @RequestParam(value = "sourceUrl", required = false) String sourceUrl,
+            @RequestParam(value = "title", required = false) String title) {
+        Document document = documentUploadService.upload(file, sourceUrl, title);
 
         return ResponseEntity.accepted().body(toResponse(document));
     }
@@ -96,6 +99,14 @@ public class DocumentUploadController {
     @PostMapping("/{documentId}/publish")
     public ResponseEntity<Void> publish(@PathVariable Long documentId) {
         documentStatusService.publish(documentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{documentId}/title")
+    public ResponseEntity<Void> rename(
+            @PathVariable Long documentId,
+            @RequestBody RenameDocumentRequest request) {
+        documentStatusService.rename(documentId, request.title());
         return ResponseEntity.noContent().build();
     }
 

@@ -4,6 +4,7 @@ import {
   CloseCircleOutlined,
   CloudUploadOutlined,
   DeleteOutlined,
+  EditOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
   FilePdfOutlined,
@@ -16,24 +17,23 @@ import {
   ReloadOutlined,
   SearchOutlined,
   UploadOutlined,
+  FileWordOutlined,
 } from '@ant-design/icons'
 import {
-  Alert,
   Button,
   Card,
   Col,
   Drawer,
   Empty,
   Input,
-  List,
   Modal,
   Popconfirm,
   Row,
   Select,
   Space,
   Statistic,
-  Switch,
   Table,
+  Tabs,
   Tag,
   Tooltip,
   Typography,
@@ -43,7 +43,7 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   activateCmsDocumentVersion,
   deleteCmsDocument,
@@ -51,53 +51,56 @@ import {
   listCmsDocuments,
   listCmsDocumentVersions,
   publishCmsDocument,
+  renameCmsDocument,
   retryCmsDocument,
-  searchCmsDocumentContent,
   unpublishCmsDocument,
   uploadCmsDocument,
   uploadCmsDocumentVersion,
   type CmsDocumentItem,
-  type CmsDocumentSearchHit,
+  type CmsDocumentStats,
   type CmsDocumentVersion,
   type DocumentProcessingStage,
   type DocumentStatus,
 } from '../../api/cmsDocuments'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
+import { DocumentContentSearch } from '../../components/cms/DocumentContentSearch'
+
 const { Title, Text } = Typography
 const { Dragger } = Upload
+
+const PAGE_SIZE = 15
+const EMPTY_STATS: CmsDocumentStats = { total: 0, ready: 0, processing: 0, error: 0 }
 
 // Code cu viet lap (err as {...})?.response?.data?.message o nhieu cho - gom thanh 1 ham.
 function errorMessageOf(err: unknown, fallback: string): string {
   return (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback
 }
 
-// To sang tu khoa trong doan trich. Dung JSX (khong ghep chuoi HTML) nen noi dung tai lieu
-// khong the chen ma doc vao trang.
-function highlight(text: string, q: string) {
-  const index = text.toLowerCase().indexOf(q.toLowerCase())
-  if (!q || index < 0) return text
-  return (
-    <>
-      {text.slice(0, index)}
-      <mark>{text.slice(index, index + q.length)}</mark>
-      {text.slice(index + q.length)}
-    </>
-  )
+// "trao-nguoc-da-day.pdf" -> "trao-nguoc-da-day": goi y ten mac dinh khi chon file.
+function fileNameWithoutExtension(name: string) {
+  const dot = name.lastIndexOf('.')
+  return dot > 0 ? name.slice(0, dot) : name
+}
+
+function fileIconOf(source: string | null) {
+  const ext = source?.split('.').pop()?.toLowerCase()
+  if (ext === 'pdf') return <FilePdfOutlined className="text-red-500 text-base" />
+  if (ext === 'docx') return <FileWordOutlined className="text-blue-600 text-base" />
+  return <FileTextOutlined className="text-slate-400 text-base dark:text-white" />
 }
 
 export default function CmsDocumentsPage() {
   const [items, setItems] = useState<CmsDocumentItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(15)
   const [loading, setLoading] = useState(false)
 
   // Filters
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<DocumentStatus | undefined>(undefined)
 
-  // Auto-refresh: mac dinh TAT. Van tu dong cap nhat khi co tai lieu dang xu ly (xem useEffect polling).
-  const [autoRefresh, setAutoRefresh] = useState(false)
+  // So lieu 4 o thong ke - BE tinh tren TOAN BO tai lieu, khong theo bo loc/trang.
+  const [stats, setStats] = useState<CmsDocumentStats>(EMPTY_STATS)
 
   // C7 - khoa nut khi mot thao tac dang chay: busyKey de hien spinner / khoa nut,
   // busyRef de chan bam dup truoc khi React kip ve lai.
@@ -108,7 +111,12 @@ export default function CmsDocumentsPage() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([])
   const [sourceUrlInput, setSourceUrlInput] = useState('')
+  const [titleInput, setTitleInput] = useState('')
   const [uploading, setUploading] = useState(false)
+
+  // Doi ten tai lieu
+  const [renameTarget, setRenameTarget] = useState<CmsDocumentItem | null>(null)
+  const [renameValue, setRenameValue] = useState('')
 
   // Modal xem lỗi chi tiết
   const [errorModalItem, setErrorModalItem] = useState<CmsDocumentItem | null>(null)
@@ -121,13 +129,6 @@ export default function CmsDocumentsPage() {
   const [versions, setVersions] = useState<CmsDocumentVersion[]>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
 
-  // UC0055 - tim trong noi dung
-  const [contentQuery, setContentQuery] = useState('')
-  const [contentHits, setContentHits] = useState<CmsDocumentSearchHit[] | null>(null)
-  const [contentSearching, setContentSearching] = useState(false)
-  // C4 - true khi con ket qua chua hien (BE chi tra toi da 50)
-  const [contentTruncated, setContentTruncated] = useState(false)
-
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     try {
@@ -135,27 +136,24 @@ export default function CmsDocumentsPage() {
         q: search.trim() || undefined,
         status: selectedStatus,
         page,
-        size: pageSize,
+        size: PAGE_SIZE,
       })
       setItems(res.items)
       setTotal(res.total)
+      setStats(res.stats ?? EMPTY_STATS)
     } catch {
       if (!silent) message.error('Không thể tải danh sách tài liệu y khoa')
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [search, selectedStatus, page, pageSize])
+  }, [search, selectedStatus, page])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
-  // Polling tự động mỗi 4s nếu có tài liệu đang xử lý
-  const hasProcessingDocs = useMemo(() => {
-    return items.some((item) => item.status === 'PROCESSING' || item.status === 'PENDING')
-  }, [items])
-
-  const isPolling = autoRefresh || hasProcessingDocs
+  // Tu dong cap nhat moi 4s khi co tai lieu dang xu ly (dem tren toan bo, khong chi trang dang xem).
+  const isPolling = stats.processing > 0
 
   useEffect(() => {
     if (!isPolling) return
@@ -191,13 +189,26 @@ export default function CmsDocumentsPage() {
     }
   }
 
-  // KPI stats
-  const stats = useMemo(() => {
-    const done = items.filter((i) => i.status === 'DONE' && i.currentVersionNo !== null).length
-    const processing = items.filter((i) => i.status === 'PROCESSING' || i.status === 'PENDING').length
-    const error = items.filter((i) => i.status === 'ERROR').length
-    return { done, processing, error, total }
-  }, [items, total])
+  function openUploadNew() {
+    setVersionTarget(null)
+    setUploadFileList([])
+    setSourceUrlInput('')
+    setTitleInput('')
+    setUploadModalOpen(true)
+  }
+
+  function openUploadVersion(item: CmsDocumentItem) {
+    setVersionTarget(item)
+    setUploadFileList([])
+    setSourceUrlInput(item.sourceUrl ?? '')
+    setTitleInput('')
+    setUploadModalOpen(true)
+  }
+
+  function closeUploadModal() {
+    setUploadModalOpen(false)
+    setVersionTarget(null)
+  }
 
   async function handleUpload() {
     if (uploadFileList.length === 0) {
@@ -205,20 +216,29 @@ export default function CmsDocumentsPage() {
       return
     }
 
-    const file = uploadFileList[0].originFileObj as File
+    const file = uploadFileList[0].originFileObj
+    if (!file) {
+      message.warning('Không đọc được tệp đã chọn, vui lòng chọn lại')
+      return
+    }
+    if (!versionTarget && !titleInput.trim()) {
+      message.warning('Vui lòng nhập tên tài liệu')
+      return
+    }
+
     setUploading(true)
     try {
       if (versionTarget) {
         await uploadCmsDocumentVersion(versionTarget.id, file, sourceUrlInput || undefined)
         message.success(`Đã tải phiên bản mới cho "${versionTarget.title}". Bản cũ vẫn được dùng cho tới khi bản mới xử lý xong.`)
       } else {
-        await uploadCmsDocument(file, sourceUrlInput || undefined)
+        await uploadCmsDocument(file, sourceUrlInput || undefined, titleInput)
         message.success('Đã tải lên tài liệu thành công. Hệ thống đang tiến hành số hóa tự động.')
       }
-      setUploadModalOpen(false)
-      setVersionTarget(null)
+      closeUploadModal()
       setUploadFileList([])
       setSourceUrlInput('')
+      setTitleInput('')
       loadData()
     } catch (err: unknown) {
       message.error(errorMessageOf(err, 'Tải lên tài liệu thất bại'))
@@ -233,8 +253,8 @@ export default function CmsDocumentsPage() {
         await retryCmsDocument(item.id)
         message.success(`Đã đưa tài liệu #${item.id} vào hàng đợi xử lý lại`)
         loadData()
-      } catch {
-        message.error('Không thể thực hiện thử lại')
+      } catch (err) {
+        message.error(errorMessageOf(err, 'Không thể thực hiện thử lại'))
       }
     })
   }
@@ -249,13 +269,6 @@ export default function CmsDocumentsPage() {
         message.error(errorMessageOf(err, 'Xóa tài liệu thất bại'))
       }
     })
-  }
-
-  function openUploadVersion(item: CmsDocumentItem) {
-    setVersionTarget(item)
-    setUploadFileList([])
-    setSourceUrlInput(item.sourceUrl ?? '')
-    setUploadModalOpen(true)
   }
 
   async function openHistory(item: CmsDocumentItem) {
@@ -317,22 +330,33 @@ export default function CmsDocumentsPage() {
     })
   }
 
-  async function handleContentSearch(value: string) {
-    const q = value.trim()
-    if (q.length < 2) {
-      message.warning('Nhập ít nhất 2 ký tự để tìm trong nội dung')
-      return
+  function openRename(item: CmsDocumentItem) {
+    setRenameTarget(item)
+    setRenameValue(item.title)
+  }
+
+  function handleRename() {
+    if (!renameTarget) return Promise.resolve()
+    const target = renameTarget
+    const title = renameValue.trim()
+    if (!title) {
+      message.warning('Tên tài liệu không được để trống')
+      return Promise.resolve()
     }
-    setContentSearching(true)
-    try {
-      const result = await searchCmsDocumentContent(q)
-      setContentHits(result.items)
-      setContentTruncated(result.truncated)
-    } catch (err) {
-      message.error(errorMessageOf(err, 'Tìm kiếm thất bại'))
-    } finally {
-      setContentSearching(false)
+    if (title === target.title) {
+      setRenameTarget(null)
+      return Promise.resolve()
     }
+    return runBusy(`rename-${target.id}`, async () => {
+      try {
+        await renameCmsDocument(target.id, title)
+        message.success('Đã đổi tên tài liệu')
+        setRenameTarget(null)
+        loadData()
+      } catch (err) {
+        message.error(errorMessageOf(err, 'Không đổi được tên tài liệu'))
+      }
+    })
   }
 
   function renderStatusTag(status: DocumentStatus) {
@@ -372,7 +396,7 @@ export default function CmsDocumentsPage() {
     }
     switch (stage) {
       case 'PENDING':
-        return <Text type="secondary" className="text-xs">Đang xếp hàng</Text>
+        return <Text type="secondary" className="text-xs">Pending</Text>
       case 'EXTRACTION':
         return <Text className="text-xs text-blue-600 font-medium">Trích xuất văn bản</Text>
       case 'CHUNKING':
@@ -401,7 +425,7 @@ export default function CmsDocumentsPage() {
       render: (_, record) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <FilePdfOutlined className="text-red-500 text-base" />
+            {fileIconOf(record.source)}
             <span className="font-semibold text-slate-800 dark:text-white">{record.title}</span>
           </div>
           {record.sourceUrl && (
@@ -432,7 +456,7 @@ export default function CmsDocumentsPage() {
       key: 'version',
       width: 140,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           <Text className="text-xs">v{record.versionNo} · {record.versionCount} phiên bản</Text>
           {record.unpublished ? (
             <Tag color="default">Đã gỡ</Tag>
@@ -490,7 +514,7 @@ export default function CmsDocumentsPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 200,
+      width: 230,
       align: 'center',
       render: (_, record) => (
         <Space size="small">
@@ -509,6 +533,15 @@ export default function CmsDocumentsPage() {
           <Tooltip title="Lịch sử phiên bản">
             <Button type="text" size="small" icon={<HistoryOutlined />} onClick={() => openHistory(record)} />
           </Tooltip>
+          <Tooltip title="Đổi tên">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              disabled={busyKey !== null}
+              onClick={() => openRename(record)}
+            />
+          </Tooltip>
           <Tooltip title="Tải phiên bản mới">
             <Button
               type="text"
@@ -522,7 +555,7 @@ export default function CmsDocumentsPage() {
             title={record.unpublished ? 'Đăng lại tài liệu?' : 'Gỡ tài liệu khỏi chatbot?'}
             description={record.unpublished
               ? 'Chatbot sẽ dùng lại phiên bản đã xử lý xong mới nhất.'
-              : 'Chatbot sẽ không trích dẫn tài liệu này nữa. Dữ liệu vẫn được giữ, có thể đăng lại.'}
+              : 'Chatbot sẽ không trích dẫn tài liệu này nữa.'}
             okText="Đồng ý"
             cancelText="Hủy"
             onConfirm={() => handleTogglePublish(record)}
@@ -540,7 +573,6 @@ export default function CmsDocumentsPage() {
           </Popconfirm>
           <Popconfirm
             title={`Xóa tài liệu và tất cả ${record.versionCount} phiên bản?`}
-            description="Mọi phiên bản, file gốc và toàn bộ vector embeddings liên quan sẽ bị xóa khỏi hệ thống RAG. Không khôi phục được. Muốn xóa riêng một phiên bản, hãy mở Lịch sử phiên bản."
             okText="Xóa tất cả"
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
@@ -572,9 +604,6 @@ export default function CmsDocumentsPage() {
               <FileTextOutlined className="text-teal-600" />
               Tài liệu y khoa & Số hóa RAG
             </Title>
-            <Text type="secondary">
-              Quản lý tài liệu phác đồ y khoa, giám sát tiến trình số hóa & chia chunking dùng cho trợ lý AI (UC0061)
-            </Text>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -588,183 +617,130 @@ export default function CmsDocumentsPage() {
               type="primary"
               icon={<UploadOutlined />}
               className="bg-teal-600 hover:bg-teal-700"
-              onClick={() => {
-                setUploadFileList([])
-                setSourceUrlInput('')
-                setVersionTarget(null)
-                setUploadModalOpen(true)
-              }}
+              onClick={openUploadNew}
             >
               Tải lên tài liệu mới
             </Button>
           </div>
         </div>
 
-        {/* KPI Stats */}
-        <Row gutter={[16, 16]}>
-          <Col xs={12} sm={6}>
-            <Card className="rounded-xl shadow-xs">
-              <Statistic title="Tổng số tài liệu" value={stats.total} />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20 dark:border-green-900 dark:bg-green-900/20">
-              <Statistic
-                title="Sẵn sàng cho RAG"
-                value={stats.done}
-                valueStyle={{ color: '#16a34a' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20 dark:border-blue-900 dark:bg-blue-900/20">
-              <Statistic
-                title="Đang trong tiến trình"
-                value={stats.processing}
-                valueStyle={{ color: '#2563eb' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20 dark:border-red-900 dark:bg-red-900/20">
-              <Statistic
-                title="Lỗi cần xử lý lại"
-                value={stats.error}
-                valueStyle={{ color: '#dc2626' }}
-              />
-            </Card>
-          </Col>
-        </Row>
+        <Tabs
+          defaultActiveKey="list"
+          items={[
+            {
+              key: 'list',
+              label: 'Danh sách tài liệu',
+              children: (
+                <div className="space-y-6">
+                  {/* KPI Stats */}
+                  <Row gutter={[16, 16]}>
+                    <Col xs={12} sm={6}>
+                      <Card className="rounded-xl shadow-xs">
+                        <Statistic title="Tổng số tài liệu" value={stats.total} />
+                      </Card>
+                    </Col>
+                    <Col xs={12} sm={6}>
+                      <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20 dark:border-green-900 dark:bg-green-900/20">
+                        <Statistic
+                          title="Sẵn sàng cho RAG"
+                          value={stats.ready}
+                          styles={{ content: { color: '#16a34a' } }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={12} sm={6}>
+                      <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20 dark:border-blue-900 dark:bg-blue-900/20">
+                        <Statistic
+                          title="Đang trong tiến trình"
+                          value={stats.processing}
+                          styles={{ content: { color: '#2563eb' } }}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={12} sm={6}>
+                      <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20 dark:border-red-900 dark:bg-red-900/20">
+                        <Statistic
+                          title="Lỗi cần xử lý lại"
+                          value={stats.error}
+                          styles={{ content: { color: '#dc2626' } }}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
 
-        {/* Filter bar */}
-        <Card bodyStyle={{ padding: 16 }}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <Input
-                placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
-                prefix={<SearchOutlined className="text-slate-400 dark:text-white" />}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                allowClear
-                className="w-72"
-              />
-              <Select
-                placeholder="Trạng thái"
-                value={selectedStatus}
-                onChange={setSelectedStatus}
-                allowClear
-                className="w-44"
-                options={[
-                  { label: 'Tất cả trạng thái', value: undefined as unknown as DocumentStatus },
-                  { label: 'Sẵn sàng (RAG)', value: 'DONE' },
-                  { label: 'Đang xử lý', value: 'PROCESSING' },
-                  { label: 'Chờ xử lý', value: 'PENDING' },
-                  { label: 'Lỗi', value: 'ERROR' },
-                ]}
-              />
-              {(search || selectedStatus !== undefined) && (
-                <Button
-                  type="link"
-                  onClick={() => {
-                    setSearch('')
-                    setSelectedStatus(undefined)
-                  }}
-                >
-                  Đặt lại bộ lọc
-                </Button>
-              )}
-            </div>
+                  {/* Filter bar */}
+                  <Card styles={{ body: { padding: 16 } }}>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Input
+                        placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
+                        prefix={<SearchOutlined className="text-slate-400 dark:text-white" />}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        allowClear
+                        style={{ flex: 1, minWidth: 240 }}
+                      />
+                      <Select
+                        placeholder="Tất cả trạng thái"
+                        value={selectedStatus}
+                        onChange={setSelectedStatus}
+                        allowClear
+                        style={{ width: 180 }}
+                        options={[
+                          { label: 'Sẵn sàng (RAG)', value: 'DONE' },
+                          { label: 'Đang xử lý', value: 'PROCESSING' },
+                          { label: 'Chờ xử lý', value: 'PENDING' },
+                          { label: 'Lỗi', value: 'ERROR' },
+                        ]}
+                      />
+                      {(search || selectedStatus !== undefined) && (
+                        <Button
+                          type="link"
+                          onClick={() => {
+                            setSearch('')
+                            setSelectedStatus(undefined)
+                          }}
+                        >
+                          Đặt lại bộ lọc
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
 
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-white">
-              <span
-                className={`inline-block w-2 h-2 rounded-full ${isPolling ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'
-                  }`}
-              />
-              <span>
-                {isPolling
-                  ? 'Đang tự động đồng bộ tiến trình (mỗi 4s)...'
-                  : 'Hệ thống ở trạng thái ổn định'}
-              </span>
-              <Switch
-                size="small"
-                checked={autoRefresh}
-                onChange={setAutoRefresh}
-                checkedChildren="Tự động"
-                unCheckedChildren="Tắt"
-              />
-            </div>
-          </div>
-        </Card>
-
-        {/* Table */}
-        <Card bodyStyle={{ padding: 0 }}>
-          <Table
-            rowKey="id"
-            columns={columns}
-            dataSource={items}
-            loading={loading}
-            pagination={{
-              current: page + 1,
-              pageSize,
-              total,
-              showSizeChanger: true,
-              pageSizeOptions: ['10', '15', '30'],
-              showTotal: (totalCount) => `Tổng cộng ${totalCount} tài liệu`,
-              onChange: (p, ps) => {
-                setPage(p - 1)
-                setPageSize(ps)
-              },
-            }}
-            locale={{
-              emptyText: (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Chưa có tài liệu y khoa nào được tải lên"
-                />
+                  {/* Table */}
+                  <Card styles={{ body: { padding: 0 } }}>
+                    <Table
+                      rowKey="id"
+                      columns={columns}
+                      dataSource={items}
+                      loading={loading}
+                      pagination={{
+                        current: page + 1,
+                        pageSize: PAGE_SIZE,
+                        total,
+                        showSizeChanger: false,
+                        showTotal: (totalCount) => `Tổng cộng ${totalCount} tài liệu`,
+                        onChange: (p) => setPage(p - 1),
+                      }}
+                      locale={{
+                        emptyText: (
+                          <Empty
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            description="Chưa có tài liệu y khoa nào được tải lên"
+                          />
+                        ),
+                      }}
+                    />
+                  </Card>
+                </div>
               ),
-            }}
-          />
-        </Card>
-
-        {/* UC0055 - Tìm trong nội dung tài liệu */}
-        <Card title="Tìm trong nội dung tài liệu" bodyStyle={{ padding: 16 }}>
-          <Input.Search
-            placeholder="VD: Helicobacter pylori, liều PPI..."
-            value={contentQuery}
-            onChange={(e) => setContentQuery(e.target.value)}
-            onSearch={handleContentSearch}
-            loading={contentSearching}
-            enterButton="Tìm"
-            allowClear
-            maxLength={200}
-          />
-          <Text type="secondary" className="text-xs mt-1 block">
-            Chỉ tìm trong phiên bản đang được chatbot dùng. Tìm có phân biệt dấu (gõ "dạ dày", không gõ "da day").
-          </Text>
-          {contentHits !== null && contentTruncated && (
-            <Alert
-              type="warning"
-              showIcon
-              className="mt-3 text-xs"
-              message="Chỉ hiển thị 50 kết quả đầu tiên. Hãy nhập từ khóa cụ thể hơn để thu hẹp kết quả."
-            />
-          )}
-          {contentHits !== null && (
-            <List
-              className="mt-4"
-              dataSource={contentHits}
-              locale={{ emptyText: 'Không tìm thấy đoạn nào chứa cụm từ này' }}
-              renderItem={(hit) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={<span>{hit.title} <Text type="secondary" className="text-xs">· Đoạn #{hit.chunkIndex}</Text></span>}
-                    description={highlight(hit.snippet, contentQuery.trim())}
-                  />
-                </List.Item>
-              )}
-            />
-          )}
-        </Card>
+            },
+            {
+              key: 'search',
+              label: 'Tìm kiếm nội dung tài liệu',
+              children: <DocumentContentSearch />,
+            },
+          ]}
+        />
 
         {/* UC0049 - Ngăn kéo lịch sử phiên bản */}
         <Drawer
@@ -783,7 +759,7 @@ export default function CmsDocumentsPage() {
               { title: 'Bản', dataIndex: 'versionNo', width: 60, render: (v: number) => `v${v}` },
               { title: 'Trạng thái', dataIndex: 'status', width: 120, render: (s: DocumentStatus) => renderStatusTag(s) },
               {
-                title: 'Tải lên',
+                title: 'Thời gian tải lên',
                 dataIndex: 'uploadedAt',
                 render: (val: string) => dayjs(val).format('DD/MM/YYYY HH:mm'),
               },
@@ -821,7 +797,6 @@ export default function CmsDocumentsPage() {
                       {canDelete && (
                         <Popconfirm
                           title={`Xóa phiên bản v${v.versionNo}?`}
-                          description="Chỉ phiên bản này bị xóa (kèm file và dữ liệu RAG của nó). Các phiên bản khác giữ nguyên."
                           okText="Xóa"
                           cancelText="Hủy"
                           okButtonProps={{ danger: true }}
@@ -852,18 +827,10 @@ export default function CmsDocumentsPage() {
           open={uploadModalOpen}
           onCancel={() => {
             if (uploading) return
-            setUploadModalOpen(false)
-            setVersionTarget(null)
+            closeUploadModal()
           }}
           footer={[
-            <Button
-              key="cancel"
-              onClick={() => {
-                setUploadModalOpen(false)
-                setVersionTarget(null)
-              }}
-              disabled={uploading}
-            >
+            <Button key="cancel" onClick={closeUploadModal} disabled={uploading}>
               Hủy
             </Button>,
             <Button
@@ -877,35 +844,29 @@ export default function CmsDocumentsPage() {
             </Button>,
           ]}
           width={580}
-          destroyOnClose
+          destroyOnHidden
         >
           <div className="space-y-4 py-2">
-            {versionTarget && (
-              <Alert
-                type="warning"
-                showIcon
-                message={`Bạn đang tải phiên bản mới cho: ${versionTarget.title}`}
-                description="File này sẽ trở thành một phiên bản mới của tài liệu trên, không phải một tài liệu riêng. Muốn thêm tài liệu khác, hãy đóng hộp này và bấm 'Tải lên tài liệu mới'."
-                className="text-xs"
-              />
-            )}
-
-            <Alert
-              type="info"
-              showIcon
-              message="Định dạng hỗ trợ: PDF, DOCX, TXT"
-              description="Sau khi tải lên, hệ thống sẽ tự động trích xuất nội dung văn bản, chia đoạn thông minh (Chunking) và sinh vector embeddings phục vụ RAG tư vấn tiêu hóa."
-              className="text-xs"
-            />
-
             <div>
               <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
                 Chọn tệp tài liệu:
               </Text>
               <Dragger
+                accept=".pdf,.docx"
                 fileList={uploadFileList}
                 beforeUpload={(file) => {
-                  setUploadFileList([file as UploadFile])
+                  setUploadFileList([{
+                    uid: file.uid,
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    status: 'done',
+                    originFileObj: file,
+                  }])
+                  // Goi y ten tu ten file - chi khi la tai lieu moi va nguoi dung chua tu go ten.
+                  if (!versionTarget && !titleInput.trim()) {
+                    setTitleInput(fileNameWithoutExtension(file.name))
+                  }
                   return false
                 }}
                 onRemove={() => setUploadFileList([])}
@@ -918,9 +879,23 @@ export default function CmsDocumentsPage() {
                   Kéo thả file vào đây hoặc bấm để chọn tệp từ máy tính
                 </p>
                 <p className="ant-upload-hint text-xs text-slate-400 dark:text-white">
-                  Khuyên dùng các phác đồ điều trị chính thống từ Bệnh viện Nhân Dân 115, Bạch Mai hoặc Bộ Y Tế.
+                  Chỉ nhận PDF hoặc DOCX, tối đa 20MB.
                 </p>
               </Dragger>
+            </div>
+
+            <div>
+              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
+                Tên tài liệu:
+              </Text>
+              <Input
+                placeholder="VD: Trào ngược dạ dày thực quản (GERD)"
+                value={versionTarget ? versionTarget.title : titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                disabled={!!versionTarget}
+                maxLength={255}
+                showCount
+              />
             </div>
 
             <div>
@@ -928,16 +903,34 @@ export default function CmsDocumentsPage() {
                 URL nguồn công khai (Tùy chọn):
               </Text>
               <Input
-                placeholder="VD: https://benhvientanphu.vn/phac-do-dieu-tri-ibs.pdf"
+                placeholder="VD: https://benhvien.vn/phac-do-dieu-tri-ibs.pdf"
                 value={sourceUrlInput}
                 onChange={(e) => setSourceUrlInput(e.target.value)}
                 prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
               />
-              <Text type="secondary" className="text-xs mt-1 block">
-                URL nguồn sẽ được lưu để AI trích dẫn nguồn minh bạch cho bệnh nhân khi trả lời.
-              </Text>
             </div>
           </div>
+        </Modal>
+
+        {/* Modal Đổi tên tài liệu */}
+        <Modal
+          title="Đổi tên tài liệu"
+          open={renameTarget !== null}
+          onOk={handleRename}
+          onCancel={() => setRenameTarget(null)}
+          okText="Lưu"
+          cancelText="Hủy"
+          confirmLoading={renameTarget !== null && busyKey === `rename-${renameTarget.id}`}
+          destroyOnHidden
+        >
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onPressEnter={handleRename}
+            maxLength={255}
+            showCount
+            autoFocus
+          />
         </Modal>
 
         {/* Modal Xem chi tiết lỗi */}

@@ -34,13 +34,13 @@ import CmsArticlesPage from '../pages/cms/CmsArticlesPage'
 import CmsArticleEditorPage from '../pages/cms/CmsArticleEditorPage'
 import CmsDocumentsPage from '../pages/cms/CmsDocumentsPage'
 import CmsFaqPage from '../pages/cms/CmsFaqPage'
-import HealthReportPage from '../pages/patient/HealthReportPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 import FaqPage from '../pages/patient/FaqPage'
 import NotificationsPage from '../pages/patient/NotificationsPage'
 import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 import CmsUsersPage from '../pages/cms/CmsUsersPage'
 import CmsRbacPage from '../pages/cms/CmsRbacPage'
+import CmsChangePasswordPage from '../pages/cms/CmsChangePasswordPage'
 
 export const router = createBrowserRouter([
   {
@@ -96,14 +96,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <MedicalProfilePage />
-          </ProtectedRoute>
-        ),
-      },
-        {
-        path: '/health-report',
-        element: (
-          <ProtectedRoute>
-            <HealthReportPage />
           </ProtectedRoute>
         ),
       },
@@ -263,7 +255,15 @@ export const router = createBrowserRouter([
               </CmsProtectedRoute>
             ),
           },
-           {
+          {
+            path: '/cms/change-password',
+            element: (
+              <CmsProtectedRoute>
+                <CmsChangePasswordPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
             path: '/cms/triage-alerts',
             element: (
               <CmsProtectedRoute>

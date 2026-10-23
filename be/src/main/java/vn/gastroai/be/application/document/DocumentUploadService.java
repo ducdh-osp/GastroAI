@@ -35,8 +35,10 @@ public class DocumentUploadService {
         this.documentRepository = documentRepository;
     }
 
-    public Document upload(MultipartFile file, String sourceUrl) {
-        return storeNewDocument(file, sourceUrl, null, 1, false);
+    public Document upload(MultipartFile file, String sourceUrl, String title) {
+        String resolvedTitle = DocumentTitle.normalize(
+                title == null || title.isBlank() ? file.getOriginalFilename() : title);
+        return storeNewDocument(file, sourceUrl, resolvedTitle, null, 1, false);
     }
 
     @Transactional("postgresTransactionManager")
@@ -49,11 +51,11 @@ public class DocumentUploadService {
         if (latest.getStatus() == DocumentStatus.PENDING || latest.getStatus() == DocumentStatus.PROCESSING) {
             throw new IllegalStateException("Phiên bản trước đang được xử lý, vui lòng chờ xong rồi tải bản mới");
         }
-        return storeNewDocument(file, sourceUrl, groupId, latest.getVersionNo() + 1, false);
+        return storeNewDocument(file, sourceUrl, latest.getTitle(), groupId, latest.getVersionNo() + 1, false);
     }
 
-    private Document storeNewDocument(MultipartFile file, String sourceUrl, Long rootId, int versionNo,
-            boolean currentVersion) {
+    private Document storeNewDocument(MultipartFile file, String sourceUrl, String title, Long rootId,
+            int versionNo, boolean currentVersion) {
 
         // 0. Validate URL nguồn TRƯỚC khi lưu file, để URL sai không để lại file mồ côi
         String normalizedSourceUrl = normalizeSourceUrl(sourceUrl);
@@ -92,7 +94,7 @@ public class DocumentUploadService {
             // 2. Tạo document với trạng thái PENDING
             Document document = new Document();
 
-            document.setTitle(file.getOriginalFilename());
+            document.setTitle(title);
             document.setSource(storedPath.toString());
             document.setSourceUrl(normalizedSourceUrl);
             document.setStatus(DocumentStatus.PENDING);
