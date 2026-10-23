@@ -7,6 +7,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.notification.AppNotificationService;
 import vn.gastroai.be.domain.notification.NotificationRecipientType;
+import vn.gastroai.be.domain.notification.NotificationType;
 
 @RestController
 @RequestMapping("/api/v1/cms/notifications")
@@ -21,10 +22,13 @@ public class CmsNotificationController {
     @GetMapping
     public NotificationPageResponse list(@RequestParam(defaultValue = "0") int page,
                                           @RequestParam(defaultValue = "20") int size,
+                                          @RequestParam(defaultValue = "false") boolean unreadOnly,
+                                          @RequestParam(required = false) NotificationType type,
                                           Authentication authentication) {
         validateCms(authentication);
         validatePage(page, size);
-        return service.listAdmin(Long.valueOf(authentication.getName()), PageRequest.of(page, size));
+        return service.listAdmin(Long.valueOf(authentication.getName()), type, unreadOnly,
+                PageRequest.of(page, size));
     }
 
     @GetMapping("/unread-count")
@@ -38,6 +42,13 @@ public class CmsNotificationController {
     public void markRead(@PathVariable Long id, Authentication authentication) {
         Long adminId = cmsId(authentication);
         service.markRead(id, NotificationRecipientType.ADMIN, adminId);
+    }
+
+    @PostMapping("/{id}/unread")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void markUnread(@PathVariable Long id, Authentication authentication) {
+        Long adminId = cmsId(authentication);
+        service.markUnread(id, NotificationRecipientType.ADMIN, adminId);
     }
 
     @PostMapping("/read-all")

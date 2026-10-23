@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.api.support.AuthenticatedRequest;
 import vn.gastroai.be.application.notification.AppNotificationService;
 import vn.gastroai.be.domain.notification.NotificationRecipientType;
+import vn.gastroai.be.domain.notification.NotificationType;
 
 import java.security.Principal;
 
@@ -23,10 +24,12 @@ public class PatientNotificationController {
     @GetMapping
     public NotificationPageResponse list(@RequestParam(defaultValue = "0") int page,
                                           @RequestParam(defaultValue = "20") int size,
+                                          @RequestParam(defaultValue = "false") boolean unreadOnly,
+                                          @RequestParam(required = false) NotificationType type,
                                           Principal principal, Authentication authentication) {
         Long patientId = patientId(principal, authentication);
         validatePage(page, size);
-        return service.listPatient(patientId, PageRequest.of(page, size));
+        return service.listPatient(patientId, type, unreadOnly, PageRequest.of(page, size));
     }
 
     @GetMapping("/unread-count")
@@ -38,6 +41,12 @@ public class PatientNotificationController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markRead(@PathVariable Long id, Principal principal, Authentication authentication) {
         service.markRead(id, NotificationRecipientType.PATIENT, patientId(principal, authentication));
+    }
+
+    @PostMapping("/{id}/unread")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void markUnread(@PathVariable Long id, Principal principal, Authentication authentication) {
+        service.markUnread(id, NotificationRecipientType.PATIENT, patientId(principal, authentication));
     }
 
     @PostMapping("/read-all")

@@ -99,6 +99,7 @@ export function ChatContainer() {
       await streamMessage(
         { ...request, sessionId: currentSessionId },
         {
+          onAccepted: () => updateMessage(patientMessage.id, { status: 'sent' }),
           onToken: (text) => {
             // Them tin AI vao danh sach o lan goi DAU TIEN (chua co bong bong rong tu truoc -
             // vay nen khong con canh 3 cham "dang tra loi" de len bong bong rong). Cac lan
@@ -236,10 +237,12 @@ export function ChatContainer() {
           </div>
         </header>
 
-        <div className="flex items-start gap-3 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3.5 text-sm leading-5 text-amber-900 sm:px-6" role="note">
-          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs text-amber-700" aria-hidden="true"><SafetyOutlined /></span>
-          <span><strong>Lưu ý y tế:</strong> Nếu bạn đang gặp trường hợp khẩn cấp, vui lòng gọi cấp cứu 115 hoặc đến cơ sở y tế gần nhất.</span>
-        </div>
+        {messages.length === 0 && (
+          <div className="flex items-start gap-3 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3.5 text-sm leading-5 text-amber-900 sm:px-6" role="note">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs text-amber-700" aria-hidden="true"><SafetyOutlined /></span>
+            <span><strong>Lưu ý y tế:</strong> Nếu bạn đang gặp trường hợp khẩn cấp, vui lòng gọi cấp cứu 115 hoặc đến cơ sở y tế gần nhất.</span>
+          </div>
+        )}
 
         {networkError && <Alert className="m-3 mb-0" type="error" showIcon message={networkError} action={<Button type="link" size="small" icon={<ReloadOutlined />} onClick={() => setNetworkError(null)}>Đóng</Button>} />}
 

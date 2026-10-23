@@ -190,6 +190,8 @@ export interface StreamingDone {
 }
 
 export interface StreamMessageCallbacks {
+  /** Request da duoc backend chap nhan va luong SSE da mo. */
+  onAccepted: () => void
   onToken: (text: string) => void
   onDone: (done: StreamingDone) => void
   onError: (message: string) => void
@@ -222,7 +224,7 @@ function parseSseEvent(rawEvent: string): { eventName: string; data: string } {
  */
 export async function streamMessage(
   request: SendMessageRequest,
-  { onToken, onDone, onError }: StreamMessageCallbacks,
+  { onAccepted, onToken, onDone, onError }: StreamMessageCallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
   const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1'
@@ -284,6 +286,12 @@ export async function streamMessage(
     }
     return
   }
+
+  // Response 2xx + body SSE nghia la tin nhan da den backend. Khong doi den khi AI tra
+  // loi xong moi cap nhat trang thai cua bong bong nguoi dung, vi qua trinh do co the mat
+  // nhieu giay va khien UI hien sai "Dang gui" trong suot thoi gian cho.
+  onAccepted()
+
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -294,6 +302,10 @@ export async function streamMessage(
       const { done, value } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
+
+      // SSE cho phep ca CRLF va LF. Chuan hoa de bo tach su kien khong bi mac ket khi
+      // ung dung chay sau proxy/server dung \r\n.
+      buffer = buffer.replace(/\r\n/g, '\n')
 
       let separatorIndex = buffer.indexOf('\n\n')
       while (separatorIndex !== -1) {
@@ -323,6 +335,23 @@ export async function streamMessage(
         }
 
         separatorIndex = buffer.indexOf('\n\n')
+      }
+    }
+
+
+    // TextDecoder co the con giu byte cuoi; xu ly ca su kien cuoi khong co dong trong ket
+    // thuc de client van nhan duoc event "done" tu moi implementation/proxy SSE hop le.
+    buffer += decoder.decode()
+    buffer = buffer.replace(/\r\n/g, '\n').trimEnd()
+    if (buffer) {
+      const { eventName, data } = parseSseEvent(buffer)
+      if (eventName === 'done') {
+        finished = true
+        onDone(JSON.parse(data) as StreamingDone)
+      } else if (eventName === 'error') {
+        finished = true
+        onError(data || 'Không thể nhận được câu trả lời từ AI. Vui lòng thử lại.')
+        return
       }
     }
   } catch (error) {
