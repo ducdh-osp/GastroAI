@@ -388,7 +388,7 @@ export default function CmsDocumentsPage() {
     }
     switch (stage) {
       case 'PENDING':
-        return <Text type="secondary" className="text-xs">Đang xếp hàng</Text>
+        return <Text type="secondary" className="text-xs">Pending</Text>
       case 'EXTRACTION':
         return <Text className="text-xs text-blue-600 font-medium">Trích xuất văn bản</Text>
       case 'CHUNKING':
@@ -596,9 +596,6 @@ export default function CmsDocumentsPage() {
               <FileTextOutlined className="text-teal-600" />
               Tài liệu y khoa & Số hóa RAG
             </Title>
-            <Text type="secondary">
-              Quản lý tài liệu phác đồ y khoa, giám sát tiến trình số hóa & chia chunking dùng cho trợ lý AI
-            </Text>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -913,7 +910,6 @@ export default function CmsDocumentsPage() {
                 prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
               />
               <Text type="secondary" className="text-xs mt-1 block">
-                URL nguồn sẽ được lưu để AI trích dẫn nguồn minh bạch cho bệnh nhân khi trả lời.
               </Text>
             </div>
           </div>

@@ -39,3 +39,7 @@ export async function getCmsLoginHistory(page = 0, size = 20): Promise<LoginHist
   })
   return data
 }
+
+export async function changeCmsPassword(payload: { currentPassword: string; newPassword: string }): Promise<void> {
+  await cmsApiClient.post('/cms/account/change-password', payload)
+}

@@ -41,7 +41,7 @@ import NotificationsPage from '../pages/patient/NotificationsPage'
 import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 import CmsUsersPage from '../pages/cms/CmsUsersPage'
 import CmsRbacPage from '../pages/cms/CmsRbacPage'
-
+import CmsChangePasswordPage from '../pages/cms/CmsChangePasswordPage'
 
 export const router = createBrowserRouter([
   {
@@ -100,7 +100,7 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-        {
+      {
         path: '/health-report',
         element: (
           <ProtectedRoute>
@@ -264,7 +264,15 @@ export const router = createBrowserRouter([
               </CmsProtectedRoute>
             ),
           },
-           {
+          {
+            path: '/cms/change-password',
+            element: (
+              <CmsProtectedRoute>
+                <CmsChangePasswordPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
             path: '/cms/triage-alerts',
             element: (
               <CmsProtectedRoute>

@@ -1,10 +1,11 @@
-import { Alert, Card, Pagination, Spin, Table, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Button, Card, Pagination, Spin, Table, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useRef, useState } from 'react'
 import { getCmsLoginHistory } from '../../api/cmsAuth'
 import type { LoginHistoryItem } from '../../api/auth'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
-
+import { KeyOutlined } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
 const { Title, Text } = Typography
 
 function pageSizeForViewport(height: number): number {
@@ -100,7 +101,7 @@ export default function CmsLoginHistoryPage() {
   const [pageSize, setPageSize] = useState(() => pageSizeForViewport(window.innerHeight))
   const previousPageSize = useRef(pageSize)
   const requestId = useRef(0)
-
+  const navigate = useNavigate()
   useEffect(() => {
     function updatePageSize() {
       setPageSize(pageSizeForViewport(window.innerHeight))
@@ -154,8 +155,17 @@ export default function CmsLoginHistoryPage() {
             className="shrink-0"
             type="warning"
             showIcon
-            message="Có hoạt động cần kiểm tra"
-            description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy liên hệ quản trị viên hệ thống ngay.`}
+            title="Có hoạt động cần kiểm tra"
+            description={
+              <div className="flex flex-col items-start gap-2">
+                <span>
+                  {recentFailureCount} lần đăng nhập hoặc đổi mật khẩu không thành công trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.
+                </span>
+                <Button size="small" type="primary" icon={<KeyOutlined />} onClick={() => navigate('/cms/change-password')}>
+                  Đổi mật khẩu
+                </Button>
+              </div>
+            }
           />
         )}
 

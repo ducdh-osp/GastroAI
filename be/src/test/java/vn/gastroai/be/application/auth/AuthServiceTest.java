@@ -22,6 +22,9 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class AuthServiceTest {
@@ -93,8 +96,9 @@ class AuthServiceTest {
         Patient patient = patient();
         patient.setVerificationTokenHash(hash("verify-token"));
         patient.setVerificationTokenExpiresAt(Instant.now().plusSeconds(60));
-        when(patients.findByVerificationTokenHash(hash("verify-token")))
-                .thenReturn(Optional.of(patient), Optional.empty());
+        when(patients.findByIdForUpdate(1L))
+        .thenReturn(Optional.of(patient))
+        .thenReturn(Optional.empty());
 
         service.verify("verify-token");
 
