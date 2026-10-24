@@ -98,7 +98,7 @@ public class FaqAdminService {
             faq.setMedicalReviewedAt(Instant.now());
         }
 
-        return toResponse(faqRepository.save(faq));
+        return toResponse(faqRepository.saveAndFlush(faq));
     }
 
     @Transactional(value = TX)
@@ -152,7 +152,7 @@ public class FaqAdminService {
         }
         faq.setUpdatedAt(Instant.now());
 
-        return toResponse(faqRepository.save(faq));
+        return toResponse(faqRepository.saveAndFlush(faq));
     }
 
     @Transactional(value = TX)
@@ -177,7 +177,7 @@ public class FaqAdminService {
             faq.setPublished(false);
         }
         faq.setUpdatedAt(Instant.now());
-        return toResponse(faqRepository.save(faq));
+        return toResponse(faqRepository.saveAndFlush(faq));
     }
 
     @Transactional(value = TX)

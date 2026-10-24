@@ -34,6 +34,7 @@ import CmsArticlesPage from '../pages/cms/CmsArticlesPage'
 import CmsArticleEditorPage from '../pages/cms/CmsArticleEditorPage'
 import CmsDocumentsPage from '../pages/cms/CmsDocumentsPage'
 import CmsFaqPage from '../pages/cms/CmsFaqPage'
+import CmsCatalogsPage from '../pages/cms/CmsCatalogsPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 import FaqPage from '../pages/patient/FaqPage'
 import NotificationsPage from '../pages/patient/NotificationsPage'
@@ -332,6 +333,14 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsFaqPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/catalogs',
+            element: (
+              <CmsProtectedRoute>
+                <CmsCatalogsPage />
               </CmsProtectedRoute>
             ),
           },

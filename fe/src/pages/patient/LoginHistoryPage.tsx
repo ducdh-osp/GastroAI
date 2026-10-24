@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Pagination, Spin, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Pagination, Space, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -94,9 +94,25 @@ export default function LoginHistoryPage() {
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [recentFailureCount, setRecentFailureCount] = useState(0)
+  const [alertDismissed, setAlertDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem('dismissed_login_security_alert') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [pageSize, setPageSize] = useState(() => pageSizeForViewport(window.innerHeight))
   const previousPageSize = useRef(pageSize)
   const requestId = useRef(0)
+
+  function handleDismissAlert() {
+    setAlertDismissed(true)
+    try {
+      sessionStorage.setItem('dismissed_login_security_alert', 'true')
+    } catch {
+      // Ignore sessionStorage issues
+    }
+  }
 
   useEffect(() => {
     function updatePageSize() {
@@ -145,17 +161,28 @@ export default function LoginHistoryPage() {
         </div>
 
         {error && (
-          <Alert type="error" showIcon message={error} className="shrink-0" />
+          <Alert type="error" showIcon closable onClose={() => setError(null)} message={error} className="shrink-0" />
         )}
 
-        {!error && !loading && recentFailureCount > 0 && (
+        {!error && !loading && recentFailureCount > 0 && !alertDismissed && (
           <Alert
-            className="shrink-0"
+            className="shrink-0 rounded-xl"
             type="warning"
             showIcon
+            closable
+            onClose={handleDismissAlert}
             message="Có hoạt động cần kiểm tra"
             description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
-            action={<Button size="small" type="link"><Link to="/change-password">Đổi mật khẩu</Link></Button>}
+            action={
+              <Space size="small">
+                <Button size="small" type="primary" ghost>
+                  <Link to="/change-password">Đổi mật khẩu</Link>
+                </Button>
+                <Button size="small" onClick={handleDismissAlert}>
+                  Đã hiểu
+                </Button>
+              </Space>
+            }
           />
         )}
 

@@ -27,6 +27,7 @@ import {
   type CmsArticleInput,
 } from '../../api/cmsArticles'
 import { listArticleTopics, type ArticleTopic } from '../../api/cmsArticleTopics'
+import { listCmsDoctors, type CmsDoctorOption } from '../../api/cmsDoctors'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 
@@ -53,18 +54,49 @@ export default function CmsArticleEditorPage() {
 
   const [form] = Form.useForm<FormValues>()
   const [topics, setTopics] = useState<ArticleTopic[]>([])
+  const [doctors, setDoctors] = useState<CmsDoctorOption[]>([])
   const [articleVersion, setArticleVersion] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [contentWatch, setContentWatch] = useState('')
 
+  const getDoctorSelectOptions = (existingReviewer?: string | null) => {
+    const list = doctors.map((d) => {
+      const val = d.fullName ? `${d.fullName} (${d.email})` : d.displayName
+      return {
+        value: val,
+        label: (
+          <div className="flex items-center justify-between py-0.5">
+            <span className="font-medium text-slate-800 dark:text-white">{d.fullName ?? d.displayName}</span>
+            <span className="text-xs text-slate-400">({d.email})</span>
+          </div>
+        ),
+        searchKey: `${d.fullName ?? ''} ${d.displayName} ${d.email}`.toLowerCase(),
+      }
+    })
+    if (existingReviewer && existingReviewer.trim() && !list.some((o) => o.value === existingReviewer.trim())) {
+      list.unshift({
+        value: existingReviewer.trim(),
+        label: (
+          <div className="flex items-center justify-between py-0.5">
+            <span className="font-medium text-slate-800 dark:text-white">{existingReviewer.trim()}</span>
+            <span className="text-xs text-amber-500">(Bác sĩ đã duyệt trước đó)</span>
+          </div>
+        ),
+        searchKey: existingReviewer.toLowerCase(),
+      })
+    }
+    return list
+  }
+
   useEffect(() => {
     listArticleTopics()
       .then((data) => setTopics(data))
-      .catch(() => {
-        // Fallback
-      })
+      .catch(() => {})
+    listCmsDoctors()
+      .then((data) => setDoctors(data))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -306,18 +338,27 @@ export default function CmsArticleEditorPage() {
                           extra={
                             isPublished
                               ? 'Bắt buộc khi xuất bản công khai. Người duyệt phải độc lập với người biên soạn.'
-                              : 'Tên bác sĩ hoặc chuyên gia phụ trách duyệt nội dung bài viết này.'
+                              : 'Chọn bác sĩ hoặc chuyên gia phụ trách duyệt nội dung bài viết này.'
                           }
                           rules={[
                             {
                               required: isPublished,
                               whitespace: true,
-                              message: 'Vui lòng nhập tên bác sĩ duyệt y khoa trước khi công khai bài viết',
+                              message: 'Vui lòng chọn bác sĩ duyệt y khoa trước khi công khai bài viết',
                             },
                             { max: 200, message: 'Tối đa 200 ký tự' },
                           ]}
                         >
-                          <Input placeholder="Ví dụ: BS. CKII Nguyễn Văn A" maxLength={200} />
+                          <Select
+                            showSearch
+                            allowClear
+                            placeholder="Tìm kiếm và chọn bác sĩ duyệt y khoa..."
+                            options={getDoctorSelectOptions(getFieldValue('medicalReviewer'))}
+                            filterOption={(input, option) =>
+                              Boolean((option as { searchKey?: string })?.searchKey?.includes(input.toLowerCase().trim()))
+                            }
+                            notFoundContent="Không tìm thấy bác sĩ phù hợp"
+                          />
                         </Form.Item>
                       )
                     }}

@@ -2,6 +2,7 @@ import {
   CheckCircleOutlined,
   DeleteOutlined,
   EditOutlined,
+  ExclamationCircleOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
   PlusOutlined,
@@ -44,6 +45,7 @@ import {
   type CmsFaqItem,
 } from '../../api/cmsFaqs'
 import { listArticleTopics } from '../../api/cmsArticleTopics'
+import { listCmsDoctors, type CmsDoctorOption } from '../../api/cmsDoctors'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 
@@ -90,6 +92,36 @@ export default function CmsFaqPage() {
 
   // Danh sách chủ đề có sẵn (kết hợp từ article_topics và các category đang có trong FAQ)
   const [categoryOptions, setCategoryOptions] = useState<string[]>([])
+  const [doctors, setDoctors] = useState<CmsDoctorOption[]>([])
+
+  const getDoctorSelectOptions = (existingReviewer?: string | null) => {
+    const list = doctors.map((d) => {
+      const val = d.fullName ? `${d.fullName} (${d.email})` : d.displayName
+      return {
+        value: val,
+        label: (
+          <div className="flex items-center justify-between py-0.5">
+            <span className="font-medium text-slate-800 dark:text-white">{d.fullName ?? d.displayName}</span>
+            <span className="text-xs text-slate-400">({d.email})</span>
+          </div>
+        ),
+        searchKey: `${d.fullName ?? ''} ${d.displayName} ${d.email}`.toLowerCase(),
+      }
+    })
+    if (existingReviewer && existingReviewer.trim() && !list.some((o) => o.value === existingReviewer.trim())) {
+      list.unshift({
+        value: existingReviewer.trim(),
+        label: (
+          <div className="flex items-center justify-between py-0.5">
+            <span className="font-medium text-slate-800 dark:text-white">{existingReviewer.trim()}</span>
+            <span className="text-xs text-amber-500">(Bác sĩ đã duyệt trước đó)</span>
+          </div>
+        ),
+        searchKey: existingReviewer.toLowerCase(),
+      })
+    }
+    return list
+  }
 
   // Modal Thêm/Sửa
   const [modalOpen, setModalOpen] = useState(false)
@@ -147,6 +179,7 @@ export default function CmsFaqPage() {
 
   useEffect(() => {
     loadCategories()
+    listCmsDoctors().then(setDoctors).catch(() => {})
   }, [loadCategories])
 
   useEffect(() => {
@@ -183,6 +216,21 @@ export default function CmsFaqPage() {
       reviewConfirmed: false,
     })
     setModalOpen(true)
+  }
+
+  function handleInsertFormatting(prefix: string, suffix: string = prefix, placeholder: string = 'chữ in đậm') {
+    const textarea = document.getElementById('faq-answer-textarea') as HTMLTextAreaElement | null
+    if (!textarea) return
+    const start = textarea.selectionStart || 0
+    const end = textarea.selectionEnd || 0
+    const value = form.getFieldValue('answer') || ''
+    const selected = value.substring(start, end) || placeholder
+    const nextValue = value.substring(0, start) + prefix + selected + suffix + value.substring(end)
+    form.setFieldsValue({ answer: nextValue })
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length)
+    }, 0)
   }
 
   async function handleFormSubmit(values: FaqFormValues) {
@@ -229,6 +277,7 @@ export default function CmsFaqPage() {
       const saved = await setCmsFaqPublished(item.id, { published: false, version: item.version })
       message.success('Đã ẩn câu hỏi khỏi trang bệnh nhân')
       setItems((prev) => prev.map((f) => (f.id === item.id ? saved : f)))
+      loadData()
     } catch (err) {
       message.error(extractError(err, 'Không thể ẩn câu hỏi'))
       loadData()
@@ -243,6 +292,7 @@ export default function CmsFaqPage() {
       const saved = await setCmsFaqPublished(item.id, { published: true, version: item.version })
       message.success('Đã xuất bản câu hỏi')
       setItems((prev) => prev.map((f) => (f.id === item.id ? saved : f)))
+      loadData()
     } catch (err) {
       message.error(extractError(err, 'Không thể xuất bản câu hỏi'))
       loadData()
@@ -268,6 +318,7 @@ export default function CmsFaqPage() {
       message.success('Đã kiểm duyệt và xuất bản câu hỏi')
       setItems((prev) => prev.map((f) => (f.id === reviewItem.id ? saved : f)))
       setReviewItem(null)
+      loadData()
     } catch (err) {
       message.error(extractError(err, 'Không thể xuất bản câu hỏi'))
       if ((err as { response?: { status?: number } })?.response?.status === 409) {
@@ -361,11 +412,10 @@ export default function CmsFaqPage() {
       title: 'Câu trả lời tóm lược',
       dataIndex: 'answer',
       key: 'answer',
-      ellipsis: true,
       render: (answer: string) => (
-        <span className="text-slate-500 dark:text-white text-xs line-clamp-2 max-w-md">
-          {answer.replace(/[#*`_]/g, '')}
-        </span>
+        <div className="text-slate-600 dark:text-slate-200 text-xs leading-relaxed break-words py-1">
+          <MarkdownContent content={answer} />
+        </div>
       ),
     },
     {
@@ -579,10 +629,11 @@ export default function CmsFaqPage() {
             />
           </Form.Item>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <Form.Item
               label="Chủ đề / Danh mục"
               name="category"
+              className="sm:col-span-3"
               rules={[{ required: true, message: 'Vui lòng chọn hoặc nhập chủ đề' }]}
             >
               <Select
@@ -596,85 +647,127 @@ export default function CmsFaqPage() {
             <Form.Item
               label="Thứ tự hiển thị"
               name="sortOrder"
+              className="sm:col-span-1"
               tooltip="Số nhỏ hơn sẽ hiển thị trước. Để trống hệ thống tự tăng."
             >
               <InputNumber min={0} className="w-full" placeholder="VD: 10" />
             </Form.Item>
           </div>
 
-          <Alert
-            type="info"
-            showIcon
-            className="mb-4 text-xs"
-            message="Quy định kiểm duyệt y khoa"
-            description={
-              editingItem
-                ? 'FAQ chỉ được công khai khi có bác sĩ kiểm duyệt độc lập. Nếu sửa câu hỏi/câu trả lời của FAQ đang công khai mà không nhập thông tin duyệt mới, FAQ sẽ tự động chuyển về Bản nháp.'
-                : 'FAQ mới được lưu dưới dạng Bản nháp. Chỉ xuất bản khi nội dung đã được bác sĩ kiểm duyệt độc lập.'
-            }
-          />
-
-          {editingItem && (
-            <div className="mb-4 text-xs text-slate-500 dark:text-white">
-              Kiểm duyệt hiện tại:{' '}
-              {hasValidReview(editingItem) ? (
-                <span className="font-medium text-slate-700 dark:text-white">
-                  {editingItem.medicalReviewer} ({dayjs(editingItem.medicalReviewedAt).format('DD/MM/YYYY HH:mm')})
+          {/* Khối Kiểm duyệt y khoa & Xuất bản được cân đối, rõ ràng */}
+          <div className="mb-5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+            {/* Header: Tiêu đề + Huy hiệu trạng thái kiểm duyệt hiện tại */}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <SafetyCertificateOutlined className="text-teal-600 dark:text-teal-400 text-base" />
+                <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                  Kiểm duyệt y khoa & Xuất bản
                 </span>
-              ) : (
-                <span className="font-medium text-orange-600">Chưa có / đã hết hiệu lực do nội dung thay đổi</span>
-              )}
-            </div>
-          )}
-
-          <Form.Item
-            label="Trạng thái xuất bản"
-            name="published"
-            valuePropName="checked"
-          >
-            <Switch checkedChildren="Công khai" unCheckedChildren="Bản nháp" />
-          </Form.Item>
-
-          {(() => {
-            // Bắt buộc nhập reviewer khi công khai mà chưa có lần duyệt còn hiệu lực
-            const reviewerRequired = Boolean(publishedValue) && !hasValidReview(editingItem)
-            const hasReviewer = Boolean(reviewerValue?.trim())
-            return (
-              <>
-                <Form.Item
-                  name="medicalReviewer"
-                  label="Bác sĩ kiểm duyệt y khoa"
-                  extra={
-                    editingItem
-                      ? 'Chỉ nhập khi bác sĩ đã duyệt (lại) đúng nội dung lần này. Người duyệt phải độc lập với người biên soạn.'
-                      : 'Bắt buộc khi xuất bản. Người duyệt phải độc lập với người biên soạn.'
-                  }
-                  rules={[
-                    {
-                      required: reviewerRequired,
-                      whitespace: true,
-                      message: 'Vui lòng nhập tên bác sĩ kiểm duyệt trước khi công khai FAQ',
-                    },
-                    { max: 200, message: 'Tối đa 200 ký tự' },
-                  ]}
-                >
-                  <Input placeholder="Ví dụ: BS. CKII Nguyễn Văn A" maxLength={200} />
-                </Form.Item>
-
-                {hasReviewer && (
-                  <Form.Item name="reviewConfirmed" valuePropName="checked" rules={[REVIEW_CONFIRM_RULE]}>
-                    <Checkbox>
-                      Tôi xác nhận bác sĩ trên đã kiểm duyệt y khoa đúng nội dung câu hỏi & câu trả lời này
-                    </Checkbox>
-                  </Form.Item>
+              </div>
+              <div>
+                {editingItem ? (
+                  hasValidReview(editingItem) ? (
+                    <Tag color="success" icon={<CheckCircleOutlined />} className="m-0 text-xs py-0.5 px-2">
+                      Đã duyệt: {editingItem.medicalReviewer} ({dayjs(editingItem.medicalReviewedAt).format('DD/MM/YYYY HH:mm')})
+                    </Tag>
+                  ) : (
+                    <Tag color="warning" icon={<ExclamationCircleOutlined />} className="m-0 text-xs py-0.5 px-2">
+                      Chưa có duyệt / Đã hết hiệu lực
+                    </Tag>
+                  )
+                ) : (
+                  <Tag color="default" className="m-0 text-xs py-0.5 px-2">
+                    Bản nháp mới
+                  </Tag>
                 )}
-              </>
-            )
-          })()}
+              </div>
+            </div>
+
+            {/* Chú thích quy định kiểm duyệt ngắn gọn */}
+            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              {editingItem
+                ? 'Lưu ý: Nếu chỉnh sửa nội dung câu hỏi hoặc câu trả lời, lần kiểm duyệt trước sẽ hết hiệu lực. Cần chọn bác sĩ kiểm duyệt lại để xuất bản công khai.'
+                : 'Lưu ý: FAQ mới mặc định lưu bản nháp. Để xuất bản công khai cho bệnh nhân, bắt buộc phải có bác sĩ kiểm duyệt độc lập.'}
+            </p>
+
+            {/* Bố cục 2 cột cân xứng: Trạng thái (Trái) & Bác sĩ kiểm duyệt (Phải) */}
+            {(() => {
+              const reviewerRequired = Boolean(publishedValue) && !hasValidReview(editingItem)
+              const hasReviewer = Boolean(reviewerValue?.trim())
+              return (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+                    <div className="sm:col-span-4">
+                      <Form.Item
+                        label={<span className="font-medium text-slate-700 dark:text-slate-300">Trạng thái</span>}
+                        name="published"
+                        valuePropName="checked"
+                        className="!mb-0"
+                      >
+                        <Switch
+                          checkedChildren="Công khai"
+                          unCheckedChildren="Bản nháp"
+                        />
+                      </Form.Item>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {publishedValue ? 'Hiển thị cho bệnh nhân' : 'Chỉ lưu nội bộ'}
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-8">
+                      <Form.Item
+                        name="medicalReviewer"
+                        label={
+                          <span className="font-medium text-slate-700 dark:text-slate-300">
+                            Bác sĩ kiểm duyệt y khoa {reviewerRequired && <span className="text-red-500">*</span>}
+                          </span>
+                        }
+                        className="!mb-0"
+                        rules={[
+                          {
+                            required: reviewerRequired,
+                            whitespace: true,
+                            message: 'Vui lòng chọn bác sĩ kiểm duyệt trước khi công khai FAQ',
+                          },
+                          { max: 200, message: 'Tối đa 200 ký tự' },
+                        ]}
+                      >
+                        <Select
+                          showSearch
+                          allowClear
+                          placeholder="Tìm kiếm và chọn bác sĩ..."
+                          options={getDoctorSelectOptions(editingItem?.medicalReviewer)}
+                          filterOption={(input, option) =>
+                            Boolean((option as { searchKey?: string })?.searchKey?.includes(input.toLowerCase().trim()))
+                          }
+                          notFoundContent="Không tìm thấy bác sĩ phù hợp"
+                        />
+                      </Form.Item>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {editingItem
+                          ? 'Chỉ chọn nếu bác sĩ đã xác nhận nội dung này'
+                          : 'Bác sĩ kiểm duyệt phải độc lập với người soạn'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {hasReviewer && (
+                    <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800">
+                      <Form.Item name="reviewConfirmed" valuePropName="checked" rules={[REVIEW_CONFIRM_RULE]} className="!mb-0">
+                        <Checkbox className="text-xs text-slate-700 dark:text-slate-300">
+                          Tôi xác nhận bác sĩ trên đã kiểm duyệt y khoa đúng nội dung câu hỏi & câu trả lời này
+                        </Checkbox>
+                      </Form.Item>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+          </div>
 
           <div className="mb-2 flex items-center justify-between">
-            <span className="font-semibold text-slate-700 dark:text-white">
-              Câu trả lời y khoa (Hỗ trợ định dạng Markdown):
+            <span className="font-semibold text-slate-700 dark:text-white text-sm">
+              Câu trả lời y khoa (Định dạng in đậm với **chữ**):
             </span>
             <Radio.Group
               size="small"
@@ -682,22 +775,66 @@ export default function CmsFaqPage() {
               onChange={(e) => setPreviewTab(e.target.value)}
             >
               <Radio.Button value="edit">Soạn thảo</Radio.Button>
-              <Radio.Button value="preview">Xem trước</Radio.Button>
+              <Radio.Button value="preview">Xem toàn màn</Radio.Button>
             </Radio.Group>
           </div>
 
           {previewTab === 'edit' ? (
-            <Form.Item
-              name="answer"
-              rules={[{ required: true, message: 'Vui lòng nhập câu trả lời' }]}
-            >
-              <Input.TextArea
-                rows={8}
-                placeholder="Nhập nội dung câu trả lời. Bạn có thể dùng Markdown như gạch đầu dòng (*), in đậm (**chữ đậm**)..."
-              />
-            </Form.Item>
+            <div>
+              {/* Thanh công cụ định dạng in đậm / gạch đầu dòng */}
+              <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
+                <Button
+                  size="small"
+                  type="default"
+                  onClick={() => handleInsertFormatting('**', '**', 'từ cần in đậm')}
+                  className="font-bold px-2.5 h-6 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700"
+                  title="In đậm từ được chọn"
+                >
+                  <span className="font-black text-sm mr-1">B</span> In đậm
+                </Button>
+                <Button
+                  size="small"
+                  type="default"
+                  onClick={() => handleInsertFormatting('- ', '', 'Mục danh sách')}
+                  className="px-2.5 h-6 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700"
+                  title="Thêm gạch đầu dòng"
+                >
+                  • Danh sách
+                </Button>
+                <span className="text-slate-400 dark:text-slate-500 text-[11px]">
+                  (Bôi đen từ rồi bấm <b>B In đậm</b> hoặc gõ <b>**từ cần in đậm**</b>)
+                </span>
+              </div>
+
+              <Form.Item
+                name="answer"
+                className="!mb-2"
+                rules={[{ required: true, message: 'Vui lòng nhập câu trả lời' }]}
+              >
+                <Input.TextArea
+                  id="faq-answer-textarea"
+                  rows={6}
+                  placeholder="Nhập nội dung câu trả lời. Bạn có thể dùng Markdown như gạch đầu dòng (-), in đậm (**chữ đậm**)..."
+                />
+              </Form.Item>
+
+              {/* Khung hiển thị thực tế: chữ trong ** tự động in đậm trực quan */}
+              <div className="mb-4 rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                <div className="text-[11px] font-medium text-slate-400 dark:text-slate-400 mb-1 flex items-center gap-1.5">
+                  <EyeOutlined className="text-teal-600 dark:text-teal-400" />
+                  <span>Hiển thị thực tế cho bệnh nhân (các từ trong ** được in đậm hoàn toàn):</span>
+                </div>
+                <div className="text-xs text-slate-700 dark:text-slate-200 max-h-40 overflow-y-auto pr-1">
+                  {answerValue ? (
+                    <MarkdownContent content={answerValue} />
+                  ) : (
+                    <span className="text-slate-400 italic">Chưa có nội dung</span>
+                  )}
+                </div>
+              </div>
+            </div>
           ) : (
-            <div className="mb-6 min-h-[180px] max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <div className="mb-6 min-h-[180px] max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
               {answerValue ? (
                 <MarkdownContent content={answerValue} />
               ) : (
@@ -706,7 +843,7 @@ export default function CmsFaqPage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <Button onClick={() => setModalOpen(false)}>Hủy</Button>
             <Button
               type="primary"
@@ -832,7 +969,7 @@ export default function CmsFaqPage() {
               description="Chỉ xuất bản khi bác sĩ độc lập đã đọc và xác nhận tính chính xác y khoa của câu trả lời bên dưới."
             />
             <Paragraph className="!mb-2 font-semibold text-slate-800 dark:text-white">{reviewItem.question}</Paragraph>
-            <div className="mb-4 max-h-[260px] overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-4">
+            <div className="mb-4 max-h-[260px] overflow-y-auto rounded-lg border border-slate-200/80 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
               <MarkdownContent content={reviewItem.answer} />
             </div>
 
@@ -840,18 +977,26 @@ export default function CmsFaqPage() {
               name="medicalReviewer"
               label="Bác sĩ kiểm duyệt y khoa"
               rules={[
-                { required: true, whitespace: true, message: 'Vui lòng nhập tên bác sĩ kiểm duyệt' },
+                { required: true, whitespace: true, message: 'Vui lòng chọn bác sĩ kiểm duyệt' },
                 { max: 200, message: 'Tối đa 200 ký tự' },
               ]}
             >
-              <Input placeholder="Ví dụ: BS. CKII Nguyễn Văn A" maxLength={200} />
+              <Select
+                showSearch
+                placeholder="Tìm kiếm và chọn bác sĩ kiểm duyệt..."
+                options={getDoctorSelectOptions(reviewItem?.medicalReviewer)}
+                filterOption={(input, option) =>
+                  Boolean((option as { searchKey?: string })?.searchKey?.includes(input.toLowerCase().trim()))
+                }
+                notFoundContent="Không tìm thấy bác sĩ phù hợp"
+              />
             </Form.Item>
 
             <Form.Item name="reviewConfirmed" valuePropName="checked" rules={[REVIEW_CONFIRM_RULE]}>
               <Checkbox>Tôi xác nhận bác sĩ trên đã kiểm duyệt y khoa đúng nội dung này</Checkbox>
             </Form.Item>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
               <Button onClick={() => setReviewItem(null)}>Hủy</Button>
               <Button
                 type="primary"

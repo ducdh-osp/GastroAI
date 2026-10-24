@@ -121,7 +121,7 @@ public class KnowledgeArticleAdminService {
             }
         }
 
-        KnowledgeArticle saved = articleRepository.save(article);
+        KnowledgeArticle saved = articleRepository.saveAndFlush(article);
         return CmsArticleDetailResponse.from(saved);
     }
 
@@ -199,7 +199,7 @@ public class KnowledgeArticleAdminService {
 
         article.setUpdatedAt(Instant.now());
 
-        KnowledgeArticle saved = articleRepository.save(article);
+        KnowledgeArticle saved = articleRepository.saveAndFlush(article);
         return CmsArticleDetailResponse.from(saved);
     }
 
@@ -224,7 +224,7 @@ public class KnowledgeArticleAdminService {
             article.setPublished(false);
         }
         article.setUpdatedAt(Instant.now());
-        KnowledgeArticle saved = articleRepository.save(article);
+        KnowledgeArticle saved = articleRepository.saveAndFlush(article);
         return CmsArticleDetailResponse.from(saved);
     }
 

@@ -8,6 +8,7 @@ export function MarkdownContent({ content }: { content: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          strong: ({ children }) => <strong className="font-bold text-slate-900 dark:text-white">{children}</strong>,
           p: ({ children }) => <p className="my-2 whitespace-pre-wrap">{children}</p>,
           ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>,
           ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5">{children}</ol>,

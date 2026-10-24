@@ -11,6 +11,7 @@ import {
   HomeOutlined,
   KeyOutlined,
   LogoutOutlined,
+  MedicineBoxOutlined,
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
   SafetyOutlined,
@@ -64,6 +65,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { key: 'articles', label: 'Bài viết kiến thức', icon: <BookOutlined />, to: '/cms/articles' },
       { key: 'article-topics', label: 'Chủ đề bài viết', icon: <TagsOutlined />, to: '/cms/article-topics' },
       { key: 'faq', label: 'Câu hỏi thường gặp', icon: <QuestionCircleOutlined />, to: '/cms/faq' },
+      { key: 'catalogs', label: 'Danh mục chuẩn hóa', icon: <MedicineBoxOutlined />, to: '/cms/catalogs' },
     ],
   },
   {

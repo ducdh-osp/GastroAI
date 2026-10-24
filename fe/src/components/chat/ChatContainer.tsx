@@ -173,16 +173,22 @@ export function ChatContainer() {
     void send({ content: message.content, attachments: message.attachments, isRetry: true }, message)
   }
 
-  async function handleRate(message: Message, rating: RatingValue) {
-    if (!message.dbMessageId) return
-    // Clicking the active rating does not remove it: the API only supports HELPFUL/UNHELPFUL.
-    if (message.rating === rating) return
+  async function handleRate(targetMsg: Message, rating: RatingValue) {
+    if (!targetMsg.dbMessageId) return
+    if (targetMsg.rating === rating) {
+      message.info('Bạn đã đánh giá câu trả lời này rồi.')
+      return
+    }
     try {
-      await rateMessage(message.dbMessageId, rating)
-      // Cập nhật ngay UI, không cần reload
-      updateMessage(message.id, { rating })
+      await rateMessage(targetMsg.dbMessageId, rating)
+      updateMessage(targetMsg.id, { rating })
+      if (rating === 'HELPFUL') {
+        message.success('Cảm ơn bạn! Đánh giá hữu ích đã được ghi nhận để cải thiện chất lượng AI.')
+      } else {
+        message.info('Cảm ơn góp ý của bạn! Hệ thống sẽ ghi nhận để nâng cao độ chính xác câu trả lời.')
+      }
     } catch {
-      // Silent fail — đây là tính năng phụ, không block người dùng
+      message.error('Không thể gửi đánh giá lúc này. Vui lòng thử lại sau.')
     }
   }
   async function handleExportPdf() {

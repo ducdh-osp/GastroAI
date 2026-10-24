@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Pagination, Spin, Table, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Button, Card, Pagination, Space, Spin, Table, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useRef, useState } from 'react'
 import { getCmsLoginHistory } from '../../api/cmsAuth'
@@ -98,10 +98,27 @@ export default function CmsLoginHistoryPage() {
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [recentFailureCount, setRecentFailureCount] = useState(0)
+  const [alertDismissed, setAlertDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem('dismissed_cms_login_security_alert') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [pageSize, setPageSize] = useState(() => pageSizeForViewport(window.innerHeight))
   const previousPageSize = useRef(pageSize)
   const requestId = useRef(0)
   const navigate = useNavigate()
+
+  function handleDismissAlert() {
+    setAlertDismissed(true)
+    try {
+      sessionStorage.setItem('dismissed_cms_login_security_alert', 'true')
+    } catch {
+      // Ignore sessionStorage issues
+    }
+  }
+
   useEffect(() => {
     function updatePageSize() {
       setPageSize(pageSizeForViewport(window.innerHeight))
@@ -148,22 +165,29 @@ export default function CmsLoginHistoryPage() {
           <Text type="secondary">Các lần đăng nhập gần đây vào tài khoản quản trị của bạn.</Text>
         </div>
 
-        {error && <Alert type="error" showIcon message={error} className="shrink-0" />}
+        {error && <Alert type="error" showIcon closable onClose={() => setError(null)} message={error} className="shrink-0" />}
 
-        {!error && !loading && recentFailureCount > 0 && (
+        {!error && !loading && recentFailureCount > 0 && !alertDismissed && (
           <Alert
-            className="shrink-0"
+            className="shrink-0 rounded-xl"
             type="warning"
             showIcon
+            closable
+            onClose={handleDismissAlert}
             title="Có hoạt động cần kiểm tra"
             description={
               <div className="flex flex-col items-start gap-2">
                 <span>
                   {recentFailureCount} lần đăng nhập hoặc đổi mật khẩu không thành công trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.
                 </span>
-                <Button size="small" type="primary" icon={<KeyOutlined />} onClick={() => navigate('/cms/change-password')}>
-                  Đổi mật khẩu
-                </Button>
+                <Space size="small">
+                  <Button size="small" type="primary" icon={<KeyOutlined />} onClick={() => navigate('/cms/change-password')}>
+                    Đổi mật khẩu
+                  </Button>
+                  <Button size="small" onClick={handleDismissAlert}>
+                    Đã hiểu
+                  </Button>
+                </Space>
               </div>
             }
           />
