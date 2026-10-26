@@ -111,6 +111,8 @@ app:
     trash-purge-cron: ${JOURNAL_TRASH_PURGE_CRON:0 45 3 * * *}
   notification:
     journal-reminder-cron: ${JOURNAL_REMINDER_CRON:0 0 20 * * *}
+    # Kiem tra moi phut de tao thong bao ngay khi mot lieu thuoc den gio ma chua duoc xac nhan.
+    medication-reminder-cron: ${MEDICATION_REMINDER_CRON:0 * * * * *}
   backup:
     directory: ${BACKUP_DIRECTORY:./backups}
     retention-days: ${BACKUP_RETENTION_DAYS:14}

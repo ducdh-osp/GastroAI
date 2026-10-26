@@ -99,6 +99,7 @@ export function ChatContainer() {
       await streamMessage(
         { ...request, sessionId: currentSessionId },
         {
+          onAccepted: () => updateMessage(patientMessage.id, { status: 'sent' }),
           onToken: (text) => {
             // Them tin AI vao danh sach o lan goi DAU TIEN (chua co bong bong rong tu truoc -
             // vay nen khong con canh 3 cham "dang tra loi" de len bong bong rong). Cac lan
@@ -172,16 +173,22 @@ export function ChatContainer() {
     void send({ content: message.content, attachments: message.attachments, isRetry: true }, message)
   }
 
-  async function handleRate(message: Message, rating: RatingValue) {
-    if (!message.dbMessageId) return
-    // Clicking the active rating does not remove it: the API only supports HELPFUL/UNHELPFUL.
-    if (message.rating === rating) return
+  async function handleRate(targetMsg: Message, rating: RatingValue) {
+    if (!targetMsg.dbMessageId) return
+    if (targetMsg.rating === rating) {
+      message.info('Bạn đã đánh giá câu trả lời này rồi.')
+      return
+    }
     try {
-      await rateMessage(message.dbMessageId, rating)
-      // Cập nhật ngay UI, không cần reload
-      updateMessage(message.id, { rating })
+      await rateMessage(targetMsg.dbMessageId, rating)
+      updateMessage(targetMsg.id, { rating })
+      if (rating === 'HELPFUL') {
+        message.success('Cảm ơn bạn! Đánh giá hữu ích đã được ghi nhận để cải thiện chất lượng AI.')
+      } else {
+        message.info('Cảm ơn góp ý của bạn! Hệ thống sẽ ghi nhận để nâng cao độ chính xác câu trả lời.')
+      }
     } catch {
-      // Silent fail — đây là tính năng phụ, không block người dùng
+      message.error('Không thể gửi đánh giá lúc này. Vui lòng thử lại sau.')
     }
   }
   async function handleExportPdf() {
@@ -236,10 +243,12 @@ export function ChatContainer() {
           </div>
         </header>
 
-        <div className="flex items-start gap-3 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3.5 text-sm leading-5 text-amber-900 sm:px-6" role="note">
-          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs text-amber-700" aria-hidden="true"><SafetyOutlined /></span>
-          <span><strong>Lưu ý y tế:</strong> Nếu bạn đang gặp trường hợp khẩn cấp, vui lòng gọi cấp cứu 115 hoặc đến cơ sở y tế gần nhất.</span>
-        </div>
+        {messages.length === 0 && (
+          <div className="flex items-start gap-3 border-b border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-3.5 text-sm leading-5 text-amber-900 sm:px-6" role="note">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs text-amber-700" aria-hidden="true"><SafetyOutlined /></span>
+            <span><strong>Lưu ý y tế:</strong> Nếu bạn đang gặp trường hợp khẩn cấp, vui lòng gọi cấp cứu 115 hoặc đến cơ sở y tế gần nhất.</span>
+          </div>
+        )}
 
         {networkError && <Alert className="m-3 mb-0" type="error" showIcon message={networkError} action={<Button type="link" size="small" icon={<ReloadOutlined />} onClick={() => setNetworkError(null)}>Đóng</Button>} />}
 

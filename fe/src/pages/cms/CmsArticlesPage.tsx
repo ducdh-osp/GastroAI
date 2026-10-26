@@ -1,4 +1,4 @@
-import { CheckCircleOutlined, CloseCircleOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Empty, Input, Popconfirm, Select, Switch, Table, Tag, Tooltip, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -142,30 +142,18 @@ export default function CmsArticlesPage() {
       render: (cat: string) => <Tag color="cyan">{cat}</Tag>,
     },
     {
-      title: 'Thời lượng',
-      dataIndex: 'readingMinutes',
-      key: 'readingMinutes',
-      width: 110,
-      render: (minutes: number) => `${minutes} phút đọc`,
-    },
-    {
       title: 'Trạng thái',
       key: 'published',
-      width: 140,
+      width: 100,
       render: (_, record) => (
-        <div className="flex items-center gap-2">
+        <Tooltip title={record.published ? 'Đã xuất bản' : 'Bản nháp'}>
           <Switch
             checked={record.published}
             loading={togglingId === record.id}
             onChange={() => void handleTogglePublish(record)}
             size="small"
           />
-          {record.published ? (
-            <Tag color="green" icon={<CheckCircleOutlined />}>Đã xuất bản</Tag>
-          ) : (
-            <Tag color="orange" icon={<CloseCircleOutlined />}>Bản nháp</Tag>
-          )}
-        </div>
+        </Tooltip>
       ),
     },
     {

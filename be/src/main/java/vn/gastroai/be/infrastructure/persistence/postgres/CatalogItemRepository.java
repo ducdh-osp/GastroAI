@@ -8,4 +8,8 @@ import java.util.List;
 
 public interface CatalogItemRepository extends JpaRepository<CatalogItem, Long> {
     List<CatalogItem> findByTypeAndActiveTrueOrderBySortOrderAscNameAsc(CatalogType type);
+    List<CatalogItem> findAllByOrderByTypeAscSortOrderAscNameAsc();
+    List<CatalogItem> findByTypeOrderBySortOrderAscNameAsc(CatalogType type);
+    boolean existsByTypeAndCodeIgnoreCase(CatalogType type, String code);
+    boolean existsByTypeAndCodeIgnoreCaseAndIdNot(CatalogType type, String code, Long id);
 }

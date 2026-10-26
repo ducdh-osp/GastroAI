@@ -1,10 +1,11 @@
-import { Alert, Card, Pagination, Spin, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Pagination, Space, Spin, Table, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useRef, useState } from 'react'
 import { getCmsLoginHistory } from '../../api/cmsAuth'
 import type { LoginHistoryItem } from '../../api/auth'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
-
+import { KeyOutlined } from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
 const { Title, Text } = Typography
 
 function pageSizeForViewport(height: number): number {
@@ -55,14 +56,9 @@ const columns: ColumnsType<LoginHistoryItem> = [
     key: 'device',
     width: 280,
     render: (_, record) => (
-      <div className="min-w-0">
-        <Text strong>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
-        <div>
-          <Text type="secondary" className="block truncate" title={record.userAgent ?? undefined}>
-            {record.userAgent ?? '—'}
-          </Text>
-        </div>
-      </div>
+      <Tooltip title={record.userAgent ?? undefined}>
+        <Text strong className="cursor-help">{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
+      </Tooltip>
     ),
   },
   {
@@ -102,9 +98,26 @@ export default function CmsLoginHistoryPage() {
   const [page, setPage] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   const [recentFailureCount, setRecentFailureCount] = useState(0)
+  const [alertDismissed, setAlertDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem('dismissed_cms_login_security_alert') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [pageSize, setPageSize] = useState(() => pageSizeForViewport(window.innerHeight))
   const previousPageSize = useRef(pageSize)
   const requestId = useRef(0)
+  const navigate = useNavigate()
+
+  function handleDismissAlert() {
+    setAlertDismissed(true)
+    try {
+      sessionStorage.setItem('dismissed_cms_login_security_alert', 'true')
+    } catch {
+      // Ignore sessionStorage issues
+    }
+  }
 
   useEffect(() => {
     function updatePageSize() {
@@ -152,15 +165,31 @@ export default function CmsLoginHistoryPage() {
           <Text type="secondary">Các lần đăng nhập gần đây vào tài khoản quản trị của bạn.</Text>
         </div>
 
-        {error && <Alert type="error" showIcon message={error} className="shrink-0" />}
+        {error && <Alert type="error" showIcon closable onClose={() => setError(null)} message={error} className="shrink-0" />}
 
-        {!error && !loading && recentFailureCount > 0 && (
+        {!error && !loading && recentFailureCount > 0 && !alertDismissed && (
           <Alert
-            className="shrink-0"
+            className="shrink-0 rounded-xl"
             type="warning"
             showIcon
-            message="Có hoạt động cần kiểm tra"
-            description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy liên hệ quản trị viên hệ thống ngay.`}
+            closable
+            onClose={handleDismissAlert}
+            title="Có hoạt động cần kiểm tra"
+            description={
+              <div className="flex flex-col items-start gap-2">
+                <span>
+                  {recentFailureCount} lần đăng nhập hoặc đổi mật khẩu không thành công trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.
+                </span>
+                <Space size="small">
+                  <Button size="small" type="primary" icon={<KeyOutlined />} onClick={() => navigate('/cms/change-password')}>
+                    Đổi mật khẩu
+                  </Button>
+                  <Button size="small" onClick={handleDismissAlert}>
+                    Đã hiểu
+                  </Button>
+                </Space>
+              </div>
+            }
           />
         )}
 
@@ -168,17 +197,19 @@ export default function CmsLoginHistoryPage() {
           className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm"
           styles={{ body: { display: 'flex', height: '100%', minHeight: 0, flexDirection: 'column', overflow: 'hidden' } }}
         >
-          <Spin spinning={loading}>
-            <Table<LoginHistoryItem>
-              columns={columns}
-              dataSource={items}
-              rowKey="id"
-              pagination={false}
-              scroll={{ x: 970 }}
-              tableLayout="fixed"
-              locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
-            />
-          </Spin>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Spin spinning={loading}>
+              <Table<LoginHistoryItem>
+                columns={columns}
+                dataSource={items}
+                rowKey="id"
+                pagination={false}
+                scroll={{ x: 970 }}
+                tableLayout="fixed"
+                locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
+              />
+            </Spin>
+          </div>
 
           {totalElements > pageSize && (
             <div className="mt-auto flex shrink-0 justify-end pt-4">

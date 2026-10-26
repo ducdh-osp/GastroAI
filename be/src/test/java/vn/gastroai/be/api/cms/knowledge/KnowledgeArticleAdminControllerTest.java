@@ -62,7 +62,6 @@ class KnowledgeArticleAdminControllerTest {
                 "Trào ngược dạ dày",
                 "Tóm tắt",
                 "Dạ dày",
-                3,
                 "Nội dung chi tiết",
                 "Nguồn NIDDK",
                 "https://example.com/gerd",
@@ -88,7 +87,7 @@ class KnowledgeArticleAdminControllerTest {
     @WithMockUser(username = "8", roles = "DOCTOR")
     void listReturnsPagedArticlesForDoctor() throws Exception {
         CmsArticleSummaryResponse item = new CmsArticleSummaryResponse(
-                1L, "trao-nguoc", "Trào ngược", "Tóm tắt", "Dạ dày", 3, true, "BS. A", Instant.now(), 10, Instant.now(), 0L
+                1L, "trao-nguoc", "Trào ngược", "Tóm tắt", "Dạ dày", true, "BS. A", Instant.now(), 10, Instant.now(), 0L
         );
         when(service.list(eq("trao"), eq("Da day"), eq(true), eq(0), eq(20)))
                 .thenReturn(new PageImpl<>(List.of(item), PageRequest.of(0, 20), 1));
@@ -122,7 +121,7 @@ class KnowledgeArticleAdminControllerTest {
     @WithMockUser(username = "8", roles = "DOCTOR")
     void createReturnsCreatedForDoctor() throws Exception {
         CmsArticleRequest req = new CmsArticleRequest(
-                "Tiêu đề bài viết", null, "Tóm tắt bài viết", "Dạ dày", 3,
+                "Tiêu đề bài viết", null, "Tóm tắt bài viết", "Dạ dày",
                 "Nội dung bài viết", "Nguồn", "https://example.com/guide", null, false, null, 10, null
         );
         when(service.create(any(CmsArticleRequest.class))).thenReturn(sampleDetail(1L));
@@ -141,7 +140,7 @@ class KnowledgeArticleAdminControllerTest {
     @WithMockUser(username = "8", roles = "DOCTOR")
     void createRejectsBlankTitleWithBadRequest() throws Exception {
         CmsArticleRequest invalid = new CmsArticleRequest(
-                "", null, "Tóm tắt", "Dạ dày", 3,
+                "", null, "Tóm tắt", "Dạ dày",
                 "Nội dung", "Nguồn", "https://example.com", null, false, null, 10, null
         );
 
@@ -156,7 +155,7 @@ class KnowledgeArticleAdminControllerTest {
     @WithMockUser(username = "8", roles = "DOCTOR")
     void createRejectsInvalidSourceUrlWithBadRequest() throws Exception {
         CmsArticleRequest invalid = new CmsArticleRequest(
-                "Tiêu đề", null, "Tóm tắt", "Dạ dày", 3,
+                "Tiêu đề", null, "Tóm tắt", "Dạ dày",
                 "Nội dung", "Nguồn", "not-a-valid-url", null, false, null, 10, null
         );
 
@@ -171,7 +170,7 @@ class KnowledgeArticleAdminControllerTest {
     @WithMockUser(username = "8", roles = "DOCTOR")
     void createRejectsNegativeSortOrderWithBadRequest() throws Exception {
         CmsArticleRequest invalid = new CmsArticleRequest(
-                "Tiêu đề", null, "Tóm tắt", "Dạ dày", 3,
+                "Tiêu đề", null, "Tóm tắt", "Dạ dày",
                 "Nội dung", "Nguồn", "https://example.com", null, false, null, -5, null
         );
 
@@ -186,7 +185,7 @@ class KnowledgeArticleAdminControllerTest {
     @WithMockUser(username = "7", roles = "ADMIN")
     void updateReturnsOkWithValidPayload() throws Exception {
         CmsArticleRequest req = new CmsArticleRequest(
-                "Tiêu đề sửa", null, "Tóm tắt sửa", "Dạ dày", 4,
+                "Tiêu đề sửa", null, "Tóm tắt sửa", "Dạ dày",
                 "Nội dung sửa", "Nguồn", "https://example.com/updated", null, false, null, 5, 0L
         );
         when(service.update(eq(1L), any(CmsArticleRequest.class))).thenReturn(sampleDetail(1L));

@@ -11,7 +11,6 @@ public record CmsArticleSummaryResponse(
         String title,
         String summary,
         String category,
-        Integer readingMinutes,
         boolean published,
         String medicalReviewer,
         Instant medicalReviewedAt,
@@ -21,10 +20,10 @@ public record CmsArticleSummaryResponse(
 ) {
     public CmsArticleSummaryResponse(
             Long id, String slug, String title, String summary, String category,
-            Integer readingMinutes, boolean published, String medicalReviewer,
+            boolean published, String medicalReviewer,
             Instant medicalReviewedAt, Integer sortOrder, Instant updatedAt
     ) {
-        this(id, slug, title, summary, category, readingMinutes, published, medicalReviewer, medicalReviewedAt, sortOrder, updatedAt, 0L);
+        this(id, slug, title, summary, category, published, medicalReviewer, medicalReviewedAt, sortOrder, updatedAt, 0L);
     }
 
     public static CmsArticleSummaryResponse from(KnowledgeArticle article) {
@@ -34,7 +33,6 @@ public record CmsArticleSummaryResponse(
                 article.getTitle(),
                 article.getSummary(),
                 article.getCategory(),
-                article.getReadingMinutes(),
                 article.isPublished(),
                 article.getMedicalReviewer(),
                 article.getMedicalReviewedAt(),

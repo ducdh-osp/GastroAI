@@ -107,40 +107,39 @@ export default function FaqPage() {
           </div>
         </div>
 
-        {/* Category pills */}
+        {/* Category pills - Phương án A: Tinh gọn, bỏ số lượng trong ngoặc */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
           <button
             type="button"
             onClick={() => setSelectedCategory('all')}
             className={`cursor-pointer rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all shrink-0 ${
               selectedCategory === 'all'
-                ? 'bg-teal-600 text-white shadow-sm'
-                : 'bg-white text-slate-600 dark:text-white border border-slate-200 hover:bg-slate-50 dark:bg-neutral-800 dark:text-white dark:border-white/10 dark:hover:bg-neutral-700'
+                ? 'bg-teal-600 text-white shadow-sm border border-teal-600 font-semibold'
+                : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 hover:border-slate-300 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-white'
             }`}
           >
-            Tất cả ({faqs.length})
+            Tất cả
           </button>
-          {categories.map((cat) => {
-            const count = faqs.filter((f) => f.category === cat).length
-            return (
+          {categories
+            .filter((cat) => faqs.some((f) => f.category === cat))
+            .map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
                 className={`cursor-pointer rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all shrink-0 ${
                   selectedCategory === cat
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-white text-slate-600 dark:text-white border border-slate-200 hover:bg-slate-50 dark:bg-neutral-800 dark:text-white dark:border-white/10 dark:hover:bg-neutral-700'
+                    ? 'bg-teal-600 text-white shadow-sm border border-teal-600 font-semibold'
+                    : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 hover:border-slate-300 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-white'
                 }`}
               >
-                {cat} ({count})
+                {cat}
               </button>
-            )
-          })}
+            ))}
         </div>
 
         {/* Main Content: Accordion */}
-        <Card className="rounded-xl shadow-xs border-slate-200" bodyStyle={{ padding: 16 }}>
+        <Card className="rounded-xl shadow-xs border-slate-200 dark:border-slate-800 dark:bg-slate-900/40" styles={{ body: { padding: 16 } }}>
           {loading ? (
             <div className="p-4 space-y-4">
               <Skeleton active paragraph={{ rows: 2 }} />

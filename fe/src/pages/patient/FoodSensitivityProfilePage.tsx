@@ -80,14 +80,15 @@ export default function FoodSensitivityProfilePage() {
           <Select value={days} onChange={setDays} options={DAYS_OPTIONS} style={{ width: 160 }} />
         </div>
 
-        <Alert
-          type="info"
-          showIcon
-          icon={<BulbOutlined />}
-          className="mb-4"
-          message="Đây là gợi ý sơ bộ, không phải chẩn đoán"
-          description="Kết quả tính bằng cách đếm tần suất đơn giản, không phải xét nghiệm y khoa. Một món ăn có tỷ lệ cao có thể chỉ là trùng hợp nếu bạn mới ăn vài lần. Hãy trao đổi với bác sĩ trước khi tự loại bỏ hẳn 1 loại thực phẩm khỏi khẩu phần."
-        />
+        <div className="mb-6">
+          <Alert
+            type="info"
+            showIcon
+            icon={<BulbOutlined />}
+            message="Đây là gợi ý sơ bộ, không phải chẩn đoán"
+            description="Kết quả tính bằng cách đếm tần suất đơn giản, không phải xét nghiệm y khoa. Một món ăn có tỷ lệ cao có thể chỉ là trùng hợp nếu bạn mới ăn vài lần. Hãy trao đổi với bác sĩ trước khi tự loại bỏ hẳn 1 loại thực phẩm khỏi khẩu phần."
+          />
+        </div>
 
         {error && <Alert type="error" message={error} showIcon className="mb-4" />}
 

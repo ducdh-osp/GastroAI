@@ -33,8 +33,8 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 
-/** UC0015 (lich nhac uong thuoc) + UC0016 (xac nhan da uong - GD4 chi la nut thu cong,
- * chua tich hop notification/scheduler that, viec do la GD7). */
+/** UC0015 (lich nhac uong thuoc) + UC0016 (xac nhan da uong). Cac lieu chua xac nhan
+ * khi den gio duoc MedicationDueNotificationService dua vao trung tam thong bao. */
 @Service
 public class MedicationReminderService {
 

@@ -27,6 +27,7 @@ import {
   type CmsArticleInput,
 } from '../../api/cmsArticles'
 import { listArticleTopics, type ArticleTopic } from '../../api/cmsArticleTopics'
+import { listCmsDoctors, type CmsDoctorOption } from '../../api/cmsDoctors'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 
@@ -37,7 +38,6 @@ interface FormValues {
   slug?: string
   category: string
   summary: string
-  readingMinutes?: number
   content: string
   sourceName: string
   sourceUrl: string
@@ -54,18 +54,49 @@ export default function CmsArticleEditorPage() {
 
   const [form] = Form.useForm<FormValues>()
   const [topics, setTopics] = useState<ArticleTopic[]>([])
+  const [doctors, setDoctors] = useState<CmsDoctorOption[]>([])
   const [articleVersion, setArticleVersion] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [contentWatch, setContentWatch] = useState('')
 
+  const getDoctorSelectOptions = (existingReviewer?: string | null) => {
+    const list = doctors.map((d) => {
+      const val = d.fullName ? `${d.fullName} (${d.email})` : d.displayName
+      return {
+        value: val,
+        label: (
+          <div className="flex items-center justify-between py-0.5">
+            <span className="font-medium text-slate-800 dark:text-white">{d.fullName ?? d.displayName}</span>
+            <span className="text-xs text-slate-400">({d.email})</span>
+          </div>
+        ),
+        searchKey: `${d.fullName ?? ''} ${d.displayName} ${d.email}`.toLowerCase(),
+      }
+    })
+    if (existingReviewer && existingReviewer.trim() && !list.some((o) => o.value === existingReviewer.trim())) {
+      list.unshift({
+        value: existingReviewer.trim(),
+        label: (
+          <div className="flex items-center justify-between py-0.5">
+            <span className="font-medium text-slate-800 dark:text-white">{existingReviewer.trim()}</span>
+            <span className="text-xs text-amber-500">(Bác sĩ đã duyệt trước đó)</span>
+          </div>
+        ),
+        searchKey: existingReviewer.toLowerCase(),
+      })
+    }
+    return list
+  }
+
   useEffect(() => {
     listArticleTopics()
       .then((data) => setTopics(data))
-      .catch(() => {
-        // Fallback
-      })
+      .catch(() => {})
+    listCmsDoctors()
+      .then((data) => setDoctors(data))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -75,7 +106,6 @@ export default function CmsArticleEditorPage() {
         published: false,
         sourceCheckedAt: dayjs(),
         medicalReviewer: undefined,
-        readingMinutes: undefined,
       })
       return
     }
@@ -90,7 +120,6 @@ export default function CmsArticleEditorPage() {
           slug: article.slug,
           category: article.category,
           summary: article.summary,
-          readingMinutes: article.readingMinutes,
           content: article.content,
           sourceName: article.sourceName,
           sourceUrl: article.sourceUrl,
@@ -107,15 +136,8 @@ export default function CmsArticleEditorPage() {
       .finally(() => setLoading(false))
   }, [id, form])
 
-  // Tự động tính thời gian đọc khi người dùng nhập nội dung nếu chưa nhập số thủ công
   function handleContentChange(val: string) {
     setContentWatch(val)
-    const currentCustomMinutes = form.getFieldValue('readingMinutes')
-    if (!currentCustomMinutes && val.trim().length > 0) {
-      const words = val.trim().split(/\s+/).length
-      const est = Math.max(1, Math.min(30, Math.ceil(words / 200)))
-      form.setFieldsValue({ readingMinutes: est })
-    }
   }
 
   async function handleSubmit(values: FormValues) {
@@ -127,7 +149,6 @@ export default function CmsArticleEditorPage() {
         slug: values.slug?.trim() || undefined,
         summary: values.summary.trim(),
         category: values.category,
-        readingMinutes: values.readingMinutes,
         content: values.content.trim(),
         sourceName: values.sourceName.trim(),
         sourceUrl: values.sourceUrl.trim(),
@@ -317,30 +338,32 @@ export default function CmsArticleEditorPage() {
                           extra={
                             isPublished
                               ? 'Bắt buộc khi xuất bản công khai. Người duyệt phải độc lập với người biên soạn.'
-                              : 'Tên bác sĩ hoặc chuyên gia phụ trách duyệt nội dung bài viết này.'
+                              : 'Chọn bác sĩ hoặc chuyên gia phụ trách duyệt nội dung bài viết này.'
                           }
                           rules={[
                             {
                               required: isPublished,
                               whitespace: true,
-                              message: 'Vui lòng nhập tên bác sĩ duyệt y khoa trước khi công khai bài viết',
+                              message: 'Vui lòng chọn bác sĩ duyệt y khoa trước khi công khai bài viết',
                             },
                             { max: 200, message: 'Tối đa 200 ký tự' },
                           ]}
                         >
-                          <Input placeholder="Ví dụ: BS. CKII Nguyễn Văn A" maxLength={200} />
+                          <Select
+                            showSearch
+                            allowClear
+                            placeholder="Tìm kiếm và chọn bác sĩ duyệt y khoa..."
+                            options={getDoctorSelectOptions(getFieldValue('medicalReviewer'))}
+                            filterOption={(input, option) =>
+                              Boolean((option as { searchKey?: string })?.searchKey?.includes(input.toLowerCase().trim()))
+                            }
+                            notFoundContent="Không tìm thấy bác sĩ phù hợp"
+                          />
                         </Form.Item>
                       )
                     }}
                   </Form.Item>
 
-                  <Form.Item
-                    name="readingMinutes"
-                    label="Thời lượng đọc (phút)"
-                    extra="Ước tính tự động dựa trên số từ nếu để trống."
-                  >
-                    <InputNumber min={1} max={30} className="w-full" placeholder="1 - 30" />
-                  </Form.Item>
 
                   <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn sẽ hiển thị trước.">
                     <InputNumber min={0} className="w-full" placeholder="0" />

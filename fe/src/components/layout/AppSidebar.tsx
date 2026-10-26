@@ -7,7 +7,6 @@ import {
   CommentOutlined,
   DownOutlined,
   ExperimentOutlined,
-  FilePdfOutlined,
   FileSearchOutlined,
   FileTextOutlined,
   FireOutlined,
@@ -44,9 +43,7 @@ const NAV_ITEMS = [
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
   { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
   { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
-  { key: 'health-report', label: 'Xuất nhật ký sức khỏe', icon: <FilePdfOutlined />, to: '/health-report' },
   { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
-  { key: 'change-password', label: 'Đổi mật khẩu', icon: <KeyOutlined />, to: '/change-password' },
 ]
 
 
@@ -126,7 +123,11 @@ export function AppSidebar() {
         </div>
         <Dropdown
           menu={{
-            items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true, onClick: handleLogout }],
+            items: [
+              { key: 'change-password', icon: <KeyOutlined />, label: 'Đổi mật khẩu', onClick: () => navigate('/change-password') },
+              { type: 'divider' },
+              { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true, onClick: handleLogout },
+            ],
           }}
           trigger={['click']}
         >

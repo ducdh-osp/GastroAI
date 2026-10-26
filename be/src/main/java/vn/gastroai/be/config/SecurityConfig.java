@@ -31,10 +31,12 @@ import java.util.List;
 public class SecurityConfig {
     @Value("${app.cors.allowed-origin}")
     private String allowedOrigin;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
     @Bean
     public HttpSessionEventPublisher httpSessionEventPublisher() {
         return new HttpSessionEventPublisher();
@@ -78,16 +80,20 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         // SockJS cannot attach the Authorization header during its HTTP handshake.
-                        // This endpoint validates the JWT query token in PatientWebSocketHandshakeInterceptor.
+                        // This endpoint validates the JWT query token in
+                        // PatientWebSocketHandshakeInterceptor.
                         .requestMatchers("/ws/patient/**").permitAll()
                         .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/notifications/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-keywords/**").hasAnyRole("ADMIN", "DOCTOR")
-                        .requestMatchers("/api/v1/cms/article-topics/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/article-topics/**")
+                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/articles/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/faqs/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/catalogs/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/doctors/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/backup/**")
@@ -98,6 +104,10 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/rbac/**")
                         .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/documents/**")
+                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/account/**")
+                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng
                         // của từng nhóm API ở trên.
                         .anyRequest().authenticated())

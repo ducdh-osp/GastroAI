@@ -45,7 +45,6 @@ class KnowledgeArticleAdminServiceTest {
         a.setSummary("Tóm tắt bài viết");
         a.setCategory(category);
         a.setContent("Nội dung bài viết về tiêu hoá rất chi tiết.");
-        a.setReadingMinutes(3);
         a.setSourceName("NIDDK");
         a.setSourceUrl("https://niddk.nih.gov");
         a.setSourceCheckedAt(LocalDate.of(2026, 10, 8));
@@ -96,7 +95,6 @@ class KnowledgeArticleAdminServiceTest {
                 null, // slug tự sinh
                 "Tóm tắt viêm loét",
                 "Dạ dày",
-                null, // readingMinutes tự tính
                 "Đây là bài viết dài hơn một chút để kiểm tra tính toán thời gian đọc của hệ thống.",
                 "Bệnh viện Bạch Mai",
                 "https://bachmai.gov.vn",
@@ -111,7 +109,6 @@ class KnowledgeArticleAdminServiceTest {
 
         assertEquals("viem-loet-da-day", res.slug());
         assertEquals("Viêm loét dạ dày", res.title());
-        assertEquals(1, res.readingMinutes());
         assertTrue(res.published());
         assertEquals("BS. Nguyễn Văn A", res.medicalReviewer());
         assertNotNull(res.medicalReviewedAt());
@@ -124,7 +121,6 @@ class KnowledgeArticleAdminServiceTest {
                 null,
                 "Tóm tắt",
                 "Dạ dày",
-                null,
                 "Nội dung bài viết",
                 "Nguồn",
                 "https://example.com",
@@ -147,7 +143,6 @@ class KnowledgeArticleAdminServiceTest {
                 null,
                 "Tóm tắt",
                 "Chủ đề lạ",
-                null,
                 "Nội dung",
                 "Nguồn",
                 "https://example.com",
@@ -172,7 +167,6 @@ class KnowledgeArticleAdminServiceTest {
                 null,
                 "Tóm tắt mới",
                 "Dạ dày",
-                null,
                 "Nội dung mới đã sửa chữa",
                 "Nguồn",
                 "https://example.com",
@@ -201,7 +195,6 @@ class KnowledgeArticleAdminServiceTest {
                 null,
                 "Tóm tắt",
                 "Dạ dày",
-                null,
                 "Nội dung",
                 "Nguồn",
                 "https://example.com",

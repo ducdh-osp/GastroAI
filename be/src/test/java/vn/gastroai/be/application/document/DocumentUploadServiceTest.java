@@ -164,7 +164,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
 
-        assertThrows(IllegalStateException.class, () -> service.uploadNewVersion(1L, file, null));
+        assertThrows(IllegalStateException.class, () -> service.uploadNewVersion(1L, file));
 
         verify(fileStorageService, never()).store(any());
         verify(documentRepository, never()).saveAndFlush(any());
@@ -176,7 +176,7 @@ class DocumentUploadServiceTest {
     void uploadNewVersionThrowsWhenDocumentNotFound() {
         when(documentRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> service.uploadNewVersion(99L, file, null));
+        assertThrows(ResourceNotFoundException.class, () -> service.uploadNewVersion(99L, file));
 
         verify(fileStorageService, never()).store(any());
         verify(documentRepository, never()).saveAndFlush(any());
@@ -319,7 +319,7 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of(existing));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.upload(file, null));
+                () -> service.upload(file, null, "Tài liệu test"));
 
         assertTrue(ex.getMessage().contains("ibs.pdf"));
         assertTrue(ex.getMessage().contains("(id 7)"));
@@ -342,7 +342,7 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of(v1));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.uploadNewVersion(1L, file, null));
+                () -> service.uploadNewVersion(1L, file));
 
         assertTrue(ex.getMessage().contains("v1"));
         verify(fileStorageService).delete(stored);
@@ -362,7 +362,7 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of(other));
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Document saved = service.uploadNewVersion(1L, file, null);
+        Document saved = service.uploadNewVersion(1L, file);
 
         assertEquals(2, saved.getVersionNo());
         assertEquals(1L, saved.getRootId());
@@ -379,7 +379,7 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Document saved = service.upload(file, null);
+        Document saved = service.upload(file, null, "Tài liệu test");
 
         assertEquals(1, saved.getVersionNo());
         assertFalse(saved.isCurrentVersion());
@@ -388,7 +388,8 @@ class DocumentUploadServiceTest {
 
     // ===== C5 - hai nguoi cung tai ban moi: bao loi 409 de hieu =====
 
-    // saveAndFlush bi rang buoc (nhom, versionNo) tu choi -> doi thanh cau than thien,
+    // saveAndFlush bi rang buoc (nhom, versionNo) tu choi -> doi thanh cau than
+    // thien,
     // va file vua luu van bi xoa (khong de file mo coi).
     @Test
     void uploadNewVersionReportsFriendlyConflictWhenAnotherVersionWasJustUploaded() throws IOException {
@@ -404,13 +405,14 @@ class DocumentUploadServiceTest {
                 .thenThrow(new DataIntegrityViolationException("uk_documents_group_version"));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.uploadNewVersion(1L, file, null));
+                () -> service.uploadNewVersion(1L, file));
 
         assertTrue(ex.getMessage().contains("Vừa có người khác tải phiên bản mới"));
         verify(fileStorageService).delete(stored);
     }
 
-    // Tai TAI LIEU MOI ma gap loi rang buoc -> giu nguyen loi goc (khong phai chuyen 2 nguoi tranh nhau).
+    // Tai TAI LIEU MOI ma gap loi rang buoc -> giu nguyen loi goc (khong phai
+    // chuyen 2 nguoi tranh nhau).
     @Test
     void uploadKeepsOriginalExceptionForNewDocument() throws IOException {
         Path stored = storedFile("noi dung moi");
@@ -420,15 +422,15 @@ class DocumentUploadServiceTest {
         when(documentRepository.saveAndFlush(any(Document.class)))
                 .thenThrow(new DataIntegrityViolationException("loi rang buoc"));
 
-        assertThrows(DataIntegrityViolationException.class, () -> service.upload(file, null));
+        assertThrows(DataIntegrityViolationException.class, () -> service.upload(file, null, "Tài liệu test"));
 
         verify(fileStorageService).delete(stored);
     }
 
-    
     // ===== C8 - tai phien ban moi thanh cong =====
 
-    // Goi bang id cua BAN CON (id 2): ban moi phai la v3 va thuoc nhom 1 (rootId = id cua dong goc),
+    // Goi bang id cua BAN CON (id 2): ban moi phai la v3 va thuoc nhom 1 (rootId =
+    // id cua dong goc),
     // chua la ban dang dung, tro dung file vua luu.
     @Test
     void uploadNewVersionCreatesNextVersionOfSameGroup() throws IOException {
@@ -445,7 +447,7 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Document saved = service.uploadNewVersion(2L, file, null);
+        Document saved = service.uploadNewVersion(2L, file);
 
         assertEquals(3, saved.getVersionNo());
         assertEquals(1L, saved.getRootId());
@@ -453,5 +455,77 @@ class DocumentUploadServiceTest {
         assertEquals(DocumentStatus.PENDING, saved.getStatus());
         assertEquals(stored.toString(), saved.getSource());
         verify(fileStorageService, never()).delete(any());
+    }
+
+    @Test
+    void uploadUsesGivenTitleInsteadOfFileName() throws IOException {
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.upload(file, null, "  Trào ngược   dạ dày  ");
+
+        assertEquals("Trào ngược dạ dày", saved.getTitle());
+    }
+
+    // De trong ten -> dung ten file nhu truoc day.
+    @Test
+    void uploadFallsBackToFileNameWhenTitleBlank() throws IOException {
+        when(file.getOriginalFilename()).thenReturn("trao-nguoc.pdf");
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.upload(file, null, "   ");
+
+        assertEquals("trao-nguoc.pdf", saved.getTitle());
+    }
+
+    // Ten qua 255 ky tu -> bao loi NGAY, chua luu file (khong de lai file mo coi).
+    @Test
+    void uploadRejectsTooLongTitleBeforeStoringFile() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.upload(file, null, "a".repeat(256)));
+
+        verify(fileStorageService, never()).store(any());
+        verify(documentRepository, never()).saveAndFlush(any());
+    }
+
+    // Phien ban moi giu ten hien tai cua tai lieu, khong lay ten file moi.
+    @Test
+    void uploadNewVersionKeepsDocumentTitle() throws IOException {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setVersionNo(1);
+        v1.setTitle("Trào ngược dạ dày");
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung ban 2"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.uploadNewVersion(1L, file);
+
+        assertEquals("Trào ngược dạ dày", saved.getTitle());
+        assertEquals(2, saved.getVersionNo());
+    }
+
+    @Test
+    void uploadNewVersionKeepsDocumentSourceUrl() throws IOException {
+        Document v1 = document(1L, DocumentStatus.DONE);
+        v1.setVersionNo(1);
+        v1.setSourceUrl("https://moh.gov.vn/gerd");
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung ban 2"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.uploadNewVersion(1L, file);
+
+        assertEquals("https://moh.gov.vn/gerd", saved.getSourceUrl());
     }
 }
