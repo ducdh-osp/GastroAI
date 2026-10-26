@@ -186,7 +186,7 @@ export default function MedicationRemindersPage() {
     {
       title: 'Xác nhận liều', key: 'actions', width: 260,
       render: (_, record) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-col items-start gap-1">
           {record.timesOfDay.map((time) => {
             const guardKey = `${record.id}-${time}`
             const confirmed = record.confirmedTimesToday.includes(time)
@@ -201,23 +201,25 @@ export default function MedicationRemindersPage() {
               {confirmed ? `${formatTimeOfDay(time)} đã uống` : `Uống ${formatTimeOfDay(time)}`}
             </Button>
           })}
-          <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm
-            title="Tắt lịch nhắc này?"
-            description="Lịch sử xác nhận đã uống trước đây vẫn được giữ lại."
-            okText="Tắt nhắc"
-            cancelText="Huỷ"
-            onConfirm={() => handleDelete(record)}
-          >
-            <Button
-              size="small"
-              type="text"
-              danger
-              icon={<StopOutlined />}
-              loading={deleteGuard.inFlightId === record.id}
-              disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
-            />
-          </Popconfirm>
+          <div className="flex gap-1">
+            <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+            <Popconfirm
+              title="Tắt lịch nhắc này?"
+              description="Lịch sử xác nhận đã uống trước đây vẫn được giữ lại."
+              okText="Tắt nhắc"
+              cancelText="Huỷ"
+              onConfirm={() => handleDelete(record)}
+            >
+              <Button
+                size="small"
+                type="text"
+                danger
+                icon={<StopOutlined />}
+                loading={deleteGuard.inFlightId === record.id}
+                disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
+              />
+            </Popconfirm>
+          </div>
         </div>
       ),
     },

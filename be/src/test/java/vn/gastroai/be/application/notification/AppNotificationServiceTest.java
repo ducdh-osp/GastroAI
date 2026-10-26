@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -77,6 +78,30 @@ class AppNotificationServiceTest {
         assertTrue(notification.getValue().getNotificationType() == NotificationType.MEDICATION_REMINDER);
         assertTrue(notification.getValue().getSourceId().equals(9L));
         assertTrue("/medications".equals(notification.getValue().getActionUrl()));
+    }
+
+    @Test
+    void failedLoginCreatesPatientSystemNotificationWithSecurityDetails() {
+        when(notificationRepository.save(any(AppNotification.class))).thenAnswer(invocation -> {
+            AppNotification notification = invocation.getArgument(0);
+            notification.setId(7L);
+            return notification;
+        });
+
+        service.createFailedLoginAlert(1L, "Chrome on Windows", "203.0.113.10", false);
+
+        org.mockito.ArgumentCaptor<AppNotification> notification =
+                org.mockito.ArgumentCaptor.forClass(AppNotification.class);
+        verify(notificationRepository).save(notification.capture());
+        AppNotification saved = notification.getValue();
+        assertEquals(NotificationRecipientType.PATIENT, saved.getRecipientType());
+        assertEquals(1L, saved.getRecipientId());
+        assertEquals(NotificationType.SYSTEM, saved.getNotificationType());
+        assertEquals("LOGIN_SECURITY", saved.getSourceType());
+        assertEquals("/login-history", saved.getActionUrl());
+        assertTrue(saved.getMessage().contains("Chrome on Windows"));
+        assertTrue(saved.getMessage().contains("203.0.113.10"));
+        verify(eventPublisher).publishEvent(any(NotificationCreatedEvent.class));
     }
 
     @Test
