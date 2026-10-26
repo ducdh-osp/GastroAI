@@ -69,6 +69,32 @@ public class AppNotificationService {
         return Optional.of(response);
     }
 
+    /**
+     * Lưu cảnh báo bảo mật cho từng lần nhập sai mật khẩu của bệnh nhân. Không dùng
+     * dedupeKey vì mỗi lần thử là một sự kiện độc lập cần được giữ lại để chủ tài khoản
+     * có thể đối chiếu với lịch sử đăng nhập.
+     */
+    @Transactional("postgresTransactionManager")
+    public NotificationResponse createFailedLoginAlert(Long patientId, String deviceLabel,
+                                                        String ipAddress, boolean accountLocked) {
+        String title = accountLocked
+                ? "Tài khoản tạm thời bị khóa"
+                : "Đăng nhập không thành công";
+        String message = accountLocked
+                ? "Tài khoản của bạn vừa bị khóa tạm thời sau nhiều lần nhập sai mật khẩu từ %s (IP %s)."
+                        .formatted(deviceLabel, ipAddress)
+                : "Phát hiện một lần nhập sai mật khẩu từ %s (IP %s). Nếu không phải bạn, hãy đổi mật khẩu ngay."
+                        .formatted(deviceLabel, ipAddress);
+        AppNotification notification = new AppNotification(
+                NotificationRecipientType.PATIENT, patientId, NotificationType.SYSTEM,
+                title, message, "LOGIN_SECURITY", null, "/login-history", null);
+        notification = notificationRepository.save(notification);
+        NotificationResponse response = toResponse(notification, null);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                NotificationRecipientType.PATIENT, patientId, response));
+        return response;
+    }
+
     /** Notification triage là broadcast cho CMS Admin và được lưu cùng transaction với alert. */
     @Transactional("postgresTransactionManager")
     public Optional<NotificationResponse> recordTriageAlert(TriageAlertEvent event) {

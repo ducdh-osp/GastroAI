@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.application.commands.LoginCommand;
+import vn.gastroai.be.application.notification.AppNotificationService;
 import vn.gastroai.be.application.readmodel.AuthResult;
 import vn.gastroai.be.domain.auth.LoginOutcome;
 import vn.gastroai.be.domain.auth.Patient;
@@ -50,11 +51,12 @@ public class AuthService {
     private final JwtService jwt;
     private final EmailVerificationService mail;
     private final LoginSecurityPolicy policy;
+    private final AppNotificationService notifications;
 
     public AuthService(PatientRepository patients, PatientLoginHistoryRepository history,
                        RevokedTokenRepository revoked, PasswordEncoder encoder,
                        JwtService jwt, EmailVerificationService mail,
-                       LoginSecurityPolicy policy) {
+                       LoginSecurityPolicy policy, AppNotificationService notifications) {
         this.patients = patients;
         this.history = history;
         this.revoked = revoked;
@@ -62,6 +64,7 @@ public class AuthService {
         this.jwt = jwt;
         this.mail = mail;
         this.policy = policy;
+        this.notifications = notifications;
     }
 
     /**
@@ -208,6 +211,8 @@ public class AuthService {
             }
             record(patient, locked ? LoginOutcome.BLOCKED : LoginOutcome.FAILURE,
                     locked ? "TOO_MANY_ATTEMPTS" : "BAD_PASSWORD", requestInfo);
+            notifications.createFailedLoginAlert(patient.getId(), requestInfo.deviceLabel(),
+                    requestInfo.ipAddress(), locked);
             if (locked) {
                 throw new AccountLockedException(patient.getLockedUntil());
             }
