@@ -5,26 +5,31 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.infrastructure.backup.RestoreResult;
 import vn.gastroai.be.infrastructure.backup.RestoreService;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-
 @RestController
 @RequestMapping("/api/v1/cms/backup")
 public class BackupAdminController {
 
     private final RestoreService restoreService;
-
-    public BackupAdminController(RestoreService restoreService) {
+    private final AuditLogService auditLogService;
+    public BackupAdminController(RestoreService restoreService, AuditLogService auditLogService) {
         this.restoreService = restoreService;
+        this.auditLogService = auditLogService;
     }
 
     @PostMapping("/restore")
     public ResponseEntity<Map<String, Object>> restore() {
         RestoreResult result = restoreService.restoreAll();
+        auditLogService.record(AuditAction.SYSTEM_RESTORE, "SYSTEM", null,
+                "postgresOk=" + result.postgresOk() + ", mysqlOk=" + result.mysqlOk());
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("postgresOk", result.postgresOk());
@@ -39,8 +44,7 @@ public class BackupAdminController {
                 "message",
                 result.allOk()
                         ? "Restore thanh cong ca 2 CSDL."
-                        : "Restore that bai mot phan - xem postgresError/mysqlError o tren hoac file log ./logs/gastroai.log de biet chi tiet."
-        );
+                        : "Restore that bai mot phan - xem postgresError/mysqlError o tren hoac file log ./logs/gastroai.log de biet chi tiet.");
 
         if (result.allOk()) {
             return ResponseEntity.ok(body);
