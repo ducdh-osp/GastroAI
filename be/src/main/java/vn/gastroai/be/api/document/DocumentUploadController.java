@@ -132,9 +132,10 @@ public class DocumentUploadController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/{documentId}")
+   @DeleteMapping("/{documentId}")
     public ResponseEntity<Void> delete(@PathVariable Long documentId) {
         documentUploadService.delete(documentId);
+        auditLogService.record(AuditAction.DOCUMENT_DELETE, "DOCUMENT", documentId, null);
         return ResponseEntity.noContent().build();
     }
 
