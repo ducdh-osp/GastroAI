@@ -12,8 +12,23 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import vn.gastroai.be.infrastructure.persistence.postgres.projection.TriageStatusStatProjection;
+
 public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> {
     List<TriageAlert> findTop50ByOrderByOccurredAtDesc();
+    long countByStatus(TriageAlertStatus status);
+    List<TriageAlert> findByOccurredAtBetween(Instant startDate, Instant endDate);
+
+    @Query(value = """
+            SELECT status AS status, count(*) AS count
+            FROM triage_alerts
+            WHERE occurred_at >= :startDate AND occurred_at <= :endDate
+            GROUP BY status
+            """, nativeQuery = true)
+    List<TriageStatusStatProjection> findStatusStats(
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate);
+
     Optional<TriageAlert> findFirstByPatient_IdAndStatusNotAndOccurredAtAfterOrderByOccurredAtDesc(
             Long patientId, TriageAlertStatus excludedStatus, Instant after);
     @Modifying(flushAutomatically = true, clearAutomatically = true)

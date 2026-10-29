@@ -16,6 +16,7 @@ import {
   SafetyCertificateOutlined,
   SafetyOutlined,
   SettingOutlined,
+  SoundOutlined,
   TagsOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
@@ -72,7 +73,8 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     title: 'Giám sát',
     items: [
       { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts', roles: ['ADMIN', 'DOCTOR'] },
-      { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true, adminOnly: true },
+      { key: 'broadcast', label: 'Thông báo broadcast', icon: <SoundOutlined />, to: '/cms/broadcast', adminOnly: true },
+      { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, to: '/cms/dashboard', adminOnly: true },
       { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
     ],
   },

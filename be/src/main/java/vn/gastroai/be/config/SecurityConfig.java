@@ -98,6 +98,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/backup/**")
                         .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/dashboard/**")
+                        .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/runtime-config/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/users/**")

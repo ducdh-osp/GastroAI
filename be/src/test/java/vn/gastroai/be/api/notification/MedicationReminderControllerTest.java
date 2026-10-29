@@ -37,6 +37,9 @@ class MedicationReminderControllerTest {
     @MockitoBean
     private RevokedTokenRepository revokedTokenRepository;
 
+    @MockitoBean
+    private vn.gastroai.be.application.notification.MedicationDueNotificationService medicationDueNotificationService;
+
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void createRejectsBlankMedicineName() throws Exception {
@@ -52,6 +55,13 @@ class MedicationReminderControllerTest {
     void listConfirmationsRejectsSizeAboveHundred() throws Exception {
         mockMvc.perform(get("/api/v1/patient/medications/confirmations").with(csrf()).param("size", "999"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void checkDueDosesReturnsCreatedCount() throws Exception {
+        mockMvc.perform(post("/api/v1/patient/medications/check-due").with(csrf()))
+                .andExpect(status().isOk());
     }
 
 }

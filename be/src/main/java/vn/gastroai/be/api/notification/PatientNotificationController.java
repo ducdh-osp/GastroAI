@@ -16,9 +16,24 @@ import java.security.Principal;
 public class PatientNotificationController {
 
     private final AppNotificationService service;
+    private final vn.gastroai.be.application.notification.PatientNotificationSettingService settingService;
 
-    public PatientNotificationController(AppNotificationService service) {
+    public PatientNotificationController(AppNotificationService service,
+                                       vn.gastroai.be.application.notification.PatientNotificationSettingService settingService) {
         this.service = service;
+        this.settingService = settingService;
+    }
+
+    @GetMapping("/settings")
+    public PatientNotificationSettingResponse getSettings(Principal principal, Authentication authentication) {
+        return settingService.getSettings(patientId(principal, authentication));
+    }
+
+    @PutMapping("/settings")
+    public PatientNotificationSettingResponse updateSettings(
+            @jakarta.validation.Valid @RequestBody PatientNotificationSettingRequest request,
+            Principal principal, Authentication authentication) {
+        return settingService.updateSettings(patientId(principal, authentication), request);
     }
 
     @GetMapping
