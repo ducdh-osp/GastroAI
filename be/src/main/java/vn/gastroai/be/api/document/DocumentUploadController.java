@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import vn.gastroai.be.application.document.DocumentStatusService;
 import vn.gastroai.be.application.document.DocumentUploadService;
+import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
@@ -16,12 +18,15 @@ public class DocumentUploadController {
 
     private final DocumentUploadService documentUploadService;
     private final DocumentStatusService documentStatusService;
+    private final AuditLogService auditLogService;
 
     public DocumentUploadController(
             DocumentUploadService documentUploadService,
-            DocumentStatusService documentStatusService) {
+            DocumentStatusService documentStatusService,
+            AuditLogService auditLogService) {
         this.documentUploadService = documentUploadService;
         this.documentStatusService = documentStatusService;
+        this.auditLogService = auditLogService;
     }
 
     @PostMapping
@@ -30,7 +35,8 @@ public class DocumentUploadController {
             @RequestParam(value = "sourceUrl", required = false) String sourceUrl,
             @RequestParam(value = "title", required = false) String title) {
         Document document = documentUploadService.upload(file, sourceUrl, title);
-
+        auditLogService.record(AuditAction.DOCUMENT_UPLOAD, "DOCUMENT", document.getId(),
+                "Tải lên: " + document.getTitle());
         return ResponseEntity.accepted().body(toResponse(document));
     }
 
@@ -67,6 +73,8 @@ public class DocumentUploadController {
             @PathVariable Long documentId,
             @RequestParam("file") MultipartFile file) {
         Document document = documentUploadService.uploadNewVersion(documentId, file);
+        auditLogService.record(AuditAction.DOCUMENT_NEW_VERSION, "DOCUMENT", documentId,
+                "Phiên bản mới id=" + document.getId());
         return ResponseEntity.accepted().body(toResponse(document));
     }
 
@@ -82,6 +90,8 @@ public class DocumentUploadController {
             @PathVariable Long documentId,
             @PathVariable Long versionId) {
         documentStatusService.activateVersion(documentId, versionId);
+        auditLogService.record(AuditAction.DOCUMENT_ACTIVATE_VERSION, "DOCUMENT", documentId,
+                "Kích hoạt phiên bản id=" + versionId);
         return ResponseEntity.noContent().build();
     }
 
@@ -89,6 +99,7 @@ public class DocumentUploadController {
     @PostMapping("/{documentId}/unpublish")
     public ResponseEntity<Void> unpublish(@PathVariable Long documentId) {
         documentStatusService.unpublish(documentId);
+        auditLogService.record(AuditAction.DOCUMENT_UNPUBLISH, "DOCUMENT", documentId, null);
         return ResponseEntity.noContent().build();
     }
 
@@ -96,6 +107,7 @@ public class DocumentUploadController {
     @PostMapping("/{documentId}/publish")
     public ResponseEntity<Void> publish(@PathVariable Long documentId) {
         documentStatusService.publish(documentId);
+        auditLogService.record(AuditAction.DOCUMENT_PUBLISH, "DOCUMENT", documentId, null);
         return ResponseEntity.noContent().build();
     }
 
@@ -104,6 +116,8 @@ public class DocumentUploadController {
             @PathVariable Long documentId,
             @RequestBody UpdateDocumentInfoRequest request) {
         documentStatusService.updateInfo(documentId, request.title(), request.sourceUrl());
+        auditLogService.record(AuditAction.DOCUMENT_UPDATE_INFO, "DOCUMENT", documentId,
+                "Tên: " + request.title() + " | URL: " + request.sourceUrl());
         return ResponseEntity.noContent().build();
     }
 
@@ -113,12 +127,15 @@ public class DocumentUploadController {
             @PathVariable Long documentId,
             @PathVariable Long versionId) {
         documentUploadService.deleteVersion(documentId, versionId);
+        auditLogService.record(AuditAction.DOCUMENT_DELETE_VERSION, "DOCUMENT", documentId,
+                "Xoá phiên bản id=" + versionId);
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/{documentId}")
+   @DeleteMapping("/{documentId}")
     public ResponseEntity<Void> delete(@PathVariable Long documentId) {
         documentUploadService.delete(documentId);
+        auditLogService.record(AuditAction.DOCUMENT_DELETE, "DOCUMENT", documentId, null);
         return ResponseEntity.noContent().build();
     }
 

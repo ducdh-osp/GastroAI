@@ -12,15 +12,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.admin.CmsRbacService;
 import vn.gastroai.be.domain.admin.CmsAccountType;
+import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.application.audit.AuditLogService;
 
 /** UC0047 - chi ADMIN duoc xem va cap nhat vai tro CMS. */
 @RestController
 @RequestMapping("/api/v1/cms/rbac/accounts")
 public class CmsRbacAdminController {
     private final CmsRbacService service;
+    private final AuditLogService auditLogService;
 
-    public CmsRbacAdminController(CmsRbacService service) {
+    public CmsRbacAdminController(CmsRbacService service, AuditLogService auditLogService) {
         this.service = service;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping
@@ -37,7 +41,10 @@ public class CmsRbacAdminController {
             @PathVariable CmsAccountType accountType,
             @PathVariable Long accountId,
             @Valid @RequestBody UpdateCmsAccountRoleRequest request) {
-        return service.assignRole(accountType, accountId, request.role());
+        CmsAccountResponse response = service.assignRole(accountType, accountId, request.role());
+        auditLogService.record(AuditAction.RBAC_ROLE_CHANGE, accountType.name(), accountId,
+                "Vai trò mới: " + request.role());
+        return response;
     }
 
     private void validatePage(int page, int size) {

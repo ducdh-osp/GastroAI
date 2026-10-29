@@ -415,6 +415,7 @@ public class CmsAuthService {
         if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
             throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
         }
+        CmsPasswordPolicy.validate(newPassword);
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
@@ -449,6 +450,7 @@ public class CmsAuthService {
         if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
             throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
         }
+        CmsPasswordPolicy.validate(newPassword);
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);

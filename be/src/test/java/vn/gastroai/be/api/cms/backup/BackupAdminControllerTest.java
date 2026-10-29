@@ -1,19 +1,26 @@
 package vn.gastroai.be.api.cms.backup;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.config.SecurityConfig;
+import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.infrastructure.backup.RestoreResult;
 import vn.gastroai.be.infrastructure.backup.RestoreService;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,6 +38,9 @@ class BackupAdminControllerTest {
 
     @MockitoBean
     private RestoreService restoreService;
+
+    @MockitoBean
+    private AuditLogService auditLogService;
 
     @MockitoBean
     private JwtService jwtService;
@@ -51,6 +61,11 @@ class BackupAdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.postgresOk").value(true))
                 .andExpect(jsonPath("$.mysqlOk").value(true));
+
+        InOrder order = inOrder(restoreService, auditLogService);
+        order.verify(restoreService).restoreAll();
+        order.verify(auditLogService).record(eq(AuditAction.SYSTEM_RESTORE), eq("SYSTEM"), isNull(),
+                eq("postgresOk=true, mysqlOk=true"));
     }
 
     @Test
@@ -63,6 +78,9 @@ class BackupAdminControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.postgresOk").value(false))
                 .andExpect(jsonPath("$.postgresError").value("must be owner of extension vector"));
+
+        verify(auditLogService).record(eq(AuditAction.SYSTEM_RESTORE), eq("SYSTEM"), isNull(),
+                eq("postgresOk=false, mysqlOk=true"));
     }
 
     @Test
@@ -72,6 +90,7 @@ class BackupAdminControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(restoreService, never()).restoreAll();
+        verify(auditLogService, never()).record(any(), any(), any(), any());
     }
 
     @Test

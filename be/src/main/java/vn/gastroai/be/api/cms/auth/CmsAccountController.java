@@ -12,15 +12,18 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.api.auth.ChangePasswordRequest;
 import vn.gastroai.be.application.auth.CmsAuthService;
 import vn.gastroai.be.domain.admin.CmsAccountType;
+import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.application.audit.AuditLogService;
 
 /** Tai khoan CMS dang dang nhap tu quan ly (doi mat khau). Khong dat duoi /cms/auth/** vi duong do permitAll. */
 @RestController
 public class CmsAccountController {
 
     private final CmsAuthService cmsAuthService;
-
-    public CmsAccountController(CmsAuthService cmsAuthService) {
+    private final AuditLogService auditLogService;
+    public CmsAccountController(CmsAuthService cmsAuthService, AuditLogService auditLogService) {
         this.cmsAuthService = cmsAuthService;
+        this.auditLogService = auditLogService;
     }
 
     @PostMapping("/api/v1/cms/account/change-password")
@@ -39,7 +42,7 @@ public class CmsAccountController {
                 body.currentPassword(),
                 body.newPassword(),
                 request);
-
+        auditLogService.record(AuditAction.PASSWORD_CHANGE, accountType.toString(), userId, null);
         // Service da commit xong moi huy phien hien tai - commit loi thi nguoi dung van dang nhap.
         session.invalidate();
     }
