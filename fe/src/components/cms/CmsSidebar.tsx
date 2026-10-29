@@ -72,7 +72,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     title: 'Giám sát',
     items: [
       { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts', roles: ['ADMIN', 'DOCTOR'] },
-      { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true, adminOnly: true },
+      { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, to: '/cms/dashboard', adminOnly: true },
       { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
     ],
   },

@@ -12,6 +12,7 @@ import {
   FireOutlined,
   HistoryOutlined,
   HomeOutlined,
+  CheckCircleOutlined,
   KeyOutlined,
   LineChartOutlined,
   LogoutOutlined,
@@ -19,13 +20,14 @@ import {
   MessageOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons'
-import { Badge, Dropdown, notification, Switch } from 'antd'
+import { Badge, Button, Dropdown, message, notification, Switch } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
 import { useTheme } from '../../stores/themeStore'
 import { Logo } from '../brand/Logo'
-import { getUnreadNotificationCount } from '../../api/notifications'
+import { getUnreadNotificationCount, markNotificationRead } from '../../api/notifications'
+import { checkDueMedications, confirmMedicationDose } from '../../api/medication'
 import { useNotificationSocket } from '../../hooks/useNotificationSocket'
 
 const NAV_ITEMS = [
@@ -62,9 +64,21 @@ export function AppSidebar() {
       void getUnreadNotificationCount('patient').then(setUnreadCount).catch(() => {})
     }
     refreshUnreadCount()
+
+    // UC0068: Khi bệnh nhân đăng nhập/mở ứng dụng, kiểm tra ngay các liều thuốc đến hạn hôm nay
+    if (token) {
+      checkDueMedications()
+        .then((res) => {
+          if (res.created > 0) {
+            refreshUnreadCount()
+          }
+        })
+        .catch(() => {})
+    }
+
     window.addEventListener('gastroai:notification-state', refreshUnreadCount)
     return () => window.removeEventListener('gastroai:notification-state', refreshUnreadCount)
-  }, [])
+  }, [token])
 
   useNotificationSocket({
     audience: 'patient',
@@ -72,9 +86,64 @@ export function AppSidebar() {
     token,
     onNotification: useCallback((item) => {
       setUnreadCount((count) => count + 1)
-      notification.info({ message: item.title, description: item.message, placement: 'topRight' })
       window.dispatchEvent(new Event('gastroai:notification'))
-    }, []),
+
+      // UC0068: Nhắc uống thuốc trong app qua WebSocket với thao tác nhanh "Đã uống"
+      if (item.type === 'MEDICATION_REMINDER') {
+        const notifKey = `med-reminder-${item.id}`
+        const timeMatch = item.message.match(/lúc\s+(\d{2}:\d{2})/i)
+        const scheduledTime = timeMatch ? timeMatch[1] : null
+
+        notification.open({
+          key: notifKey,
+          message: <span className="font-semibold text-emerald-800">{item.title}</span>,
+          description: (
+            <div className="space-y-3 pt-1">
+              <p className="text-sm text-slate-700 leading-relaxed">{item.message}</p>
+              <div className="flex items-center gap-2 pt-1">
+                {item.sourceId && scheduledTime && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<CheckCircleOutlined />}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs"
+                    onClick={async () => {
+                      try {
+                        await confirmMedicationDose(item.sourceId!, scheduledTime)
+                        await markNotificationRead('patient', item.id)
+                        notification.destroy(notifKey)
+                        message.success('Đã xác nhận uống thuốc thành công!')
+                        window.dispatchEvent(new Event('gastroai:notification'))
+                        window.dispatchEvent(new Event('gastroai:notification-state'))
+                        window.dispatchEvent(new Event('gastroai:medication-confirmed'))
+                      } catch (err) {
+                        message.error(err instanceof Error ? err.message : 'Không thể xác nhận uống thuốc.')
+                      }
+                    }}
+                  >
+                    Đã uống thuốc
+                  </Button>
+                )}
+                <Button
+                  size="small"
+                  onClick={() => {
+                    notification.destroy(notifKey)
+                    navigate('/medications')
+                  }}
+                >
+                  Xem đơn thuốc
+                </Button>
+              </div>
+            </div>
+          ),
+          icon: <MedicineBoxOutlined className="text-emerald-600 text-2xl" />,
+          placement: 'topRight',
+          duration: 0, // Giữ thông báo nhắc thuốc cho tới khi bệnh nhân xác nhận hoặc đóng
+        })
+      } else {
+        notification.info({ message: item.title, description: item.message, placement: 'topRight' })
+      }
+    }, [navigate]),
   })
 
   async function handleLogout() {

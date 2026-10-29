@@ -13,4 +13,6 @@ public interface MessageRatingRepository extends JpaRepository<MessageRating, Lo
 
     /** Lấy đánh giá của nhiều tin nhắn 1 lượt - dùng khi liệt kê cả phiên để tránh N+1 query. */
     List<MessageRating> findByMessageIdIn(List<Long> messageIds);
+
+    long countByRating(String rating);
 }

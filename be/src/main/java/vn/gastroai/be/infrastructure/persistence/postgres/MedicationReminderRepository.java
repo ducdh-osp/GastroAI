@@ -19,4 +19,15 @@ public interface MedicationReminderRepository extends JpaRepository<MedicationRe
               and (r.endDate is null or r.endDate >= :date)
             """)
     List<MedicationReminder> findActiveForDate(@Param("date") LocalDate date);
+
+    @Query("""
+            select distinct r from MedicationReminder r
+            where r.patient.id = :patientId
+              and r.active = true
+              and (r.startDate is null or r.startDate <= :date)
+              and (r.endDate is null or r.endDate >= :date)
+            """)
+    List<MedicationReminder> findActiveForDateAndPatientId(
+            @Param("patientId") Long patientId,
+            @Param("date") LocalDate date);
 }

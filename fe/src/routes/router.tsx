@@ -42,6 +42,7 @@ import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 import CmsUsersPage from '../pages/cms/CmsUsersPage'
 import CmsRbacPage from '../pages/cms/CmsRbacPage'
 import CmsChangePasswordPage from '../pages/cms/CmsChangePasswordPage'
+import CmsDashboardPage from '../pages/cms/CmsDashboardPage'
 
 export const router = createBrowserRouter([
   {
@@ -245,6 +246,14 @@ export const router = createBrowserRouter([
             element: (
               <CmsAdminRoute>
                 <CmsRbacPage />
+              </CmsAdminRoute>
+            ),
+          },
+          {
+            path: '/cms/dashboard',
+            element: (
+              <CmsAdminRoute>
+                <CmsDashboardPage />
               </CmsAdminRoute>
             ),
           },

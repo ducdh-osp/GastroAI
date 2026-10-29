@@ -102,3 +102,18 @@ export async function listMedicationConfirmations(page = 0, size = 20): Promise<
     throw extractErrorMessage(error, 'Không thể tải lịch sử xác nhận đã uống. Vui lòng thử lại.')
   }
 }
+
+export interface CheckDueResult {
+  created: number
+  checkedAt: string
+}
+
+export async function checkDueMedications(): Promise<CheckDueResult> {
+  try {
+    const { data } = await apiClient.post<CheckDueResult>('/patient/medications/check-due')
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể kiểm tra liều thuốc đến giờ. Vui lòng thử lại.')
+  }
+}
+

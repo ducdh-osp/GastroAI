@@ -35,6 +35,16 @@ public class MedicationDueNotificationService {
     @Transactional("postgresTransactionManager")
     public int notifyDueDoses(LocalDate date, LocalTime currentTime) {
         List<MedicationReminder> reminders = reminderRepository.findActiveForDate(date);
+        return processReminders(reminders, date, currentTime);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public int notifyDueDosesForPatient(Long patientId, LocalDate date, LocalTime currentTime) {
+        List<MedicationReminder> reminders = reminderRepository.findActiveForDateAndPatientId(patientId, date);
+        return processReminders(reminders, date, currentTime);
+    }
+
+    private int processReminders(List<MedicationReminder> reminders, LocalDate date, LocalTime currentTime) {
         if (reminders.isEmpty()) {
             return 0;
         }
