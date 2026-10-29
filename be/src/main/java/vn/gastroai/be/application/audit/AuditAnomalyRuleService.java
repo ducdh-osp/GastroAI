@@ -1,14 +1,11 @@
 package vn.gastroai.be.application.audit;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import vn.gastroai.be.api.cms.audit.AuditAnomalyRuleResponse;
 import vn.gastroai.be.api.cms.audit.UpdateAuditAnomalyRuleRequest;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.domain.audit.AuditAnomalyRule;
-import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 import vn.gastroai.be.infrastructure.persistence.mysql.AuditAnomalyRuleRepository;
 
 import java.util.List;

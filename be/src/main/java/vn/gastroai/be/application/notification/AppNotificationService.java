@@ -94,6 +94,7 @@ public class AppNotificationService {
                 NotificationRecipientType.PATIENT, patientId, response));
         return response;
     }
+    
     @Transactional("postgresTransactionManager")
     public Optional<NotificationResponse> createAuditAnomalyAlert(String title, String message, String dedupeKey) {
         if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {

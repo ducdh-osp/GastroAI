@@ -27,6 +27,8 @@ import java.util.Optional;
 import org.springframework.http.MediaType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import vn.gastroai.be.application.audit.AuditLogService;
+import vn.gastroai.be.domain.audit.AuditAction;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -44,6 +46,9 @@ class DocumentUploadControllerTest {
 
         @MockitoBean
         private DocumentStatusService documentStatusService;
+
+        @MockitoBean
+        private AuditLogService auditLogService;
 
         @MockitoBean
         private JwtService jwtService;
@@ -218,6 +223,7 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isNoContent());
 
                 verify(documentStatusService).publish(42L);
+                verify(auditLogService).record(AuditAction.DOCUMENT_PUBLISH, "DOCUMENT", 42L, null);
         }
 
         @Test
@@ -227,6 +233,7 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isNoContent());
 
                 verify(documentStatusService).unpublish(42L);
+                verify(auditLogService).record(AuditAction.DOCUMENT_UNPUBLISH, "DOCUMENT", 42L, null);
         }
 
         @Test
@@ -236,6 +243,8 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isNoContent());
 
                 verify(documentUploadService).deleteVersion(42L, 7L);
+                verify(auditLogService).record(AuditAction.DOCUMENT_DELETE_VERSION, "DOCUMENT", 42L,
+                                "Xoá phiên bản id=7");
         }
 
         // Benh nhan khong duoc go tai lieu: SecurityConfig chan o tang quyen, service
@@ -266,6 +275,8 @@ class DocumentUploadControllerTest {
                                 .content("{\"title\":\"Trào ngược dạ dày\",\"sourceUrl\":\"https://moh.gov.vn/gerd\"}"))
                                 .andExpect(status().isNoContent());
                 verify(documentStatusService).updateInfo(42L, "Trào ngược dạ dày", "https://moh.gov.vn/gerd");
+                verify(auditLogService).record(AuditAction.DOCUMENT_UPDATE_INFO, "DOCUMENT", 42L,
+                                "Tên: Trào ngược dạ dày | URL: https://moh.gov.vn/gerd");
         }
 
         @Test
@@ -276,6 +287,17 @@ class DocumentUploadControllerTest {
                                 .content("{\"title\":\"x\",\"sourceUrl\":null}"))
                                 .andExpect(status().isForbidden());
                 verify(documentStatusService, never()).updateInfo(any(), any(), any());
+                verify(auditLogService, never()).record(any(), any(), any(), any());
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void deleteDocumentIsAudited() throws Exception {
+                mockMvc.perform(delete("/api/v1/documents/42"))
+                                .andExpect(status().isNoContent());
+
+                verify(documentUploadService).delete(42L);
+                verify(auditLogService).record(AuditAction.DOCUMENT_DELETE, "DOCUMENT", 42L, null);
         }
 
 }

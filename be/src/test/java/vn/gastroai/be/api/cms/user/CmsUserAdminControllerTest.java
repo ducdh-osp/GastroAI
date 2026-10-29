@@ -8,12 +8,17 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.gastroai.be.application.admin.AdminPatientManagementService;
+import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.config.SecurityConfig;
+import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -24,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CmsUserAdminControllerTest {
     @Autowired private MockMvc mockMvc;
     @MockitoBean private AdminPatientManagementService service;
+    @MockitoBean private AuditLogService auditLogService;
     @MockitoBean private JwtService jwt;
     @MockitoBean private PatientRepository patients;
     @MockitoBean private RevokedTokenRepository revoked;
@@ -34,6 +40,16 @@ class CmsUserAdminControllerTest {
         mockMvc.perform(post("/api/v1/cms/users/7/lock"))
                 .andExpect(status().isOk());
         verify(service).lock(7L);
+        verify(auditLogService).record(eq(AuditAction.PATIENT_LOCK), eq("PATIENT"), eq(7L), isNull());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminUnlockIsAudited() throws Exception {
+        mockMvc.perform(post("/api/v1/cms/users/7/unlock"))
+                .andExpect(status().isOk());
+        verify(service).unlock(7L);
+        verify(auditLogService).record(eq(AuditAction.PATIENT_UNLOCK), eq("PATIENT"), eq(7L), isNull());
     }
 
     @Test
@@ -41,6 +57,7 @@ class CmsUserAdminControllerTest {
     void doctorCannotListOrLockPatients() throws Exception {
         mockMvc.perform(get("/api/v1/cms/users")).andExpect(status().isForbidden());
         mockMvc.perform(post("/api/v1/cms/users/7/lock")).andExpect(status().isForbidden());
+        verify(auditLogService, never()).record(any(), any(), any(), any());
     }
 
     @Test
