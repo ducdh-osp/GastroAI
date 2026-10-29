@@ -1,24 +1,33 @@
 package vn.gastroai.be.api.cms.audit;
 
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import vn.gastroai.be.application.audit.AuditAnomalyRuleService;
 import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.domain.audit.AuditAction;
 
 import java.time.LocalDate;
+import java.util.List;
 
-/** UC0053 - chi ADMIN xem va loc nhat ky hoat dong. */
+/** UC0053, UC0063 - chi ADMIN xem/loc nhat ky va dat nguong canh bao bat thuong. */
 @RestController
 @RequestMapping("/api/v1/cms/audit-logs")
 public class AuditLogAdminController {
 
     private final AuditLogService auditLogService;
+    private final AuditAnomalyRuleService ruleService;
 
-    public AuditLogAdminController(AuditLogService auditLogService) {
+    public AuditLogAdminController(AuditLogService auditLogService,
+                                   AuditAnomalyRuleService ruleService) {
         this.auditLogService = auditLogService;
+        this.ruleService = ruleService;
     }
 
     @GetMapping
@@ -34,5 +43,17 @@ public class AuditLogAdminController {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
         return auditLogService.search(from, to, action, targetType, q, page, size);
+    }
+
+    @GetMapping("/rules")
+    public List<AuditAnomalyRuleResponse> listRules() {
+        return ruleService.list();
+    }
+
+    @PutMapping("/rules/{code}")
+    public AuditAnomalyRuleResponse updateRule(
+            @PathVariable String code,
+            @Valid @RequestBody UpdateAuditAnomalyRuleRequest request) {
+        return ruleService.update(code, request);
     }
 }

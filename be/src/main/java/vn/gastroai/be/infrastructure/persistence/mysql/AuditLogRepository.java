@@ -9,6 +9,7 @@ import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.domain.audit.AuditLog;
 
 import java.time.Instant;
+import java.util.Collection;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
@@ -30,4 +31,38 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
                           @Param("keyword") String keyword,
                           @Param("rawKeyword") String rawKeyword,
                           Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(a) FROM AuditLog a
+            WHERE a.actorType = :actorType
+              AND a.actorId = :actorId
+              AND a.action IN :actions
+              AND a.occurredAt >= :since
+            """)
+    long countActions(@Param("actorType") String actorType,
+                      @Param("actorId") Long actorId,
+                      @Param("actions") Collection<AuditAction> actions,
+                      @Param("since") Instant since);
+
+    @Query("""
+            SELECT COUNT(DISTINCT a.targetId) FROM AuditLog a
+            WHERE a.actorType = :actorType
+              AND a.actorId = :actorId
+              AND a.action IN :actions
+              AND a.occurredAt >= :since
+            """)
+    long countDistinctTargets(@Param("actorType") String actorType,
+                              @Param("actorId") Long actorId,
+                              @Param("actions") Collection<AuditAction> actions,
+                              @Param("since") Instant since);
+
+    @Query("""
+            SELECT COUNT(DISTINCT a.ipAddress) FROM AuditLog a
+            WHERE a.actorType = :actorType
+              AND a.actorId = :actorId
+              AND a.occurredAt >= :since
+            """)
+    long countDistinctIps(@Param("actorType") String actorType,
+                          @Param("actorId") Long actorId,
+                          @Param("since") Instant since);
 }

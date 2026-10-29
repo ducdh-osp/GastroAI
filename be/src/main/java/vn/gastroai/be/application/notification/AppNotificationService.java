@@ -94,7 +94,20 @@ public class AppNotificationService {
                 NotificationRecipientType.PATIENT, patientId, response));
         return response;
     }
-
+    @Transactional("postgresTransactionManager")
+    public Optional<NotificationResponse> createAuditAnomalyAlert(String title, String message, String dedupeKey) {
+        if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
+            return Optional.empty();
+        }
+        AppNotification notification = new AppNotification(
+                NotificationRecipientType.ADMIN, null, NotificationType.SYSTEM,
+                title, message, "AUDIT_ANOMALY", null, "/cms/audit-logs", dedupeKey);
+        notification = notificationRepository.save(notification);
+        NotificationResponse response = toResponse(notification, null);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                NotificationRecipientType.ADMIN, null, response));
+        return Optional.of(response);
+    }
     /** Notification triage là broadcast cho CMS Admin và được lưu cùng transaction với alert. */
     @Transactional("postgresTransactionManager")
     public Optional<NotificationResponse> recordTriageAlert(TriageAlertEvent event) {

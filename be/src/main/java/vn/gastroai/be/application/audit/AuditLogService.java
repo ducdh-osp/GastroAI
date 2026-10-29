@@ -19,7 +19,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.api.cms.audit.AuditLogPageResponse;
 import vn.gastroai.be.api.cms.audit.AuditLogResponse;
-
 import java.time.LocalDate;
 import java.time.ZoneId;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
@@ -39,15 +38,18 @@ public class AuditLogService {
     private final AdminRepository adminRepository;
     private final DoctorRepository doctorRepository;
     private final ClientRequestInfoResolver requestInfoResolver;
+    private final AuditAnomalyDetector anomalyDetector;
 
     public AuditLogService(AuditLogRepository auditLogRepository,
             AdminRepository adminRepository,
             DoctorRepository doctorRepository,
-            ClientRequestInfoResolver requestInfoResolver) {
+            ClientRequestInfoResolver requestInfoResolver,
+            AuditAnomalyDetector anomalyDetector) {
         this.auditLogRepository = auditLogRepository;
         this.adminRepository = adminRepository;
         this.doctorRepository = doctorRepository;
         this.requestInfoResolver = requestInfoResolver;
+        this.anomalyDetector = anomalyDetector;
     }
 
     public void record(AuditAction action, String targetType, Object targetId, String detail) {
@@ -76,10 +78,11 @@ public class AuditLogService {
                 }
             }
 
-            auditLogRepository.save(new AuditLog(
+                    AuditLog saved = auditLogRepository.save(new AuditLog(
                     Instant.now(), actorType, actorId, actorEmail, action,
                     targetType, targetId == null ? null : targetId.toString(),
                     truncate(detail), ip, truncate(userAgent)));
+            anomalyDetector.check(saved);
         } catch (RuntimeException exception) {
             // Khong de loi ghi audit lam hong thao tac chinh da thanh cong.
             log.error("Ghi audit log that bai: action={}, target={}:{}", action, targetType, targetId, exception);
