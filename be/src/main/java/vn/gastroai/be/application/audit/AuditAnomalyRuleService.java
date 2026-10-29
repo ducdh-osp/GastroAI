@@ -18,14 +18,11 @@ import java.util.List;
 public class AuditAnomalyRuleService {
 
     private final AuditAnomalyRuleRepository ruleRepository;
-    private final AdminRepository adminRepository;
     private final AuditLogService auditLogService;
 
     public AuditAnomalyRuleService(AuditAnomalyRuleRepository ruleRepository,
-                                   AdminRepository adminRepository,
                                    AuditLogService auditLogService) {
         this.ruleRepository = ruleRepository;
-        this.adminRepository = adminRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -41,7 +38,8 @@ public class AuditAnomalyRuleService {
 
         String before = describe(rule.getThreshold(), rule.getWindowMinutes(), rule.isEnabled());
 
-        rule.update(request.threshold(), request.windowMinutes(), request.enabled(), currentAdminEmail());
+        rule.update(request.threshold(), request.windowMinutes(), request.enabled(),
+                  auditLogService.currentActorEmail());
         AuditAnomalyRule saved = ruleRepository.save(rule);
 
         String after = describe(saved.getThreshold(), saved.getWindowMinutes(), saved.isEnabled());
@@ -53,18 +51,5 @@ public class AuditAnomalyRuleService {
 
     private String describe(int threshold, int windowMinutes, boolean enabled) {
         return "ngưỡng " + threshold + " / " + windowMinutes + " phút, " + (enabled ? "bật" : "tắt");
-    }
-
-    private String currentAdminEmail() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            return null;
-        }
-        try {
-            Long adminId = Long.valueOf(authentication.getName());
-            return adminRepository.findById(adminId).map(admin -> admin.getEmail()).orElse(null);
-        } catch (NumberFormatException exception) {
-            return null;
-        }
     }
 }

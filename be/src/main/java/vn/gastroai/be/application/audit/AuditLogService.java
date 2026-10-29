@@ -78,7 +78,7 @@ public class AuditLogService {
                 }
             }
 
-                    AuditLog saved = auditLogRepository.save(new AuditLog(
+            AuditLog saved = auditLogRepository.save(new AuditLog(
                     Instant.now(), actorType, actorId, actorEmail, action,
                     targetType, targetId == null ? null : targetId.toString(),
                     truncate(detail), ip, truncate(userAgent)));
@@ -87,6 +87,23 @@ public class AuditLogService {
             // Khong de loi ghi audit lam hong thao tac chinh da thanh cong.
             log.error("Ghi audit log that bai: action={}, target={}:{}", action, targetType, targetId, exception);
         }
+    }
+
+    public String currentActorEmail() {
+        HttpServletRequest request = currentRequest();
+        if (request == null) {
+            return null;
+        }
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return null;
+        }
+        Object id = session.getAttribute(CmsAuthService.AUTH_USER_ID);
+        Object type = session.getAttribute(CmsAuthService.AUTH_ACCOUNT_TYPE);
+        if (id == null || type == null) {
+            return null;
+        }
+        return findEmail(type.toString(), Long.valueOf(id.toString()));
     }
 
     @Transactional(value = "mysqlTransactionManager", readOnly = true)
