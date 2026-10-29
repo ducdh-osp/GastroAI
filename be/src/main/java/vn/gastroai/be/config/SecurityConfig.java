@@ -110,6 +110,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/account/**")
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/audit-logs/**")
+                        .hasRole("ADMIN")
                         // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng
                         // của từng nhóm API ở trên.
                         .anyRequest().authenticated())

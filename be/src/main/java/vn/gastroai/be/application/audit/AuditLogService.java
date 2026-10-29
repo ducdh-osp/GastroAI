@@ -13,6 +13,15 @@ import vn.gastroai.be.application.auth.CmsAuthService;
 import vn.gastroai.be.domain.admin.CmsAccountType;
 import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.domain.audit.AuditLog;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Transactional;
+import vn.gastroai.be.api.cms.audit.AuditLogPageResponse;
+import vn.gastroai.be.api.cms.audit.AuditLogResponse;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 import vn.gastroai.be.infrastructure.persistence.mysql.AuditLogRepository;
 import vn.gastroai.be.infrastructure.persistence.mysql.DoctorRepository;
@@ -25,16 +34,16 @@ public class AuditLogService {
 
     private static final Logger log = LoggerFactory.getLogger(AuditLogService.class);
     private static final int MAX_DETAIL = 1000;
-
+    private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
     private final AuditLogRepository auditLogRepository;
     private final AdminRepository adminRepository;
     private final DoctorRepository doctorRepository;
     private final ClientRequestInfoResolver requestInfoResolver;
 
     public AuditLogService(AuditLogRepository auditLogRepository,
-                           AdminRepository adminRepository,
-                           DoctorRepository doctorRepository,
-                           ClientRequestInfoResolver requestInfoResolver) {
+            AdminRepository adminRepository,
+            DoctorRepository doctorRepository,
+            ClientRequestInfoResolver requestInfoResolver) {
         this.auditLogRepository = auditLogRepository;
         this.adminRepository = adminRepository;
         this.doctorRepository = doctorRepository;
@@ -75,6 +84,33 @@ public class AuditLogService {
             // Khong de loi ghi audit lam hong thao tac chinh da thanh cong.
             log.error("Ghi audit log that bai: action={}, target={}:{}", action, targetType, targetId, exception);
         }
+    }
+
+    @Transactional(value = "mysqlTransactionManager", readOnly = true)
+    public AuditLogPageResponse search(LocalDate fromDate, LocalDate toDate, AuditAction action,
+            String targetType, String keyword, int page, int size) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException("Từ ngày phải trước hoặc bằng Đến ngày");
+        }
+
+        Instant fromTime = fromDate == null ? null : fromDate.atStartOfDay(VIETNAM).toInstant();
+        Instant toTime = toDate == null ? null : toDate.plusDays(1).atStartOfDay(VIETNAM).toInstant();
+
+        String rawKeyword = normalize(keyword);
+        String likeKeyword = rawKeyword == null ? null : "%" + rawKeyword.toLowerCase() + "%";
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "occurredAt"));
+        Page<AuditLogResponse> result = auditLogRepository
+                .search(fromTime, toTime, action, normalize(targetType), likeKeyword, rawKeyword, pageable)
+                .map(AuditLogResponse::from);
+        return AuditLogPageResponse.from(result);
+    }
+
+    private String normalize(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private String findEmail(String actorType, Long actorId) {
