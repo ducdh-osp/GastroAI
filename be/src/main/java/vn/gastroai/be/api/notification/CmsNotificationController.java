@@ -14,9 +14,39 @@ import vn.gastroai.be.domain.notification.NotificationType;
 public class CmsNotificationController {
 
     private final AppNotificationService service;
+    private final vn.gastroai.be.application.notification.BroadcastNotificationService broadcastService;
 
-    public CmsNotificationController(AppNotificationService service) {
+    public CmsNotificationController(AppNotificationService service,
+                                     vn.gastroai.be.application.notification.BroadcastNotificationService broadcastService) {
         this.service = service;
+        this.broadcastService = broadcastService;
+    }
+
+    @PostMapping("/broadcast")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BroadcastAnnouncementResponse sendBroadcast(
+            @jakarta.validation.Valid @RequestBody BroadcastAnnouncementRequest request,
+            Authentication authentication) {
+        Long adminId = cmsId(authentication);
+        return broadcastService.sendBroadcast(adminId, request);
+    }
+
+    @GetMapping("/broadcast")
+    public org.springframework.data.domain.Page<BroadcastAnnouncementResponse> listBroadcasts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        validateCms(authentication);
+        validatePage(page, size);
+        return broadcastService.listBroadcasts(PageRequest.of(page, size));
+    }
+
+    @GetMapping("/broadcast/{id}")
+    public BroadcastAnnouncementResponse getBroadcast(
+            @PathVariable Long id,
+            Authentication authentication) {
+        validateCms(authentication);
+        return broadcastService.getBroadcast(id);
     }
 
     @GetMapping

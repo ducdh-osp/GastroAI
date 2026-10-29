@@ -23,13 +23,23 @@ public class MedicationDueNotificationService {
     private final MedicationReminderRepository reminderRepository;
     private final MedicationConfirmationRepository confirmationRepository;
     private final AppNotificationService notificationService;
+    private final PatientNotificationSettingService settingService;
 
     public MedicationDueNotificationService(MedicationReminderRepository reminderRepository,
                                             MedicationConfirmationRepository confirmationRepository,
                                             AppNotificationService notificationService) {
+        this(reminderRepository, confirmationRepository, notificationService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public MedicationDueNotificationService(MedicationReminderRepository reminderRepository,
+                                            MedicationConfirmationRepository confirmationRepository,
+                                            AppNotificationService notificationService,
+                                            PatientNotificationSettingService settingService) {
         this.reminderRepository = reminderRepository;
         this.confirmationRepository = confirmationRepository;
         this.notificationService = notificationService;
+        this.settingService = settingService;
     }
 
     @Transactional("postgresTransactionManager")
@@ -59,6 +69,9 @@ public class MedicationDueNotificationService {
 
         int created = 0;
         for (MedicationReminder reminder : reminders) {
+            if (settingService != null && !settingService.isMedicationReminderEnabled(reminder.getPatient().getId())) {
+                continue;
+            }
             for (LocalTime scheduledTime : reminder.getTimesOfDay()) {
                 if (scheduledTime.isAfter(currentTime)
                         || confirmedDoses.contains(new DoseKey(reminder.getId(), scheduledTime))) {

@@ -6,6 +6,7 @@ import {
   MedicineBoxOutlined,
   ReloadOutlined,
   RightOutlined,
+  SettingOutlined,
   UndoOutlined,
 } from '@ant-design/icons'
 import { Button, Card, Empty, message, Modal, Pagination, Segmented, Select, Skeleton, Tag, Typography } from 'antd'
@@ -22,6 +23,7 @@ import {
   type NotificationPage,
   type NotificationType,
 } from '../../api/notifications'
+import { NotificationSettingsModal } from '../../components/notification/NotificationSettingsModal'
 import { extractErrorMessage } from '../../lib/errors'
 
 const { Title, Text, Paragraph } = Typography
@@ -54,6 +56,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
   const [type, setType] = useState<NotificationType | undefined>()
   const [loading, setLoading] = useState(true)
   const [workingId, setWorkingId] = useState<number | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const load = useCallback(async (targetPage = page) => {
     setLoading(true)
@@ -192,6 +195,11 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
           <Text type="secondary">Theo dõi lời nhắc và các cập nhật quan trọng từ GastroAI.</Text>
         </div>
         <div className="flex gap-2">
+          {audience === 'patient' && (
+            <Button icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)}>
+              Cài đặt thông báo
+            </Button>
+          )}
           <Button icon={<ReloadOutlined />} onClick={() => void load(page)} loading={loading}>Làm mới</Button>
           <Button icon={<CheckOutlined />} disabled={!data?.unreadCount} onClick={() => void markAllRead()}>
             Đọc tất cả
@@ -288,6 +296,9 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
             description={unreadOnly || type ? 'Không có thông báo phù hợp với bộ lọc' : 'Chưa có thông báo nào'}
           />
         </Card>
+      )}
+      {audience === 'patient' && (
+        <NotificationSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       )}
     </div>
   )
