@@ -77,14 +77,25 @@ export default function CmsChangePasswordPage() {
             >
               <Input.Password maxLength={72} autoComplete="current-password" />
             </Form.Item>
-            <Form.Item
+                        <Form.Item
               label="Mật khẩu mới"
               name="newPassword"
+              dependencies={['currentPassword']}
               rules={[
                 { required: true, message: 'Nhập mật khẩu mới' },
                 { min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' },
                 { max: 72, message: 'Mật khẩu tối đa 72 ký tự' },
+                { pattern: /[A-Z]/, message: 'Mật khẩu phải có ít nhất 1 chữ hoa' },
+                { pattern: /[a-z]/, message: 'Mật khẩu phải có ít nhất 1 chữ thường' },
+                { pattern: /[0-9]/, message: 'Mật khẩu phải có ít nhất 1 chữ số' },
+                { pattern: /[^A-Za-z0-9]/, message: 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt' },
                 utf8Rule,
+                ({ getFieldValue }) => ({
+                  validator: (_, value: string) =>
+                    !value || value !== getFieldValue('currentPassword')
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('Mật khẩu mới phải khác mật khẩu hiện tại')),
+                }),
               ]}
             >
               <Input.Password maxLength={72} autoComplete="new-password" />

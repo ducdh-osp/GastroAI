@@ -62,10 +62,10 @@ class CmsAuthServiceChangePasswordTest {
         admin.setFailedLoginAttempts(2);
         when(adminRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(admin));
         when(passwordEncoder.matches("matkhau-cu", "hash-cu")).thenReturn(true);
-        when(passwordEncoder.matches("matkhau-moi", "hash-cu")).thenReturn(false);
-        when(passwordEncoder.encode("matkhau-moi")).thenReturn("hash-moi");
+        when(passwordEncoder.matches("Gastro#Ai2026", "hash-cu")).thenReturn(false);
+        when(passwordEncoder.encode("Gastro#Ai2026")).thenReturn("hash-moi");
 
-        service.changePassword(CmsAccountType.ADMIN, 1L, "matkhau-cu", "matkhau-moi", request);
+        service.changePassword(CmsAccountType.ADMIN, 1L, "matkhau-cu", "Gastro#Ai2026", request);
 
         assertEquals("hash-moi", admin.getPasswordHash());
         assertEquals(0, admin.getFailedLoginAttempts());
@@ -79,7 +79,7 @@ class CmsAuthServiceChangePasswordTest {
         when(passwordEncoder.matches("sai", "hash-cu")).thenReturn(false);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> service.changePassword(CmsAccountType.ADMIN, 1L, "sai", "matkhau-moi", request));
+                () -> service.changePassword(CmsAccountType.ADMIN, 1L, "sai", "Gastro#Ai2026", request));
 
         assertEquals("Mật khẩu hiện tại không đúng", ex.getMessage());
         assertEquals(1, admin.getFailedLoginAttempts());
@@ -96,7 +96,7 @@ class CmsAuthServiceChangePasswordTest {
         when(passwordEncoder.matches("sai", "hash-cu")).thenReturn(false);
 
         assertThrows(AccountLockedException.class,
-                () -> service.changePassword(CmsAccountType.ADMIN, 1L, "sai", "matkhau-moi", request));
+                () -> service.changePassword(CmsAccountType.ADMIN, 1L, "sai", "Gastro#Ai2026", request));
 
         assertEquals(5, admin.getFailedLoginAttempts());
         assertNotNull(admin.getLockedUntil());
@@ -109,7 +109,7 @@ class CmsAuthServiceChangePasswordTest {
         when(adminRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(admin));
 
         assertThrows(AccountLockedException.class,
-                () -> service.changePassword(CmsAccountType.ADMIN, 1L, "matkhau-cu", "matkhau-moi", request));
+                () -> service.changePassword(CmsAccountType.ADMIN, 1L, "matkhau-cu", "Gastro#Ai2026", request));
 
         verify(passwordEncoder, never()).matches(anyString(), anyString());
         verify(passwordEncoder, never()).encode(anyString());
@@ -136,13 +136,31 @@ class CmsAuthServiceChangePasswordTest {
         doctor.setPasswordHash("hash-cu");
         when(doctorRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(doctor));
         when(passwordEncoder.matches("matkhau-cu", "hash-cu")).thenReturn(true);
-        when(passwordEncoder.matches("matkhau-moi", "hash-cu")).thenReturn(false);
-        when(passwordEncoder.encode("matkhau-moi")).thenReturn("hash-moi");
+        when(passwordEncoder.matches("Gastro#Ai2026", "hash-cu")).thenReturn(false);
+        when(passwordEncoder.encode("Gastro#Ai2026")).thenReturn("hash-moi");
 
-        service.changePassword(CmsAccountType.DOCTOR, 2L, "matkhau-cu", "matkhau-moi", request);
+        service.changePassword(CmsAccountType.DOCTOR, 2L, "matkhau-cu", "Gastro#Ai2026", request);
 
         assertEquals("hash-moi", doctor.getPasswordHash());
         assertEquals(1, doctor.getSessionVersion());
         verify(adminRepository, never()).findByIdForUpdate(any());
+    }
+    
+    @Test
+    void weakNewPasswordIsRejectedWithoutChangingAnything() {
+        Admin admin = admin();
+        admin.setFailedLoginAttempts(2);
+        when(adminRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("matkhau-cu", "hash-cu")).thenReturn(true);
+        when(passwordEncoder.matches("yeu12345", "hash-cu")).thenReturn(false);
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> service.changePassword(CmsAccountType.ADMIN, 1L, "matkhau-cu", "yeu12345", request));
+
+        assertEquals("Mật khẩu mới phải có ít nhất 1 chữ hoa", ex.getMessage());
+        assertEquals("hash-cu", admin.getPasswordHash());
+        assertEquals(2, admin.getFailedLoginAttempts());
+        assertEquals(0, admin.getSessionVersion());
+        verify(passwordEncoder, never()).encode(anyString());
     }
 }
