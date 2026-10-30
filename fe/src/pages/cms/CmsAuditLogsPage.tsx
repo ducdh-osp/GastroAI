@@ -62,6 +62,10 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   ANOMALY_DETECTED: 'Cảnh báo bất thường',
   ANOMALY_RULE_UPDATE: 'Sửa quy tắc cảnh báo',
   AUDIT_LOG_EXPORT: 'Xuất nhật ký',
+  RUNTIME_CONFIG_UPDATE: 'Đổi cấu hình RAG/Triage',
+  TRIAGE_KEYWORD_CREATE: 'Thêm từ khoá cấp cứu',
+  TRIAGE_KEYWORD_UPDATE: 'Sửa từ khoá cấp cứu',
+  TRIAGE_KEYWORD_DELETE: 'Xoá từ khoá cấp cứu',
 }
 
 const ACTION_COLOR: Partial<Record<AuditAction, string>> = {
@@ -76,6 +80,8 @@ const ACTION_COLOR: Partial<Record<AuditAction, string>> = {
   ANOMALY_DETECTED: 'volcano',
   ANOMALY_RULE_UPDATE: 'cyan',
   AUDIT_LOG_EXPORT: 'geekblue',
+  RUNTIME_CONFIG_UPDATE: 'purple',
+  TRIAGE_KEYWORD_DELETE: 'red'
 }
 
 const TARGET_LABEL: Record<AuditTargetType, string> = {
@@ -85,6 +91,8 @@ const TARGET_LABEL: Record<AuditTargetType, string> = {
   DOCTOR: 'Tài khoản bác sĩ',
   SYSTEM: 'Hệ thống',
   RULE: 'Quy tắc cảnh báo',
+  CONFIG: 'Cấu hình hệ thống',
+  TRIAGE_KEYWORD: 'Từ khoá cấp cứu',
 }
 
 const ACTOR_LABEL: Record<string, string> = {

@@ -122,6 +122,10 @@ public class AuditLogExportService {
             case ANOMALY_DETECTED -> "Cảnh báo bất thường";
             case ANOMALY_RULE_UPDATE -> "Sửa quy tắc cảnh báo";
             case AUDIT_LOG_EXPORT -> "Xuất nhật ký";
+            case RUNTIME_CONFIG_UPDATE -> "Đổi cấu hình RAG/Triage";
+            case TRIAGE_KEYWORD_CREATE -> "Thêm từ khoá cấp cứu";
+            case TRIAGE_KEYWORD_UPDATE -> "Sửa từ khoá cấp cứu";
+            case TRIAGE_KEYWORD_DELETE -> "Xoá từ khoá cấp cứu";
         };
     }
 

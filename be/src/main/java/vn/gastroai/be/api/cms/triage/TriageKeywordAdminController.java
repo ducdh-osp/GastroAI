@@ -9,10 +9,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.triage.TriageKeywordGroupResponse;
 import vn.gastroai.be.application.triage.TriageKeywordRequest;
 import vn.gastroai.be.application.triage.TriageKeywordResponse;
 import vn.gastroai.be.application.triage.TriageKeywordService;
+import vn.gastroai.be.domain.audit.AuditAction;
 
 import java.util.List;
 
@@ -21,10 +23,15 @@ import java.util.List;
 @RequestMapping("/api/v1/cms/triage-keywords")
 public class TriageKeywordAdminController {
 
-    private final TriageKeywordService triageKeywordService;
+    private static final String TARGET = "TRIAGE_KEYWORD";
 
-    public TriageKeywordAdminController(TriageKeywordService triageKeywordService) {
+    private final TriageKeywordService triageKeywordService;
+    private final AuditLogService auditLogService;
+
+    public TriageKeywordAdminController(TriageKeywordService triageKeywordService,
+                                        AuditLogService auditLogService) {
         this.triageKeywordService = triageKeywordService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping
@@ -39,17 +46,40 @@ public class TriageKeywordAdminController {
 
     @PostMapping
     public ResponseEntity<TriageKeywordResponse> create(@RequestBody TriageKeywordRequest request) {
-        return ResponseEntity.ok(triageKeywordService.create(request));
+        TriageKeywordResponse created = triageKeywordService.create(request);
+        auditLogService.record(AuditAction.TRIAGE_KEYWORD_CREATE, TARGET, created.id(), describe(created));
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public TriageKeywordResponse update(@PathVariable Long id, @RequestBody TriageKeywordRequest request) {
-        return triageKeywordService.update(id, request);
+        TriageKeywordResponse before = findCurrent(id);
+        TriageKeywordResponse updated = triageKeywordService.update(id, request);
+        String detail = before == null
+                ? describe(updated)
+                : describe(before) + " → " + describe(updated);
+        auditLogService.record(AuditAction.TRIAGE_KEYWORD_UPDATE, TARGET, id, detail);
+        return updated;
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
+        TriageKeywordResponse before = findCurrent(id);
         triageKeywordService.delete(id);
+        auditLogService.record(AuditAction.TRIAGE_KEYWORD_DELETE, TARGET, id,
+                before == null ? null : describe(before));
         return ResponseEntity.noContent().build();
+    }
+
+    private TriageKeywordResponse findCurrent(Long id) {
+        return triageKeywordService.list().stream()
+                .filter(keyword -> keyword.id().equals(id))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static String describe(TriageKeywordResponse keyword) {
+        String group = keyword.groupLabel() != null ? keyword.groupLabel() : keyword.groupCode();
+        return "[" + group + "] " + keyword.keyword();
     }
 }
