@@ -1,41 +1,45 @@
 package vn.gastroai.be.application.auth;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import vn.gastroai.be.application.notification.EmailOutboxService;
+import vn.gastroai.be.domain.auth.Patient;
+import vn.gastroai.be.domain.notification.EmailTemplateCode;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 class EmailVerificationServiceTest {
-    private final JavaMailSender sender = mock(JavaMailSender.class);
-    private final EmailVerificationService service = new EmailVerificationService(sender,
-            "no-reply@gastroai.vn", "http://localhost:5173/verify-email",
-            "http://localhost:5173/reset-password");
+    private final EmailOutboxService outbox = mock(EmailOutboxService.class);
+    private final EmailVerificationService service = new EmailVerificationService(outbox);
 
     @Test
-    void verificationMailContainsOneTimeTokenAndVerificationLink() {
-        service.send("user@example.com", "verify-token");
+    void verificationMailIsQueuedWithPatientAndOneTimeToken() {
+        Patient patient = new Patient();
+        patient.setId(7L);
+        patient.setEmail("user@example.com");
 
-        var message = forClass(SimpleMailMessage.class);
-        verify(sender).send(message.capture());
-        assertEquals("no-reply@gastroai.vn", message.getValue().getFrom());
-        assertEquals("user@example.com", message.getValue().getTo()[0]);
-        assertEquals("Xac thuc tai khoan GastroAI", message.getValue().getSubject());
-        assertEquals("Xac thuc tai khoan: http://localhost:5173/verify-email?token=verify-token"
-                + "\nLien ket co hieu luc 24 gio.", message.getValue().getText());
+        service.send(patient, "verify-token");
+
+        verify(outbox).enqueueAccountVerification(patient, "verify-token");
     }
 
     @Test
-    void passwordResetMailUsesResetRouteAndThirtyMinuteTtl() {
-        service.sendPasswordReset("user@example.com", "reset-token");
+    void passwordResetMailIsQueuedWithPatientAndOneTimeToken() {
+        Patient patient = new Patient();
+        patient.setId(7L);
+        patient.setEmail("user@example.com");
 
-        var message = forClass(SimpleMailMessage.class);
-        verify(sender).send(message.capture());
-        assertEquals("Dat lai mat khau GastroAI", message.getValue().getSubject());
-        assertEquals("Dat lai mat khau: http://localhost:5173/reset-password?token=reset-token"
-                + "\nLien ket co hieu luc 30 phut.", message.getValue().getText());
+        service.sendPasswordReset(patient, "reset-token");
+
+        verify(outbox).enqueuePasswordReset(patient, "reset-token");
+    }
+
+    @Test
+    void cancellationDelegatesToOutbox() {
+        service.cancelVerification(7L);
+        service.cancelPasswordReset(7L);
+
+        verify(outbox).cancelPending(7L, EmailTemplateCode.ACCOUNT_VERIFICATION);
+        verify(outbox).cancelPending(7L, EmailTemplateCode.PASSWORD_RESET);
     }
 }

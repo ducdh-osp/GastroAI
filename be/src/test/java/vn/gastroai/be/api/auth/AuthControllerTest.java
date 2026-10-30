@@ -11,12 +11,18 @@ import org.springframework.mock.web.MockHttpSession;
 import vn.gastroai.be.application.auth.AuthService;
 import vn.gastroai.be.application.auth.ClientRequestInfoResolver;
 import vn.gastroai.be.application.auth.CmsAuthService;
+import vn.gastroai.be.application.auth.EmailRequestThrottle;
+import vn.gastroai.be.application.auth.ClientRequestInfo;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
 
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,6 +39,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private ClientRequestInfoResolver requestInfoResolver;
+
+    @MockitoBean
+    private EmailRequestThrottle emailRequestThrottle;
 
     @MockitoBean
     private JwtService jwtService;
@@ -86,6 +95,37 @@ class AuthControllerTest {
                 .contentType("application/json")
                 .content("{\"token\":\"token\",\"newPassword\":\"" + "a".repeat(73) + "\"}"))
                 .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    void forgotPasswordCallsServiceWhenThrottleAllowsRequest() throws Exception {
+        when(requestInfoResolver.resolve(any())).thenReturn(
+                new ClientRequestInfo("203.0.113.10", "test", "test"));
+        when(emailRequestThrottle.allow(EmailRequestThrottle.Action.PASSWORD_RESET,
+                "user@example.com", "203.0.113.10")).thenReturn(true);
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType("application/json")
+                        .content("{\"email\":\"user@example.com\"}"))
+                .andExpect(status().isOk());
+
+        verify(authService).requestPasswordReset("user@example.com");
+    }
+
+    @Test
+    void forgotPasswordKeepsGenericSuccessWhenThrottleBlocksRequest() throws Exception {
+        when(requestInfoResolver.resolve(any())).thenReturn(
+                new ClientRequestInfo("203.0.113.10", "test", "test"));
+        when(emailRequestThrottle.allow(EmailRequestThrottle.Action.PASSWORD_RESET,
+                "user@example.com", "203.0.113.10")).thenReturn(false);
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType("application/json")
+                        .content("{\"email\":\"user@example.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").exists());
 
         verifyNoInteractions(authService);
     }

@@ -90,17 +90,39 @@ Nếu máy đã có Postgres/MySQL chạy port khác 5432/3306 (vd trùng port v
 
 ### Chạy app
 
-#### MailHog/Mailpit cho luồng đăng ký
+#### Email xác thực, đặt lại mật khẩu và nhắc thuốc offline
 
-Đăng ký và quên mật khẩu gửi email xác thực qua SMTP. Khi chạy local, backend mặc định dùng
+Email được ghi vào bảng `email_outbox` trước, sau đó worker gửi bất đồng bộ qua SMTP. Vì vậy lỗi
+SMTP tạm thời không làm rollback đăng ký; worker tự retry sau 1, 5 và 30 phút. Payload outbox chứa
+token một lần được mã hóa AES-GCM bằng `EMAIL_PAYLOAD_ENCRYPTION_KEY`.
+
+Khi chạy local, backend mặc định dùng
 MailHog/Mailpit tại `localhost:1025` (không cần tài khoản hoặc TLS), nên cần bật MailHog/Mailpit
 trước khi thử các luồng này. Mở giao diện MailHog mặc định tại `http://localhost:8025` để lấy link
 xác thực hoặc đặt lại mật khẩu.
 
 Nếu dùng SMTP khác, đặt `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`,
-`SMTP_AUTH` và `SMTP_STARTTLS`. Timeout mặc định là 3 giây kết nối, 5 giây đọc/ghi; có thể đổi
-qua `SMTP_CONNECTION_TIMEOUT`, `SMTP_TIMEOUT`, `SMTP_WRITE_TIMEOUT` để request đăng ký không bị
-treo lâu khi SMTP chưa chạy.
+`SMTP_AUTH`, `SMTP_STARTTLS` và `SMTP_SSL`. Production bắt buộc đặt thêm một secret riêng tối thiểu
+32 ký tự trong `EMAIL_PAYLOAD_ENCRYPTION_KEY`; thay key khi còn email `PENDING` sẽ làm các payload
+đó không thể giải mã.
+
+Ví dụ dùng Resend SMTP qua STARTTLS:
+
+```text
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_USERNAME=resend
+SMTP_PASSWORD=<RESEND_API_KEY>
+SMTP_AUTH=true
+SMTP_STARTTLS=true
+SMTP_SSL=false
+MAIL_FROM=no-reply@<domain-da-xac-minh>
+EMAIL_PAYLOAD_ENCRYPTION_KEY=<secret-ngau-nhien-it-nhat-32-ky-tu>
+```
+
+Mặc định email nhắc thuốc chờ 3 phút rồi kiểm tra lại: lịch còn bật, liều chưa xác nhận và bệnh
+nhân không còn WebSocket online. Nội dung email này là thông báo chung, không chứa tên/liều thuốc.
+Admin chỉnh ba mẫu email tại `/cms/email-templates`; thay đổi áp dụng cho email tiếp theo.
 
 ```bash
 # Nếu Postgres/MySQL máy m không ở cổng mặc định (vd bị app khác chiếm cổng):

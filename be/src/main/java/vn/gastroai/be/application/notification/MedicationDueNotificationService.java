@@ -23,13 +23,16 @@ public class MedicationDueNotificationService {
     private final MedicationReminderRepository reminderRepository;
     private final MedicationConfirmationRepository confirmationRepository;
     private final AppNotificationService notificationService;
+    private final EmailOutboxService emailOutboxService;
 
     public MedicationDueNotificationService(MedicationReminderRepository reminderRepository,
                                             MedicationConfirmationRepository confirmationRepository,
-                                            AppNotificationService notificationService) {
+                                            AppNotificationService notificationService,
+                                            EmailOutboxService emailOutboxService) {
         this.reminderRepository = reminderRepository;
         this.confirmationRepository = confirmationRepository;
         this.notificationService = notificationService;
+        this.emailOutboxService = emailOutboxService;
     }
 
     @Transactional("postgresTransactionManager")
@@ -68,6 +71,9 @@ public class MedicationDueNotificationService {
                         "Đến giờ uống thuốc", message, dedupeKey).isPresent()) {
                     created++;
                 }
+                // Outbox co dedupe rieng. Worker doi grace period, sau do kiem tra lai online
+                // va trang thai xac nhan truoc khi gui email chung chung (khong lo ten/lieu thuoc).
+                emailOutboxService.enqueueMedicationReminder(reminder, date, scheduledTime);
             }
         }
         return created;

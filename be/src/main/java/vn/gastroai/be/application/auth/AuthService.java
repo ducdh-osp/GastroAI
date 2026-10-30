@@ -88,8 +88,8 @@ public class AuthService {
         patient.setEmailVerified(false);
         patient.setVerificationTokenHash(hash(rawToken));
         patient.setVerificationTokenExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
-        patients.saveAndFlush(patient);
-        mail.send(normalizedEmail, rawToken);
+        patient = patients.saveAndFlush(patient);
+        mail.send(patient, rawToken);
     }
 
     /** Xác thực email từ link trong mail. Token dùng 1 lần — xoá hash ngay sau khi verify. */
@@ -103,6 +103,7 @@ public class AuthService {
         patient.setEmailVerified(true);
         patient.setVerificationTokenHash(null);
         patient.setVerificationTokenExpiresAt(null);
+        mail.cancelVerification(patient.getId());
     }
 
     /**
@@ -123,7 +124,7 @@ public class AuthService {
         String rawToken = UUID.randomUUID() + UUID.randomUUID().toString();
         patient.setVerificationTokenHash(hash(rawToken));
         patient.setVerificationTokenExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
-        mail.send(normalizedEmail, rawToken);
+        mail.send(patient, rawToken);
     }
 
     /**
@@ -141,7 +142,7 @@ public class AuthService {
         String rawToken = UUID.randomUUID() + UUID.randomUUID().toString();
         patient.setPasswordResetTokenHash(hash(rawToken));
         patient.setPasswordResetTokenExpiresAt(Instant.now().plus(30, ChronoUnit.MINUTES));
-        mail.sendPasswordReset(patient.getEmail(), rawToken);
+        mail.sendPasswordReset(patient, rawToken);
     }
 
     @Transactional("postgresTransactionManager")
@@ -157,6 +158,7 @@ public class AuthService {
         patient.setPasswordHash(encoder.encode(newPassword));
         patient.setPasswordResetTokenHash(null);
         patient.setPasswordResetTokenExpiresAt(null);
+        mail.cancelPasswordReset(patient.getId());
         patient.setFailedLoginAttempts(0);
         patient.setLockedUntil(null);
         // Tăng tokenVersion để mọi JWT đã phát hành trước đó bị vô hiệu ngay lập tức

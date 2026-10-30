@@ -1,50 +1,35 @@
 package vn.gastroai.be.application.auth;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import vn.gastroai.be.application.notification.EmailOutboxService;
+import vn.gastroai.be.domain.auth.Patient;
+import vn.gastroai.be.domain.notification.EmailTemplateCode;
 
 /**
- * Gửi email xác thực tài khoản (UC0001) và đặt lại mật khẩu (UC0004). Chỉ gửi link kèm
- * token thô (chưa hash) — token hash mới là thứ lưu trong DB, xem AuthService.
+ * Facade cho nghiep vu auth. Email duoc ghi vao outbox trong cung transaction voi token,
+ * sau do worker gui bat dong bo va retry neu SMTP tam thoi loi.
  */
 @Service
 public class EmailVerificationService {
-    private final JavaMailSender mail;
-    private final String from;
-    private final String verificationBaseUrl;
-    private final String resetBaseUrl;
+    private final EmailOutboxService outboxService;
 
-    public EmailVerificationService(
-            JavaMailSender mail,
-            @Value("${app.mail.from}") String from,
-            @Value("${app.mail.verification-base-url}") String verificationBaseUrl,
-            @Value("${app.mail.reset-password-base-url:http://localhost:5173/reset-password}") String resetBaseUrl) {
-        this.mail = mail;
-        this.from = from;
-        this.verificationBaseUrl = verificationBaseUrl;
-        this.resetBaseUrl = resetBaseUrl;
+    public EmailVerificationService(EmailOutboxService outboxService) {
+        this.outboxService = outboxService;
     }
 
-    public void send(String to, String token) {
-        sendMessage(to, "Xac thuc tai khoan GastroAI",
-                "Xac thuc tai khoan: " + verificationBaseUrl + "?token=" + token
-                        + "\nLien ket co hieu luc 24 gio.");
+    public void send(Patient patient, String token) {
+        outboxService.enqueueAccountVerification(patient, token);
     }
 
-    public void sendPasswordReset(String to, String token) {
-        sendMessage(to, "Dat lai mat khau GastroAI",
-                "Dat lai mat khau: " + resetBaseUrl + "?token=" + token
-                        + "\nLien ket co hieu luc 30 phut.");
+    public void sendPasswordReset(Patient patient, String token) {
+        outboxService.enqueuePasswordReset(patient, token);
     }
 
-    private void sendMessage(String to, String subject, String text) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from);
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(text);
-        mail.send(message);
+    public void cancelVerification(Long patientId) {
+        outboxService.cancelPending(patientId, EmailTemplateCode.ACCOUNT_VERIFICATION);
+    }
+
+    public void cancelPasswordReset(Long patientId) {
+        outboxService.cancelPending(patientId, EmailTemplateCode.PASSWORD_RESET);
     }
 }
