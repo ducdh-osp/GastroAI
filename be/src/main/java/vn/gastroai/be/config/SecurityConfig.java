@@ -88,6 +88,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-keywords/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/evaluation/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/article-topics/**")
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/articles/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
