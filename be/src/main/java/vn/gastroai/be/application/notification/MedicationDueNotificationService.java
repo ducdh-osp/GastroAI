@@ -24,22 +24,18 @@ public class MedicationDueNotificationService {
     private final MedicationConfirmationRepository confirmationRepository;
     private final AppNotificationService notificationService;
     private final PatientNotificationSettingService settingService;
+    private final EmailOutboxService emailOutboxService;
 
-    public MedicationDueNotificationService(MedicationReminderRepository reminderRepository,
-                                            MedicationConfirmationRepository confirmationRepository,
-                                            AppNotificationService notificationService) {
-        this(reminderRepository, confirmationRepository, notificationService, null);
-    }
-
-    @org.springframework.beans.factory.annotation.Autowired
     public MedicationDueNotificationService(MedicationReminderRepository reminderRepository,
                                             MedicationConfirmationRepository confirmationRepository,
                                             AppNotificationService notificationService,
-                                            PatientNotificationSettingService settingService) {
+                                            PatientNotificationSettingService settingService,
+                                            EmailOutboxService emailOutboxService) {
         this.reminderRepository = reminderRepository;
         this.confirmationRepository = confirmationRepository;
         this.notificationService = notificationService;
         this.settingService = settingService;
+        this.emailOutboxService = emailOutboxService;
     }
 
     @Transactional("postgresTransactionManager")
@@ -69,7 +65,7 @@ public class MedicationDueNotificationService {
 
         int created = 0;
         for (MedicationReminder reminder : reminders) {
-            if (settingService != null && !settingService.isMedicationReminderEnabled(reminder.getPatient().getId())) {
+            if (!settingService.isMedicationReminderEnabled(reminder.getPatient().getId())) {
                 continue;
             }
             for (LocalTime scheduledTime : reminder.getTimesOfDay()) {
@@ -91,6 +87,9 @@ public class MedicationDueNotificationService {
                         "Đến giờ uống thuốc", message, dedupeKey).isPresent()) {
                     created++;
                 }
+                // Outbox co dedupe rieng. Worker doi grace period, sau do kiem tra lai online
+                // va trang thai xac nhan truoc khi gui email chung chung (khong lo ten/lieu thuoc).
+                emailOutboxService.enqueueMedicationReminder(reminder, date, scheduledTime);
             }
         }
         return created;

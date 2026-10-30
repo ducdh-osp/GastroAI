@@ -102,6 +102,8 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/runtime-config/**")
                         .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/email-templates/**")
+                        .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/users/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/rbac/**")

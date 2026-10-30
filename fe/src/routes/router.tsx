@@ -45,6 +45,7 @@ import CmsChangePasswordPage from '../pages/cms/CmsChangePasswordPage'
 import CmsDashboardPage from '../pages/cms/CmsDashboardPage'
 import CmsBroadcastPage from '../pages/cms/CmsBroadcastPage'
 import CmsAuditLogsPage from '../pages/cms/CmsAuditLogsPage'
+import CmsEmailTemplatesPage from '../pages/cms/CmsEmailTemplatesPage'
 
 export const router = createBrowserRouter([
   {
@@ -321,6 +322,14 @@ export const router = createBrowserRouter([
               <CmsProtectedRoute>
                 <CmsRuntimeConfigPage />
               </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/email-templates',
+            element: (
+              <CmsAdminRoute>
+                <CmsEmailTemplatesPage />
+              </CmsAdminRoute>
             ),
           },
           {

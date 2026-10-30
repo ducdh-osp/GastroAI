@@ -62,7 +62,7 @@ class AuthServiceTest {
                         && !patient.isEmailVerified()
                         && patient.getVerificationTokenHash() != null
                         && patient.getVerificationTokenExpiresAt().isAfter(Instant.now())));
-        verify(mail).send(eq("user@example.com"), anyString());
+        verify(mail).send(argThat(patient -> patient.getEmail().equals("user@example.com")), anyString());
     }
 
     @Test
@@ -87,7 +87,7 @@ class AuthServiceTest {
         service.register("user@example.com", password, "User");
 
         verify(encoder).encode(password);
-        verify(mail).send(eq("user@example.com"), anyString());
+        verify(mail).send(any(Patient.class), anyString());
     }
 
     @Test
@@ -148,7 +148,7 @@ class AuthServiceTest {
 
         assertNotNull(patient.getPasswordResetTokenHash());
         assertTrue(patient.getPasswordResetTokenExpiresAt().isAfter(Instant.now()));
-        verify(mail).sendPasswordReset(eq("user@example.com"), anyString());
+        verify(mail).sendPasswordReset(argThat(p -> p.getEmail().equals("user@example.com")), anyString());
     }
 
     @Test

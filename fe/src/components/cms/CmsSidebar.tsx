@@ -11,6 +11,7 @@ import {
   HomeOutlined,
   KeyOutlined,
   LogoutOutlined,
+  MailOutlined,
   MedicineBoxOutlined,
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
@@ -85,6 +86,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { key: 'triage-keywords', label: 'Từ khóa Triage', icon: <TagsOutlined />, to: '/cms/triage-keywords', roles: ['ADMIN', 'DOCTOR'] },
       { key: 'runtime-config', label: 'Cấu hình RAG/Triage', icon: <SettingOutlined />, to: '/cms/runtime-config', adminOnly: true },
+      { key: 'email-templates', label: 'Mẫu email', icon: <MailOutlined />, to: '/cms/email-templates', adminOnly: true },
     ],
   },
 ]

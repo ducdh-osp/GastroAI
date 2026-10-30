@@ -28,8 +28,10 @@ class MedicationDueNotificationServiceTest {
     private final MedicationReminderRepository reminderRepository = mock(MedicationReminderRepository.class);
     private final MedicationConfirmationRepository confirmationRepository = mock(MedicationConfirmationRepository.class);
     private final AppNotificationService notificationService = mock(AppNotificationService.class);
+    private final PatientNotificationSettingService settingService = mock(PatientNotificationSettingService.class);
+    private final EmailOutboxService emailOutboxService = mock(EmailOutboxService.class);
     private final MedicationDueNotificationService service = new MedicationDueNotificationService(
-            reminderRepository, confirmationRepository, notificationService);
+            reminderRepository, confirmationRepository, notificationService, settingService, emailOutboxService);
 
     @Test
     void createsNotificationOnlyForDoseThatIsAlreadyDue() {
@@ -38,6 +40,7 @@ class MedicationDueNotificationServiceTest {
         when(reminderRepository.findActiveForDate(date)).thenReturn(List.of(reminder));
         when(confirmationRepository.findByReminderIdInAndConfirmationDate(List.of(5L), date))
                 .thenReturn(List.of());
+        when(settingService.isMedicationReminderEnabled(7L)).thenReturn(true);
         when(notificationService.createMedicationReminder(any(), any(), any(), any(), any()))
                 .thenReturn(Optional.of(mock(NotificationResponse.class)));
 
@@ -49,6 +52,7 @@ class MedicationDueNotificationServiceTest {
                 eq("Bạn chưa xác nhận liều Omeprazole (20 mg) lúc 08:00 hôm nay. "
                         + "Hãy dùng thuốc theo đúng hướng dẫn và xác nhận sau khi uống."),
                 eq("MEDICATION_REMINDER:5:2026-10-23:08:00"));
+        verify(emailOutboxService).enqueueMedicationReminder(reminder, date, LocalTime.of(8, 0));
     }
 
     @Test
@@ -60,10 +64,27 @@ class MedicationDueNotificationServiceTest {
         when(reminderRepository.findActiveForDate(date)).thenReturn(List.of(reminder));
         when(confirmationRepository.findByReminderIdInAndConfirmationDate(List.of(5L), date))
                 .thenReturn(List.of(confirmation));
+        when(settingService.isMedicationReminderEnabled(7L)).thenReturn(true);
 
         assertEquals(0, service.notifyDueDoses(date, LocalTime.of(12, 0)));
 
         verify(notificationService, never()).createMedicationReminder(any(), any(), any(), any(), any());
+        verify(emailOutboxService, never()).enqueueMedicationReminder(any(), any(), any());
+    }
+
+    @Test
+    void skipsInAppAndEmailReminderWhenPatientDisabledMedicationNotifications() {
+        LocalDate date = LocalDate.of(2026, 10, 23);
+        MedicationReminder reminder = reminder(5L, List.of(LocalTime.of(8, 0)));
+        when(reminderRepository.findActiveForDate(date)).thenReturn(List.of(reminder));
+        when(confirmationRepository.findByReminderIdInAndConfirmationDate(List.of(5L), date))
+                .thenReturn(List.of());
+        when(settingService.isMedicationReminderEnabled(7L)).thenReturn(false);
+
+        assertEquals(0, service.notifyDueDoses(date, LocalTime.NOON));
+
+        verify(notificationService, never()).createMedicationReminder(any(), any(), any(), any(), any());
+        verify(emailOutboxService, never()).enqueueMedicationReminder(any(), any(), any());
     }
 
     @Test
@@ -74,6 +95,7 @@ class MedicationDueNotificationServiceTest {
         assertEquals(0, service.notifyDueDoses(date, LocalTime.NOON));
 
         verify(confirmationRepository, never()).findByReminderIdInAndConfirmationDate(anyList(), any());
+        verify(emailOutboxService, never()).enqueueMedicationReminder(any(), any(), any());
     }
 
     private MedicationReminder reminder(Long id, List<LocalTime> times) {
