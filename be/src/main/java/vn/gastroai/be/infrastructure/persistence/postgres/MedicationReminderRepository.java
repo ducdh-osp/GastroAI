@@ -14,6 +14,7 @@ public interface MedicationReminderRepository extends JpaRepository<MedicationRe
 
     @Query("""
             select distinct r from MedicationReminder r
+            join fetch r.patient
             where r.active = true
               and (r.startDate is null or r.startDate <= :date)
               and (r.endDate is null or r.endDate >= :date)
@@ -22,6 +23,7 @@ public interface MedicationReminderRepository extends JpaRepository<MedicationRe
 
     @Query("""
             select distinct r from MedicationReminder r
+            join fetch r.patient
             where r.patient.id = :patientId
               and r.active = true
               and (r.startDate is null or r.startDate <= :date)
