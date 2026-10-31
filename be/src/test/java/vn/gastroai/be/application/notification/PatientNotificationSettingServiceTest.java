@@ -55,4 +55,26 @@ class PatientNotificationSettingServiceTest {
         assertFalse(service.isMedicationReminderEnabled(10L));
         assertTrue(service.isJournalReminderEnabled(10L));
     }
+
+    @Test
+    void filterSystemBroadcastEnabledPatientIdsHandlesEmptyInput() {
+        assertTrue(service.filterSystemBroadcastEnabledPatientIds(null).isEmpty());
+        assertTrue(service.filterSystemBroadcastEnabledPatientIds(java.util.List.of()).isEmpty());
+    }
+
+    @Test
+    void filterSystemBroadcastEnabledPatientIdsFiltersOptedOutAndKeepsOptedInAndDefault() {
+        // Patient 1: no record in DB -> default true
+        // Patient 2: record with systemBroadcastEnabled = false -> opted out
+        // Patient 3: record with systemBroadcastEnabled = true -> opted in
+        PatientNotificationSetting setting2 = new PatientNotificationSetting(2L, true, true, false, true);
+        PatientNotificationSetting setting3 = new PatientNotificationSetting(3L, true, true, true, true);
+
+        when(repository.findAllById(java.util.List.of(1L, 2L, 3L))).thenReturn(java.util.List.of(setting2, setting3));
+
+        java.util.List<Long> result = service.filterSystemBroadcastEnabledPatientIds(java.util.List.of(1L, 2L, 3L));
+
+        assertEquals(java.util.List.of(1L, 3L), result);
+        verify(repository).findAllById(java.util.List.of(1L, 2L, 3L));
+    }
 }

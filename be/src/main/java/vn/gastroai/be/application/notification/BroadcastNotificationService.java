@@ -53,10 +53,8 @@ public class BroadcastNotificationService {
 
         List<Long> candidateIds = patientRepository.findAllVerifiedIds();
 
-        // Loc nhung benh nhan cho phep nhan thong bao he thong/broadcast
-        List<Long> targetIds = candidateIds.stream()
-                .filter(settingService::isSystemBroadcastEnabled)
-                .toList();
+        // Loc nhung benh nhan cho phep nhan thong bao he thong/broadcast (batch query 1 lan tranh N+1)
+        List<Long> targetIds = settingService.filterSystemBroadcastEnabledPatientIds(candidateIds);
 
         BroadcastAnnouncement announcement = new BroadcastAnnouncement(
                 request.title().trim(),
@@ -68,25 +66,28 @@ public class BroadcastNotificationService {
         announcement = broadcastRepository.save(announcement);
 
         boolean sendRealtime = request.sendWebSocket() == null || request.sendWebSocket();
-        int sentCount = 0;
+        BroadcastAnnouncement finalAnnouncement = announcement;
 
-        for (Long patientId : targetIds) {
-            String dedupeKey = "BROADCAST:" + announcement.getId() + ":" + patientId;
-            AppNotification notification = new AppNotification(
-                    NotificationRecipientType.PATIENT,
-                    patientId,
-                    NotificationType.SYSTEM,
-                    announcement.getTitle(),
-                    announcement.getMessage(),
-                    "BROADCAST",
-                    announcement.getId(),
-                    announcement.getActionUrl(),
-                    dedupeKey
-            );
-            notification = notificationRepository.save(notification);
-            sentCount++;
+        // Batch insert toan bo thong bao thay vi vong lap save tung record
+        List<AppNotification> notificationsToSave = targetIds.stream()
+                .map(patientId -> new AppNotification(
+                        NotificationRecipientType.PATIENT,
+                        patientId,
+                        NotificationType.SYSTEM,
+                        finalAnnouncement.getTitle(),
+                        finalAnnouncement.getMessage(),
+                        "BROADCAST",
+                        finalAnnouncement.getId(),
+                        finalAnnouncement.getActionUrl(),
+                        "BROADCAST:" + finalAnnouncement.getId() + ":" + patientId
+                ))
+                .toList();
 
-            if (sendRealtime) {
+        List<AppNotification> savedNotifications = notificationRepository.saveAll(notificationsToSave);
+        int sentCount = savedNotifications.size();
+
+        if (sendRealtime) {
+            for (AppNotification notification : savedNotifications) {
                 NotificationResponse notifResponse = new NotificationResponse(
                         notification.getId(),
                         notification.getNotificationType().name(),
@@ -100,7 +101,7 @@ public class BroadcastNotificationService {
                 );
                 eventPublisher.publishEvent(new NotificationCreatedEvent(
                         NotificationRecipientType.PATIENT,
-                        patientId,
+                        notification.getRecipientId(),
                         notifResponse
                 ));
             }

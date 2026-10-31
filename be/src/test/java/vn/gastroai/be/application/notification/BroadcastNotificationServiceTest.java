@@ -34,9 +34,7 @@ class BroadcastNotificationServiceTest {
     @Test
     void sendBroadcastCreatesAnnouncementAndDeliversToEligiblePatients() {
         when(patientRepository.findAllVerifiedIds()).thenReturn(List.of(1L, 2L, 3L));
-        when(settingService.isSystemBroadcastEnabled(1L)).thenReturn(true);
-        when(settingService.isSystemBroadcastEnabled(2L)).thenReturn(false); // Opted out
-        when(settingService.isSystemBroadcastEnabled(3L)).thenReturn(true);
+        when(settingService.filterSystemBroadcastEnabledPatientIds(List.of(1L, 2L, 3L))).thenReturn(List.of(1L, 3L));
 
         when(broadcastRepository.save(any(BroadcastAnnouncement.class))).thenAnswer(inv -> {
             BroadcastAnnouncement a = inv.getArgument(0);
@@ -44,10 +42,15 @@ class BroadcastNotificationServiceTest {
             return a;
         });
 
-        when(notificationRepository.save(any(AppNotification.class))).thenAnswer(inv -> {
-            AppNotification n = inv.getArgument(0);
-            n.setId(200L);
-            return n;
+        when(notificationRepository.saveAll(anyIterable())).thenAnswer(inv -> {
+            Iterable<AppNotification> items = inv.getArgument(0);
+            long id = 200L;
+            java.util.List<AppNotification> result = new java.util.ArrayList<>();
+            for (AppNotification n : items) {
+                n.setId(id++);
+                result.add(n);
+            }
+            return result;
         });
 
         BroadcastAnnouncementRequest request = new BroadcastAnnouncementRequest(
@@ -65,7 +68,7 @@ class BroadcastNotificationServiceTest {
         assertEquals("Bao tri he thong", response.title());
         assertEquals(2, response.recipientCount()); // Only patient 1 and 3
 
-        verify(notificationRepository, times(2)).save(any(AppNotification.class));
+        verify(notificationRepository).saveAll(anyList());
         verify(eventPublisher, times(2)).publishEvent(any(NotificationCreatedEvent.class));
     }
 

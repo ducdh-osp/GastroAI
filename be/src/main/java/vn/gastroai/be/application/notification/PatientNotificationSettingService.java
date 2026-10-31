@@ -8,6 +8,9 @@ import vn.gastroai.be.domain.notification.PatientNotificationSetting;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientNotificationSettingRepository;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * UC0073 - Quan ly cai dat thong bao ca nhan cua benh nhan.
@@ -61,6 +64,31 @@ public class PatientNotificationSettingService {
         return repository.findById(patientId)
                 .map(PatientNotificationSetting::isSystemBroadcastEnabled)
                 .orElse(true);
+    }
+
+    /**
+     * Batch-check settings for a list of candidate patient IDs to avoid N+1 queries.
+     * Retrieves all existing settings in batches of 1000 and filters in-memory.
+     * Patients without saved settings default to enabled (opt-in).
+     */
+    @Transactional(value = "postgresTransactionManager", readOnly = true)
+    public List<Long> filterSystemBroadcastEnabledPatientIds(List<Long> candidateIds) {
+        if (candidateIds == null || candidateIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Boolean> settingsMap = new HashMap<>();
+        int batchSize = 1000;
+        for (int i = 0; i < candidateIds.size(); i += batchSize) {
+            List<Long> batch = candidateIds.subList(i, Math.min(i + batchSize, candidateIds.size()));
+            for (PatientNotificationSetting setting : repository.findAllById(batch)) {
+                settingsMap.put(setting.getPatientId(), setting.isSystemBroadcastEnabled());
+            }
+        }
+
+        return candidateIds.stream()
+                .filter(patientId -> settingsMap.getOrDefault(patientId, true))
+                .toList();
     }
 
     @Transactional(value = "postgresTransactionManager", readOnly = true)
