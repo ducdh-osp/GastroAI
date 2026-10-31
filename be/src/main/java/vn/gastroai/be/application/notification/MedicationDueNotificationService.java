@@ -1,7 +1,9 @@
 package vn.gastroai.be.application.notification;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.notification.MedicationConfirmation;
 import vn.gastroai.be.domain.notification.MedicationReminder;
 import vn.gastroai.be.infrastructure.persistence.postgres.MedicationConfirmationRepository;
@@ -18,6 +20,7 @@ import java.util.Set;
 @Service
 public class MedicationDueNotificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(MedicationDueNotificationService.class);
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final MedicationReminderRepository reminderRepository;
@@ -38,13 +41,11 @@ public class MedicationDueNotificationService {
         this.emailOutboxService = emailOutboxService;
     }
 
-    @Transactional("postgresTransactionManager")
     public int notifyDueDoses(LocalDate date, LocalTime currentTime) {
         List<MedicationReminder> reminders = reminderRepository.findActiveForDate(date);
         return processReminders(reminders, date, currentTime);
     }
 
-    @Transactional("postgresTransactionManager")
     public int notifyDueDosesForPatient(Long patientId, LocalDate date, LocalTime currentTime) {
         List<MedicationReminder> reminders = reminderRepository.findActiveForDateAndPatientId(patientId, date);
         return processReminders(reminders, date, currentTime);
@@ -82,14 +83,31 @@ public class MedicationDueNotificationService {
                         + " lúc " + time + " hôm nay. Hãy dùng thuốc theo đúng hướng dẫn và xác nhận sau khi uống.";
                 String dedupeKey = "MEDICATION_REMINDER:" + reminder.getId() + ":" + date + ":" + time;
 
-                if (notificationService.createMedicationReminder(
-                        reminder.getPatient().getId(), reminder.getId(),
-                        "Đến giờ uống thuốc", message, dedupeKey, time).isPresent()) {
-                    created++;
+                try {
+                    if (notificationService.createMedicationReminder(
+                            reminder.getPatient().getId(), reminder.getId(),
+                            "Đến giờ uống thuốc", message, dedupeKey, time).isPresent()) {
+                        created++;
+                    }
+                } catch (DataIntegrityViolationException ex) {
+                    log.debug("Bo qua thong bao in-app trung lap (race condition) reminderId={} time={}: {}",
+                            reminder.getId(), time, ex.getMessage());
+                } catch (Exception ex) {
+                    log.warn("Loi khi tao thong bao in-app cho reminderId={} time={}: {}",
+                            reminder.getId(), time, ex.getMessage());
                 }
-                // Outbox co dedupe rieng. Worker doi grace period, sau do kiem tra lai online
-                // va trang thai xac nhan truoc khi gui email chung chung (khong lo ten/lieu thuoc).
-                emailOutboxService.enqueueMedicationReminder(reminder, date, scheduledTime);
+
+                try {
+                    // Outbox co dedupe rieng. Worker doi grace period, sau do kiem tra lai online
+                    // va trang thai xac nhan truoc khi gui email chung chung (khong lo ten/lieu thuoc).
+                    emailOutboxService.enqueueMedicationReminder(reminder, date, scheduledTime);
+                } catch (DataIntegrityViolationException ex) {
+                    log.debug("Bo qua email outbox trung lap (race condition) reminderId={} time={}: {}",
+                            reminder.getId(), time, ex.getMessage());
+                } catch (Exception ex) {
+                    log.warn("Loi khi enqueue email outbox cho reminderId={} time={}: {}",
+                            reminder.getId(), time, ex.getMessage());
+                }
             }
         }
         return created;

@@ -8,6 +8,8 @@ import vn.gastroai.be.domain.notification.MedicationReminder;
 import vn.gastroai.be.infrastructure.persistence.postgres.MedicationConfirmationRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.MedicationReminderRepository;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -161,9 +163,68 @@ class MedicationDueNotificationServiceTest {
         verify(emailOutboxService, never()).enqueueMedicationReminder(any(), any(), any());
     }
 
+    @Test
+    void dataIntegrityViolationOnOneDoseDoesNotAbortBatchForOtherDosesAndPatients() {
+        LocalDate date = LocalDate.of(2026, 10, 23);
+        MedicationReminder reminder1 = reminder(5L, List.of(LocalTime.of(8, 0))); // patient 7
+        MedicationReminder reminder2 = reminderWithPatient(6L, 8L, List.of(LocalTime.of(8, 0))); // patient 8
+
+        when(reminderRepository.findActiveForDate(date)).thenReturn(List.of(reminder1, reminder2));
+        when(confirmationRepository.findByReminderIdInAndConfirmationDate(List.of(5L, 6L), date))
+                .thenReturn(List.of());
+        when(settingService.isMedicationReminderEnabled(7L)).thenReturn(true);
+        when(settingService.isMedicationReminderEnabled(8L)).thenReturn(true);
+
+        // Reminder 1 gap conflict duplicate key (race condition giua cron va check-due)
+        when(notificationService.createMedicationReminder(eq(7L), eq(5L), any(), any(), any(), any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
+
+        // Reminder 2 cho benh nhan 8 van thanh cong
+        when(notificationService.createMedicationReminder(eq(8L), eq(6L), any(), any(), any(), any()))
+                .thenReturn(Optional.of(mock(NotificationResponse.class)));
+
+        int created = service.notifyDueDoses(date, LocalTime.of(12, 0));
+
+        //created van phai la 1 (benh nhan 8 thanh cong, khong bi keo sap boi benh nhan 7)
+        assertEquals(1, created);
+        verify(notificationService).createMedicationReminder(eq(7L), eq(5L), any(), any(), any(), any());
+        verify(notificationService).createMedicationReminder(eq(8L), eq(6L), any(), any(), any(), any());
+        verify(emailOutboxService).enqueueMedicationReminder(reminder2, date, LocalTime.of(8, 0));
+    }
+
+    @Test
+    void emailEnqueueFailureOnOneDoseDoesNotAbortBatchForOtherDoses() {
+        LocalDate date = LocalDate.of(2026, 10, 23);
+        MedicationReminder reminder1 = reminder(5L, List.of(LocalTime.of(8, 0)));
+        MedicationReminder reminder2 = reminderWithPatient(6L, 8L, List.of(LocalTime.of(8, 0)));
+
+        when(reminderRepository.findActiveForDate(date)).thenReturn(List.of(reminder1, reminder2));
+        when(confirmationRepository.findByReminderIdInAndConfirmationDate(List.of(5L, 6L), date))
+                .thenReturn(List.of());
+        when(settingService.isMedicationReminderEnabled(7L)).thenReturn(true);
+        when(settingService.isMedicationReminderEnabled(8L)).thenReturn(true);
+
+        when(notificationService.createMedicationReminder(any(), any(), any(), any(), any(), any()))
+                .thenReturn(Optional.of(mock(NotificationResponse.class)));
+
+        // Email enqueue gap DataIntegrityViolationException o reminder 1
+        when(emailOutboxService.enqueueMedicationReminder(eq(reminder1), eq(date), any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate key on email outbox"));
+
+        int created = service.notifyDueDoses(date, LocalTime.of(12, 0));
+
+        // Ca 2 thong bao in-app van duoc tao thanh cong (created = 2) va reminder 2 van enqueue email
+        assertEquals(2, created);
+        verify(emailOutboxService).enqueueMedicationReminder(reminder2, date, LocalTime.of(8, 0));
+    }
+
     private MedicationReminder reminder(Long id, List<LocalTime> times) {
+        return reminderWithPatient(id, 7L, times);
+    }
+
+    private MedicationReminder reminderWithPatient(Long id, Long patientId, List<LocalTime> times) {
         Patient patient = new Patient();
-        patient.setId(7L);
+        patient.setId(patientId);
         MedicationReminder reminder = new MedicationReminder(
                 patient, "Omeprazole", "20 mg", times, null, null, null, true);
         reminder.setId(id);

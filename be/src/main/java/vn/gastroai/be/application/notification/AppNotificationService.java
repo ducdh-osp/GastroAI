@@ -3,6 +3,7 @@ package vn.gastroai.be.application.notification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.api.notification.NotificationPageResponse;
 import vn.gastroai.be.api.notification.NotificationResponse;
@@ -52,14 +53,14 @@ public class AppNotificationService {
         return Optional.of(response);
     }
 
-    @Transactional("postgresTransactionManager")
+    @Transactional(value = "postgresTransactionManager", propagation = Propagation.REQUIRES_NEW)
     public Optional<NotificationResponse> createMedicationReminder(Long patientId, Long reminderId,
                                                                     String title, String message,
                                                                     String dedupeKey) {
         return createMedicationReminder(patientId, reminderId, title, message, dedupeKey, null);
     }
 
-    @Transactional("postgresTransactionManager")
+    @Transactional(value = "postgresTransactionManager", propagation = Propagation.REQUIRES_NEW)
     public Optional<NotificationResponse> createMedicationReminder(Long patientId, Long reminderId,
                                                                     String title, String message,
                                                                     String dedupeKey, String scheduledTime) {
