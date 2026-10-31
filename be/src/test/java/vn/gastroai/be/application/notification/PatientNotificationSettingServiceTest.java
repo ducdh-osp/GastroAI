@@ -57,6 +57,23 @@ class PatientNotificationSettingServiceTest {
     }
 
     @Test
+    void isSecurityAlertEnabledReflectsDatabaseStateAndDefaultsToTrue() {
+        // Neu chua luu cai dat -> mac dinh bat (true)
+        when(repository.findById(10L)).thenReturn(Optional.empty());
+        assertTrue(service.isSecurityAlertEnabled(10L));
+
+        // Neu da luu tat -> false
+        PatientNotificationSetting disabledSetting = new PatientNotificationSetting(11L, true, true, true, false);
+        when(repository.findById(11L)).thenReturn(Optional.of(disabledSetting));
+        assertFalse(service.isSecurityAlertEnabled(11L));
+
+        // Neu da luu bat -> true
+        PatientNotificationSetting enabledSetting = new PatientNotificationSetting(12L, true, true, true, true);
+        when(repository.findById(12L)).thenReturn(Optional.of(enabledSetting));
+        assertTrue(service.isSecurityAlertEnabled(12L));
+    }
+
+    @Test
     void filterSystemBroadcastEnabledPatientIdsHandlesEmptyInput() {
         assertTrue(service.filterSystemBroadcastEnabledPatientIds(null).isEmpty());
         assertTrue(service.filterSystemBroadcastEnabledPatientIds(java.util.List.of()).isEmpty());

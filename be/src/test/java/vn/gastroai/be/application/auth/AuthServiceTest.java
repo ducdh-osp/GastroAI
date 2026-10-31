@@ -6,6 +6,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.gastroai.be.application.commands.LoginCommand;
 import vn.gastroai.be.application.notification.AppNotificationService;
+import vn.gastroai.be.application.notification.PatientNotificationSettingService;
 import vn.gastroai.be.application.readmodel.AuthResult;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.auth.PatientLoginHistory;
@@ -278,6 +279,29 @@ class AuthServiceTest {
 
         verify(notifications).createFailedLoginAlert(
                 1L, "Chrome on Windows", "203.0.113.10", false);
+    }
+
+    @Test
+    void wrongPasswordDoesNotCreateSecurityNotificationWhenDisabledByPatientSetting() {
+        PatientNotificationSettingService notificationSettings = mock(PatientNotificationSettingService.class);
+        AuthService serviceWithSettings = new AuthService(
+                patients, history, revoked, encoder, jwt, mail, policy, notifications, notificationSettings);
+
+        Patient patient = patient();
+        patient.setPasswordHash("bcrypt");
+        patient.setEmailVerified(true);
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(patient));
+        when(encoder.matches("wrong", "bcrypt")).thenReturn(false);
+        when(notificationSettings.isSecurityAlertEnabled(1L)).thenReturn(false);
+
+        ClientRequestInfo requestInfo = new ClientRequestInfo(
+                "203.0.113.10", "Mozilla/5.0", "Chrome on Windows");
+
+        assertThrows(BadCredentialsException.class,
+                () -> serviceWithSettings.login(new LoginCommand("user@example.com", "wrong"), requestInfo));
+
+        // Xac nhan khong goi createFailedLoginAlert khi benh nhan da tat toggle Canh bao an toan & bao mat
+        verify(notifications, never()).createFailedLoginAlert(any(), any(), any(), anyBoolean());
     }
 
     @Test
