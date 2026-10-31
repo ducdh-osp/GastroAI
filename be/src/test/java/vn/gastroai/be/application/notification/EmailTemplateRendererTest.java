@@ -66,4 +66,65 @@ class EmailTemplateRendererTest {
         assertThrows(IllegalArgumentException.class,
                 () -> renderer.validate(EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, newline));
     }
+
+    @Test
+    void rejectsEntityEncodedJavascriptUrl() {
+        EmailTemplateContent encodedColon = new EmailTemplateContent(
+                "Nhắc thuốc",
+                "<a href=\"javascript&#58;alert(1)\">Mở</a><p>{{applicationUrl}}</p>",
+                "{{applicationUrl}}");
+        EmailTemplateContent encodedLetter = new EmailTemplateContent(
+                "Nhắc thuốc",
+                "<a href=\"&#106;avascript:alert(1)\">Mở</a><p>{{applicationUrl}}</p>",
+                "{{applicationUrl}}");
+        EmailTemplateContent encodedNewline = new EmailTemplateContent(
+                "Nhắc thuốc",
+                "<a href=\"java&#10;script:alert(1)\">Mở</a><p>{{applicationUrl}}</p>",
+                "{{applicationUrl}}");
+
+        assertAll(
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> renderer.validate(EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, encodedColon)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> renderer.validate(EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, encodedLetter)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> renderer.validate(EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, encodedNewline)));
+    }
+
+    @Test
+    void rejectsHtmlOutsideTheSafelist() {
+        EmailTemplateContent metaRefresh = new EmailTemplateContent(
+                "Nhắc thuốc",
+                "<meta http-equiv=\"refresh\" content=\"0;url=https://attacker.example\">"
+                        + "<p>{{applicationUrl}}</p>",
+                "{{applicationUrl}}");
+        EmailTemplateContent inlineStyle = new EmailTemplateContent(
+                "Nhắc thuốc",
+                "<style>body{display:none}</style><p>{{applicationUrl}}</p>",
+                "{{applicationUrl}}");
+        EmailTemplateContent dataImage = new EmailTemplateContent(
+                "Nhắc thuốc",
+                "<img src=\"data:image/svg+xml,&lt;svg onload=alert(1)&gt;\">"
+                        + "<p>{{applicationUrl}}</p>",
+                "{{applicationUrl}}");
+
+        assertAll(
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> renderer.validate(EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, metaRefresh)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> renderer.validate(EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, inlineStyle)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> renderer.validate(EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, dataImage)));
+    }
+
+    @Test
+    void allowsExpectedEmailMarkupAndHttpsLinks() {
+        EmailTemplateContent content = new EmailTemplateContent(
+                "Xác thực tài khoản",
+                "<h2>Xác thực</h2><table><tbody><tr><td><strong>GastroAI</strong></td>"
+                        + "<td><a href=\"{{verificationUrl}}\">Mở</a></td></tr></tbody></table>",
+                "Mở {{verificationUrl}}");
+
+        assertDoesNotThrow(() -> renderer.validate(EmailTemplateCode.ACCOUNT_VERIFICATION, content));
+    }
 }
