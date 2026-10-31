@@ -1,5 +1,7 @@
 package vn.gastroai.be.application.notification;
 
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Component;
 import vn.gastroai.be.domain.notification.EmailTemplateCode;
 
@@ -17,8 +19,8 @@ import java.util.regex.Pattern;
 public class EmailTemplateRenderer {
 
     private static final Pattern VARIABLE = Pattern.compile("\\{\\{\\s*([A-Za-z][A-Za-z0-9]*)\\s*}}", Pattern.MULTILINE);
-    private static final Pattern DANGEROUS_HTML = Pattern.compile(
-            "(?is)<\\s*(script|iframe|object|embed|form|input|button)\\b|javascript\\s*:|on[a-z]+\\s*=");
+    private static final Safelist SAFE_EMAIL_HTML = Safelist.relaxed()
+            .removeProtocols("a", "href", "ftp", "mailto");
     private static final int MAX_SUBJECT_LENGTH = 255;
     private static final int MAX_BODY_LENGTH = 100_000;
 
@@ -39,13 +41,18 @@ public class EmailTemplateRenderer {
                 || content.textBodyTemplate().length() > MAX_BODY_LENGTH) {
             throw new IllegalArgumentException("Nội dung email tối đa 100.000 ký tự");
         }
-        if (DANGEROUS_HTML.matcher(content.htmlBodyTemplate()).find()) {
-            throw new IllegalArgumentException("Nội dung HTML chứa thẻ hoặc thuộc tính không an toàn");
-        }
 
         validateVariables(code, "tiêu đề", content.subjectTemplate(), false);
         validateVariables(code, "nội dung HTML", content.htmlBodyTemplate(), true);
         validateVariables(code, "nội dung text", content.textBodyTemplate(), true);
+
+        // Validate the rendered sample so URL placeholders contain a real safe protocol. Jsoup
+        // parses character references before checking the safelist, which also blocks encoded
+        // protocol bypasses such as javascript&#58; that a blacklist regex cannot detect.
+        String sampleHtml = replace(content.htmlBodyTemplate(), code.sampleVariables(), true);
+        if (!Jsoup.isValid(sampleHtml, SAFE_EMAIL_HTML)) {
+            throw new IllegalArgumentException("Nội dung HTML chứa thẻ hoặc thuộc tính không an toàn");
+        }
     }
 
     public RenderedEmail render(EmailTemplateCode code, EmailTemplateContent content,
@@ -61,7 +68,9 @@ public class EmailTemplateRenderer {
 
         String subject = replace(content.subjectTemplate(), variables, false)
                 .replace('\r', ' ').replace('\n', ' ');
-        String html = replace(content.htmlBodyTemplate(), variables, true);
+        // Always serialize the allowlisted output as a second line of defence, including for
+        // templates already stored before allowlist validation was introduced.
+        String html = Jsoup.clean(replace(content.htmlBodyTemplate(), variables, true), SAFE_EMAIL_HTML);
         String text = replace(content.textBodyTemplate(), variables, false);
         return new RenderedEmail(subject, html, text);
     }

@@ -183,7 +183,7 @@ export default function CmsEmailTemplatesPage() {
                   <Form.Item
                     label="Nội dung HTML"
                     name="htmlBodyTemplate"
-                    extra="Không cho phép script, iframe, form hoặc thuộc tính sự kiện JavaScript."
+                    extra="Chỉ cho phép HTML email an toàn và liên kết http/https; không cho phép CSS, script, iframe, form hoặc thuộc tính sự kiện."
                     rules={[{ required: true, message: 'Nhập nội dung HTML' }, { max: 100000, message: 'Tối đa 100.000 ký tự' }]}
                   >
                     <Input.TextArea rows={11} className="font-mono text-sm" maxLength={100000} />

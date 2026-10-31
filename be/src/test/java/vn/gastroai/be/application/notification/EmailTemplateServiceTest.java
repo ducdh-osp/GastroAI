@@ -61,6 +61,19 @@ class EmailTemplateServiceTest {
     }
 
     @Test
+    void rejectsUnsafeHtmlBeforeSaving() {
+        EmailTemplateContent content = new EmailTemplateContent(
+                "Tiêu đề",
+                "<a href=\"javascript&#58;alert(1)\">Mở</a><p>{{verificationUrl}}</p>",
+                "{{verificationUrl}}");
+
+        assertThrows(IllegalArgumentException.class, () -> service.update(
+                EmailTemplateCode.ACCOUNT_VERIFICATION, content, 2L, "ADMIN", 9L));
+
+        verifyNoInteractions(repository, revisions);
+    }
+
+    @Test
     void previewUsesSafeSampleVariables() {
         RenderedEmail preview = service.preview(
                 EmailTemplateCode.MEDICATION_REMINDER_OFFLINE,
