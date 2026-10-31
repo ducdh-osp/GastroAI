@@ -120,6 +120,11 @@ MAIL_FROM=no-reply@<domain-da-xac-minh>
 EMAIL_PAYLOAD_ENCRYPTION_KEY=<secret-ngau-nhien-it-nhat-32-ky-tu>
 ```
 
+Không commit credential vào Git. Nếu cần lưu cấu hình riêng trên máy, dùng
+`be/application-local.yml` (đã được ignore) hoặc biến môi trường; tuyệt đối không dùng
+`git add -f` với file này. Nếu một credential từng bị commit, phải revoke/rotate credential đó
+ngay — chỉ xóa file khỏi commit mới không làm credential biến mất khỏi lịch sử Git.
+
 Mặc định email nhắc thuốc chờ 3 phút rồi kiểm tra lại: lịch còn bật, liều chưa xác nhận và bệnh
 nhân không còn WebSocket online. Nội dung email này là thông báo chung, không chứa tên/liều thuốc.
 Admin chỉnh ba mẫu email tại `/cms/email-templates`; thay đổi áp dụng cho email tiếp theo.

@@ -10,7 +10,7 @@ jobs:
   check-forbidden-files:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Fail if repo contains log/build artifacts
         run: |
@@ -22,3 +22,14 @@ jobs:
             exit 1
           fi
           echo "OK - khong co file log/artifact la"
+
+      - name: Fail if repo tracks local application secrets
+        run: |
+          BAD=$(git ls-files | grep -E '(^|/)application-local\.ya?ml$' || true)
+          if [ -n "$BAD" ]; then
+            echo "Local application config must never be tracked because it can contain credentials:"
+            echo "$BAD"
+            echo "Remove it from Git with: git rm --cached <file>"
+            exit 1
+          fi
+          echo "OK - no local application config is tracked"
