@@ -15,17 +15,30 @@ public class JournalReminderService {
     private final FoodDiaryEntryRepository foodDiaryRepository;
     private final BristolLogRepository bristolRepository;
     private final AppNotificationService notificationService;
+    private final PatientNotificationSettingService settingService;
 
     public JournalReminderService(FoodDiaryEntryRepository foodDiaryRepository,
                                   BristolLogRepository bristolRepository,
                                   AppNotificationService notificationService) {
+        this(foodDiaryRepository, bristolRepository, notificationService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public JournalReminderService(FoodDiaryEntryRepository foodDiaryRepository,
+                                  BristolLogRepository bristolRepository,
+                                  AppNotificationService notificationService,
+                                  PatientNotificationSettingService settingService) {
         this.foodDiaryRepository = foodDiaryRepository;
         this.bristolRepository = bristolRepository;
         this.notificationService = notificationService;
+        this.settingService = settingService;
     }
 
     @Transactional("postgresTransactionManager")
     public void remindIfJournalMissing(Long patientId, LocalDate date) {
+        if (settingService != null && !settingService.isJournalReminderEnabled(patientId)) {
+            return;
+        }
         var start = date.atStartOfDay(ZONE).toInstant();
         var end = date.plusDays(1).atStartOfDay(ZONE).toInstant();
         boolean hasFood = foodDiaryRepository.existsByPatientIdAndEatenAtGreaterThanEqualAndEatenAtLessThan(

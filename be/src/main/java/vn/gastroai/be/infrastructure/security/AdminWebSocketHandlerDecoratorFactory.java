@@ -11,9 +11,12 @@ import org.springframework.web.socket.handler.WebSocketHandlerDecoratorFactory;
 public class AdminWebSocketHandlerDecoratorFactory implements WebSocketHandlerDecoratorFactory {
 
     private final AdminWebSocketSessionRegistry sessionRegistry;
+    private final PatientWebSocketSessionRegistry patientSessionRegistry;
 
-    public AdminWebSocketHandlerDecoratorFactory(AdminWebSocketSessionRegistry sessionRegistry) {
+    public AdminWebSocketHandlerDecoratorFactory(AdminWebSocketSessionRegistry sessionRegistry,
+                                                 PatientWebSocketSessionRegistry patientSessionRegistry) {
         this.sessionRegistry = sessionRegistry;
+        this.patientSessionRegistry = patientSessionRegistry;
     }
 
     @Override
@@ -27,6 +30,11 @@ public class AdminWebSocketHandlerDecoratorFactory implements WebSocketHandlerDe
                 if (httpSessionId != null) {
                     sessionRegistry.register(httpSessionId.toString(), session);
                 }
+                Object patientId = session.getAttributes()
+                        .get(PatientWebSocketHandshakeInterceptor.PATIENT_ID_ATTRIBUTE);
+                if (patientId instanceof Long id) {
+                    patientSessionRegistry.register(id, session);
+                }
                 super.afterConnectionEstablished(session);
             }
 
@@ -36,6 +44,11 @@ public class AdminWebSocketHandlerDecoratorFactory implements WebSocketHandlerDe
                         .get(AdminWebSocketHandshakeInterceptor.HTTP_SESSION_ID_ATTRIBUTE);
                 if (httpSessionId != null) {
                     sessionRegistry.unregister(httpSessionId.toString(), session);
+                }
+                Object patientId = session.getAttributes()
+                        .get(PatientWebSocketHandshakeInterceptor.PATIENT_ID_ATTRIBUTE);
+                if (patientId instanceof Long id) {
+                    patientSessionRegistry.unregister(id, session);
                 }
                 super.afterConnectionClosed(session, closeStatus);
             }

@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.gastroai.be.application.commands.LoginCommand;
+import vn.gastroai.be.application.notification.AppNotificationService;
+import vn.gastroai.be.application.notification.PatientNotificationSettingService;
 import vn.gastroai.be.application.readmodel.AuthResult;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.auth.PatientLoginHistory;
@@ -31,12 +33,13 @@ class AuthServiceTest {
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = mock(JwtService.class);
     private final EmailVerificationService mail = mock(EmailVerificationService.class);
+    private final AppNotificationService notifications = mock(AppNotificationService.class);
     private final LoginSecurityPolicy policy = new LoginSecurityPolicy(3, 10, 90);
     private AuthService service;
 
     @BeforeEach
     void setUp() {
-        service = new AuthService(patients, history, revoked, encoder, jwt, mail, policy);
+        service = new AuthService(patients, history, revoked, encoder, jwt, mail, policy, notifications);
     }
 
     @Test
@@ -60,7 +63,7 @@ class AuthServiceTest {
                         && !patient.isEmailVerified()
                         && patient.getVerificationTokenHash() != null
                         && patient.getVerificationTokenExpiresAt().isAfter(Instant.now())));
-        verify(mail).send(eq("user@example.com"), anyString());
+        verify(mail).send(argThat(patient -> patient.getEmail().equals("user@example.com")), anyString());
     }
 
     @Test
@@ -85,7 +88,7 @@ class AuthServiceTest {
         service.register("user@example.com", password, "User");
 
         verify(encoder).encode(password);
-        verify(mail).send(eq("user@example.com"), anyString());
+        verify(mail).send(any(Patient.class), anyString());
     }
 
     @Test
@@ -146,7 +149,7 @@ class AuthServiceTest {
 
         assertNotNull(patient.getPasswordResetTokenHash());
         assertTrue(patient.getPasswordResetTokenExpiresAt().isAfter(Instant.now()));
-        verify(mail).sendPasswordReset(eq("user@example.com"), anyString());
+        verify(mail).sendPasswordReset(argThat(p -> p.getEmail().equals("user@example.com")), anyString());
     }
 
     @Test
@@ -258,6 +261,57 @@ class AuthServiceTest {
         assertNotNull(patient.getLockedUntil());
         verify(history).save(argThat((PatientLoginHistory item) ->
                 item.getOutcome().name().equals("BLOCKED")));
+        verify(notifications).createFailedLoginAlert(1L, "unknown", "unknown", true);
+    }
+
+    @Test
+    void wrongPasswordCreatesSecurityNotificationForPatient() {
+        Patient patient = patient();
+        patient.setPasswordHash("bcrypt");
+        patient.setEmailVerified(true);
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(patient));
+        when(encoder.matches("wrong", "bcrypt")).thenReturn(false);
+        ClientRequestInfo requestInfo = new ClientRequestInfo(
+                "203.0.113.10", "Mozilla/5.0", "Chrome on Windows");
+
+        assertThrows(BadCredentialsException.class,
+                () -> service.login(new LoginCommand("user@example.com", "wrong"), requestInfo));
+
+        verify(notifications).createFailedLoginAlert(
+                1L, "Chrome on Windows", "203.0.113.10", false);
+    }
+
+    @Test
+    void wrongPasswordDoesNotCreateSecurityNotificationWhenDisabledByPatientSetting() {
+        PatientNotificationSettingService notificationSettings = mock(PatientNotificationSettingService.class);
+        AuthService serviceWithSettings = new AuthService(
+                patients, history, revoked, encoder, jwt, mail, policy, notifications, notificationSettings);
+
+        Patient patient = patient();
+        patient.setPasswordHash("bcrypt");
+        patient.setEmailVerified(true);
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(patient));
+        when(encoder.matches("wrong", "bcrypt")).thenReturn(false);
+        when(notificationSettings.isSecurityAlertEnabled(1L)).thenReturn(false);
+
+        ClientRequestInfo requestInfo = new ClientRequestInfo(
+                "203.0.113.10", "Mozilla/5.0", "Chrome on Windows");
+
+        assertThrows(BadCredentialsException.class,
+                () -> serviceWithSettings.login(new LoginCommand("user@example.com", "wrong"), requestInfo));
+
+        // Xac nhan khong goi createFailedLoginAlert khi benh nhan da tat toggle Canh bao an toan & bao mat
+        verify(notifications, never()).createFailedLoginAlert(any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void unknownEmailDoesNotCreateSecurityNotification() {
+        when(patients.findByEmailForUpdate("unknown@example.com")).thenReturn(Optional.empty());
+
+        assertThrows(BadCredentialsException.class,
+                () -> service.login(new LoginCommand("unknown@example.com", "wrong")));
+
+        verifyNoInteractions(notifications);
     }
 
     @Test

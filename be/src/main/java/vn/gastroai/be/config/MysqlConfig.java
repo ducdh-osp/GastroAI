@@ -18,18 +18,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Datasource nội bộ — quản trị (Admin/Bác sĩ/CMS), RBAC, audit log (mục 6 đề cương).
- * Song song với config/PostgresConfig (dữ liệu Bệnh nhân). Domain.admin (Admin, Doctor,
- * AdminLoginHistory, DoctorLoginHistory) chỉ scan/lưu ở đây, hoàn toàn tách biệt khỏi
- * PostgresConfig — 2 EntityManagerFactory/TransactionManager/Flyway độc lập, không JOIN
+ * Datasource nội bộ — quản trị (Admin/Bác sĩ/CMS), RBAC, audit log (mục 6 đề
+ * cương).
+ * Song song với config/PostgresConfig (dữ liệu Bệnh nhân). Domain.admin (Admin,
+ * Doctor,
+ * AdminLoginHistory, DoctorLoginHistory) chỉ scan/lưu ở đây, hoàn toàn tách
+ * biệt khỏi
+ * PostgresConfig — 2 EntityManagerFactory/TransactionManager/Flyway độc lập,
+ * không JOIN
  * xuyên CSDL được ở tầng JPA.
  */
 @Configuration
-@EnableJpaRepositories(
-        basePackages = "vn.gastroai.be.infrastructure.persistence.mysql",
-        entityManagerFactoryRef = "mysqlEntityManagerFactory",
-        transactionManagerRef = "mysqlTransactionManager"
-)
+@EnableJpaRepositories(basePackages = "vn.gastroai.be.infrastructure.persistence.mysql", entityManagerFactoryRef = "mysqlEntityManagerFactory", transactionManagerRef = "mysqlTransactionManager")
 public class MysqlConfig {
 
     @Bean(name = "mysqlDataSourceProperties")
@@ -53,7 +53,7 @@ public class MysqlConfig {
         return new EntityManagerFactoryBuilder(
                 new HibernateJpaVendorAdapter(), ds -> jpaProperties, null)
                 .dataSource(dataSource)
-                .packages("vn.gastroai.be.domain.admin")
+                .packages("vn.gastroai.be.domain.admin", "vn.gastroai.be.domain.audit")
                 .persistenceUnit("mysql")
                 .build();
     }

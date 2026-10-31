@@ -1,9 +1,17 @@
-import { CheckCircleOutlined, EditOutlined, PlusOutlined, StopOutlined } from '@ant-design/icons'
+import {
+  CheckCircleOutlined,
+  EditOutlined,
+  MedicineBoxOutlined,
+  PlusOutlined,
+  StopOutlined,
+  SyncOutlined,
+} from '@ant-design/icons'
 import { Alert, Button, Card, Pagination, Popconfirm, Spin, Switch, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  checkDueMedications,
   confirmMedicationDose,
   createMedicationReminder,
   deleteMedicationReminder,
@@ -68,6 +76,8 @@ export default function MedicationRemindersPage() {
     loadErrorMessage: 'Không thể tải lịch sử xác nhận đã uống.',
   })
 
+  const [checkingDue, setCheckingDue] = useState(false)
+
   function reloadReminders() {
     setLoadingReminders(true)
     listMedicationReminders()
@@ -76,7 +86,40 @@ export default function MedicationRemindersPage() {
       .finally(() => setLoadingReminders(false))
   }
 
-  useEffect(reloadReminders, [])
+  useEffect(() => {
+    reloadReminders()
+
+    // Đồng bộ lại danh sách khi có xác nhận uống từ popup thông báo hoặc qua websocket
+    const handleSync = () => {
+      reloadReminders()
+      confirmationsList.reload()
+    }
+    window.addEventListener('gastroai:medication-confirmed', handleSync)
+    window.addEventListener('gastroai:notification', handleSync)
+    return () => {
+      window.removeEventListener('gastroai:medication-confirmed', handleSync)
+      window.removeEventListener('gastroai:notification', handleSync)
+    }
+  }, [])
+
+  async function handleCheckDue() {
+    setCheckingDue(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const res = await checkDueMedications()
+      if (res.created > 0) {
+        setSuccess(`Hệ thống đã phát hiện và gửi thông báo nhắc cho ${res.created} liều thuốc đến hạn hôm nay.`)
+      } else {
+        setSuccess('Tất cả các liều thuốc đến giờ hiện tại đã được nhắc hoặc đã xác nhận.')
+      }
+      reloadReminders()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể kiểm tra liều đến giờ.')
+    } finally {
+      setCheckingDue(false)
+    }
+  }
 
   function openCreate() {
     setEditingReminder(null)
@@ -186,7 +229,7 @@ export default function MedicationRemindersPage() {
     {
       title: 'Xác nhận liều', key: 'actions', width: 260,
       render: (_, record) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-col items-start gap-1">
           {record.timesOfDay.map((time) => {
             const guardKey = `${record.id}-${time}`
             const confirmed = record.confirmedTimesToday.includes(time)
@@ -201,23 +244,25 @@ export default function MedicationRemindersPage() {
               {confirmed ? `${formatTimeOfDay(time)} đã uống` : `Uống ${formatTimeOfDay(time)}`}
             </Button>
           })}
-          <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm
-            title="Tắt lịch nhắc này?"
-            description="Lịch sử xác nhận đã uống trước đây vẫn được giữ lại."
-            okText="Tắt nhắc"
-            cancelText="Huỷ"
-            onConfirm={() => handleDelete(record)}
-          >
-            <Button
-              size="small"
-              type="text"
-              danger
-              icon={<StopOutlined />}
-              loading={deleteGuard.inFlightId === record.id}
-              disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
-            />
-          </Popconfirm>
+          <div className="flex gap-1">
+            <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+            <Popconfirm
+              title="Tắt lịch nhắc này?"
+              description="Lịch sử xác nhận đã uống trước đây vẫn được giữ lại."
+              okText="Tắt nhắc"
+              cancelText="Huỷ"
+              onConfirm={() => handleDelete(record)}
+            >
+              <Button
+                size="small"
+                type="text"
+                danger
+                icon={<StopOutlined />}
+                loading={deleteGuard.inFlightId === record.id}
+                disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
+              />
+            </Popconfirm>
+          </div>
         </div>
       ),
     },
@@ -228,6 +273,19 @@ export default function MedicationRemindersPage() {
     { title: 'Thuốc', dataIndex: 'medicineName', key: 'medicineName' },
     { title: 'Liều lúc', dataIndex: 'scheduledTime', key: 'scheduledTime', width: 100, render: formatTimeOfDay },
   ]
+
+  const now = new Date()
+  const currentHourMin = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+  const dueDosesToday = reminders.flatMap((r) => {
+    if (!r.active) return []
+    if (r.startDate && r.startDate > todayStr) return []
+    if (r.endDate && r.endDate < todayStr) return []
+    return r.timesOfDay
+      .filter((t) => t.slice(0, 5) <= currentHourMin && !r.confirmedTimesToday.some((c) => c.slice(0, 5) === t.slice(0, 5)))
+      .map((t) => ({ reminder: r, time: t }))
+  })
 
   return (
     <AppShell>
@@ -241,11 +299,59 @@ export default function MedicationRemindersPage() {
               <Link to="/medical-profile">Hồ sơ bệnh lý</Link>.
             </Text>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm lịch nhắc</Button>
+          <div className="flex items-center gap-2">
+            <Button
+              icon={<SyncOutlined spin={checkingDue} />}
+              loading={checkingDue}
+              onClick={handleCheckDue}
+            >
+              Kiểm tra giờ uống
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+              Thêm lịch nhắc
+            </Button>
+          </div>
         </div>
 
         {(error || confirmationsList.error) && <Alert type="error" message={error ?? confirmationsList.error} showIcon className="mb-4" closable onClose={() => { setError(null); confirmationsList.setError(null) }} />}
         {success && <Alert type="success" message={success} showIcon className="mb-4" closable onClose={() => setSuccess(null)} />}
+
+        {dueDosesToday.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 shadow-xs dark:border-amber-700/60 dark:bg-amber-950/40">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                <MedicineBoxOutlined className="text-lg" />
+              </span>
+              <div className="flex-1">
+                <div className="font-semibold text-amber-950 dark:text-amber-100">
+                  Bạn có {dueDosesToday.length} liều thuốc đến giờ cần uống hôm nay
+                </div>
+                <p className="mt-0.5 text-xs text-amber-900/80 dark:text-amber-200/80">
+                  Uống thuốc đúng giờ theo chỉ dẫn của bác sĩ và bấm xác nhận bên dưới để hệ thống ghi nhận.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {dueDosesToday.map(({ reminder, time }) => {
+                    const guardKey = `${reminder.id}-${time}`
+                    return (
+                      <Button
+                        key={guardKey}
+                        type="primary"
+                        size="small"
+                        icon={<CheckCircleOutlined />}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-xs"
+                        loading={confirmGuard.inFlightId === guardKey}
+                        disabled={confirmGuard.inFlightId !== null && confirmGuard.inFlightId !== guardKey}
+                        onClick={() => handleConfirmDose(reminder, time)}
+                      >
+                        Uống {reminder.medicineName} ({formatTimeOfDay(time)})
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Lịch nhắc thuốc">
           <Spin spinning={loadingReminders}>

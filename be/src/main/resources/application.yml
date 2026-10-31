@@ -22,6 +22,7 @@ spring:
     properties:
       mail.smtp.auth: ${SMTP_AUTH:false}
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.ssl.enable: ${SMTP_SSL:false}
       # Fail quickly when MailHog/Mailpit is not running instead of blocking registration.
       mail.smtp.connectiontimeout: ${SMTP_CONNECTION_TIMEOUT:3000}
       mail.smtp.timeout: ${SMTP_TIMEOUT:5000}
@@ -76,6 +77,18 @@ app:
     from: ${MAIL_FROM:no-reply@gastroai.vn}
     verification-base-url: ${VERIFICATION_BASE_URL:http://localhost:5173/verify-email}
     reset-password-base-url: ${RESET_PASSWORD_BASE_URL:http://localhost:5173/reset-password}
+    application-base-url: ${APPLICATION_BASE_URL:http://localhost:5173}
+    # Ma hoa token mot lan trong email_outbox. Production bat buoc override bang secret rieng,
+    # toi thieu 32 ky tu; khong dung chung voi JWT_SECRET.
+    payload-encryption-key: ${EMAIL_PAYLOAD_ENCRYPTION_KEY:dev-only-email-outbox-key-change-me-32-chars}
+    medication-offline-grace-minutes: ${MEDICATION_EMAIL_GRACE_MINUTES:3}
+    max-attempts: ${EMAIL_MAX_ATTEMPTS:4}
+    worker-delay-ms: ${EMAIL_WORKER_DELAY_MS:15000}
+    worker-batch-size: ${EMAIL_WORKER_BATCH_SIZE:20}
+    rate-limit:
+      recipient-cooldown-seconds: ${EMAIL_RECIPIENT_COOLDOWN_SECONDS:60}
+      ip-window-minutes: ${EMAIL_IP_RATE_WINDOW_MINUTES:15}
+      ip-max-requests: ${EMAIL_IP_MAX_REQUESTS:20}
   # Đọc bởi LoginSecurityPolicy — dùng chung cho cả AuthService (Bệnh nhân) lẫn CmsAuthService
   # (Admin/Bác sĩ), xem UC0008.
   security:

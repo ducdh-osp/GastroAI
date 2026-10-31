@@ -11,5 +11,19 @@ public record NotificationResponse(
         Long sourceId,
         String actionUrl,
         Instant createdAt,
-        Instant readAt) {
+        Instant readAt,
+        String scheduledTime) {
+
+    public NotificationResponse(
+            Long id,
+            String type,
+            String title,
+            String message,
+            String sourceType,
+            Long sourceId,
+            String actionUrl,
+            Instant createdAt,
+            Instant readAt) {
+        this(id, type, title, message, sourceType, sourceId, actionUrl, createdAt, readAt, null);
+    }
 }

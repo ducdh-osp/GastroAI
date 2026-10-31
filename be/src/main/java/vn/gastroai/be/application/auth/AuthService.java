@@ -8,6 +8,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.application.commands.LoginCommand;
+import vn.gastroai.be.application.notification.AppNotificationService;
+import vn.gastroai.be.application.notification.PatientNotificationSettingService;
 import vn.gastroai.be.application.readmodel.AuthResult;
 import vn.gastroai.be.domain.auth.LoginOutcome;
 import vn.gastroai.be.domain.auth.Patient;
@@ -50,11 +52,14 @@ public class AuthService {
     private final JwtService jwt;
     private final EmailVerificationService mail;
     private final LoginSecurityPolicy policy;
+    private final AppNotificationService notifications;
+    private final PatientNotificationSettingService notificationSettings;
 
     public AuthService(PatientRepository patients, PatientLoginHistoryRepository history,
                        RevokedTokenRepository revoked, PasswordEncoder encoder,
                        JwtService jwt, EmailVerificationService mail,
-                       LoginSecurityPolicy policy) {
+                       LoginSecurityPolicy policy, AppNotificationService notifications,
+                       PatientNotificationSettingService notificationSettings) {
         this.patients = patients;
         this.history = history;
         this.revoked = revoked;
@@ -62,6 +67,15 @@ public class AuthService {
         this.jwt = jwt;
         this.mail = mail;
         this.policy = policy;
+        this.notifications = notifications;
+        this.notificationSettings = notificationSettings;
+    }
+
+    public AuthService(PatientRepository patients, PatientLoginHistoryRepository history,
+                       RevokedTokenRepository revoked, PasswordEncoder encoder,
+                       JwtService jwt, EmailVerificationService mail,
+                       LoginSecurityPolicy policy, AppNotificationService notifications) {
+        this(patients, history, revoked, encoder, jwt, mail, policy, notifications, null);
     }
 
     /**
@@ -85,8 +99,8 @@ public class AuthService {
         patient.setEmailVerified(false);
         patient.setVerificationTokenHash(hash(rawToken));
         patient.setVerificationTokenExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
-        patients.saveAndFlush(patient);
-        mail.send(normalizedEmail, rawToken);
+        patient = patients.saveAndFlush(patient);
+        mail.send(patient, rawToken);
     }
 
     /** Xác thực email từ link trong mail. Token dùng 1 lần — xoá hash ngay sau khi verify. */
@@ -100,6 +114,7 @@ public class AuthService {
         patient.setEmailVerified(true);
         patient.setVerificationTokenHash(null);
         patient.setVerificationTokenExpiresAt(null);
+        mail.cancelVerification(patient.getId());
     }
 
     /**
@@ -120,7 +135,7 @@ public class AuthService {
         String rawToken = UUID.randomUUID() + UUID.randomUUID().toString();
         patient.setVerificationTokenHash(hash(rawToken));
         patient.setVerificationTokenExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
-        mail.send(normalizedEmail, rawToken);
+        mail.send(patient, rawToken);
     }
 
     /**
@@ -138,7 +153,7 @@ public class AuthService {
         String rawToken = UUID.randomUUID() + UUID.randomUUID().toString();
         patient.setPasswordResetTokenHash(hash(rawToken));
         patient.setPasswordResetTokenExpiresAt(Instant.now().plus(30, ChronoUnit.MINUTES));
-        mail.sendPasswordReset(patient.getEmail(), rawToken);
+        mail.sendPasswordReset(patient, rawToken);
     }
 
     @Transactional("postgresTransactionManager")
@@ -154,6 +169,7 @@ public class AuthService {
         patient.setPasswordHash(encoder.encode(newPassword));
         patient.setPasswordResetTokenHash(null);
         patient.setPasswordResetTokenExpiresAt(null);
+        mail.cancelPasswordReset(patient.getId());
         patient.setFailedLoginAttempts(0);
         patient.setLockedUntil(null);
         // Tăng tokenVersion để mọi JWT đã phát hành trước đó bị vô hiệu ngay lập tức
@@ -208,6 +224,10 @@ public class AuthService {
             }
             record(patient, locked ? LoginOutcome.BLOCKED : LoginOutcome.FAILURE,
                     locked ? "TOO_MANY_ATTEMPTS" : "BAD_PASSWORD", requestInfo);
+            if (notificationSettings == null || notificationSettings.isSecurityAlertEnabled(patient.getId())) {
+                notifications.createFailedLoginAlert(patient.getId(), requestInfo.deviceLabel(),
+                        requestInfo.ipAddress(), locked);
+            }
             if (locked) {
                 throw new AccountLockedException(patient.getLockedUntil());
             }

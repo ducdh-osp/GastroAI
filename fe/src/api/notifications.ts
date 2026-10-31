@@ -11,6 +11,7 @@ export interface AppNotification {
   actionUrl: string | null
   createdAt: string
   readAt: string | null
+  scheduledTime?: string | null
 }
 
 export interface NotificationPage {
@@ -71,4 +72,93 @@ export async function markAllNotificationsRead(audience: NotificationAudience) {
 
 export async function deleteNotification(audience: NotificationAudience, id: number) {
   await client(audience).delete(`${basePath(audience)}/${id}`)
+}
+
+export interface NotificationSettings {
+  medicationReminderEnabled: boolean
+  journalReminderEnabled: boolean
+  systemBroadcastEnabled: boolean
+  securityAlertEnabled: boolean
+  updatedAt?: string
+}
+
+export interface UpdateNotificationSettingsRequest {
+  medicationReminderEnabled: boolean
+  journalReminderEnabled: boolean
+  systemBroadcastEnabled: boolean
+  securityAlertEnabled: boolean
+}
+
+export async function getNotificationSettings(): Promise<NotificationSettings> {
+  const { data } = await apiClient.get<NotificationSettings>('/patient/notifications/settings')
+  return data
+}
+
+export async function updateNotificationSettings(
+  payload: UpdateNotificationSettingsRequest,
+): Promise<NotificationSettings> {
+  const { data } = await apiClient.put<NotificationSettings>(
+    '/patient/notifications/settings',
+    payload,
+  )
+  return data
+}
+
+export interface BroadcastAnnouncement {
+  id: number
+  title: string
+  message: string
+  targetGroup: string
+  actionUrl: string | null
+  createdByAdminId: number | null
+  recipientCount: number
+  createdAt: string
+}
+
+export interface BroadcastAnnouncementPage {
+  content?: BroadcastAnnouncement[]
+  items?: BroadcastAnnouncement[]
+  page?: number
+  number?: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+export interface SendBroadcastRequest {
+  title: string
+  message: string
+  targetGroup?: string
+  actionUrl?: string
+  sendWebSocket?: boolean
+}
+
+export async function sendBroadcastNotification(
+  payload: SendBroadcastRequest,
+): Promise<BroadcastAnnouncement> {
+  const { data } = await cmsApiClient.post<BroadcastAnnouncement>(
+    '/cms/notifications/broadcast',
+    payload,
+  )
+  return data
+}
+
+export async function getBroadcastAnnouncements(
+  page = 0,
+  size = 10,
+): Promise<BroadcastAnnouncementPage> {
+  const { data } = await cmsApiClient.get<BroadcastAnnouncementPage>(
+    '/cms/notifications/broadcast',
+    { params: { page, size } },
+  )
+  return data
+}
+
+export async function getBroadcastAnnouncementDetail(
+  id: number,
+): Promise<BroadcastAnnouncement> {
+  const { data } = await cmsApiClient.get<BroadcastAnnouncement>(
+    `/cms/notifications/broadcast/${id}`,
+  )
+  return data
 }

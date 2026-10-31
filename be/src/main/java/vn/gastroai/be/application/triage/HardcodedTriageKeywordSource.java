@@ -34,10 +34,10 @@ public class HardcodedTriageKeywordSource implements TriageKeywordSource {
             // soi nieu) ngay ca khi nguoi dung khong dung tu "du doi"/"dot ngot".
             Map.entry("DAU_BUNG_CAP_TINH", List.of(
                     "dau bung du doi", "dau bung du doi dot ngot", "dau quan bung du doi",
-                    "dau bung dot ngot", "dau bung quan tung con", "bung cung nhu go",
-                    "bung chuong cung", "dau bung khong the dung thang",
-                    "dau bung khong the di lai duoc", "cham vao bung dau chot",
-                    "an vao bung dau nhoi")),
+                    "dau bung dot ngot", "dau bung quan tung con", "dau quan tung con",
+                    "dau quan du doi", "bung cung nhu go", "bung chuong cung", "bung chuong cang cung",
+                    "dau bung khong the dung thang", "dau bung khong the di lai duoc",
+                    "cham vao bung dau chot", "an vao bung dau nhoi", "dau nhoi du doi")),
 
             // Tắc ruột - NHS/Cleveland: inability to pass stool or gas
             // "xi hoi" la tu thong tuc pho bien hon han "trung tien" (thuat ngu y khoa) khi

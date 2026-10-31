@@ -42,6 +42,11 @@ import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 import CmsUsersPage from '../pages/cms/CmsUsersPage'
 import CmsRbacPage from '../pages/cms/CmsRbacPage'
 import CmsChangePasswordPage from '../pages/cms/CmsChangePasswordPage'
+import CmsDashboardPage from '../pages/cms/CmsDashboardPage'
+import CmsBroadcastPage from '../pages/cms/CmsBroadcastPage'
+import CmsAuditLogsPage from '../pages/cms/CmsAuditLogsPage'
+import CmsEmailTemplatesPage from '../pages/cms/CmsEmailTemplatesPage'
+import CmsEvaluationPage from '../pages/cms/CmsEvaluationPage'
 
 export const router = createBrowserRouter([
   {
@@ -249,6 +254,38 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: '/cms/dashboard',
+            element: (
+              <CmsAdminRoute>
+                <CmsDashboardPage />
+              </CmsAdminRoute>
+            ),
+          },
+          {
+            path: '/cms/broadcast',
+            element: (
+              <CmsAdminRoute>
+                <CmsBroadcastPage />
+              </CmsAdminRoute>
+            ),
+          },
+          {
+            path: '/cms/audit-logs',
+            element: (
+              <CmsAdminRoute>
+                <CmsAuditLogsPage />
+              </CmsAdminRoute>
+            ),
+          },
+          {
+            path: '/cms/evaluation',
+            element: (
+              <CmsProtectedRoute>
+                <CmsEvaluationPage />
+              </CmsProtectedRoute>
+            ),
+          },
+          {
             path: '/cms/login-history',
             element: (
               <CmsProtectedRoute>
@@ -294,6 +331,14 @@ export const router = createBrowserRouter([
               <CmsProtectedRoute>
                 <CmsRuntimeConfigPage />
               </CmsProtectedRoute>
+            ),
+          },
+          {
+            path: '/cms/email-templates',
+            element: (
+              <CmsAdminRoute>
+                <CmsEmailTemplatesPage />
+              </CmsAdminRoute>
             ),
           },
           {

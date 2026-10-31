@@ -6,16 +6,19 @@ import {
   BulbOutlined,
   DashboardOutlined,
   DownOutlined,
+  ExperimentOutlined,
   FileTextOutlined,
   HistoryOutlined,
   HomeOutlined,
   KeyOutlined,
   LogoutOutlined,
+  MailOutlined,
   MedicineBoxOutlined,
   QuestionCircleOutlined,
   SafetyCertificateOutlined,
   SafetyOutlined,
   SettingOutlined,
+  SoundOutlined,
   TagsOutlined,
   TeamOutlined,
 } from '@ant-design/icons'
@@ -72,8 +75,10 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     title: 'Giám sát',
     items: [
       { key: 'triage-alerts', label: 'Cảnh báo khẩn cấp', icon: <SafetyOutlined />, to: '/cms/triage-alerts', roles: ['ADMIN', 'DOCTOR'] },
-      { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, comingSoon: true, adminOnly: true },
-      { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, comingSoon: true, adminOnly: true },
+      { key: 'evaluation', label: 'Đánh giá AI & Triage', icon: <ExperimentOutlined />, to: '/cms/evaluation', roles: ['ADMIN', 'DOCTOR'] },
+      { key: 'broadcast', label: 'Thông báo broadcast', icon: <SoundOutlined />, to: '/cms/broadcast', adminOnly: true },
+      { key: 'dashboard', label: 'Thống kê hệ thống', icon: <DashboardOutlined />, to: '/cms/dashboard', adminOnly: true },
+      { key: 'audit', label: 'Nhật ký hoạt động', icon: <AuditOutlined />, to: '/cms/audit-logs', adminOnly: true },
     ],
   },
   {
@@ -83,6 +88,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { key: 'triage-keywords', label: 'Từ khóa Triage', icon: <TagsOutlined />, to: '/cms/triage-keywords', roles: ['ADMIN', 'DOCTOR'] },
       { key: 'runtime-config', label: 'Cấu hình RAG/Triage', icon: <SettingOutlined />, to: '/cms/runtime-config', adminOnly: true },
+      { key: 'email-templates', label: 'Mẫu email', icon: <MailOutlined />, to: '/cms/email-templates', adminOnly: true },
     ],
   },
 ]
@@ -134,8 +140,8 @@ export function CmsSidebar() {
   })).filter((section) => section.items.length > 0)
 
   return (
-    <aside className="flex h-svh w-64 shrink-0 flex-col justify-between border-r border-white/10 bg-[#0f172a] text-white">
-      <div>
+       <aside className="flex h-svh w-64 shrink-0 flex-col border-r border-white/10 bg-[#0f172a] text-white">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-3">
         <div className="p-5">
           <Logo variant="light" />
           <p className="mt-1 text-[0.65rem] tracking-[0.3em] text-white/50 uppercase">Cổng quản trị</p>

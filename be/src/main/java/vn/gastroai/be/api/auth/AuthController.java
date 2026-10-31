@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.auth.AuthService;
 import vn.gastroai.be.application.auth.ClientRequestInfoResolver;
+import vn.gastroai.be.application.auth.EmailRequestThrottle;
 import vn.gastroai.be.application.commands.LoginCommand;
 
 import java.util.Map;
@@ -20,11 +21,14 @@ import java.util.Map;
 public class AuthController {
     private final AuthService authService;
     private final ClientRequestInfoResolver requestInfoResolver;
+    private final EmailRequestThrottle emailRequestThrottle;
 
     public AuthController(AuthService authService,
-                          ClientRequestInfoResolver requestInfoResolver) {
+                          ClientRequestInfoResolver requestInfoResolver,
+                          EmailRequestThrottle emailRequestThrottle) {
         this.authService = authService;
         this.requestInfoResolver = requestInfoResolver;
+        this.emailRequestThrottle = emailRequestThrottle;
     }
 
     @PostMapping("/register")
@@ -45,8 +49,13 @@ public class AuthController {
     // luôn chung chung dù email tồn tại/đã xác thực hay không (xem AuthService.resendVerification).
     @PostMapping("/resend-verification")
     public ResponseEntity<Map<String, String>> resendVerification(
-            @Valid @RequestBody ResendVerificationRequest request) {
-        authService.resendVerification(request.email());
+            @Valid @RequestBody ResendVerificationRequest request,
+            HttpServletRequest servletRequest) {
+        String ip = requestInfoResolver.resolve(servletRequest).ipAddress();
+        if (emailRequestThrottle.allow(
+                EmailRequestThrottle.Action.RESEND_VERIFICATION, request.email(), ip)) {
+            authService.resendVerification(request.email());
+        }
         return ResponseEntity.ok(Map.of(
                 "message", "Neu email ton tai va chua xac thuc, chung toi da gui lai link"));
     }
@@ -55,8 +64,13 @@ public class AuthController {
     // kẻ tấn công dò xem email nào đã đăng ký qua nội dung phản hồi.
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(
-            @Valid @RequestBody ForgotPasswordRequest request) {
-        authService.requestPasswordReset(request.email());
+            @Valid @RequestBody ForgotPasswordRequest request,
+            HttpServletRequest servletRequest) {
+        String ip = requestInfoResolver.resolve(servletRequest).ipAddress();
+        if (emailRequestThrottle.allow(
+                EmailRequestThrottle.Action.PASSWORD_RESET, request.email(), ip)) {
+            authService.requestPasswordReset(request.email());
+        }
         return ResponseEntity.ok(Map.of(
                 "message", "Neu email ton tai, huong dan dat lai mat khau da duoc gui"));
     }

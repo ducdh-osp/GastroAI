@@ -4,26 +4,33 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import vn.gastroai.be.application.notification.MedicationDueNotificationService;
 import vn.gastroai.be.application.notification.MedicationReminderService;
 import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
- * UC0015 (lich nhac uong thuoc) + UC0016 (xac nhan da uong). Package Java la
- * api.notification (khop domain.notification da pre-scaffold), nhung URL van dat duoi
- * /api/v1/patient/** de tan dung rule Security co san (hasRole("PATIENT")) - khong can
- * sua SecurityConfig.
+ * UC0015 (lich nhac uong thuoc) + UC0016 (xac nhan da uong) + UC0068 (nhac uong thuoc in-app/websocket).
  */
 @RestController
 @RequestMapping("/api/v1/patient/medications")
 public class MedicationReminderController {
 
-    private final MedicationReminderService medicationReminderService;
+    private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
-    public MedicationReminderController(MedicationReminderService medicationReminderService) {
+    private final MedicationReminderService medicationReminderService;
+    private final MedicationDueNotificationService medicationDueNotificationService;
+
+    public MedicationReminderController(
+            MedicationReminderService medicationReminderService,
+            MedicationDueNotificationService medicationDueNotificationService) {
         this.medicationReminderService = medicationReminderService;
+        this.medicationDueNotificationService = medicationDueNotificationService;
     }
 
     @PostMapping
@@ -74,5 +81,14 @@ public class MedicationReminderController {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
         return medicationReminderService.listConfirmations(patientId, page, size);
+    }
+
+    @PostMapping("/check-due")
+    public Map<String, Object> checkDueDoses(Principal principal, Authentication authentication) {
+        Long patientId = AuthenticatedRequest.patientId(principal, authentication);
+        ZonedDateTime now = ZonedDateTime.now(ZONE);
+        int created = medicationDueNotificationService.notifyDueDosesForPatient(
+                patientId, now.toLocalDate(), now.toLocalTime().withSecond(0).withNano(0));
+        return Map.of("created", created, "timestamp", now.toInstant().toString());
     }
 }

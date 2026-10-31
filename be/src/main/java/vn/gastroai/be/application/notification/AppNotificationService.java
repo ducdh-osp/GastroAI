@@ -3,6 +3,7 @@ package vn.gastroai.be.application.notification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.api.notification.NotificationPageResponse;
 import vn.gastroai.be.api.notification.NotificationResponse;
@@ -52,16 +53,23 @@ public class AppNotificationService {
         return Optional.of(response);
     }
 
-    @Transactional("postgresTransactionManager")
+    @Transactional(value = "postgresTransactionManager", propagation = Propagation.REQUIRES_NEW)
     public Optional<NotificationResponse> createMedicationReminder(Long patientId, Long reminderId,
                                                                     String title, String message,
                                                                     String dedupeKey) {
+        return createMedicationReminder(patientId, reminderId, title, message, dedupeKey, null);
+    }
+
+    @Transactional(value = "postgresTransactionManager", propagation = Propagation.REQUIRES_NEW)
+    public Optional<NotificationResponse> createMedicationReminder(Long patientId, Long reminderId,
+                                                                    String title, String message,
+                                                                    String dedupeKey, String scheduledTime) {
         if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
             return Optional.empty();
         }
         AppNotification notification = new AppNotification(
                 NotificationRecipientType.PATIENT, patientId, NotificationType.MEDICATION_REMINDER,
-                title, message, "MEDICATION_REMINDER", reminderId, "/medications", dedupeKey);
+                title, message, "MEDICATION_REMINDER", reminderId, "/medications", dedupeKey, scheduledTime);
         notification = notificationRepository.save(notification);
         NotificationResponse response = toResponse(notification, null);
         eventPublisher.publishEvent(new NotificationCreatedEvent(
@@ -69,6 +77,46 @@ public class AppNotificationService {
         return Optional.of(response);
     }
 
+    /**
+     * Lưu cảnh báo bảo mật cho từng lần nhập sai mật khẩu của bệnh nhân. Không dùng
+     * dedupeKey vì mỗi lần thử là một sự kiện độc lập cần được giữ lại để chủ tài khoản
+     * có thể đối chiếu với lịch sử đăng nhập.
+     */
+    @Transactional("postgresTransactionManager")
+    public NotificationResponse createFailedLoginAlert(Long patientId, String deviceLabel,
+                                                        String ipAddress, boolean accountLocked) {
+        String title = accountLocked
+                ? "Tài khoản tạm thời bị khóa"
+                : "Đăng nhập không thành công";
+        String message = accountLocked
+                ? "Tài khoản của bạn vừa bị khóa tạm thời sau nhiều lần nhập sai mật khẩu từ %s (IP %s)."
+                        .formatted(deviceLabel, ipAddress)
+                : "Phát hiện một lần nhập sai mật khẩu từ %s (IP %s). Nếu không phải bạn, hãy đổi mật khẩu ngay."
+                        .formatted(deviceLabel, ipAddress);
+        AppNotification notification = new AppNotification(
+                NotificationRecipientType.PATIENT, patientId, NotificationType.SYSTEM,
+                title, message, "LOGIN_SECURITY", null, "/login-history", null);
+        notification = notificationRepository.save(notification);
+        NotificationResponse response = toResponse(notification, null);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                NotificationRecipientType.PATIENT, patientId, response));
+        return response;
+    }
+    
+    @Transactional("postgresTransactionManager")
+    public Optional<NotificationResponse> createAuditAnomalyAlert(String title, String message, String dedupeKey) {
+        if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
+            return Optional.empty();
+        }
+        AppNotification notification = new AppNotification(
+                NotificationRecipientType.ADMIN, null, NotificationType.SYSTEM,
+                title, message, "AUDIT_ANOMALY", null, "/cms/audit-logs", dedupeKey);
+        notification = notificationRepository.save(notification);
+        NotificationResponse response = toResponse(notification, null);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                NotificationRecipientType.ADMIN, null, response));
+        return Optional.of(response);
+    }
     /** Notification triage là broadcast cho CMS Admin và được lưu cùng transaction với alert. */
     @Transactional("postgresTransactionManager")
     public Optional<NotificationResponse> recordTriageAlert(TriageAlertEvent event) {
@@ -181,6 +229,7 @@ public class AppNotificationService {
     private NotificationResponse toResponse(AppNotification notification, Instant readAt) {
         return new NotificationResponse(notification.getId(), notification.getNotificationType().name(),
                 notification.getTitle(), notification.getMessage(), notification.getSourceType(),
-                notification.getSourceId(), notification.getActionUrl(), notification.getCreatedAt(), readAt);
+                notification.getSourceId(), notification.getActionUrl(), notification.getCreatedAt(), readAt,
+                notification.getScheduledTime());
     }
 }

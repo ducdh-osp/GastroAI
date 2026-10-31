@@ -88,6 +88,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-keywords/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/api/v1/cms/evaluation/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/article-topics/**")
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/articles/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
@@ -98,7 +99,11 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/backup/**")
                         .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/dashboard/**")
+                        .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/runtime-config/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/email-templates/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/users/**")
                         .hasRole("ADMIN")
@@ -108,6 +113,8 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/account/**")
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/audit-logs/**")
+                        .hasRole("ADMIN")
                         // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng
                         // của từng nhóm API ở trên.
                         .anyRequest().authenticated())
@@ -121,6 +128,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(allowedOrigin));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Content-Disposition"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
