@@ -47,12 +47,22 @@ public class AppNotification {
     @Column(name = "dedupe_key", unique = true, length = 190)
     private String dedupeKey;
 
+    @Column(name = "scheduled_time", length = 10)
+    private String scheduledTime;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
     public AppNotification(NotificationRecipientType recipientType, Long recipientId,
                            NotificationType notificationType, String title, String message,
                            String sourceType, Long sourceId, String actionUrl, String dedupeKey) {
+        this(recipientType, recipientId, notificationType, title, message, sourceType, sourceId, actionUrl, dedupeKey, null);
+    }
+
+    public AppNotification(NotificationRecipientType recipientType, Long recipientId,
+                           NotificationType notificationType, String title, String message,
+                           String sourceType, Long sourceId, String actionUrl, String dedupeKey,
+                           String scheduledTime) {
         this.recipientType = recipientType;
         this.recipientId = recipientId;
         this.notificationType = notificationType;
@@ -62,5 +72,6 @@ public class AppNotification {
         this.sourceId = sourceId;
         this.actionUrl = actionUrl;
         this.dedupeKey = dedupeKey;
+        this.scheduledTime = scheduledTime;
     }
 }

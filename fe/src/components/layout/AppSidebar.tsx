@@ -91,8 +91,7 @@ export function AppSidebar() {
       // UC0068: Nhắc uống thuốc trong app qua WebSocket với thao tác nhanh "Đã uống"
       if (item.type === 'MEDICATION_REMINDER') {
         const notifKey = `med-reminder-${item.id}`
-        const timeMatch = item.message.match(/lúc\s+(\d{2}:\d{2})/i)
-        const scheduledTime = timeMatch ? timeMatch[1] : null
+        const scheduledTime = item.scheduledTime || (item.message.match(/lúc\s+(\d{2}:\d{2})/i)?.[1] ?? null)
 
         notification.open({
           key: notifKey,

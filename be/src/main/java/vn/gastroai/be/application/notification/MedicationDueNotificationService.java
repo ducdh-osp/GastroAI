@@ -84,7 +84,7 @@ public class MedicationDueNotificationService {
 
                 if (notificationService.createMedicationReminder(
                         reminder.getPatient().getId(), reminder.getId(),
-                        "Đến giờ uống thuốc", message, dedupeKey).isPresent()) {
+                        "Đến giờ uống thuốc", message, dedupeKey, time).isPresent()) {
                     created++;
                 }
                 // Outbox co dedupe rieng. Worker doi grace period, sau do kiem tra lai online

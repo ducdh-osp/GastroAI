@@ -56,12 +56,19 @@ public class AppNotificationService {
     public Optional<NotificationResponse> createMedicationReminder(Long patientId, Long reminderId,
                                                                     String title, String message,
                                                                     String dedupeKey) {
+        return createMedicationReminder(patientId, reminderId, title, message, dedupeKey, null);
+    }
+
+    @Transactional("postgresTransactionManager")
+    public Optional<NotificationResponse> createMedicationReminder(Long patientId, Long reminderId,
+                                                                    String title, String message,
+                                                                    String dedupeKey, String scheduledTime) {
         if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
             return Optional.empty();
         }
         AppNotification notification = new AppNotification(
                 NotificationRecipientType.PATIENT, patientId, NotificationType.MEDICATION_REMINDER,
-                title, message, "MEDICATION_REMINDER", reminderId, "/medications", dedupeKey);
+                title, message, "MEDICATION_REMINDER", reminderId, "/medications", dedupeKey, scheduledTime);
         notification = notificationRepository.save(notification);
         NotificationResponse response = toResponse(notification, null);
         eventPublisher.publishEvent(new NotificationCreatedEvent(
@@ -221,6 +228,7 @@ public class AppNotificationService {
     private NotificationResponse toResponse(AppNotification notification, Instant readAt) {
         return new NotificationResponse(notification.getId(), notification.getNotificationType().name(),
                 notification.getTitle(), notification.getMessage(), notification.getSourceType(),
-                notification.getSourceId(), notification.getActionUrl(), notification.getCreatedAt(), readAt);
+                notification.getSourceId(), notification.getActionUrl(), notification.getCreatedAt(), readAt,
+                notification.getScheduledTime());
     }
 }

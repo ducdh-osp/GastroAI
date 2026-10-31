@@ -11,6 +11,7 @@ export interface AppNotification {
   actionUrl: string | null
   createdAt: string
   readAt: string | null
+  scheduledTime?: string | null
 }
 
 export interface NotificationPage {
