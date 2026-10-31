@@ -898,15 +898,45 @@ export default function CmsEvaluationPage() {
                             </Button>
                           </Space>
 
-                          <Space>
+                          <Space wrap>
                             <Text type="secondary">Chế độ truy xuất hiện tại:</Text>
-                            <Tag color={ragReport.retrievalMode === 'VECTOR_EMBEDDING' ? 'success' : 'processing'}>
-                              {ragReport.retrievalMode === 'VECTOR_EMBEDDING'
+                            <Tag
+                              color={
+                                ragReport.retrievalMode === 'VECTOR_EMBEDDING' || ragReport.retrievalMode === 'VECTOR'
+                                  ? 'success'
+                                  : ragReport.retrievalMode === 'NO_DATA' || ragReport.dataSource === 'SIMULATED'
+                                  ? 'error'
+                                  : 'processing'
+                              }
+                            >
+                              {ragReport.retrievalMode === 'VECTOR_EMBEDDING' || ragReport.retrievalMode === 'VECTOR'
                                 ? 'Vector Embedding (Cosine 3072-dim)'
-                                : 'Lexical / Semantic Fallback'}
+                                : ragReport.retrievalMode === 'NO_DATA' || ragReport.dataSource === 'SIMULATED'
+                                ? 'Chưa có dữ liệu DB thật (NO_DATA / SIMULATED)'
+                                : 'Lexical / Semantic Fallback (SQL)'}
                             </Tag>
+                            {ragReport.dataSource && (
+                              <Tag color={ragReport.dataSource === 'SIMULATED' ? 'warning' : 'default'}>
+                                Nguồn: {ragReport.dataSource}
+                              </Tag>
+                            )}
                           </Space>
                         </div>
+
+                        {(ragReport.retrievalMode === 'NO_DATA' ||
+                          ragReport.dataSource === 'SIMULATED' ||
+                          Boolean(ragReport.warning)) && (
+                          <Alert
+                            style={{ marginBottom: 20 }}
+                            type="warning"
+                            showIcon
+                            message="Cảnh báo: Dữ liệu kiểm thử giả lập (NO_DATA / SIMULATED)"
+                            description={
+                              ragReport.warning ||
+                              'Bảng chunks chưa có dữ liệu thực tế do tài liệu chưa được nạp (ingest) hoặc chưa cấu hình embedding. Kết quả đang hiển thị mẫu giả lập để tham khảo giao diện.'
+                            }
+                          />
+                        )}
 
                         {/* RAG Key Metrics */}
                         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>

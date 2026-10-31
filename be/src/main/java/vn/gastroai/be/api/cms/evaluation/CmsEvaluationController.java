@@ -43,8 +43,24 @@ public class CmsEvaluationController {
             double ragAvgSimilarity,
             int ragTotalQueries,
             int ragTopK,
+            String ragRetrievalMode,
+            String ragDataSource,
+            String ragWarning,
             Instant lastEvaluatedAt
-    ) {}
+    ) {
+        public EvaluationSummaryResponse(
+                double triageSensitivityRecall, double triageFalseAlarmRate, double triageF2Score,
+                int triageTotalCases, int triageTruePositives, int triageFalseNegatives,
+                double ragHitRateAt1, double ragHitRateAt3, double ragHitRateAtK,
+                double ragMrr, double ragAvgSimilarity, int ragTotalQueries, int ragTopK,
+                Instant lastEvaluatedAt) {
+            this(triageSensitivityRecall, triageFalseAlarmRate, triageF2Score,
+                    triageTotalCases, triageTruePositives, triageFalseNegatives,
+                    ragHitRateAt1, ragHitRateAt3, ragHitRateAtK,
+                    ragMrr, ragAvgSimilarity, ragTotalQueries, ragTopK,
+                    "VECTOR", "DATABASE", null, lastEvaluatedAt);
+        }
+    }
 
     @GetMapping("/summary")
     public EvaluationSummaryResponse getSummary() {
@@ -65,6 +81,9 @@ public class CmsEvaluationController {
                 ragReport.averageSimilarity(),
                 ragReport.totalQueries(),
                 ragReport.topK(),
+                ragReport.retrievalMode(),
+                ragReport.dataSource(),
+                ragReport.warning(),
                 Instant.now()
         );
     }

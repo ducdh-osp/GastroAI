@@ -40,9 +40,16 @@ public class RagEvaluationService {
             GeminiEmbeddingClient embeddingClient,
             EmbeddingStore embeddingStore,
             @Qualifier("postgresDataSource") DataSource postgresDataSource) {
+        this(embeddingClient, embeddingStore, new JdbcTemplate(postgresDataSource));
+    }
+
+    RagEvaluationService(
+            GeminiEmbeddingClient embeddingClient,
+            EmbeddingStore embeddingStore,
+            JdbcTemplate jdbcTemplate) {
         this.embeddingClient = embeddingClient;
         this.embeddingStore = embeddingStore;
-        this.jdbcTemplate = new JdbcTemplate(postgresDataSource);
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public record RagBenchmarkQuery(
@@ -90,10 +97,30 @@ public class RagEvaluationService {
             double averageRecallAtK,
             double averageSimilarity,
             double averageLatencyMs,
-            String retrievalMode, // "VECTOR" hoặc "LEXICAL_FALLBACK"
+            String retrievalMode, // "VECTOR", "LEXICAL_FALLBACK", hoặc "NO_DATA"
+            String dataSource,    // "DATABASE" hoặc "SIMULATED"
+            String warning,       // null hoặc thông báo cảnh báo khi DB chưa có dữ liệu thật
             List<RagQueryEvalResult> queryResults,
             Instant evaluatedAt
-    ) {}
+    ) {
+        public RagEvaluationReport(
+                int totalQueries, int topK,
+                int hitCountAt1, int hitCountAt3, int hitCountAtK,
+                double hitRateAt1, double hitRateAt3, double hitRateAtK,
+                double mrr, double averagePrecisionAtK, double averageRecallAtK,
+                double averageSimilarity, double averageLatencyMs,
+                String retrievalMode,
+                List<RagQueryEvalResult> queryResults,
+                Instant evaluatedAt) {
+            this(totalQueries, topK, hitCountAt1, hitCountAt3, hitCountAtK,
+                    hitRateAt1, hitRateAt3, hitRateAtK, mrr,
+                    averagePrecisionAtK, averageRecallAtK, averageSimilarity, averageLatencyMs,
+                    retrievalMode,
+                    "NO_DATA".equals(retrievalMode) || "SIMULATED".equals(retrievalMode) ? "SIMULATED" : "DATABASE",
+                    "NO_DATA".equals(retrievalMode) ? "Bảng chunks chưa có dữ liệu thực tế." : null,
+                    queryResults, evaluatedAt);
+        }
+    }
 
     /**
      * Tập dữ liệu kiểm thử chuẩn (Benchmark Query Set) đại diện cho các bệnh lý tiêu hóa
@@ -184,7 +211,10 @@ public class RagEvaluationService {
         double sumSimilarity = 0.0;
         long totalLatencyMs = 0L;
 
-        String retrievalMode = "VECTOR";
+        boolean hasRealChunks = hasRealChunksInDb();
+        boolean anyVectorHit = false;
+        boolean anySqlHit = false;
+        boolean anySimulated = false;
 
         for (RagBenchmarkQuery bq : BENCHMARK_QUERIES) {
             long startMs = System.currentTimeMillis();
@@ -195,16 +225,27 @@ public class RagEvaluationService {
                 float[] queryVector = embeddingClient.embed(bq.query());
                 if (queryVector != null && queryVector.length > 0) {
                     retrieved = embeddingStore.findTopK(queryVector, topK);
-                    vectorSuccess = true;
+                    if (retrieved != null && !retrieved.isEmpty()) {
+                        vectorSuccess = true;
+                        anyVectorHit = true;
+                    }
                 }
             } catch (Exception ex) {
                 log.warn("Vector embedding search unavailable for query '{}', using lexical fallback: {}",
                         bq.query(), ex.getMessage());
             }
 
-            if (!vectorSuccess || retrieved.isEmpty()) {
-                retrievalMode = "LEXICAL_FALLBACK";
-                retrieved = lexicalFallbackRetrieve(bq, topK);
+            if (!vectorSuccess || retrieved == null || retrieved.isEmpty()) {
+                if (hasRealChunks) {
+                    retrieved = queryRealChunks(bq, topK);
+                    if (!retrieved.isEmpty()) {
+                        anySqlHit = true;
+                    }
+                } else {
+                    // DB trống chưa nạp dữ liệu thật -> dùng simulated chunks nhưng đánh dấu rõ ràng
+                    retrieved = simulatedChunks(bq);
+                    anySimulated = true;
+                }
             }
 
             long latencyMs = System.currentTimeMillis() - startMs;
@@ -279,6 +320,29 @@ public class RagEvaluationService {
         double avgSim = total > 0 ? sumSimilarity / total : 0.0;
         double avgLatency = total > 0 ? (double) totalLatencyMs / total : 0.0;
 
+        String retrievalMode;
+        String dataSource;
+        String warning;
+
+        if (anyVectorHit && !anySqlHit && !anySimulated) {
+            retrievalMode = "VECTOR";
+            dataSource = "DATABASE";
+            warning = null;
+        } else if (anySqlHit && !anySimulated) {
+            retrievalMode = "LEXICAL_FALLBACK";
+            dataSource = "DATABASE";
+            warning = null;
+        } else if (anySimulated || !hasRealChunks) {
+            retrievalMode = "NO_DATA";
+            dataSource = "SIMULATED";
+            warning = "Bảng chunks chưa có dữ liệu thực tế (documents chưa ingest hoặc DB trống). "
+                    + "Kết quả đang hiển thị dữ liệu giả lập (SIMULATED) để tham khảo cấu trúc báo cáo.";
+        } else {
+            retrievalMode = "NO_DATA";
+            dataSource = "DATABASE";
+            warning = "Không tìm thấy chunk nào phù hợp trong cơ sở dữ liệu cho tập benchmark query.";
+        }
+
         RagEvaluationReport report = new RagEvaluationReport(
                 total,
                 topK,
@@ -294,6 +358,8 @@ public class RagEvaluationService {
                 round(avgSim, 4),
                 round(avgLatency, 1),
                 retrievalMode,
+                dataSource,
+                warning,
                 queryResults,
                 Instant.now()
         );
@@ -326,10 +392,19 @@ public class RagEvaluationService {
         return keywordMatches >= 2;
     }
 
-    /**
-     * Fallback truy xuất theo từ khóa nếu môi trường không có kết nối Gemini API.
-     */
-    private List<SimilarChunk> lexicalFallbackRetrieve(RagBenchmarkQuery query, int topK) {
+    boolean hasRealChunksInDb() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM chunks c JOIN documents d ON d.id = c.document_id WHERE d.status = 'DONE'",
+                    Integer.class);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.debug("Database count chunks error: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private List<SimilarChunk> queryRealChunks(RagBenchmarkQuery query, int topK) {
         try {
             String sql = """
                 SELECT c.id AS chunk_id, c.document_id, d.title AS document_title, d.source_url, c.content,
@@ -344,7 +419,7 @@ public class RagEvaluationService {
             String pattern = "%" + query.expectedDocKeyword().toLowerCase(Locale.ROOT) + "%";
             String firstKw = "%" + (query.topicalKeywords().isEmpty() ? "tieu hoa" : query.topicalKeywords().get(0).toLowerCase(Locale.ROOT)) + "%";
 
-            List<SimilarChunk> chunks = jdbcTemplate.query(sql, (rs, rowNum) -> new SimilarChunk(
+            return jdbcTemplate.query(sql, (rs, rowNum) -> new SimilarChunk(
                     rs.getLong("chunk_id"),
                     rs.getLong("document_id"),
                     rs.getString("document_title"),
@@ -352,15 +427,13 @@ public class RagEvaluationService {
                     rs.getDouble("distance"),
                     rs.getString("source_url")
             ), pattern, pattern, firstKw, topK);
-
-            if (!chunks.isEmpty()) {
-                return chunks;
-            }
         } catch (Exception e) {
             log.debug("Database lexical query error: {}", e.getMessage());
+            return Collections.emptyList();
         }
+    }
 
-        // Nếu DB chưa có chunk nào (hoặc DB rỗng), sinh simulated accurate chunk tương ứng document
+    private List<SimilarChunk> simulatedChunks(RagBenchmarkQuery query) {
         return List.of(
                 new SimilarChunk(101L, 1L, query.expectedDocKeyword() + ".pdf",
                         "Tài liệu phác đồ điều trị và hướng dẫn chuẩn y khoa về " + query.category(),

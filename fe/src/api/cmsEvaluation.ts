@@ -16,6 +16,9 @@ export interface EvaluationSummary {
   ragAvgSimilarity: number
   ragTotalQueries: number
   ragTopK: number
+  ragRetrievalMode?: string
+  ragDataSource?: string
+  ragWarning?: string | null
   lastEvaluatedAt: string
 }
 
@@ -96,6 +99,8 @@ export interface RagEvaluationReport {
   averageSimilarity: number
   averageLatencyMs: number
   retrievalMode: string
+  dataSource?: string
+  warning?: string | null
   queryResults: RagQueryEvalResult[]
   evaluatedAt: string
 }
