@@ -14,17 +14,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.knowledge.KnowledgeArticleAdminService;
+import vn.gastroai.be.domain.audit.AuditAction;
 
 /** UC0065 - Quan ly bai viet kien thuc tieu hoa cho Admin / Bac si. */
 @RestController
 @RequestMapping("/api/v1/cms/articles")
 public class KnowledgeArticleAdminController {
 
-    private final KnowledgeArticleAdminService adminService;
+    private static final String TARGET = "ARTICLE";
 
-    public KnowledgeArticleAdminController(KnowledgeArticleAdminService adminService) {
+    private final KnowledgeArticleAdminService adminService;
+    private final AuditLogService auditLogService;
+
+    public KnowledgeArticleAdminController(KnowledgeArticleAdminService adminService,
+                                           AuditLogService auditLogService) {
         this.adminService = adminService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping
@@ -46,22 +53,47 @@ public class KnowledgeArticleAdminController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CmsArticleDetailResponse create(@Valid @RequestBody CmsArticleRequest request) {
-        return adminService.create(request);
+        CmsArticleDetailResponse created = adminService.create(request);
+        auditLogService.record(AuditAction.CONTENT_CREATE, TARGET, created.id(),
+                "«" + created.title() + "»" + (created.published() ? " · đăng ngay" : " · bản nháp"));
+        return created;
     }
 
     @PutMapping("/{id}")
     public CmsArticleDetailResponse update(@PathVariable Long id, @Valid @RequestBody CmsArticleRequest request) {
-        return adminService.update(id, request);
+        CmsArticleDetailResponse before = adminService.getById(id);
+        CmsArticleDetailResponse after = adminService.update(id, request);
+        auditLogService.record(AuditAction.CONTENT_UPDATE, TARGET, id, describeUpdate(before, after));
+        return after;
     }
 
     @PatchMapping("/{id}/publish")
     public CmsArticleDetailResponse setPublished(@PathVariable Long id, @Valid @RequestBody CmsArticlePublishRequest request) {
-        return adminService.setPublished(id, request);
+        CmsArticleDetailResponse result = adminService.setPublished(id, request);
+        String detail = "«" + result.title() + "»";
+        if (result.published() && result.medicalReviewer() != null) {
+            detail += " · người duyệt: " + result.medicalReviewer();
+        }
+        auditLogService.record(request.published() ? AuditAction.CONTENT_PUBLISH : AuditAction.CONTENT_UNPUBLISH,
+                TARGET, id, detail);
+        return result;
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
+        CmsArticleDetailResponse before = adminService.getById(id);
         adminService.delete(id);
+        auditLogService.record(AuditAction.CONTENT_DELETE, TARGET, id, "«" + before.title() + "»");
+    }
+
+    static String describeUpdate(CmsArticleDetailResponse before, CmsArticleDetailResponse after) {
+        String detail = before.title().equals(after.title())
+                ? "«" + after.title() + "»"
+                : "Tiêu đề: «" + before.title() + "» → «" + after.title() + "»";
+        if (before.published() && !after.published()) {
+            detail += " · tự gỡ khỏi bệnh nhân (sửa nội dung chưa có người duyệt)";
+        }
+        return detail;
     }
 }

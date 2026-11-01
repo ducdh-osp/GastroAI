@@ -23,8 +23,32 @@ export type AuditAction =
   | 'TRIAGE_KEYWORD_CREATE'
   | 'TRIAGE_KEYWORD_UPDATE'
   | 'TRIAGE_KEYWORD_DELETE'
+  | 'TRIAGE_ALERT_CLAIM'
+  | 'TRIAGE_ALERT_RESOLVE'
+  | 'EMAIL_TEMPLATE_UPDATE'
+  | 'EMAIL_TEMPLATE_TEST_SEND'
+  | 'CONTENT_CREATE'
+  | 'CONTENT_UPDATE'
+  | 'CONTENT_DELETE'
+  | 'CONTENT_PUBLISH'
+  | 'CONTENT_UNPUBLISH'
+  | 'CONTENT_TOGGLE_ACTIVE'
 
-export type AuditTargetType = 'DOCUMENT' | 'PATIENT' | 'ADMIN' | 'DOCTOR' | 'SYSTEM' | 'RULE' | 'CONFIG' | 'TRIAGE_KEYWORD'
+export type AuditTargetType =
+  | 'DOCUMENT'
+  | 'PATIENT'
+  | 'ADMIN'
+  | 'DOCTOR'
+  | 'SYSTEM'
+  | 'RULE'
+  | 'CONFIG'
+  | 'TRIAGE_KEYWORD'
+  | 'TRIAGE_ALERT'
+  | 'EMAIL_TEMPLATE'
+  | 'ARTICLE'
+  | 'FAQ'
+  | 'ARTICLE_TOPIC'
+  | 'CATALOG'
 
 export interface AuditLog {
   id: number

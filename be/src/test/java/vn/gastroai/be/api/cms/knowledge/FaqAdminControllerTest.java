@@ -10,8 +10,10 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.knowledge.FaqAdminService;
 import vn.gastroai.be.config.SecurityConfig;
+import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.domain.knowledge.Faq;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
@@ -20,6 +22,7 @@ import vn.gastroai.be.infrastructure.security.JwtService;
 import java.time.Instant;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -50,6 +53,9 @@ class FaqAdminControllerTest {
     private FaqAdminService service;
 
     @MockitoBean
+    private AuditLogService auditLogService;
+
+    @MockitoBean
     private JwtService jwtService;
 
     @MockitoBean
@@ -59,7 +65,11 @@ class FaqAdminControllerTest {
     private RevokedTokenRepository revokedTokenRepository;
 
     private static CmsFaqResponse response(Long id, boolean published, String reviewer, Long version) {
-        return new CmsFaqResponse(id, "Câu hỏi", "Câu trả lời", "Dạ dày", 10, published,
+        return response(id, "Câu hỏi", published, reviewer, version);
+    }
+
+    private static CmsFaqResponse response(Long id, String question, boolean published, String reviewer, Long version) {
+        return new CmsFaqResponse(id, question, "Câu trả lời", "Dạ dày", 10, published,
                 reviewer, reviewer != null ? Instant.now() : null, Instant.now(), Instant.now(), version);
     }
 
@@ -91,11 +101,13 @@ class FaqAdminControllerTest {
                 .andExpect(jsonPath("$.items[0].id").value(1))
                 .andExpect(jsonPath("$.items[0].medicalReviewer").value("BS. CKII Trần B"))
                 .andExpect(jsonPath("$.items[0].version").value(3));
+
+        verifyNoInteractions(auditLogService);
     }
 
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
-    void createReturnsCreatedForAdmin() throws Exception {
+    void createReturnsCreatedForAdminAndIsAudited() throws Exception {
         CmsFaqRequest request = new CmsFaqRequest("Câu hỏi", "Câu trả lời", "Dạ dày", 10, false, null, null);
         when(service.create(any(CmsFaqRequest.class))).thenReturn(response(2L, false, null, 0L));
 
@@ -106,6 +118,8 @@ class FaqAdminControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(2))
                 .andExpect(jsonPath("$.published").value(false));
+
+        verify(auditLogService).record(AuditAction.CONTENT_CREATE, "FAQ", 2L, "«Câu hỏi» · bản nháp");
     }
 
     @Test
@@ -119,6 +133,7 @@ class FaqAdminControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(service);
+        verifyNoInteractions(auditLogService);
     }
 
     @Test
@@ -172,13 +187,17 @@ class FaqAdminControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(auditLogService);
     }
 
     @Test
     @WithMockUser(username = "8", roles = "DOCTOR")
-    void updateReturnsOkWithValidPayload() throws Exception {
-        CmsFaqRequest request = new CmsFaqRequest("Câu hỏi", "Câu trả lời mới", "Dạ dày", 10, false, null, 2L);
-        when(service.update(eq(5L), any(CmsFaqRequest.class))).thenReturn(response(5L, false, null, 3L));
+    void updateReturnsOkAndAuditsQuestionChange() throws Exception {
+        CmsFaqRequest request = new CmsFaqRequest("Câu hỏi mới", "Câu trả lời mới", "Dạ dày", 10, false, null, 2L);
+        when(service.get(5L)).thenReturn(response(5L, "Câu hỏi cũ", false, null, 2L));
+        when(service.update(eq(5L), any(CmsFaqRequest.class)))
+                .thenReturn(response(5L, "Câu hỏi mới", false, null, 3L));
 
         mockMvc.perform(put("/api/v1/cms/faqs/5")
                         .with(csrf())
@@ -186,12 +205,16 @@ class FaqAdminControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.version").value(3));
+
+        verify(auditLogService).record(AuditAction.CONTENT_UPDATE, "FAQ", 5L,
+                "Câu hỏi: «Câu hỏi cũ» → «Câu hỏi mới»");
     }
 
     @Test
     @WithMockUser(username = "8", roles = "DOCTOR")
-    void updateWithStaleVersionReturnsConflict() throws Exception {
+    void updateWithStaleVersionReturnsConflictAndIsNotAudited() throws Exception {
         CmsFaqRequest request = new CmsFaqRequest("Câu hỏi", "Câu trả lời", "Dạ dày", 10, false, null, 1L);
+        when(service.get(5L)).thenReturn(response(5L, false, null, 2L));
         when(service.update(eq(5L), any(CmsFaqRequest.class)))
                 .thenThrow(new ObjectOptimisticLockingFailureException(Faq.class, 5L));
 
@@ -200,6 +223,8 @@ class FaqAdminControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
+
+        verifyNoInteractions(auditLogService);
     }
 
     @Test
@@ -228,7 +253,7 @@ class FaqAdminControllerTest {
 
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
-    void publishWithReviewerReturnsOk() throws Exception {
+    void publishWithReviewerReturnsOkAndIsAudited() throws Exception {
         CmsFaqPublishRequest request = new CmsFaqPublishRequest(true, "BS. CKII Trần B", 0L);
         when(service.setPublished(eq(5L), any(CmsFaqPublishRequest.class)))
                 .thenReturn(response(5L, true, "BS. CKII Trần B", 1L));
@@ -240,6 +265,25 @@ class FaqAdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.published").value(true))
                 .andExpect(jsonPath("$.medicalReviewer").value("BS. CKII Trần B"));
+
+        verify(auditLogService).record(AuditAction.CONTENT_PUBLISH, "FAQ", 5L,
+                "«Câu hỏi» · người duyệt: BS. CKII Trần B");
+    }
+
+    @Test
+    @WithMockUser(username = "7", roles = "ADMIN")
+    void unpublishIsAuditedAsUnpublish() throws Exception {
+        CmsFaqPublishRequest request = new CmsFaqPublishRequest(false, null, 1L);
+        when(service.setPublished(eq(5L), any(CmsFaqPublishRequest.class)))
+                .thenReturn(response(5L, false, null, 2L));
+
+        mockMvc.perform(patch("/api/v1/cms/faqs/5/publish")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        verify(auditLogService).record(AuditAction.CONTENT_UNPUBLISH, "FAQ", 5L, "«Câu hỏi»");
     }
 
     @Test
@@ -255,10 +299,15 @@ class FaqAdminControllerTest {
 
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
-    void deleteReturnsNoContentForAdmin() throws Exception {
+    void deleteReturnsNoContentAndKeepsQuestionInAudit() throws Exception {
+        when(service.get(3L)).thenReturn(response(3L, "Đau thượng vị có nguy hiểm không?", true, "BS. A", 1L));
+
         mockMvc.perform(delete("/api/v1/cms/faqs/3").with(csrf()))
                 .andExpect(status().isNoContent());
+
         verify(service).delete(3L);
+        verify(auditLogService).record(AuditAction.CONTENT_DELETE, "FAQ", 3L,
+                "«Đau thượng vị có nguy hiểm không?»");
     }
 
     @Test
@@ -267,6 +316,7 @@ class FaqAdminControllerTest {
         mockMvc.perform(delete("/api/v1/cms/faqs/3").with(csrf()))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(service);
+        verifyNoInteractions(auditLogService);
     }
 
     @Test
@@ -277,5 +327,19 @@ class FaqAdminControllerTest {
 
         mockMvc.perform(get("/api/v1/cms/faqs").param("size", "500"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void quoteShortensLongQuestions() {
+        assertEquals("«Ngắn»", FaqAdminController.quote("Ngắn"));
+        assertEquals("«" + "a".repeat(120) + "…»", FaqAdminController.quote("a".repeat(300)));
+    }
+
+    @Test
+    void describeUpdateFlagsAutoUnpublish() {
+        assertEquals("«Câu hỏi» · tự gỡ khỏi bệnh nhân (sửa nội dung chưa có người duyệt)",
+                FaqAdminController.describeUpdate(
+                        response(5L, true, "BS. A", 1L),
+                        response(5L, false, null, 2L)));
     }
 }

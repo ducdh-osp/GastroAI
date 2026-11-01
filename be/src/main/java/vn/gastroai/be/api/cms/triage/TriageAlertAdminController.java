@@ -7,8 +7,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.triage.TriageAlertResponse;
 import vn.gastroai.be.application.triage.TriageAlertService;
+import vn.gastroai.be.domain.audit.AuditAction;
 
 import java.util.List;
 
@@ -17,10 +19,15 @@ import java.util.List;
 @RequestMapping("/api/v1/cms/triage-alerts")
 public class TriageAlertAdminController {
 
-    private final TriageAlertService triageAlertService;
+    private static final String TARGET = "TRIAGE_ALERT";
 
-    public TriageAlertAdminController(TriageAlertService triageAlertService) {
+    private final TriageAlertService triageAlertService;
+    private final AuditLogService auditLogService;
+
+    public TriageAlertAdminController(TriageAlertService triageAlertService,
+                                      AuditLogService auditLogService) {
         this.triageAlertService = triageAlertService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping
@@ -35,7 +42,10 @@ public class TriageAlertAdminController {
 
         Long claimerId = Long.valueOf(authentication.getName());
         String claimerType = resolveRole(authentication);
-        return triageAlertService.claim(alertId, claimerId, claimerType);
+        TriageAlertResponse alert = triageAlertService.claim(alertId, claimerId, claimerType);
+        auditLogService.record(AuditAction.TRIAGE_ALERT_CLAIM, TARGET, alertId,
+                "Bệnh nhân #" + alert.patientId() + " · Mới → Đang xử lý");
+        return alert;
     }
 
     @PostMapping("/{alertId}/resolve")
@@ -45,7 +55,20 @@ public class TriageAlertAdminController {
 
         Long resolverId = Long.valueOf(authentication.getName());
         String resolverType = resolveRole(authentication);
-        return triageAlertService.resolve(alertId, resolverId, resolverType);
+        TriageAlertResponse alert = triageAlertService.resolve(alertId, resolverId, resolverType);
+        auditLogService.record(AuditAction.TRIAGE_ALERT_RESOLVE, TARGET, alertId,
+                describeResolve(alert, resolverId, resolverType));
+        return alert;
+    }
+
+    static String describeResolve(TriageAlertResponse alert, Long resolverId, String resolverType) {
+        String detail = "Bệnh nhân #" + alert.patientId() + " · Đang xử lý → Đã xử lý";
+        boolean resolvedBySomeoneElse = alert.claimedById() != null
+                && (!alert.claimedById().equals(resolverId) || !resolverType.equals(alert.claimedByType()));
+        if (resolvedBySomeoneElse) {
+            detail += " (Admin đóng hộ, người tiếp nhận: " + alert.claimedByType() + " #" + alert.claimedById() + ")";
+        }
+        return detail;
     }
 
     private String resolveRole(Authentication authentication) {

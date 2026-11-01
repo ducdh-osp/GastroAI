@@ -126,6 +126,16 @@ public class AuditLogExportService {
             case TRIAGE_KEYWORD_CREATE -> "Thêm từ khoá cấp cứu";
             case TRIAGE_KEYWORD_UPDATE -> "Sửa từ khoá cấp cứu";
             case TRIAGE_KEYWORD_DELETE -> "Xoá từ khoá cấp cứu";
+            case TRIAGE_ALERT_CLAIM -> "Tiếp nhận cảnh báo cấp cứu";
+            case TRIAGE_ALERT_RESOLVE -> "Xử lý xong cảnh báo cấp cứu";
+            case EMAIL_TEMPLATE_UPDATE -> "Sửa mẫu email";
+            case EMAIL_TEMPLATE_TEST_SEND -> "Gửi thử mẫu email";
+            case CONTENT_CREATE -> "Thêm nội dung";
+            case CONTENT_UPDATE -> "Sửa nội dung";
+            case CONTENT_DELETE -> "Xoá nội dung";
+            case CONTENT_PUBLISH -> "Đăng nội dung";
+            case CONTENT_UNPUBLISH -> "Gỡ nội dung";
+            case CONTENT_TOGGLE_ACTIVE -> "Bật/tắt mục danh mục";
         };
     }
 
