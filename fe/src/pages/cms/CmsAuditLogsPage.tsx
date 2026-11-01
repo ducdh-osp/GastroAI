@@ -66,6 +66,16 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   TRIAGE_KEYWORD_CREATE: 'Thêm từ khoá cấp cứu',
   TRIAGE_KEYWORD_UPDATE: 'Sửa từ khoá cấp cứu',
   TRIAGE_KEYWORD_DELETE: 'Xoá từ khoá cấp cứu',
+  TRIAGE_ALERT_CLAIM: 'Tiếp nhận cảnh báo cấp cứu',
+  TRIAGE_ALERT_RESOLVE: 'Xử lý xong cảnh báo cấp cứu',
+  EMAIL_TEMPLATE_UPDATE: 'Sửa mẫu email',
+  EMAIL_TEMPLATE_TEST_SEND: 'Gửi thử mẫu email',
+  CONTENT_CREATE: 'Thêm nội dung',
+  CONTENT_UPDATE: 'Sửa nội dung',
+  CONTENT_DELETE: 'Xoá nội dung',
+  CONTENT_PUBLISH: 'Đăng nội dung',
+  CONTENT_UNPUBLISH: 'Gỡ nội dung',
+  CONTENT_TOGGLE_ACTIVE: 'Bật/tắt mục danh mục',
 }
 
 const ACTION_COLOR: Partial<Record<AuditAction, string>> = {
@@ -81,7 +91,12 @@ const ACTION_COLOR: Partial<Record<AuditAction, string>> = {
   ANOMALY_RULE_UPDATE: 'cyan',
   AUDIT_LOG_EXPORT: 'geekblue',
   RUNTIME_CONFIG_UPDATE: 'purple',
-  TRIAGE_KEYWORD_DELETE: 'red'
+  TRIAGE_KEYWORD_DELETE: 'red',
+  TRIAGE_ALERT_CLAIM: 'orange',
+  TRIAGE_ALERT_RESOLVE: 'green',
+  EMAIL_TEMPLATE_UPDATE: 'purple',
+  CONTENT_DELETE: 'red',
+  CONTENT_UNPUBLISH: 'orange'
 }
 
 const TARGET_LABEL: Record<AuditTargetType, string> = {
@@ -93,6 +108,12 @@ const TARGET_LABEL: Record<AuditTargetType, string> = {
   RULE: 'Quy tắc cảnh báo',
   CONFIG: 'Cấu hình hệ thống',
   TRIAGE_KEYWORD: 'Từ khoá cấp cứu',
+  TRIAGE_ALERT: 'Cảnh báo cấp cứu',
+  EMAIL_TEMPLATE: 'Mẫu email',
+  ARTICLE: 'Bài viết',
+  FAQ: 'Câu hỏi thường gặp',
+  ARTICLE_TOPIC: 'Chủ đề bài viết',
+  CATALOG: 'Danh mục chuẩn hoá',
 }
 
 const ACTOR_LABEL: Record<string, string> = {
