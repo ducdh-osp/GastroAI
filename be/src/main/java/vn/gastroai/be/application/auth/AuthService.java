@@ -1,6 +1,7 @@
 package vn.gastroai.be.application.auth;
 
 import io.jsonwebtoken.Claims;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -55,6 +56,7 @@ public class AuthService {
     private final AppNotificationService notifications;
     private final PatientNotificationSettingService notificationSettings;
 
+    @Autowired
     public AuthService(PatientRepository patients, PatientLoginHistoryRepository history,
                        RevokedTokenRepository revoked, PasswordEncoder encoder,
                        JwtService jwt, EmailVerificationService mail,
@@ -69,13 +71,6 @@ public class AuthService {
         this.policy = policy;
         this.notifications = notifications;
         this.notificationSettings = notificationSettings;
-    }
-
-    public AuthService(PatientRepository patients, PatientLoginHistoryRepository history,
-                       RevokedTokenRepository revoked, PasswordEncoder encoder,
-                       JwtService jwt, EmailVerificationService mail,
-                       LoginSecurityPolicy policy, AppNotificationService notifications) {
-        this(patients, history, revoked, encoder, jwt, mail, policy, notifications, null);
     }
 
     /**

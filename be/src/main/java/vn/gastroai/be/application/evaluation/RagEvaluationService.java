@@ -2,6 +2,7 @@ package vn.gastroai.be.application.evaluation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class RagEvaluationService {
 
     private volatile RagEvaluationReport cachedReport;
 
+    @Autowired
     public RagEvaluationService(
             GeminiEmbeddingClient embeddingClient,
             EmbeddingStore embeddingStore,

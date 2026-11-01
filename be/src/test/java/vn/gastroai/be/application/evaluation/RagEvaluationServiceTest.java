@@ -3,6 +3,7 @@ package vn.gastroai.be.application.evaluation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import vn.gastroai.be.application.evaluation.RagEvaluationService.RagEvaluationReport;
 import vn.gastroai.be.infrastructure.ai.GeminiEmbeddingClient;
@@ -121,5 +122,20 @@ class RagEvaluationServiceTest {
         assertNotNull(report1);
         RagEvaluationReport report2 = evaluationService.getLatestReport();
         assertSame(report1, report2);
+    }
+
+    @Test
+    @DisplayName("Verify Spring container can instantiate RagEvaluationService unambiguously with @Autowired")
+    void verifySpringInstantiation() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean("embeddingClient", GeminiEmbeddingClient.class, () -> embeddingClient);
+        context.registerBean("embeddingStore", EmbeddingStore.class, () -> embeddingStore);
+        context.registerBean("postgresDataSource", DataSource.class, () -> dataSource);
+        context.registerBean(RagEvaluationService.class);
+        context.refresh();
+
+        RagEvaluationService bean = context.getBean(RagEvaluationService.class);
+        assertNotNull(bean);
+        context.close();
     }
 }

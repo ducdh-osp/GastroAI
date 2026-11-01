@@ -2,6 +2,8 @@ package vn.gastroai.be.application.auth;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.gastroai.be.application.commands.LoginCommand;
@@ -34,12 +36,14 @@ class AuthServiceTest {
     private final JwtService jwt = mock(JwtService.class);
     private final EmailVerificationService mail = mock(EmailVerificationService.class);
     private final AppNotificationService notifications = mock(AppNotificationService.class);
+    private final PatientNotificationSettingService notificationSettings = mock(PatientNotificationSettingService.class);
     private final LoginSecurityPolicy policy = new LoginSecurityPolicy(3, 10, 90);
     private AuthService service;
 
     @BeforeEach
     void setUp() {
-        service = new AuthService(patients, history, revoked, encoder, jwt, mail, policy, notifications);
+        when(notificationSettings.isSecurityAlertEnabled(anyLong())).thenReturn(true);
+        service = new AuthService(patients, history, revoked, encoder, jwt, mail, policy, notifications, notificationSettings);
     }
 
     @Test
@@ -283,10 +287,6 @@ class AuthServiceTest {
 
     @Test
     void wrongPasswordDoesNotCreateSecurityNotificationWhenDisabledByPatientSetting() {
-        PatientNotificationSettingService notificationSettings = mock(PatientNotificationSettingService.class);
-        AuthService serviceWithSettings = new AuthService(
-                patients, history, revoked, encoder, jwt, mail, policy, notifications, notificationSettings);
-
         Patient patient = patient();
         patient.setPasswordHash("bcrypt");
         patient.setEmailVerified(true);
@@ -298,10 +298,31 @@ class AuthServiceTest {
                 "203.0.113.10", "Mozilla/5.0", "Chrome on Windows");
 
         assertThrows(BadCredentialsException.class,
-                () -> serviceWithSettings.login(new LoginCommand("user@example.com", "wrong"), requestInfo));
+                () -> service.login(new LoginCommand("user@example.com", "wrong"), requestInfo));
 
         // Xac nhan khong goi createFailedLoginAlert khi benh nhan da tat toggle Canh bao an toan & bao mat
         verify(notifications, never()).createFailedLoginAlert(any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("Verify Spring container can instantiate AuthService unambiguously with @Autowired")
+    void verifySpringInstantiation() {
+        GenericApplicationContext context = new GenericApplicationContext();
+        context.registerBean("patients", PatientRepository.class, () -> patients);
+        context.registerBean("history", PatientLoginHistoryRepository.class, () -> history);
+        context.registerBean("revoked", RevokedTokenRepository.class, () -> revoked);
+        context.registerBean("encoder", PasswordEncoder.class, () -> encoder);
+        context.registerBean("jwt", JwtService.class, () -> jwt);
+        context.registerBean("mail", EmailVerificationService.class, () -> mail);
+        context.registerBean("policy", LoginSecurityPolicy.class, () -> policy);
+        context.registerBean("notifications", AppNotificationService.class, () -> notifications);
+        context.registerBean("notificationSettings", PatientNotificationSettingService.class, () -> notificationSettings);
+        context.registerBean(AuthService.class);
+        context.refresh();
+
+        AuthService bean = context.getBean(AuthService.class);
+        assertNotNull(bean);
+        context.close();
     }
 
     @Test

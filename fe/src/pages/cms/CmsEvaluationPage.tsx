@@ -481,99 +481,175 @@ export default function CmsEvaluationPage() {
 
         {/* Global Summary KPI Banner */}
         {summary && (
-          <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-            <Col xs={24} sm={12} md={6}>
-              <Card
-                bordered={false}
-                style={{
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%)',
-                  borderLeft: '4px solid #10b981',
-                }}
-              >
-                <Statistic
-                  title={<Text strong>Độ nhạy Triage (Sensitivity)</Text>}
-                  value={(summary.triageSensitivityRecall * 100).toFixed(1)}
-                  suffix="%"
-                  valueStyle={{ color: '#10b981', fontWeight: 700 }}
-                  prefix={<SafetyCertificateOutlined />}
-                />
-                <div style={{ marginTop: 8 }}>
-                  <Tag color="success">Đạt chuẩn Đề cương (≥ 95%)</Tag>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {summary.triageTruePositives} / {summary.triageTruePositives + summary.triageFalseNegatives} ca
-                  </Text>
-                </div>
-              </Card>
-            </Col>
+          <div style={{ marginBottom: 24 }}>
+            {(summary.ragDataSource === 'SIMULATED' ||
+              summary.ragRetrievalMode === 'NO_DATA' ||
+              Boolean(summary.ragWarning)) && (
+              <Alert
+                style={{ marginBottom: 16 }}
+                type="warning"
+                showIcon
+                message="Khối tóm tắt RAG: Dữ liệu kiểm thử giả lập (NO_DATA / SIMULATED)"
+                description={
+                  summary.ragWarning ||
+                  'Cơ sở dữ liệu chưa có dữ liệu chunks thực tế (chưa ingest hoặc chưa nhúng vector). Các chỉ số RAG bên dưới hiển thị N/A / SIMULATED để tránh hiểu nhầm khi xem riêng khối Summary hoặc chụp báo cáo.'
+                }
+              />
+            )}
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  bordered={false}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%)',
+                    borderLeft: '4px solid #10b981',
+                  }}
+                >
+                  <Statistic
+                    title={<Text strong>Độ nhạy Triage (Sensitivity)</Text>}
+                    value={(summary.triageSensitivityRecall * 100).toFixed(1)}
+                    suffix="%"
+                    valueStyle={{ color: '#10b981', fontWeight: 700 }}
+                    prefix={<SafetyCertificateOutlined />}
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    <Tag color="success">Đạt chuẩn Đề cương (≥ 95%)</Tag>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {summary.triageTruePositives} / {summary.triageTruePositives + summary.triageFalseNegatives} ca
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Card
-                bordered={false}
-                style={{
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%)',
-                  borderLeft: '4px solid #f59e0b',
-                }}
-              >
-                <Statistic
-                  title={<Text strong>Tỷ lệ báo động giả (False Alarm)</Text>}
-                  value={(summary.triageFalseAlarmRate * 100).toFixed(1)}
-                  suffix="%"
-                  valueStyle={{ color: '#f59e0b', fontWeight: 700 }}
-                  prefix={<AlertOutlined />}
-                />
-                <div style={{ marginTop: 8 }}>
-                  <Tag color="gold">Kiểm soát tốt (≤ 20%)</Tag>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    F2-Score: {summary.triageF2Score.toFixed(3)}
-                  </Text>
-                </div>
-              </Card>
-            </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  bordered={false}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%)',
+                    borderLeft: '4px solid #f59e0b',
+                  }}
+                >
+                  <Statistic
+                    title={<Text strong>Tỷ lệ báo động giả (False Alarm)</Text>}
+                    value={(summary.triageFalseAlarmRate * 100).toFixed(1)}
+                    suffix="%"
+                    valueStyle={{ color: '#f59e0b', fontWeight: 700 }}
+                    prefix={<AlertOutlined />}
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    <Tag color="gold">Kiểm soát tốt (≤ 20%)</Tag>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      F2-Score: {summary.triageF2Score.toFixed(3)}
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Card
-                bordered={false}
-                style={{
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
-                  borderLeft: '4px solid #3b82f6',
-                }}
-              >
-                <Statistic
-                  title={<Text strong>RAG Hit Rate @ 1</Text>}
-                  value={(summary.ragHitRateAt1 * 100).toFixed(1)}
-                  suffix="%"
-                  valueStyle={{ color: '#3b82f6', fontWeight: 700 }}
-                  prefix={<DatabaseOutlined />}
-                />
-                <div style={{ marginTop: 8 }}>
-                  <Tag color="blue">Hit Rate @ Top-{summary.ragTopK}: {(summary.ragHitRateAtK * 100).toFixed(1)}%</Tag>
-                </div>
-              </Card>
-            </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  bordered={false}
+                  style={{
+                    background:
+                      summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                        ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.04) 100%)'
+                        : 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                    borderLeft:
+                      summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                        ? '4px solid #ef4444'
+                        : '4px solid #3b82f6',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <Space>
+                        <Text strong>RAG Hit Rate @ 1</Text>
+                        {(summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA') && (
+                          <Tag color="error">SIMULATED</Tag>
+                        )}
+                      </Space>
+                    }
+                    value={
+                      summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                        ? 'N/A'
+                        : (summary.ragHitRateAt1 * 100).toFixed(1)
+                    }
+                    suffix={
+                      summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                        ? undefined
+                        : '%'
+                    }
+                    valueStyle={{
+                      color:
+                        summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                          ? '#ef4444'
+                          : '#3b82f6',
+                      fontWeight: 700,
+                    }}
+                    prefix={<DatabaseOutlined />}
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    {summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA' ? (
+                      <Tag color="error">Chưa có dữ liệu DB thật</Tag>
+                    ) : (
+                      <Tag color="blue">Hit Rate @ Top-{summary.ragTopK}: {(summary.ragHitRateAtK * 100).toFixed(1)}%</Tag>
+                    )}
+                  </div>
+                </Card>
+              </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Card
-                bordered={false}
-                style={{
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%)',
-                  borderLeft: '4px solid #8b5cf6',
-                }}
-              >
-                <Statistic
-                  title={<Text strong>RAG MRR & Tương đồng</Text>}
-                  value={summary.ragMrr.toFixed(3)}
-                  valueStyle={{ color: '#8b5cf6', fontWeight: 700 }}
-                  prefix={<CheckCircleOutlined />}
-                />
-                <div style={{ marginTop: 8 }}>
-                  <Tag color="purple">Cosine: {(summary.ragAvgSimilarity * 100).toFixed(1)}%</Tag>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {summary.ragTotalQueries} câu chuẩn
-                  </Text>
-                </div>
-              </Card>
-            </Col>
-          </Row>
+              <Col xs={24} sm={12} md={6}>
+                <Card
+                  bordered={false}
+                  style={{
+                    background:
+                      summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                        ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.04) 100%)'
+                        : 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%)',
+                    borderLeft:
+                      summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                        ? '4px solid #ef4444'
+                        : '4px solid #8b5cf6',
+                  }}
+                >
+                  <Statistic
+                    title={
+                      <Space>
+                        <Text strong>RAG MRR & Tương đồng</Text>
+                        {(summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA') && (
+                          <Tag color="error">SIMULATED</Tag>
+                        )}
+                      </Space>
+                    }
+                    value={
+                      summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                        ? 'N/A'
+                        : summary.ragMrr.toFixed(3)
+                    }
+                    valueStyle={{
+                      color:
+                        summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA'
+                          ? '#ef4444'
+                          : '#8b5cf6',
+                      fontWeight: 700,
+                    }}
+                    prefix={<CheckCircleOutlined />}
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    {summary.ragDataSource === 'SIMULATED' || summary.ragRetrievalMode === 'NO_DATA' ? (
+                      <Tag color="warning">Nguồn: {summary.ragDataSource || 'SIMULATED'}</Tag>
+                    ) : (
+                      <>
+                        <Tag color="purple">Cosine: {(summary.ragAvgSimilarity * 100).toFixed(1)}%</Tag>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {summary.ragTotalQueries} câu chuẩn
+                        </Text>
+                      </>
+                    )}
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          </div>
         )}
 
         {/* Main Content Tabs */}
