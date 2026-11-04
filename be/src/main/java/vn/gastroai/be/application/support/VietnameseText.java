@@ -34,7 +34,10 @@ public final class VietnameseText {
         String lower = text.toLowerCase(Locale.ROOT).replace('đ', 'd');
         return Normalizer.normalize(lower, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
     }
-
+    
+    public static String normalizeKey(String text) {
+        return normalize(text).replaceAll("[^a-z0-9]+", " ").trim();
+    }
     /**
      * Tách 1 câu mô tả thành các từ khoá đã chuẩn hoá, bỏ từ dừng và từ quá ngắn/toàn số.
      * Dùng LinkedHashSet để loại trùng trong CÙNG 1 câu (vd "canh chua canh ca" chỉ tính
