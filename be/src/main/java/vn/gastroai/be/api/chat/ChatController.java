@@ -145,15 +145,22 @@ public class ChatController {
         List<MultipartFile> attachedFiles = files == null ? List.of() : files.stream().filter(Objects::nonNull).toList();
         ChatAttachmentProcessor.ProcessedAttachments processed = attachmentProcessor.process(attachedFiles);
 
+        Long[] alertIdHolder = new Long[1];
+
         ChatAnswer chatAnswer = chatService.ask(request.content(), processed.images(), processed.documentText(),
                 triageResult -> {
                     if (triageResult.emergency()) {
-                        triageAlertService.createAndPublish(
-                                patientId,
-                                null,
-                                null,
-                                request.content(),
-                                triageResult.matchedGroups());
+                        try {
+                            alertIdHolder[0] = triageAlertService.createAndPublish(
+                                    patientId,
+                                    null,
+                                    null,
+                                    request.content(),
+                                    triageResult.matchedGroups());
+                        } catch (Exception exception) {
+                            log.error("Khong the tao/gui canh bao Triage cho patientId={}: {}",
+                                    patientId, exception.getMessage(), exception);
+                        }
                     }
                 });
 
@@ -176,6 +183,16 @@ public class ChatController {
                 chatAnswer.matchedGroups());
 
         chatHistoryService.saveAttachments(saved.patientMessageId(), processed.attachments());
+
+        if (alertIdHolder[0] != null) {
+            try {
+                triageAlertService.linkConversation(
+                        alertIdHolder[0], saved.sessionId(), saved.assistantMessageId());
+            } catch (Exception exception) {
+                log.error("Khong the gan sessionId/messageId vao canh bao Triage id={}: {}",
+                        alertIdHolder[0], exception.getMessage(), exception);
+            }
+        }
 
         return ChatMessageResponse.assistantReply(
                 ragAnswer.answer(),
