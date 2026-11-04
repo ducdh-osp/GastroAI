@@ -114,6 +114,8 @@ const TARGET_LABEL: Record<AuditTargetType, string> = {
   FAQ: 'Câu hỏi thường gặp',
   ARTICLE_TOPIC: 'Chủ đề bài viết',
   CATALOG: 'Danh mục chuẩn hoá',
+  FODMAP_FOOD: 'Danh mục FODMAP',
+  FODMAP_UNKNOWN: 'Tên FODMAP chưa có dữ liệu',
 }
 
 const ACTOR_LABEL: Record<string, string> = {
