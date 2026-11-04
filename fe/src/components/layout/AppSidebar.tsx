@@ -19,6 +19,7 @@ import {
   MedicineBoxOutlined,
   MessageOutlined,
   QuestionCircleOutlined,
+  ScanOutlined,
 } from '@ant-design/icons'
 import { Badge, Button, Dropdown, message, notification, Switch } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
   { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
   { key: 'food-diary-history', label: 'Lịch sử ăn uống', icon: <BarChartOutlined />, to: '/food-diary-history' },
   { key: 'food-sensitivity', label: 'Nhạy cảm thực phẩm', icon: <BulbOutlined />, to: '/food-sensitivity' },
+  { key: 'food-vision', label: 'Nhận diện món ăn', icon: <ScanOutlined />, to: '/food-vision' },
   { key: 'adherence', label: 'Streak & tuân thủ', icon: <FireOutlined />, to: '/adherence' },
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
   { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
