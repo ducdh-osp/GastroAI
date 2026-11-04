@@ -194,17 +194,17 @@ export default function MedicationRemindersPage() {
   }
 
   const reminderColumns: ColumnsType<MedicationReminder> = [
-    { title: 'Tên thuốc', dataIndex: 'medicineName', key: 'medicineName' },
+    { title: 'Tên thuốc', dataIndex: 'medicineName', key: 'medicineName', width: '16%' },
     {
-      title: 'Liều lượng', dataIndex: 'dosage', key: 'dosage',
+      title: 'Liều lượng', dataIndex: 'dosage', key: 'dosage', width: '12%',
       render: (val: string | null) => val || <Text type="secondary">—</Text>,
     },
     {
-      title: 'Giờ nhắc', dataIndex: 'timesOfDay', key: 'timesOfDay', width: 180,
+      title: 'Giờ nhắc', dataIndex: 'timesOfDay', key: 'timesOfDay', width: '16%',
       render: (times: string[]) => <div className="flex flex-wrap gap-1">{times.map((time) => <Tag key={time}>{formatTimeOfDay(time)}</Tag>)}</div>,
     },
     {
-      title: 'Liệu trình / hướng dẫn', key: 'regimen',
+      title: 'Liệu trình / hướng dẫn', key: 'regimen', width: '28%',
       render: (_, record) => (
         <div>
           <div>{record.startDate || record.endDate ? `${record.startDate ?? 'Không giới hạn'} → ${record.endDate ?? 'Không giới hạn'}` : 'Dùng liên tục'}</div>
@@ -213,7 +213,7 @@ export default function MedicationRemindersPage() {
       ),
     },
     {
-      title: 'Bật nhắc', key: 'active', width: 100,
+      title: 'Bật nhắc', key: 'active', width: '10%',
       render: (_, record) => (
         <Switch
           checked={record.active}
@@ -227,7 +227,7 @@ export default function MedicationRemindersPage() {
       ),
     },
     {
-      title: 'Xác nhận liều', key: 'actions', width: 260,
+      title: 'Xác nhận liều', key: 'actions', width: '18%',
       render: (_, record) => (
         <div className="flex flex-col items-start gap-1">
           {record.timesOfDay.map((time) => {
@@ -290,8 +290,8 @@ export default function MedicationRemindersPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0 max-w-2xl">
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhắc uống thuốc</Title>
             <Text type="secondary">
@@ -299,7 +299,7 @@ export default function MedicationRemindersPage() {
               <Link to="/medical-profile">Hồ sơ bệnh lý</Link>.
             </Text>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Button
               icon={<SyncOutlined spin={checkingDue} />}
               loading={checkingDue}
@@ -360,6 +360,8 @@ export default function MedicationRemindersPage() {
               dataSource={reminders}
               rowKey="id"
               size="small"
+              tableLayout="fixed"
+              className="[&_.ant-table-thead_th]:overflow-hidden [&_.ant-table-thead_th]:text-ellipsis [&_.ant-table-thead_th]:whitespace-nowrap"
               pagination={false}
               locale={{ emptyText: 'Chưa có lịch nhắc thuốc nào' }}
             />
@@ -377,6 +379,8 @@ export default function MedicationRemindersPage() {
               dataSource={confirmationsList.items}
               rowKey="id"
               size="small"
+              tableLayout="fixed"
+              className="[&_.ant-table-thead_th]:overflow-hidden [&_.ant-table-thead_th]:text-ellipsis [&_.ant-table-thead_th]:whitespace-nowrap"
               pagination={false}
               locale={{ emptyText: 'Chưa có lần xác nhận nào' }}
             />
