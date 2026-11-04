@@ -70,7 +70,7 @@ class AuthControllerTest {
                         .content("{\"email\":\"user@example.com\",\"password\":\"" + "ă".repeat(37)
                                 + "\",\"fullName\":\"User\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("password: mat khau khong duoc vuot qua 72 byte UTF-8"));
+                .andExpect(jsonPath("$.message").value("password: Mật khẩu tối đa 72 byte UTF-8"));
 
         verifyNoInteractions(authService);
     }

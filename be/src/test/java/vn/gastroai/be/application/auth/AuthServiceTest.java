@@ -14,6 +14,7 @@ import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.auth.PatientLoginHistory;
 import vn.gastroai.be.domain.auth.UserRole;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientLoginHistoryRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.PatientPasswordHistoryRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
@@ -22,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -31,6 +33,7 @@ import static org.mockito.Mockito.*;
 class AuthServiceTest {
     private final PatientRepository patients = mock(PatientRepository.class);
     private final PatientLoginHistoryRepository history = mock(PatientLoginHistoryRepository.class);
+    private final PatientPasswordHistoryRepository passwordHistory = mock(PatientPasswordHistoryRepository.class);
     private final RevokedTokenRepository revoked = mock(RevokedTokenRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final JwtService jwt = mock(JwtService.class);
@@ -43,7 +46,8 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         when(notificationSettings.isSecurityAlertEnabled(anyLong())).thenReturn(true);
-        service = new AuthService(patients, history, revoked, encoder, jwt, mail, policy, notifications, notificationSettings);
+        when(passwordHistory.findPasswordHashesByPatientId(anyLong())).thenReturn(List.of());
+        service = new AuthService(patients, history, passwordHistory, revoked, encoder, jwt, mail, policy, notifications, notificationSettings);
     }
 
     @Test
@@ -72,18 +76,18 @@ class AuthServiceTest {
 
     @Test
     void registerRejectsPasswordOverBcryptUtf8LimitBeforeDatabaseCall() {
-        String password = "ă".repeat(37); // 74 UTF-8 bytes
+        String password = "A1!" + "ă".repeat(35); // 73 UTF-8 bytes
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> service.register("user@example.com", password, "User"));
 
-        assertEquals("Mat khau khong duoc vuot qua 72 byte UTF-8", exception.getMessage());
+        assertEquals("Mật khẩu tối đa 72 byte UTF-8", exception.getMessage());
         verifyNoInteractions(patients, encoder, mail);
     }
 
     @Test
     void registerAccepts72Utf8BytesEvenWhenCharacterCountIsBelowLimit() {
-        String password = "ă".repeat(36); // 72 UTF-8 bytes
+        String password = "A1!" + "ă".repeat(34) + "a"; // 72 UTF-8 bytes
         when(patients.findByEmail("user@example.com")).thenReturn(Optional.empty());
         when(encoder.encode(password)).thenReturn("bcrypt");
         when(patients.saveAndFlush(any(Patient.class))).thenAnswer(invocation ->
@@ -142,6 +146,41 @@ class AuthServiceTest {
         assertEquals(0, patient.getFailedLoginAttempts());
         assertNull(patient.getLockedUntil());
         assertEquals(5, patient.getTokenVersion());
+        verify(passwordHistory).save(argThat(item -> item.getPasswordHash().equals("old-bcrypt")));
+    }
+
+    @Test
+    void resetPasswordRejectsCurrentPasswordAndKeepsResetTokenUsable() {
+        Patient patient = patient();
+        patient.setPasswordResetTokenHash(hash("reset-token"));
+        patient.setPasswordResetTokenExpiresAt(Instant.now().plusSeconds(60));
+        when(patients.findByPasswordResetTokenHash(hash("reset-token"))).thenReturn(Optional.of(patient));
+        when(encoder.matches("OldPassword1!", "old-bcrypt")).thenReturn(true);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.resetPassword("reset-token", "OldPassword1!"));
+
+        assertEquals("Mật khẩu mới không được trùng với mật khẩu đã từng sử dụng", error.getMessage());
+        assertNotNull(patient.getPasswordResetTokenHash());
+        verify(passwordHistory, never()).save(any());
+        verify(encoder, never()).encode(anyString());
+    }
+
+    @Test
+    void resetPasswordRejectsPreviouslyUsedPassword() {
+        Patient patient = patient();
+        patient.setPasswordResetTokenHash(hash("reset-token"));
+        patient.setPasswordResetTokenExpiresAt(Instant.now().plusSeconds(60));
+        when(patients.findByPasswordResetTokenHash(hash("reset-token"))).thenReturn(Optional.of(patient));
+        when(passwordHistory.findPasswordHashesByPatientId(1L)).thenReturn(List.of("older-bcrypt"));
+        when(encoder.matches("OlderPassword1!", "old-bcrypt")).thenReturn(false);
+        when(encoder.matches("OlderPassword1!", "older-bcrypt")).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.resetPassword("reset-token", "OlderPassword1!"));
+
+        verify(passwordHistory, never()).save(any());
+        verify(encoder, never()).encode(anyString());
     }
 
     @Test
@@ -179,6 +218,23 @@ class AuthServiceTest {
 
         assertEquals("new-bcrypt", patient.getPasswordHash());
         assertEquals(3, patient.getTokenVersion());
+        verify(passwordHistory).save(argThat(item -> item.getPasswordHash().equals("old-bcrypt")));
+    }
+
+    @Test
+    void changePasswordRejectsPreviouslyUsedPassword() {
+        Patient patient = patient();
+        when(patients.findByIdForUpdate(1L)).thenReturn(Optional.of(patient));
+        when(passwordHistory.findPasswordHashesByPatientId(1L)).thenReturn(List.of("older-bcrypt"));
+        when(encoder.matches("OldPassword1!", "old-bcrypt")).thenReturn(true);
+        when(encoder.matches("OlderPassword1!", "old-bcrypt")).thenReturn(false);
+        when(encoder.matches("OlderPassword1!", "older-bcrypt")).thenReturn(true);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.changePassword(1L, "OldPassword1!", "OlderPassword1!"));
+
+        verify(passwordHistory, never()).save(any());
+        verify(encoder, never()).encode(anyString());
     }
 
     @Test
@@ -310,6 +366,7 @@ class AuthServiceTest {
         GenericApplicationContext context = new GenericApplicationContext();
         context.registerBean("patients", PatientRepository.class, () -> patients);
         context.registerBean("history", PatientLoginHistoryRepository.class, () -> history);
+        context.registerBean("passwordHistory", PatientPasswordHistoryRepository.class, () -> passwordHistory);
         context.registerBean("revoked", RevokedTokenRepository.class, () -> revoked);
         context.registerBean("encoder", PasswordEncoder.class, () -> encoder);
         context.registerBean("jwt", JwtService.class, () -> jwt);

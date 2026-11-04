@@ -24,7 +24,12 @@ export interface NotificationPage {
 }
 
 export type NotificationAudience = 'patient' | 'admin'
-export type NotificationType = 'JOURNAL_REMINDER' | 'MEDICATION_REMINDER' | 'TRIAGE_ALERT' | 'SYSTEM'
+export type NotificationType =
+  | 'JOURNAL_REMINDER'
+  | 'MEDICATION_REMINDER'
+  | 'SECURITY_ALERT'
+  | 'TRIAGE_ALERT'
+  | 'SYSTEM'
 
 export interface NotificationFilters {
   unreadOnly?: boolean

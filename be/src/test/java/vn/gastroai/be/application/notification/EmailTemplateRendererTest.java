@@ -24,7 +24,37 @@ class EmailTemplateRendererTest {
         assertEquals("Xác thực cho A <B>", result.subject());
         assertTrue(result.htmlBody().contains("A &lt;B&gt;"));
         assertTrue(result.htmlBody().contains("a=1&amp;b=2"));
+        assertTrue(result.htmlBody().contains("max-width:600px"));
+        assertTrue(result.htmlBody().contains("GastroAI"));
+        assertTrue(result.htmlBody().contains("background-color:#0f766e"));
         assertTrue(result.textBody().contains("A <B>"));
+    }
+
+    @Test
+    void appliesAccountLayoutToPasswordResetEmail() {
+        EmailTemplateContent content = new EmailTemplateContent(
+                "Đặt lại mật khẩu",
+                "<h2>Đặt lại mật khẩu</h2><p><a href=\"{{resetUrl}}\">Tiếp tục</a></p>",
+                "Mở {{resetUrl}}");
+
+        RenderedEmail result = renderer.render(EmailTemplateCode.PASSWORD_RESET, content,
+                Map.of("resetUrl", "https://example.com/reset?token=safe"));
+
+        assertTrue(result.htmlBody().contains("BẢO MẬT TÀI KHOẢN"));
+        assertTrue(result.htmlBody().contains("width=\"100%\""));
+        assertTrue(result.htmlBody().contains("border-radius:8px"));
+    }
+
+    @Test
+    void keepsMedicationEmailWithoutAccountShell() {
+        EmailTemplateContent content = new EmailTemplateContent(
+                "Nhắc uống thuốc", "<p>Mở {{applicationUrl}}</p>", "Mở {{applicationUrl}}");
+
+        RenderedEmail result = renderer.render(EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, content,
+                Map.of("applicationUrl", "https://example.com/medications"));
+
+        assertFalse(result.htmlBody().contains("max-width:600px"));
+        assertFalse(result.htmlBody().contains("GastroAI</div>"));
     }
 
     @Test

@@ -96,7 +96,7 @@ class AppNotificationServiceTest {
         AppNotification saved = notification.getValue();
         assertEquals(NotificationRecipientType.PATIENT, saved.getRecipientType());
         assertEquals(1L, saved.getRecipientId());
-        assertEquals(NotificationType.SYSTEM, saved.getNotificationType());
+        assertEquals(NotificationType.SECURITY_ALERT, saved.getNotificationType());
         assertEquals("LOGIN_SECURITY", saved.getSourceType());
         assertEquals("/login-history", saved.getActionUrl());
         assertTrue(saved.getMessage().contains("Chrome on Windows"));

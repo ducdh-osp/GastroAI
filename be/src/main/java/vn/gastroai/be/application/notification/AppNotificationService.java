@@ -94,7 +94,7 @@ public class AppNotificationService {
                 : "Phát hiện một lần nhập sai mật khẩu từ %s (IP %s). Nếu không phải bạn, hãy đổi mật khẩu ngay."
                         .formatted(deviceLabel, ipAddress);
         AppNotification notification = new AppNotification(
-                NotificationRecipientType.PATIENT, patientId, NotificationType.SYSTEM,
+                NotificationRecipientType.PATIENT, patientId, NotificationType.SECURITY_ALERT,
                 title, message, "LOGIN_SECURITY", null, "/login-history", null);
         notification = notificationRepository.save(notification);
         NotificationResponse response = toResponse(notification, null);
