@@ -7,7 +7,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.data.domain.PageImpl;
 import vn.gastroai.be.application.audit.AuditLogService;
+import vn.gastroai.be.application.triage.TriageAlertConversationService;
+import vn.gastroai.be.application.triage.TriageAlertDetailResponse;
 import vn.gastroai.be.application.triage.TriageAlertResponse;
 import vn.gastroai.be.application.triage.TriageAlertService;
 import vn.gastroai.be.config.SecurityConfig;
@@ -42,6 +45,9 @@ class TriageAlertAdminControllerTest {
     private TriageAlertService triageAlertService;
 
     @MockitoBean
+    private TriageAlertConversationService conversationService;
+
+    @MockitoBean
     private AuditLogService auditLogService;
 
     @MockitoBean
@@ -62,19 +68,58 @@ class TriageAlertAdminControllerTest {
                 claimedById == null ? null : Instant.parse("2026-09-30T00:05:00Z"),
                 resolvedById == null ? null : Instant.parse("2026-09-30T00:10:00Z"),
                 resolvedById, resolvedByType,
-                Instant.parse("2026-09-30T00:00:00Z"));
+                Instant.parse("2026-09-30T00:00:00Z"),
+                "RESOLVED".equals(status) ? "HANDLED" : null, null, 0, null, null, 0, 0, 0);
     }
 
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
-    void listReturnsRecentAlertsForAdmin() throws Exception {
-        when(triageAlertService.listRecent()).thenReturn(List.of(alert("NEW", null, null, null, null)));
+    void listReturnsOpenPageByDefault() throws Exception {
+        when(triageAlertService.list("OPEN", 0, 20))
+                .thenReturn(new PageImpl<>(List.of(alert("NEW", null, null, null, null))));
 
         mockMvc.perform(get("/api/v1/cms/triage-alerts"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(10))
-                .andExpect(jsonPath("$[0].patientFullName").value("Nguyen Van A"))
-                .andExpect(jsonPath("$[0].status").value("NEW"));
+                .andExpect(jsonPath("$.items[0].id").value(10))
+                .andExpect(jsonPath("$.items[0].patientFullName").value("Nguyen Van A"))
+                .andExpect(jsonPath("$.items[0].status").value("NEW"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(auditLogService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void listPassesViewAndPaging() throws Exception {
+        when(triageAlertService.list("CLOSED", 2, 10)).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/cms/triage-alerts")
+                        .param("view", "CLOSED").param("page", "2").param("size", "10"))
+                .andExpect(status().isOk());
+
+        verify(triageAlertService).list("CLOSED", 2, 10);
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void listRejectsOversizedPage() throws Exception {
+        mockMvc.perform(get("/api/v1/cms/triage-alerts").param("size", "500"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void detailReturnsAlertActionsAndMessages() throws Exception {
+        when(triageAlertService.getDetail(10L)).thenReturn(new TriageAlertDetailResponse(
+                alert("IN_PROGRESS", 9L, "DOCTOR", null, null),
+                List.of(new TriageAlertDetailResponse.ActionItem(1L, "CREATED", null, null, null,
+                        Instant.parse("2026-09-30T00:00:00Z"))),
+                List.of()));
+
+        mockMvc.perform(get("/api/v1/cms/triage-alerts/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alert.id").value(10))
+                .andExpect(jsonPath("$.actions[0].actionType").value("CREATED"));
 
         verify(auditLogService, never()).record(any(), any(), any(), any());
     }
@@ -132,7 +177,7 @@ class TriageAlertAdminControllerTest {
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
     void resolveByClaimerIsAudited() throws Exception {
-        when(triageAlertService.resolve(10L, 7L, "ADMIN"))
+        when(triageAlertService.resolve(10L, 7L, "ADMIN", null))
                 .thenReturn(alert("RESOLVED", 7L, "ADMIN", 7L, "ADMIN"));
 
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/resolve").with(csrf()))
@@ -141,7 +186,7 @@ class TriageAlertAdminControllerTest {
                 .andExpect(jsonPath("$.resolvedById").value(7))
                 .andExpect(jsonPath("$.resolvedByType").value("ADMIN"));
 
-        verify(triageAlertService).resolve(eq(10L), eq(7L), eq("ADMIN"));
+        verify(triageAlertService).resolve(eq(10L), eq(7L), eq("ADMIN"), eq(null));
         verify(auditLogService).record(AuditAction.TRIAGE_ALERT_RESOLVE, "TRIAGE_ALERT", 10L,
                 "Bệnh nhân #1 · Đang xử lý → Đã xử lý");
     }
@@ -149,7 +194,7 @@ class TriageAlertAdminControllerTest {
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
     void adminOverrideIsVisibleInAuditDetail() throws Exception {
-        when(triageAlertService.resolve(10L, 7L, "ADMIN"))
+        when(triageAlertService.resolve(10L, 7L, "ADMIN", null))
                 .thenReturn(alert("RESOLVED", 9L, "DOCTOR", 7L, "ADMIN"));
 
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/resolve").with(csrf()))
@@ -165,8 +210,109 @@ class TriageAlertAdminControllerTest {
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/resolve").with(csrf()))
                 .andExpect(status().isForbidden());
 
-        verify(triageAlertService, never()).resolve(any(), any(), any());
+        verify(triageAlertService, never()).resolve(any(), any(), any(), any());
         verify(auditLogService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "7", roles = "ADMIN")
+    void resolveWithNotePassesNoteToService() throws Exception {
+        when(triageAlertService.resolve(10L, 7L, "ADMIN", "Da huong dan"))
+                .thenReturn(alert("RESOLVED", 7L, "ADMIN", 7L, "ADMIN"));
+
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/resolve").with(csrf())
+                        .contentType("application/json").content("{\"note\":\"Da huong dan\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("HANDLED"));
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void resolveWithoutStaffMessageIsConflictAndNotAudited() throws Exception {
+        when(triageAlertService.resolve(10L, 9L, "DOCTOR", null)).thenThrow(new IllegalStateException(
+                "Cần gửi ít nhất 1 tin nhắn cho bệnh nhân trước khi đánh dấu xử lý xong"));
+
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/resolve").with(csrf()))
+                .andExpect(status().isConflict());
+
+        verify(auditLogService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void releaseIsAudited() throws Exception {
+        when(triageAlertService.release(10L, 9L, "DOCTOR")).thenReturn(alert("NEW", null, null, null, null));
+
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/release").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NEW"));
+
+        verify(auditLogService).record(AuditAction.TRIAGE_ALERT_RELEASE, "TRIAGE_ALERT", 10L,
+                "Bệnh nhân #1 · Đang xử lý → Mới");
+    }
+
+    @Test
+    @WithMockUser(username = "5", roles = "DOCTOR")
+    void releaseByOtherDoctorIsConflictAndNotAudited() throws Exception {
+        when(triageAlertService.release(10L, 5L, "DOCTOR")).thenThrow(new IllegalStateException("x"));
+
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/release").with(csrf()))
+                .andExpect(status().isConflict());
+
+        verify(auditLogService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void sendMessageAuditsLengthButNotContent() throws Exception {
+        when(conversationService.sendStaffMessage(10L, 9L, "DOCTOR", "Ban hay den vien ngay"))
+                .thenReturn(new TriageAlertConversationService.StaffMessageResult(10L, 1L,
+                        new TriageAlertDetailResponse.MessageItem(77L, "DOCTOR", 9L, "Ban hay den vien ngay",
+                                null, Instant.parse("2026-09-30T00:06:00Z"))));
+
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/messages").with(csrf())
+                        .contentType("application/json").content("{\"content\":\"Ban hay den vien ngay\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(77));
+
+        verify(auditLogService).record(AuditAction.TRIAGE_ALERT_MESSAGE, "TRIAGE_ALERT", 10L,
+                "Bệnh nhân #1 · 21 ký tự");
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void sendMessageRejectsBlankContent() throws Exception {
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/messages").with(csrf())
+                        .contentType("application/json").content("{\"content\":\"  \"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(conversationService, never()).sendStaffMessage(any(), any(), any(), any());
+        verify(auditLogService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void falseAlarmRequiresReason() throws Exception {
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/false-alarm").with(csrf())
+                        .contentType("application/json").content("{\"reason\":\"\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(triageAlertService, never()).markFalseAlarm(any(), any(), any(), any());
+        verify(auditLogService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void falseAlarmIsAuditedWithoutReasonText() throws Exception {
+        when(triageAlertService.markFalseAlarm(10L, 9L, "DOCTOR", "Benh nhan thu he thong"))
+                .thenReturn(alert("RESOLVED", 9L, "DOCTOR", 9L, "DOCTOR"));
+
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/false-alarm").with(csrf())
+                        .contentType("application/json").content("{\"reason\":\"Benh nhan thu he thong\"}"))
+                .andExpect(status().isOk());
+
+        verify(auditLogService).record(AuditAction.TRIAGE_ALERT_FALSE_ALARM, "TRIAGE_ALERT", 10L,
+                "Bệnh nhân #1 · Đang xử lý → Báo nhầm/Spam");
     }
 
     @Test
