@@ -15,9 +15,11 @@ import vn.gastroai.be.application.readmodel.AuthResult;
 import vn.gastroai.be.domain.auth.LoginOutcome;
 import vn.gastroai.be.domain.auth.Patient;
 import vn.gastroai.be.domain.auth.PatientLoginHistory;
+import vn.gastroai.be.domain.auth.PatientPasswordHistory;
 import vn.gastroai.be.domain.auth.RevokedToken;
 import vn.gastroai.be.domain.auth.UserRole;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientLoginHistoryRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.PatientPasswordHistoryRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
@@ -48,6 +50,7 @@ public class AuthService {
 
     private final PatientRepository patients;
     private final PatientLoginHistoryRepository history;
+    private final PatientPasswordHistoryRepository passwordHistory;
     private final RevokedTokenRepository revoked;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
@@ -58,12 +61,14 @@ public class AuthService {
 
     @Autowired
     public AuthService(PatientRepository patients, PatientLoginHistoryRepository history,
+                       PatientPasswordHistoryRepository passwordHistory,
                        RevokedTokenRepository revoked, PasswordEncoder encoder,
                        JwtService jwt, EmailVerificationService mail,
                        LoginSecurityPolicy policy, AppNotificationService notifications,
                        PatientNotificationSettingService notificationSettings) {
         this.patients = patients;
         this.history = history;
+        this.passwordHistory = passwordHistory;
         this.revoked = revoked;
         this.encoder = encoder;
         this.jwt = jwt;
@@ -80,7 +85,7 @@ public class AuthService {
      */
     @Transactional("postgresTransactionManager")
     public void register(String email, String password, String name) {
-        validatePasswordLength(password);
+        PatientPasswordPolicy.validate(password);
         String normalizedEmail = normalize(email);
         if (patients.findByEmail(normalizedEmail).isPresent()) {
             throw new IllegalStateException("Email da duoc su dung");
@@ -153,7 +158,7 @@ public class AuthService {
 
     @Transactional("postgresTransactionManager")
     public void resetPassword(String token, String newPassword) {
-        validatePasswordLength(newPassword);
+        PatientPasswordPolicy.validate(newPassword);
         Patient patient = patients.findByPasswordResetTokenHash(hash(token))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Token dat lai mat khau khong hop le"));
@@ -161,6 +166,8 @@ public class AuthService {
                 || patient.getPasswordResetTokenExpiresAt().isBefore(Instant.now())) {
             throw new IllegalArgumentException("Token dat lai mat khau da het han");
         }
+        rejectReusedPassword(patient, newPassword);
+        rememberCurrentPassword(patient);
         patient.setPasswordHash(encoder.encode(newPassword));
         patient.setPasswordResetTokenHash(null);
         patient.setPasswordResetTokenExpiresAt(null);
@@ -273,7 +280,7 @@ public class AuthService {
     public void changePassword(Long id, String oldPassword, String newPassword,
                                ClientRequestInfo requestInfo) {
         validatePasswordLength(oldPassword);
-        validatePasswordLength(newPassword);
+        PatientPasswordPolicy.validate(newPassword);
         Patient patient = patients.findByIdForUpdate(id)
                 .orElseThrow(() -> new BadCredentialsException("Tai khoan khong ton tai"));
         Instant now = Instant.now();
@@ -302,11 +309,10 @@ public class AuthService {
             }
             throw new BadCredentialsException("Mat khau hien tai khong dung");
         }
-        if (encoder.matches(newPassword, patient.getPasswordHash())) {
-            throw new IllegalArgumentException("Mat khau moi phai khac mat khau hien tai");
-        }
+        rejectReusedPassword(patient, newPassword);
         patient.setFailedLoginAttempts(0);
         patient.setLockedUntil(null);
+        rememberCurrentPassword(patient);
         patient.setPasswordHash(encoder.encode(newPassword));
         patient.setTokenVersion(patient.getTokenVersion() + 1);
     }
@@ -337,6 +343,19 @@ public class AuthService {
                         ClientRequestInfo requestInfo) {
         history.save(new PatientLoginHistory(patient, Instant.now(), outcome, reason,
                 requestInfo.ipAddress(), requestInfo.userAgent(), requestInfo.deviceLabel()));
+    }
+
+    private void rejectReusedPassword(Patient patient, String newPassword) {
+        if (encoder.matches(newPassword, patient.getPasswordHash())
+                || passwordHistory.findPasswordHashesByPatientId(patient.getId()).stream()
+                .anyMatch(previousHash -> encoder.matches(newPassword, previousHash))) {
+            throw new IllegalArgumentException("Mật khẩu mới không được trùng với mật khẩu đã từng sử dụng");
+        }
+    }
+
+    private void rememberCurrentPassword(Patient patient) {
+        passwordHistory.save(new PatientPasswordHistory(
+                patient, patient.getPasswordHash(), Instant.now()));
     }
 
     private static String normalize(String email) {
