@@ -205,7 +205,7 @@ export function CmsBroadcastPage() {
                   Thông báo Broadcast
                 </Title>
                 <Text type="secondary" className="text-xs">
-                  Soạn và gửi thông báo hàng loạt tới người dùng (UC0075)
+                  Soạn và gửi thông báo hàng loạt tới người dùng
                 </Text>
               </div>
             </div>

@@ -35,6 +35,8 @@ class KnowledgeArticleAdminServiceTest {
             String name = inv.getArgument(0);
             return Optional.of(new ArticleTopic(name, 10));
         });
+        when(articleRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(articleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
     private KnowledgeArticle sampleArticle(Long id, String slug, String title, String category, boolean published) {
@@ -84,9 +86,9 @@ class KnowledgeArticleAdminServiceTest {
     void createAutoGeneratesSlugAndEnforcesMedicalReviewerForPublished() {
         when(articleRepository.existsBySlug("viem-loet-da-day")).thenReturn(false);
         when(articleRepository.findAllByOrderBySortOrderAscTitleAsc()).thenReturn(List.of());
-        when(articleRepository.save(any(KnowledgeArticle.class))).thenAnswer(inv -> {
+        when(articleRepository.saveAndFlush(any(KnowledgeArticle.class))).thenAnswer(inv -> {
             KnowledgeArticle a = inv.getArgument(0);
-            a.setId(10L);
+            if (a.getId() == null) a.setId(10L);
             return a;
         });
 

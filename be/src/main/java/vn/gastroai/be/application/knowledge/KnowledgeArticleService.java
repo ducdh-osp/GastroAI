@@ -37,9 +37,7 @@ public class KnowledgeArticleService {
                 .filter(article -> normalizedCategory.isEmpty()
                         || VietnameseText.normalize(article.getCategory()).equals(normalizedCategory))
                 .filter(article -> normalizedQuery.isEmpty()
-                        || containsNormalized(article.getTitle(), normalizedQuery)
-                        || containsNormalized(article.getSummary(), normalizedQuery)
-                        || containsNormalized(article.getContent(), normalizedQuery))
+                        || containsNormalized(article.getTitle(), normalizedQuery))
                 .toList();
         Pageable pageable = PageRequest.of(page, size);
         long offset = pageable.getOffset();

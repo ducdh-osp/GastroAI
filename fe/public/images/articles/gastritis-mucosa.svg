@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="mucosaBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff5f5" />
+      <stop offset="100%" stop-color="#f8fafc" />
+    </linearGradient>
+    <filter id="boxShadow">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <rect width="720" height="400" rx="16" fill="url(#mucosaBg)" />
+
+  <!-- Header -->
+  <rect x="24" y="20" width="672" height="44" rx="8" fill="#be123c" />
+  <text x="360" y="47" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="bold" text-anchor="middle">
+    CẤU TRÚC NIÊM MẠC DẠ DÀY &amp; YẾU TỐ GÂY VIÊM NIÊM MẠC
+  </text>
+
+  <!-- Left: Lớp bảo vệ niêm mạc bình thường vs tổn thương -->
+  <g transform="translate(30, 80)">
+    <rect width="360" height="290" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#boxShadow)" />
+    <rect x="15" y="14" width="330" height="26" rx="13" fill="#fff1f2" />
+    <text x="180" y="32" fill="#9f1239" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">
+      🔬 Lát Cắt Vi Thể Thành Dạ Dày
+    </text>
+
+    <!-- Acid Cavity -->
+    <rect x="20" y="52" width="320" height="36" rx="4" fill="#fef3c7" stroke="#fcd34d" />
+    <text x="180" y="74" fill="#92400e" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" text-anchor="middle">
+      Lòng dạ dày: Acid dịch vị HCl (pH 1.5 - 2.0) + Pepsin
+    </text>
+
+    <!-- Mucus Layer (Lớp nhầy) -->
+    <rect x="20" y="94" width="155" height="34" fill="#a7f3d0" stroke="#059669" stroke-width="1.5" rx="3" />
+    <text x="97" y="115" fill="#065f46" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" text-anchor="middle">Lớp nhầy dầy bảo vệ</text>
+
+    <!-- Damaged Mucus Layer -->
+    <rect x="185" y="94" width="155" height="18" fill="#fecdd3" stroke="#e11d48" stroke-width="1.5" rx="3" />
+    <text x="262" y="108" fill="#9f1239" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" text-anchor="middle">Lớp nhầy bị bào mòn!</text>
+
+    <!-- Epithelial Cells -->
+    <g transform="translate(20, 134)">
+      <!-- Healthy cells (left) -->
+      <rect x="0" y="0" width="22" height="40" rx="3" fill="#fbcfe8" stroke="#db2777" />
+      <rect x="25" y="0" width="22" height="40" rx="3" fill="#fbcfe8" stroke="#db2777" />
+      <rect x="50" y="0" width="22" height="40" rx="3" fill="#fbcfe8" stroke="#db2777" />
+      <rect x="75" y="0" width="22" height="40" rx="3" fill="#fbcfe8" stroke="#db2777" />
+      <rect x="100" y="0" width="22" height="40" rx="3" fill="#fbcfe8" stroke="#db2777" />
+      <rect x="125" y="0" width="22" height="40" rx="3" fill="#fbcfe8" stroke="#db2777" />
+
+      <!-- Inflamed / damaged cells (right) -->
+      <rect x="165" y="5" width="22" height="35" rx="3" fill="#fca5a5" stroke="#dc2626" />
+      <rect x="190" y="10" width="22" height="30" rx="3" fill="#f87171" stroke="#b91c1c" />
+      <rect x="215" y="14" width="22" height="26" rx="3" fill="#ef4444" stroke="#991b1b" />
+      <rect x="240" y="8" width="22" height="32" rx="3" fill="#f87171" stroke="#b91c1c" />
+      <rect x="265" y="5" width="22" height="35" rx="3" fill="#fca5a5" stroke="#dc2626" />
+      <rect x="290" y="2" width="22" height="38" rx="3" fill="#fbcfe8" stroke="#db2777" />
+    </g>
+
+    <!-- Submucosa / Blood vessels -->
+    <rect x="20" y="180" width="320" height="40" rx="4" fill="#fee2e2" />
+    <circle cx="70" cy="200" r="10" fill="#dc2626" opacity="0.6" />
+    <circle cx="110" cy="200" r="8" fill="#2563eb" opacity="0.6" />
+    <circle cx="240" cy="200" r="14" fill="#dc2626" opacity="0.9" />
+    <text x="240" y="204" fill="#ffffff" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle" font-weight="bold">Xung huyết</text>
+    <text x="70" y="228" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Mạch máu bình thường</text>
+    <text x="240" y="228" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="10" font-weight="bold">Viêm đỏ &amp; Phù nề</text>
+
+    <!-- Comparison Footer -->
+    <rect x="20" y="244" width="155" height="30" rx="5" fill="#f0fdf4" stroke="#86efac" />
+    <text x="97" y="263" fill="#166534" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" text-anchor="middle">✓ Niêm mạc khỏe mạnh</text>
+
+    <rect x="185" y="244" width="155" height="30" rx="5" fill="#fef2f2" stroke="#fca5a5" />
+    <text x="262" y="263" fill="#991b1b" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" text-anchor="middle">⚠ Viêm trợt niêm mạc</text>
+  </g>
+
+  <!-- Right: Nguyên nhân phổ biến gây viêm -->
+  <g transform="translate(410, 80)">
+    <rect width="280" height="290" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#boxShadow)" />
+    <rect x="15" y="14" width="250" height="26" rx="13" fill="#f8fafc" />
+    <text x="140" y="32" fill="#334155" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">
+      ⚡ 4 Nguyên Nhân Thường Gặp
+    </text>
+
+    <!-- Item 1: H. pylori -->
+    <g transform="translate(15, 52)">
+      <rect width="250" height="50" rx="6" fill="#f0fdfa" stroke="#5eead4" />
+      <text x="12" y="22" fill="#0f766e" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">1. Vi khuẩn Helicobacter pylori</text>
+      <text x="12" y="38" fill="#134e4a" font-family="system-ui, sans-serif" font-size="10">Tiết men Urease phá hủy lớp nhầy bảo vệ.</text>
+    </g>
+
+    <!-- Item 2: NSAIDs -->
+    <g transform="translate(15, 108)">
+      <rect width="250" height="50" rx="6" fill="#fef2f2" stroke="#fecdd3" />
+      <text x="12" y="22" fill="#be123c" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">2. Thuốc giảm đau NSAID / Aspirin</text>
+      <text x="12" y="38" fill="#881337" font-family="system-ui, sans-serif" font-size="10">Ức chế Prostaglandin làm giảm tiết nhầy.</text>
+    </g>
+
+    <!-- Item 3: Rượu bia & Thuốc lá -->
+    <g transform="translate(15, 164)">
+      <rect width="250" height="50" rx="6" fill="#fffbeb" stroke="#fde68a" />
+      <text x="12" y="22" fill="#b45309" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">3. Rượu bia, thuốc lá, đồ cay nóng</text>
+      <text x="12" y="38" fill="#78350f" font-family="system-ui, sans-serif" font-size="10">Kích ứng trực tiếp gây trợt niêm mạc cấp.</text>
+    </g>
+
+    <!-- Item 4: Stress kéo dài -->
+    <g transform="translate(15, 220)">
+      <rect width="250" height="50" rx="6" fill="#f5f3ff" stroke="#ddd6fe" />
+      <text x="12" y="22" fill="#6d28d9" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">4. Căng thẳng thần kinh (Stress)</text>
+      <text x="12" y="38" fill="#4c1d95" font-family="system-ui, sans-serif" font-size="10">Tăng tiết acid và co thắt mạch máu dạ dày.</text>
+    </g>
+  </g>
+</svg>
+

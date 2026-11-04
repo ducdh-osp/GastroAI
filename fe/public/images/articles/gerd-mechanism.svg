@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+    <linearGradient id="stomachGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fda4af" />
+      <stop offset="60%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#e11d48" />
+    </linearGradient>
+    <linearGradient id="acidGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <linearGradient id="refluxAcidGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="50%" stop-color="#ef4444" />
+      <stop offset="100%" stop-color="#dc2626" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="720" height="400" rx="16" fill="url(#bgGrad)" />
+
+  <!-- Header Banner -->
+  <rect x="24" y="20" width="672" height="44" rx="8" fill="#0f766e" />
+  <text x="360" y="47" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="bold" text-anchor="middle">
+    CƠ CHẾ BỆNH TRÀO NGƯỢC DẠ DÀY - THỰC QUẢN (GERD)
+  </text>
+
+  <!-- LEFT PANEL: BÌNH THƯỜNG -->
+  <g transform="translate(40, 80)">
+    <rect width="300" height="290" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)" />
+    <!-- Title badge -->
+    <rect x="20" y="14" width="260" height="28" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="1" />
+    <text x="150" y="33" fill="#047857" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">
+      ✓ BÌNH THƯỜNG (Cơ thắt đóng kín)
+    </text>
+
+    <!-- Esophagus tube -->
+    <rect x="135" y="55" width="30" height="70" rx="6" fill="#fbcfe8" stroke="#f472b6" stroke-width="2" />
+    <text x="120" y="85" fill="#64748b" font-family="system-ui, sans-serif" font-size="11" text-anchor="end">Thực quản</text>
+    <line x1="123" y1="82" x2="133" y2="82" stroke="#94a3b8" stroke-width="1" />
+
+    <!-- LES (Sphincter closed) -->
+    <ellipse cx="150" cy="125" rx="20" ry="8" fill="#10b981" stroke="#047857" stroke-width="2" />
+    <text x="195" y="128" fill="#047857" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Cơ thắt LES đóng chặt</text>
+    <line x1="172" y1="125" x2="190" y2="125" stroke="#10b981" stroke-width="1.5" />
+
+    <!-- Stomach Body -->
+    <path d="M 140 130 C 100 145, 80 180, 85 220 C 90 260, 140 270, 180 260 C 220 250, 230 200, 205 160 C 190 140, 160 130, 155 130 Z" fill="url(#stomachGrad)" opacity="0.85" />
+    <!-- Stomach Acid Level -->
+    <path d="M 86 215 C 110 230, 160 230, 215 205 C 220 230, 205 255, 175 260 C 135 265, 90 255, 86 215 Z" fill="url(#acidGrad)" opacity="0.9" />
+    <text x="150" y="245" fill="#78350f" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" text-anchor="middle">Acid dạ dày giữ nguyên</text>
+
+    <!-- Bottom note -->
+    <rect x="20" y="250" width="260" height="26" rx="6" fill="#f8fafc" />
+    <text x="150" y="267" fill="#475569" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">
+      Acid không thể trào ngược lên thực quản
+    </text>
+  </g>
+
+  <!-- RIGHT PANEL: TRÀO NGƯỢC (GERD) -->
+  <g transform="translate(380, 80)">
+    <rect width="300" height="290" rx="12" fill="#ffffff" stroke="#fecdd3" stroke-width="1.5" filter="url(#shadow)" />
+    <!-- Title badge -->
+    <rect x="20" y="14" width="260" height="28" rx="14" fill="#fff1f2" stroke="#e11d48" stroke-width="1" />
+    <text x="150" y="33" fill="#be123c" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">
+      ⚠ TRÀO NGƯỢC (Cơ thắt LES lỏng lẻo)
+    </text>
+
+    <!-- Esophagus tube with reflux flare -->
+    <rect x="135" y="55" width="30" height="70" rx="6" fill="#ffe4e6" stroke="#f43f5e" stroke-width="2" />
+    <!-- Acid splash upwards -->
+    <path d="M 142 125 Q 150 70 148 60 Q 152 75 158 125 Z" fill="url(#refluxAcidGrad)" />
+    <!-- Flame / pain icon -->
+    <text x="180" y="80" fill="#dc2626" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">🔥 Ợ nóng, bỏng rát ngực</text>
+
+    <!-- LES (Sphincter open/relaxed) -->
+    <ellipse cx="140" cy="125" rx="8" ry="6" fill="#fb7185" stroke="#e11d48" stroke-width="1.5" />
+    <ellipse cx="160" cy="125" rx="8" ry="6" fill="#fb7185" stroke="#e11d48" stroke-width="1.5" />
+    <text x="195" y="128" fill="#e11d48" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Cơ thắt LES mở rộng</text>
+    <line x1="172" y1="125" x2="190" y2="125" stroke="#e11d48" stroke-width="1.5" />
+
+    <!-- Stomach Body -->
+    <path d="M 140 130 C 100 145, 80 180, 85 220 C 90 260, 140 270, 180 260 C 220 250, 230 200, 205 160 C 190 140, 160 130, 155 130 Z" fill="url(#stomachGrad)" opacity="0.85" />
+    <!-- Stomach Acid Rising -->
+    <path d="M 86 210 C 110 215, 145 190, 150 140 C 160 190, 200 215, 215 205 C 220 230, 205 255, 175 260 C 135 265, 90 255, 86 210 Z" fill="url(#acidGrad)" opacity="0.9" />
+
+    <!-- Warning badge -->
+    <rect x="20" y="250" width="260" height="26" rx="6" fill="#fff7ed" stroke="#fed7aa" stroke-width="1" />
+    <text x="150" y="267" fill="#c2410c" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle">
+      Dịch acid &amp; Pepsin ăn mòn niêm mạc thực quản
+    </text>
+  </g>
+</svg>
+

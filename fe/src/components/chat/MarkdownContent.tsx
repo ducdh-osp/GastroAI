@@ -30,6 +30,21 @@ export function MarkdownContent({ content }: { content: string }) {
           th: ({ children }) => <th className="border border-current/20 px-2 py-1 font-semibold">{children}</th>,
           td: ({ children }) => <td className="border border-current/20 px-2 py-1">{children}</td>,
           hr: () => <hr className="my-3 border-current/20" />,
+          img: ({ src, alt }) => (
+            <figure className="my-6 block text-center">
+              <img
+                src={src}
+                alt={alt}
+                loading="lazy"
+                className="mx-auto max-h-[420px] w-auto max-w-full rounded-2xl border border-slate-200 bg-white object-contain p-2 shadow-sm transition-transform hover:scale-[1.01] dark:border-slate-700 dark:bg-slate-800"
+              />
+              {alt && (
+                <figcaption className="mt-2 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
+                  📷 {alt}
+                </figcaption>
+              )}
+            </figure>
+          ),
         }}
       >
         {content}

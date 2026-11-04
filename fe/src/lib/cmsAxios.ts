@@ -6,7 +6,7 @@ const baseURL =
 
 export const cmsApiClient = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: 60000,
   withCredentials: true,
 })
 
@@ -17,7 +17,12 @@ export const cmsApiClient = axios.create({
 cmsApiClient.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
-    const status = (error as { response?: { status?: number } })?.response?.status
+    const err = error as {
+      code?: string
+      message?: string
+      response?: { status?: number }
+    }
+    const status = err?.response?.status
     if (status === 401 && window.location.pathname !== '/cms/login') {
       try {
         localStorage.removeItem(CMS_AUTH_STORAGE_KEY)
@@ -25,6 +30,12 @@ cmsApiClient.interceptors.response.use(
         // ignore
       }
       window.location.href = '/cms/login'
+    }
+    if (
+      err?.code === 'ECONNABORTED' ||
+      (err?.message && err.message.toLowerCase().includes('timeout'))
+    ) {
+      err.message = 'Máy chủ phản hồi quá thời gian chờ (Timeout). Vui lòng thử lại.'
     }
     return Promise.reject(error)
   },

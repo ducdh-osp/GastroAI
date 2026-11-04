@@ -53,9 +53,7 @@ public class KnowledgeArticleAdminService {
                 .filter(a -> normalizedCategory.isEmpty()
                         || VietnameseText.normalize(a.getCategory()).equals(normalizedCategory))
                 .filter(a -> normalizedQuery.isEmpty()
-                        || containsNormalized(a.getTitle(), normalizedQuery)
-                        || containsNormalized(a.getSummary(), normalizedQuery)
-                        || containsNormalized(a.getContent(), normalizedQuery))
+                        || containsNormalized(a.getTitle(), normalizedQuery))
                 .toList();
 
         Pageable pageable = PageRequest.of(page, size);

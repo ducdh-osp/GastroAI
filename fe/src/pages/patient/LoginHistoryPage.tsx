@@ -1,18 +1,17 @@
-import { Alert, Button, Card, Pagination, Space, Spin, Table, Tag, Typography } from 'antd'
+import { KeyOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Pagination, Space, Spin, Table, Tag, Tooltip, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { getLoginHistory, type LoginHistoryItem } from '../../api/auth'
 import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
 
 function pageSizeForViewport(height: number): number {
-  // Reserve space for the page heading, optional security alert, card header and pager.
-  return Math.max(4, Math.min(12, Math.floor((height - 440) / 50)))
+  return Math.max(4, Math.min(20, Math.floor((height - 400) / 50)))
 }
 
-// Map outcome từ BE → hiển thị
 type LoginStatus = 'SUCCESS' | 'FAILURE' | 'BLOCKED'
 
 const statusLabels: Record<LoginStatus, string> = {
@@ -52,24 +51,30 @@ const columns: ColumnsType<LoginHistoryItem> = [
   {
     title: 'Thiết bị',
     key: 'device',
+    width: 280,
     render: (_, record) => (
-      <Text strong title={record.userAgent ?? undefined}>{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
+      <Tooltip title={record.userAgent ?? undefined}>
+        <Text strong className="cursor-help">{record.deviceLabel ?? 'Không rõ thiết bị'}</Text>
+      </Tooltip>
     ),
   },
   {
     title: 'Địa chỉ IP',
     key: 'ip',
-    render: (_, record) => (
-      <div>
-        <Text code>{record.ipAddress ?? '—'}</Text>
-      </div>
-    ),
+    width: 160,
+    render: (_, record) => <Text code>{record.ipAddress ?? '—'}</Text>,
   },
   {
     title: 'Lý do thất bại',
     dataIndex: 'failureReason',
     key: 'failureReason',
-    render: (val: string | null) => val ? <Text type="danger">{val}</Text> : <Text type="secondary">—</Text>,
+    width: 220,
+    render: (val: string | null) =>
+      val ? (
+        <Text type="danger" className="block truncate" title={val}>{val}</Text>
+      ) : (
+        <Text type="secondary">—</Text>
+      ),
   },
   {
     title: 'Trạng thái',
@@ -78,11 +83,7 @@ const columns: ColumnsType<LoginHistoryItem> = [
     width: 130,
     render: (outcome: string) => {
       const status = outcome as LoginStatus
-      return (
-        <Tag color={statusColors[status] ?? 'default'}>
-          {statusLabels[status] ?? outcome}
-        </Tag>
-      )
+      return <Tag color={statusColors[status] ?? 'default'}>{statusLabels[status] ?? outcome}</Tag>
     },
   },
 ]
@@ -96,7 +97,7 @@ export default function LoginHistoryPage() {
   const [recentFailureCount, setRecentFailureCount] = useState(0)
   const [alertDismissed, setAlertDismissed] = useState(() => {
     try {
-      return sessionStorage.getItem('dismissed_login_security_alert') === 'true'
+      return sessionStorage.getItem('dismissed_patient_login_security_alert') === 'true'
     } catch {
       return false
     }
@@ -104,11 +105,12 @@ export default function LoginHistoryPage() {
   const [pageSize, setPageSize] = useState(() => pageSizeForViewport(window.innerHeight))
   const previousPageSize = useRef(pageSize)
   const requestId = useRef(0)
+  const navigate = useNavigate()
 
   function handleDismissAlert() {
     setAlertDismissed(true)
     try {
-      sessionStorage.setItem('dismissed_login_security_alert', 'true')
+      sessionStorage.setItem('dismissed_patient_login_security_alert', 'true')
     } catch {
       // Ignore sessionStorage issues
     }
@@ -157,12 +159,10 @@ export default function LoginHistoryPage() {
         <div className="shrink-0">
           <Text type="secondary">Bảo mật tài khoản</Text>
           <Title level={2} className="mb-1! mt-1!">Lịch sử đăng nhập</Title>
-          <Text type="secondary">Theo dõi các lần truy cập gần đây để phát hiện hoạt động bất thường.</Text>
+          <Text type="secondary">Theo dõi các lần truy cập gần đây vào tài khoản của bạn.</Text>
         </div>
 
-        {error && (
-          <Alert type="error" showIcon closable onClose={() => setError(null)} message={error} className="shrink-0" />
-        )}
+        {error && <Alert type="error" showIcon closable onClose={() => setError(null)} message={error} className="shrink-0" />}
 
         {!error && !loading && recentFailureCount > 0 && !alertDismissed && (
           <Alert
@@ -171,17 +171,21 @@ export default function LoginHistoryPage() {
             showIcon
             closable
             onClose={handleDismissAlert}
-            message="Có hoạt động cần kiểm tra"
-            description={`${recentFailureCount} lần truy cập không thành công hoặc bị chặn trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.`}
-            action={
-              <Space size="small">
-                <Button size="small" type="primary" ghost>
-                  <Link to="/change-password">Đổi mật khẩu</Link>
-                </Button>
-                <Button size="small" onClick={handleDismissAlert}>
-                  Đã hiểu
-                </Button>
-              </Space>
+            title="Có hoạt động cần kiểm tra"
+            description={
+              <div className="flex flex-col items-start gap-2">
+                <span>
+                  {recentFailureCount} lần đăng nhập hoặc đổi mật khẩu không thành công trong 7 ngày qua. Nếu không phải bạn, hãy đổi mật khẩu ngay.
+                </span>
+                <Space size="small">
+                  <Button size="small" type="primary" icon={<KeyOutlined />} onClick={() => navigate('/change-password')}>
+                    Đổi mật khẩu
+                  </Button>
+                  <Button size="small" onClick={handleDismissAlert}>
+                    Đã hiểu
+                  </Button>
+                </Space>
+              </div>
             }
           />
         )}
@@ -190,27 +194,19 @@ export default function LoginHistoryPage() {
           className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm"
           styles={{ body: { display: 'flex', height: '100%', minHeight: 0, flexDirection: 'column', overflow: 'hidden' } }}
         >
-          <div className="mb-4 flex shrink-0 items-center justify-between">
-            <div>
-              <Title level={4} className="mb-1!">Các lần đăng nhập gần đây</Title>
-              <Text type="secondary">
-                {loading ? 'Đang tải...' : `Tổng cộng ${totalElements} hoạt động`}
-              </Text>
-            </div>
-            {!loading && <Tag color="blue">{totalElements} hoạt động</Tag>}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Spin spinning={loading}>
+              <Table<LoginHistoryItem>
+                columns={columns}
+                dataSource={items}
+                rowKey="id"
+                pagination={false}
+                scroll={{ x: 970 }}
+                tableLayout="fixed"
+                locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
+              />
+            </Spin>
           </div>
-
-          <Spin spinning={loading}>
-            <Table<LoginHistoryItem>
-              columns={columns}
-              dataSource={items}
-              rowKey="id"
-              size="small"
-              pagination={false}
-              scroll={{ x: 720 }}
-              locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
-            />
-          </Spin>
 
           {totalElements > pageSize && (
             <div className="mt-auto flex shrink-0 justify-end pt-4">

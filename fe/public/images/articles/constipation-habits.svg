@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="constipBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fffbeb" />
+      <stop offset="100%" stop-color="#f8fafc" />
+    </linearGradient>
+    <filter id="kShadow">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <rect width="720" height="400" rx="16" fill="url(#constipBg)" />
+
+  <!-- Header -->
+  <rect x="24" y="20" width="672" height="44" rx="8" fill="#b45309" />
+  <text x="360" y="47" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="bold" text-anchor="middle">
+    TÁO BÓN: TƯ THẾ ĐẠI TIỆN SINH LÝ &amp; 3 NGUYÊN TẮC CẢI THIỆN
+  </text>
+
+  <!-- Left: Tư thế ngồi chuẩn -->
+  <g transform="translate(30, 80)">
+    <rect width="320" height="290" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#kShadow)" />
+    <rect x="15" y="14" width="290" height="26" rx="13" fill="#fef3c7" />
+    <text x="160" y="32" fill="#92400e" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">
+      🚽 Tư Thế Ngồi Đại Tiện Đúng (35°)
+    </text>
+
+    <!-- Comparison 90 deg vs 35 deg -->
+    <!-- 90 deg sitting (wrong) -->
+    <g transform="translate(25, 55)">
+      <rect width="125" height="150" rx="6" fill="#fef2f2" stroke="#fca5a5" />
+      <text x="62" y="22" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" text-anchor="middle">Ngồi 90° (Sai)</text>
+      <!-- Stick Figure 90 deg -->
+      <circle cx="62" cy="45" r="10" fill="#94a3b8" />
+      <line x1="62" y1="55" x2="62" y2="95" stroke="#94a3b8" stroke-width="4" />
+      <line x1="62" y1="95" x2="95" y2="95" stroke="#94a3b8" stroke-width="4" />
+      <line x1="95" y1="95" x2="95" y2="135" stroke="#94a3b8" stroke-width="4" />
+      <text x="62" y="120" fill="#dc2626" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" text-anchor="middle">Góc 90°: Cơ nghẹt</text>
+      <text x="62" y="138" fill="#7f1d1d" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">Phải rặn nhiều</text>
+    </g>
+
+    <!-- 35 deg sitting with footstool (right) -->
+    <g transform="translate(170, 55)">
+      <rect width="125" height="150" rx="6" fill="#f0fdf4" stroke="#86efac" />
+      <text x="62" y="22" fill="#15803d" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" text-anchor="middle">Kê chân 35° (Đúng)</text>
+      <!-- Stick Figure 35 deg with elevated knees -->
+      <circle cx="50" cy="45" r="10" fill="#0d9488" />
+      <line x1="50" y1="55" x2="45" y2="95" stroke="#0d9488" stroke-width="4" />
+      <line x1="45" y1="95" x2="75" y2="80" stroke="#0d9488" stroke-width="4" />
+      <line x1="75" y1="80" x2="80" y2="120" stroke="#0d9488" stroke-width="4" />
+      <!-- Footstool -->
+      <rect x="65" y="120" width="30" height="15" fill="#ca8a04" rx="2" />
+      <text x="62" y="112" fill="#15803d" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" text-anchor="middle">Góc 35°: Trực tràng</text>
+      <text x="62" y="130" fill="#15803d" font-family="system-ui, sans-serif" font-size="9" text-anchor="middle">thẳng hàng, dễ đi</text>
+    </g>
+
+    <rect x="15" y="220" width="290" height="55" rx="6" fill="#f8fafc" stroke="#e2e8f0" />
+    <text x="160" y="240" fill="#1e293b" font-family="system-ui, sans-serif" font-size="11" font-weight="600" text-anchor="middle">
+      Kê ghế cao 15-20cm dưới chân khi ngồi bồn cầu
+    </text>
+    <text x="160" y="258" fill="#64748b" font-family="system-ui, sans-serif" font-size="10.5" text-anchor="middle">
+      Giúp cơ mu trực tràng thả lỏng, giảm nguy cơ trĩ và nứt kẽ
+    </text>
+  </g>
+
+  <!-- Right: 3 Nguyên tắc cải thiện táo bón -->
+  <g transform="translate(370, 80)">
+    <rect width="320" height="290" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#kShadow)" />
+    <rect x="15" y="14" width="290" height="26" rx="13" fill="#ecfdf5" />
+    <text x="160" y="32" fill="#047857" font-family="system-ui, sans-serif" font-size="13" font-weight="bold" text-anchor="middle">
+      🥗 3 Trụ Cột Điều Trị Không Dùng Thuốc
+    </text>
+
+    <!-- 1: Fiber -->
+    <g transform="translate(15, 52)">
+      <rect width="290" height="64" rx="8" fill="#f0fdf4" stroke="#a7f3d0" />
+      <text x="15" y="24" fill="#047857" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">1. Bổ sung chất xơ (25 - 30g/ngày)</text>
+      <text x="15" y="42" fill="#065f46" font-family="system-ui, sans-serif" font-size="11">Rau xanh, yến mạch, đậu bắp, đu đủ, khoai lang.</text>
+      <text x="15" y="56" fill="#047857" font-family="system-ui, sans-serif" font-size="10">Chất xơ hòa tan giữ nước làm mềm khuôn phân.</text>
+    </g>
+
+    <!-- 2: Water -->
+    <g transform="translate(15, 126)">
+      <rect width="290" height="64" rx="8" fill="#eff6ff" stroke="#bfdbfe" />
+      <text x="15" y="24" fill="#1d4ed8" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">2. Uống đủ 2 - 2.5 lít nước mỗi ngày</text>
+      <text x="15" y="42" fill="#1e40af" font-family="system-ui, sans-serif" font-size="11">Uống 1 ly nước ấm ngay khi thức dậy buổi sáng.</text>
+      <text x="15" y="56" fill="#1d4ed8" font-family="system-ui, sans-serif" font-size="10">Ăn nhiều chất xơ mà thiếu nước sẽ làm táo bón nặng hơn!</text>
+    </g>
+
+    <!-- 3: Routine -->
+    <g transform="translate(15, 200)">
+      <rect width="290" height="64" rx="8" fill="#fdf4ff" stroke="#f0abfc" />
+      <text x="15" y="24" fill="#a21caf" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">3. Rèn luyện phản xạ đi tiêu theo giờ</text>
+      <text x="15" y="42" fill="#86198f" font-family="system-ui, sans-serif" font-size="11">Tập ngồi đại tiện 10 phút sau ăn sáng mỗi ngày.</text>
+      <text x="15" y="56" fill="#701a75" font-family="system-ui, sans-serif" font-size="10">Không nhịn đi ngoài, tránh xem điện thoại quá lâu.</text>
+    </g>
+  </g>
+</svg>
+

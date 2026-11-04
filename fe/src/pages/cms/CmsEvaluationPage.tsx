@@ -439,7 +439,7 @@ export default function CmsEvaluationPage() {
             <Space orientation="horizontal" align="center">
               <ExperimentOutlined style={{ fontSize: 26, color: '#3b82f6' }} />
               <Title level={2} style={{ margin: 0 }}>
-                Đánh giá mô hình AI & Triage (UC0037 & UC0038)
+                Đánh giá mô hình AI & Triage
               </Title>
             </Space>
             <Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0 }}>
@@ -466,7 +466,7 @@ export default function CmsEvaluationPage() {
               onClick={handleRunTriage}
               loading={runningTriage}
             >
-              Chạy đánh giá Triage (UC0038)
+              Chạy đánh giá Triage
             </Button>
             <Button
               type="primary"
@@ -474,7 +474,7 @@ export default function CmsEvaluationPage() {
               onClick={handleRunRag}
               loading={runningRag}
             >
-              Chạy đánh giá RAG (UC0037)
+              Chạy đánh giá RAG
             </Button>
           </Space>
         </div>
@@ -662,7 +662,7 @@ export default function CmsEvaluationPage() {
                 key: 'triage',
                 label: (
                   <span>
-                    <AlertOutlined /> Đánh giá độ nhạy Triage (UC0038)
+                    <AlertOutlined /> Đánh giá độ nhạy Triage
                   </span>
                 ),
                 children: (
@@ -924,7 +924,7 @@ export default function CmsEvaluationPage() {
                 key: 'rag',
                 label: (
                   <span>
-                    <DatabaseOutlined /> Đánh giá độ chính xác truy xuất RAG (UC0037)
+                    <DatabaseOutlined /> Đánh giá độ chính xác truy xuất RAG
                   </span>
                 ),
                 children: (

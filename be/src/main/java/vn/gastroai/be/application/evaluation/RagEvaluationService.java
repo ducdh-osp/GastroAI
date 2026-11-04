@@ -200,7 +200,7 @@ public class RagEvaluationService {
      * Chạy đánh giá toàn diện RAG Retrieval Accuracy trên tập benchmark queries.
      * @param topK số lượng tài liệu lấy trong top-k (mặc định 5).
      */
-    public RagEvaluationReport evaluate(int topK) {
+    public synchronized RagEvaluationReport evaluate(int topK) {
         if (topK <= 0) topK = 5;
 
         List<RagQueryEvalResult> queryResults = new ArrayList<>(BENCHMARK_QUERIES.size());
@@ -217,24 +217,34 @@ public class RagEvaluationService {
         boolean anyVectorHit = false;
         boolean anySqlHit = false;
         boolean anySimulated = false;
+        boolean vectorServiceDisabled = false;
 
         for (RagBenchmarkQuery bq : BENCHMARK_QUERIES) {
             long startMs = System.currentTimeMillis();
             List<SimilarChunk> retrieved = new ArrayList<>();
             boolean vectorSuccess = false;
 
-            try {
-                float[] queryVector = embeddingClient.embed(bq.query());
-                if (queryVector != null && queryVector.length > 0) {
-                    retrieved = embeddingStore.findTopK(queryVector, topK);
-                    if (retrieved != null && !retrieved.isEmpty()) {
-                        vectorSuccess = true;
-                        anyVectorHit = true;
+            if (!vectorServiceDisabled && embeddingClient != null) {
+                try {
+                    float[] queryVector = embeddingClient.embed(bq.query());
+                    if (queryVector != null && queryVector.length > 0) {
+                        retrieved = embeddingStore.findTopK(queryVector, topK);
+                        if (retrieved != null && !retrieved.isEmpty()) {
+                            vectorSuccess = true;
+                            anyVectorHit = true;
+                        }
+                    }
+                } catch (Exception ex) {
+                    log.warn("Vector embedding search unavailable for query '{}', using lexical fallback: {}",
+                            bq.query(), ex.getMessage());
+                    String msg = ex.getMessage();
+                    if (msg != null && (msg.contains("403") || msg.contains("401") || msg.contains("PERMISSION_DENIED")
+                            || msg.contains("API Key") || msg.contains("ConnectException") || msg.contains("SocketTimeoutException")
+                            || msg.contains("UNAUTHENTICATED") || msg.contains("RESOURCE_EXHAUSTED"))) {
+                        log.info("Disabling subsequent vector embedding attempts for this benchmark run due to auth/network failure");
+                        vectorServiceDisabled = true;
                     }
                 }
-            } catch (Exception ex) {
-                log.warn("Vector embedding search unavailable for query '{}', using lexical fallback: {}",
-                        bq.query(), ex.getMessage());
             }
 
             if (!vectorSuccess || retrieved == null || retrieved.isEmpty()) {
@@ -370,7 +380,7 @@ public class RagEvaluationService {
         return report;
     }
 
-    public RagEvaluationReport getLatestReport() {
+    public synchronized RagEvaluationReport getLatestReport() {
         if (cachedReport == null) {
             return evaluate(5);
         }

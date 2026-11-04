@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import { CloseCircleOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Empty, Input, Popconfirm, Select, Switch, Table, Tag, Tooltip, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -235,9 +235,15 @@ export default function CmsArticlesPage() {
         <Card className="mb-4 rounded-2xl border-black/5 shadow-sm">
           <div className="flex flex-wrap items-center gap-3">
             <Input.Search
-              placeholder="Tìm theo tiêu đề hoặc nội dung"
+              placeholder="Tìm theo tiêu đề bài viết"
               value={queryInput}
-              onChange={(e) => setQueryInput(e.target.value)}
+              onChange={(e) => {
+                setQueryInput(e.target.value)
+                if (!e.target.value) {
+                  setPage(0)
+                  setQuery('')
+                }
+              }}
               onSearch={(val) => {
                 setPage(0)
                 setQuery(val.trim())
@@ -249,12 +255,15 @@ export default function CmsArticlesPage() {
             <Select
               allowClear
               placeholder="Tất cả chủ đề"
-              value={selectedCategory}
+              value={selectedCategory || undefined}
               onChange={(val) => {
                 setPage(0)
-                setSelectedCategory(val)
+                setSelectedCategory(val || undefined)
               }}
-              options={topics.map((t) => ({ value: t.name, label: t.name }))}
+              options={[
+                { value: '', label: 'Tất cả chủ đề' },
+                ...topics.map((t) => ({ value: t.name, label: t.name })),
+              ]}
               className="w-48"
             />
             <Select
@@ -266,6 +275,19 @@ export default function CmsArticlesPage() {
               options={STATUS_OPTIONS}
               className="w-44"
             />
+            <Button
+              icon={<CloseCircleOutlined />}
+              onClick={() => {
+                setQueryInput('')
+                setQuery('')
+                setSelectedCategory(undefined)
+                setSelectedStatus('ALL')
+                setPage(0)
+              }}
+              disabled={!query && !queryInput && !selectedCategory && selectedStatus === 'ALL'}
+            >
+              Bỏ chọn
+            </Button>
           </div>
         </Card>
 

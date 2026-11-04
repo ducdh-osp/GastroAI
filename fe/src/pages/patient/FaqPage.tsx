@@ -7,7 +7,7 @@ import {
 import { Button, Card, Collapse, Empty, Input, Skeleton, Tag, Typography } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listFaqCategories, listFaqs, type FaqItem } from '../../api/faqs'
+import { listFaqs, type FaqItem } from '../../api/faqs'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 import { AppShell } from '../../components/layout/AppShell'
 
@@ -15,20 +15,15 @@ const { Title, Text, Paragraph } = Typography
 
 export default function FaqPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([])
-  const [categories, setCategories] = useState<string[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [search, setSearch] = useState('')
+  const [inputSearch, setInputSearch] = useState('')
+  const [activeSearch, setActiveSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [faqData, catData] = await Promise.all([
-        listFaqs(),
-        listFaqCategories(),
-      ])
+      const faqData = await listFaqs()
       setFaqs(faqData)
-      setCategories(catData)
     } catch {
       // ignore
     } finally {
@@ -40,21 +35,29 @@ export default function FaqPage() {
     loadData()
   }, [loadData])
 
-  // Lọc phía client để phản hồi tức thì và mượt mà
-  const filteredFaqs = useMemo(() => {
-    return faqs.filter((faq) => {
-      const matchCat =
-        selectedCategory === 'all' || faq.category === selectedCategory
-      if (!matchCat) return false
+  const handleSearch = () => {
+    setActiveSearch(inputSearch.trim())
+  }
 
-      if (!search.trim()) return true
-      const q = search.toLowerCase().trim()
-      return (
+  const hasQuery = Boolean(activeSearch.trim())
+
+  const MAX_RESULTS = 5
+
+  // Chỉ hiển thị tối đa 5 kết quả khi người dùng ấn Enter tra cứu
+  const { filteredFaqs, totalMatches } = useMemo(() => {
+    if (!hasQuery) return { filteredFaqs: [], totalMatches: 0 }
+    const q = activeSearch.toLowerCase().trim()
+    const matches = faqs.filter(
+      (faq) =>
         faq.question.toLowerCase().includes(q) ||
-        faq.answer.toLowerCase().includes(q)
-      )
-    })
-  }, [faqs, selectedCategory, search])
+        faq.answer.toLowerCase().includes(q) ||
+        faq.category.toLowerCase().includes(q)
+    )
+    return {
+      filteredFaqs: matches.slice(0, MAX_RESULTS),
+      totalMatches: matches.length,
+    }
+  }, [faqs, activeSearch, hasQuery])
 
   const collapseItems = useMemo(() => {
     return filteredFaqs.map((faq) => ({
@@ -97,45 +100,30 @@ export default function FaqPage() {
           <div className="max-w-xl">
             <Input
               size="large"
-              placeholder="Tìm kiếm câu hỏi hoặc triệu chứng (VD: trào ngược, đau dạ dày, vi khuẩn HP, đại tràng...)"
-              prefix={<SearchOutlined className="text-teal-600 text-lg mr-1" />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Nhập từ khóa và nhấn Enter để tra cứu (VD: trào ngược, dạ dày...)"
+              prefix={<SearchOutlined className="text-teal-600 text-lg mr-1 cursor-pointer" onClick={handleSearch} />}
+              value={inputSearch}
+              onChange={(e) => {
+                setInputSearch(e.target.value)
+                if (!e.target.value.trim()) {
+                  setActiveSearch('')
+                }
+              }}
+              onPressEnter={handleSearch}
               allowClear
-              className="rounded-xl shadow-lg border-0 py-2.5"
+              suffix={
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={handleSearch}
+                  className="bg-teal-600 hover:bg-teal-700 text-xs font-medium px-3 rounded-md"
+                >
+                  Tìm
+                </Button>
+              }
+              className="rounded-xl shadow-lg border-0 py-2"
             />
           </div>
-        </div>
-
-        {/* Category pills - Phương án A: Tinh gọn, bỏ số lượng trong ngoặc */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setSelectedCategory('all')}
-            className={`cursor-pointer rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all shrink-0 ${
-              selectedCategory === 'all'
-                ? 'bg-teal-600 text-white shadow-sm border border-teal-600 font-semibold'
-                : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 hover:border-slate-300 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-white'
-            }`}
-          >
-            Tất cả
-          </button>
-          {categories
-            .filter((cat) => faqs.some((f) => f.category === cat))
-            .map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={`cursor-pointer rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all shrink-0 ${
-                  selectedCategory === cat
-                    ? 'bg-teal-600 text-white shadow-sm border border-teal-600 font-semibold'
-                    : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 hover:border-slate-300 dark:bg-slate-800/90 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:text-white'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
         </div>
 
         {/* Main Content: Accordion */}
@@ -146,24 +134,48 @@ export default function FaqPage() {
               <Skeleton active paragraph={{ rows: 2 }} />
               <Skeleton active paragraph={{ rows: 2 }} />
             </div>
+          ) : !hasQuery ? (
+            <div className="py-12 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 mb-3 text-xl">
+                <SearchOutlined />
+              </div>
+              <Title level={5} className="!text-slate-700 dark:!text-white !mb-1">
+                Tra cứu câu hỏi thường gặp
+              </Title>
+              <Paragraph type="secondary" className="text-sm max-w-md mx-auto !mb-0">
+                Nhập từ khóa bệnh lý hoặc triệu chứng vào ô tìm kiếm và nhấn Enter để xem các câu hỏi giải đáp.
+              </Paragraph>
+            </div>
           ) : collapseItems.length > 0 ? (
-            <Collapse
-              items={collapseItems}
-              bordered={false}
-              defaultActiveKey={collapseItems.length > 0 ? [collapseItems[0].key] : []}
-              className="bg-transparent"
-              expandIconPosition="end"
-            />
+            <div className="space-y-3">
+              <Collapse
+                items={collapseItems}
+                bordered={false}
+                defaultActiveKey={collapseItems.length > 0 ? [collapseItems[0].key] : []}
+                className="bg-transparent"
+                expandIconPosition="end"
+              />
+              {totalMatches > MAX_RESULTS && (
+                <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-slate-600 dark:text-slate-300 px-4 py-3 sm:py-3.5 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/60 shadow-xs">
+                  <span>
+                    Hiển thị <strong>{filteredFaqs.length}</strong> trên tổng số <strong>{totalMatches}</strong> câu hỏi phù hợp nhất.
+                  </span>
+                  <span className="text-teal-600 dark:text-teal-400 font-medium text-xs sm:text-sm">
+                    Thử thêm từ khóa chi tiết hơn để có kết quả chính xác.
+                  </span>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="py-12">
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
                   <div className="space-y-1">
-                    <Text className="text-slate-600 dark:text-white font-medium dark:text-white">
-                      Không tìm thấy câu hỏi phù hợp với "{search}"
+                    <Text className="text-slate-600 dark:text-white font-medium">
+                      Không tìm thấy câu hỏi phù hợp với "{activeSearch}"
                     </Text>
-                    <p className="text-xs text-slate-400 dark:text-white">
+                    <p className="text-xs text-slate-400 dark:text-slate-400">
                       Hãy thử từ khóa khác hoặc đặt câu hỏi trực tiếp cho Trợ lý AI GastroAI bên dưới.
                     </p>
                   </div>

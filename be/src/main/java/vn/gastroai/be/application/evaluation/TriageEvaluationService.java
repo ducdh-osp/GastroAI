@@ -262,7 +262,7 @@ public class TriageEvaluationService {
         return report;
     }
 
-    public TriageEvaluationReport getLatestReport() {
+    public synchronized TriageEvaluationReport getLatestReport() {
         if (cachedReport == null) {
             return evaluate();
         }

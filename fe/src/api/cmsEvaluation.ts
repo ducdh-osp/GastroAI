@@ -116,7 +116,9 @@ export async function getTriageEvaluation(): Promise<TriageEvaluationReport> {
 }
 
 export async function runTriageEvaluation(): Promise<TriageEvaluationReport> {
-  const { data } = await cmsApiClient.post<TriageEvaluationReport>('/cms/evaluation/triage/run')
+  const { data } = await cmsApiClient.post<TriageEvaluationReport>('/cms/evaluation/triage/run', null, {
+    timeout: 120000,
+  })
   return data
 }
 
@@ -128,6 +130,7 @@ export async function getRagEvaluation(): Promise<RagEvaluationReport> {
 export async function runRagEvaluation(topK = 5): Promise<RagEvaluationReport> {
   const { data } = await cmsApiClient.post<RagEvaluationReport>('/cms/evaluation/rag/run', null, {
     params: { topK },
+    timeout: 120000,
   })
   return data
 }
