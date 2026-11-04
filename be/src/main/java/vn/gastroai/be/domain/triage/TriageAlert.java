@@ -70,6 +70,23 @@ public class TriageAlert {
     @Column(name = "resolved_by_id")
     private Long resolvedById;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private TriageAlertOutcome outcome;
+
+    @Column(name = "resolution_note", length = 1000)
+    private String resolutionNote;
+
+    // Tin lap lai gan nhat; messageContent luon giu tin goc.
+    @Column(name = "last_message_content", columnDefinition = "TEXT")
+    private String lastMessageContent;
+
+    @Column(name = "repeat_count", nullable = false)
+    private int repeatCount = 0;
+
+    @Column(name = "last_repeated_at")
+    private Instant lastRepeatedAt;
+
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 

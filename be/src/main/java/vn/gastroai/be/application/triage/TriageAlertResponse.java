@@ -20,5 +20,13 @@ public record TriageAlertResponse(
         Instant resolvedAt,
         Long resolvedById,
         String resolvedByType,
-        Instant occurredAt) {
+        Instant occurredAt,
+        String outcome,
+        String resolutionNote,
+        int repeatCount,
+        String lastMessageContent,
+        Instant lastRepeatedAt,
+        long unreadPatientMessages,
+        long staffMessageCount,
+        long patientFalseAlarmCount) {
 }

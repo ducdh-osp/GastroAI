@@ -32,7 +32,7 @@ public class TriageAlertAdminController {
 
     @GetMapping
     public List<TriageAlertResponse> list() {
-        return triageAlertService.listRecent();
+        return triageAlertService.list("OPEN", 0, 50).getContent();
     }
 
     @PostMapping("/{alertId}/claim")
@@ -55,7 +55,7 @@ public class TriageAlertAdminController {
 
         Long resolverId = Long.valueOf(authentication.getName());
         String resolverType = resolveRole(authentication);
-        TriageAlertResponse alert = triageAlertService.resolve(alertId, resolverId, resolverType);
+        TriageAlertResponse alert = triageAlertService.resolve(alertId, resolverId, resolverType, null);
         auditLogService.record(AuditAction.TRIAGE_ALERT_RESOLVE, TARGET, alertId,
                 describeResolve(alert, resolverId, resolverType));
         return alert;

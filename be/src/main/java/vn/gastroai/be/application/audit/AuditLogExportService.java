@@ -136,6 +136,9 @@ public class AuditLogExportService {
             case CONTENT_PUBLISH -> "Đăng nội dung";
             case CONTENT_UNPUBLISH -> "Gỡ nội dung";
             case CONTENT_TOGGLE_ACTIVE -> "Bật/tắt mục danh mục";
+            case TRIAGE_ALERT_RELEASE -> "Trả lại cảnh báo cấp cứu";
+            case TRIAGE_ALERT_FALSE_ALARM -> "Đánh dấu báo nhầm/spam";
+            case TRIAGE_ALERT_MESSAGE -> "Nhắn tin cho bệnh nhân";
         };
     }
 
