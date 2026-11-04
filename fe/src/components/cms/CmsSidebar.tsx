@@ -4,6 +4,7 @@ import {
   BookOutlined,
   BulbFilled,
   BulbOutlined,
+  CoffeeOutlined,
   DashboardOutlined,
   DownOutlined,
   ExperimentOutlined,
@@ -69,6 +70,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { key: 'article-topics', label: 'Chủ đề bài viết', icon: <TagsOutlined />, to: '/cms/article-topics' },
       { key: 'faq', label: 'Câu hỏi thường gặp', icon: <QuestionCircleOutlined />, to: '/cms/faq' },
       { key: 'catalogs', label: 'Danh mục chuẩn hóa', icon: <MedicineBoxOutlined />, to: '/cms/catalogs' },
+      { key: 'fodmap-foods', label: 'Danh mục FODMAP', icon: <CoffeeOutlined />, to: '/cms/fodmap-foods', roles: ['ADMIN', 'DOCTOR'] },
     ],
   },
   {
@@ -140,14 +142,14 @@ export function CmsSidebar() {
   })).filter((section) => section.items.length > 0)
 
   return (
-       <aside className="flex h-svh w-64 shrink-0 flex-col border-r border-white/10 bg-[#0f172a] text-white">
-      <div className="min-h-0 flex-1 overflow-y-auto pb-3">
-        <div className="p-5">
-          <Logo variant="light" />
-          <p className="mt-1 text-[0.65rem] tracking-[0.3em] text-white/50 uppercase">Cổng quản trị</p>
-        </div>
+    <aside className="flex h-svh w-64 shrink-0 flex-col border-r border-white/10 bg-[#0f172a] text-white">
+      <div className="shrink-0 border-b border-white/10 p-5">
+        <Logo variant="light" />
+        <p className="mt-1 text-[0.65rem] tracking-[0.3em] text-white/50 uppercase">Cổng quản trị</p>
+      </div>
 
-        <nav className="mt-2 space-y-5 px-3">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="mt-4 space-y-5 px-3">
           {user?.userType === 'ADMIN' && (
             <Link
               to="/cms/notifications"
@@ -201,7 +203,7 @@ export function CmsSidebar() {
         </nav>
       </div>
 
-      <div className="border-t border-white/10 p-3">
+      <div className="shrink-0 border-t border-white/10 p-3">
         <div className="mb-1 flex items-center justify-between gap-2.5 rounded-lg px-2 py-2 text-sm text-white/80">
           <span className="flex items-center gap-2.5">
             {mode === 'dark' ? <BulbFilled /> : <BulbOutlined />}

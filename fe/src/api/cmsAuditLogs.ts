@@ -49,6 +49,8 @@ export type AuditTargetType =
   | 'FAQ'
   | 'ARTICLE_TOPIC'
   | 'CATALOG'
+  | 'FODMAP_FOOD'
+  | 'FODMAP_UNKNOWN'
 
 export interface AuditLog {
   id: number

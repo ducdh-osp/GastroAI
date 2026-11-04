@@ -47,7 +47,7 @@ import CmsBroadcastPage from '../pages/cms/CmsBroadcastPage'
 import CmsAuditLogsPage from '../pages/cms/CmsAuditLogsPage'
 import CmsEmailTemplatesPage from '../pages/cms/CmsEmailTemplatesPage'
 import CmsEvaluationPage from '../pages/cms/CmsEvaluationPage'
-
+import CmsFodmapFoodsPage from '../pages/cms/CmsFodmapFoodsPage'
 export const router = createBrowserRouter([
   {
     // Bọc toàn bộ route để FaviconSwitcher (cần useLocation, chỉ dùng được bên trong Router)
@@ -386,6 +386,14 @@ export const router = createBrowserRouter([
             element: (
               <CmsProtectedRoute>
                 <CmsCatalogsPage />
+              </CmsProtectedRoute>
+            ),
+          },
+                    {
+            path: '/cms/fodmap-foods',
+            element: (
+              <CmsProtectedRoute>
+                <CmsFodmapFoodsPage />
               </CmsProtectedRoute>
             ),
           },
