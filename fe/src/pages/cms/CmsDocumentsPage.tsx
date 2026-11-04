@@ -490,10 +490,10 @@ export default function CmsDocumentsPage() {
       ),
     },
     {
-      title: 'Đoạn trích dẫn',
+      title: <span className="whitespace-nowrap">Đoạn trích dẫn</span>,
       dataIndex: 'chunkCount',
       key: 'chunkCount',
-      width: 120,
+      width: 150,
       align: 'center',
       render: (chunks: number, record) =>
         record.status === 'DONE' ? (
