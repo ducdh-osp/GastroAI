@@ -109,6 +109,8 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/rbac/**")
                         .hasRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/fodmap-foods/**")
+                        .hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/account/**")
