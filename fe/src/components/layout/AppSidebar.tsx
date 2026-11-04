@@ -141,6 +141,33 @@ export function AppSidebar() {
           placement: 'topRight',
           duration: 0, // Giữ thông báo nhắc thuốc cho tới khi bệnh nhân xác nhận hoặc đóng
         })
+      } else if (item.type === 'TRIAGE_DOCTOR_MESSAGE' && item.actionUrl) {
+        const notifKey = `triage-message-${item.id}`
+        const actionUrl = item.actionUrl
+        notification.open({
+          key: notifKey,
+          message: <span className="font-semibold">{item.title}</span>,
+          description: (
+            <div className="space-y-3 pt-1">
+              <p className="text-sm leading-relaxed">{item.message}</p>
+              <Button
+                type="primary"
+                size="small"
+                onClick={() => {
+                  notification.destroy(notifKey)
+                  void markNotificationRead('patient', item.id)
+                    .then(() => window.dispatchEvent(new Event('gastroai:notification-state')))
+                    .catch(() => undefined)
+                  navigate(actionUrl)
+                }}
+              >
+                Xem
+              </Button>
+            </div>
+          ),
+          placement: 'topRight',
+          duration: 0,
+        })
       } else {
         notification.info({ message: item.title, description: item.message, placement: 'topRight' })
       }

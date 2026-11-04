@@ -76,6 +76,9 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   CONTENT_PUBLISH: 'Đăng nội dung',
   CONTENT_UNPUBLISH: 'Gỡ nội dung',
   CONTENT_TOGGLE_ACTIVE: 'Bật/tắt mục danh mục',
+  TRIAGE_ALERT_RELEASE: 'Trả lại cảnh báo cấp cứu',
+  TRIAGE_ALERT_FALSE_ALARM: 'Đánh dấu báo nhầm/spam',
+  TRIAGE_ALERT_MESSAGE: 'Nhắn tin cho bệnh nhân',
 }
 
 const ACTION_COLOR: Partial<Record<AuditAction, string>> = {
@@ -96,7 +99,10 @@ const ACTION_COLOR: Partial<Record<AuditAction, string>> = {
   TRIAGE_ALERT_RESOLVE: 'green',
   EMAIL_TEMPLATE_UPDATE: 'purple',
   CONTENT_DELETE: 'red',
-  CONTENT_UNPUBLISH: 'orange'
+  CONTENT_UNPUBLISH: 'orange',
+  TRIAGE_ALERT_RELEASE: 'gold',
+  TRIAGE_ALERT_FALSE_ALARM: 'volcano',
+  TRIAGE_ALERT_MESSAGE: 'blue',
 }
 
 const TARGET_LABEL: Record<AuditTargetType, string> = {

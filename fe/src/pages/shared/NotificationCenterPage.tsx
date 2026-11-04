@@ -4,6 +4,7 @@ import {
   DeleteOutlined,
   ExclamationCircleOutlined,
   MedicineBoxOutlined,
+  MessageOutlined,
   ReloadOutlined,
   RightOutlined,
   SafetyCertificateOutlined,
@@ -36,10 +37,12 @@ const TYPE_META: Record<NotificationType, { label: string; color: string }> = {
   SECURITY_ALERT: { label: 'An toàn & bảo mật', color: 'gold' },
   TRIAGE_ALERT: { label: 'Cảnh báo triage', color: 'red' },
   SYSTEM: { label: 'Hệ thống', color: 'blue' },
+  TRIAGE_DOCTOR_MESSAGE: { label: 'Tin nhắn bác sĩ', color: 'volcano' },
 }
 
 function notificationIcon(type: NotificationType) {
   if (type === 'TRIAGE_ALERT') return <ExclamationCircleOutlined />
+  if (type === 'TRIAGE_DOCTOR_MESSAGE') return <MessageOutlined />
   if (type === 'MEDICATION_REMINDER') return <MedicineBoxOutlined />
   if (type === 'SECURITY_ALERT') return <SafetyCertificateOutlined />
   return <BellOutlined />
@@ -47,6 +50,7 @@ function notificationIcon(type: NotificationType) {
 
 function iconClass(type: NotificationType) {
   if (type === 'TRIAGE_ALERT') return 'bg-red-100 text-red-600'
+  if (type === 'TRIAGE_DOCTOR_MESSAGE') return 'bg-orange-100 text-orange-700'
   if (type === 'MEDICATION_REMINDER') return 'bg-purple-100 text-purple-700'
   if (type === 'SECURITY_ALERT') return 'bg-amber-100 text-amber-700'
   return 'bg-teal-100 text-teal-700'
@@ -182,6 +186,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
         { value: 'JOURNAL_REMINDER', label: 'Nhắc nhật ký' },
         { value: 'MEDICATION_REMINDER', label: 'Nhắc uống thuốc' },
         { value: 'SECURITY_ALERT', label: 'An toàn & bảo mật' },
+        { value: 'TRIAGE_DOCTOR_MESSAGE', label: 'Tin nhắn bác sĩ' },
         { value: 'SYSTEM', label: 'Hệ thống' },
       ]
     : [

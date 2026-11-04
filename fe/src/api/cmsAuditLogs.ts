@@ -33,6 +33,9 @@ export type AuditAction =
   | 'CONTENT_PUBLISH'
   | 'CONTENT_UNPUBLISH'
   | 'CONTENT_TOGGLE_ACTIVE'
+  | 'TRIAGE_ALERT_RELEASE'
+  | 'TRIAGE_ALERT_FALSE_ALARM'
+  | 'TRIAGE_ALERT_MESSAGE'
 
 export type AuditTargetType =
   | 'DOCUMENT'

@@ -30,6 +30,7 @@ export type NotificationType =
   | 'SECURITY_ALERT'
   | 'TRIAGE_ALERT'
   | 'SYSTEM'
+  | 'TRIAGE_DOCTOR_MESSAGE'
 
 export interface NotificationFilters {
   unreadOnly?: boolean

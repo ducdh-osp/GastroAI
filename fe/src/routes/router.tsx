@@ -39,6 +39,7 @@ import CmsCatalogsPage from '../pages/cms/CmsCatalogsPage'
 import KnowledgeLibraryPage from '../pages/patient/KnowledgeLibraryPage'
 import FaqPage from '../pages/patient/FaqPage'
 import NotificationsPage from '../pages/patient/NotificationsPage'
+import TriageConversationPage from '../pages/patient/TriageConversationPage'
 import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 import CmsUsersPage from '../pages/cms/CmsUsersPage'
 import CmsRbacPage from '../pages/cms/CmsRbacPage'
@@ -79,6 +80,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <NotificationsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/triage-alerts/:id',
+        element: (
+          <ProtectedRoute>
+            <TriageConversationPage />
           </ProtectedRoute>
         ),
       },
