@@ -1,6 +1,7 @@
 package vn.gastroai.be.application.notification;
 
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Component;
 import vn.gastroai.be.domain.notification.EmailTemplateCode;
@@ -70,9 +71,80 @@ public class EmailTemplateRenderer {
                 .replace('\r', ' ').replace('\n', ' ');
         // Always serialize the allowlisted output as a second line of defence, including for
         // templates already stored before allowlist validation was introduced.
-        String html = Jsoup.clean(replace(content.htmlBodyTemplate(), variables, true), SAFE_EMAIL_HTML);
+        String safeHtml = Jsoup.clean(replace(content.htmlBodyTemplate(), variables, true), SAFE_EMAIL_HTML);
+        String html = applyGastroAiLayout(code, safeHtml);
         String text = replace(content.textBodyTemplate(), variables, false);
         return new RenderedEmail(subject, html, text);
+    }
+
+    /**
+     * Giao diện cố định cho email tài khoản. CSS chỉ được hệ thống thêm sau bước sanitize;
+     * nội dung do CMS quản lý vẫn không được phép tự chèn style/script. Dùng table và inline
+     * style để hiển thị ổn định trên Gmail desktop lẫn mobile.
+     */
+    private String applyGastroAiLayout(EmailTemplateCode code, String safeHtml) {
+        if (code != EmailTemplateCode.ACCOUNT_VERIFICATION
+                && code != EmailTemplateCode.PASSWORD_RESET) {
+            return safeHtml;
+        }
+
+        Document content = Jsoup.parseBodyFragment(safeHtml);
+        content.outputSettings().prettyPrint(false);
+        content.select("h2").attr("style",
+                "margin:0 0 18px;color:#0f172a;font-size:24px;line-height:1.3;font-weight:700;");
+        content.select("p").attr("style",
+                "margin:0 0 16px;color:#475569;font-size:15px;line-height:1.7;");
+        content.select("strong").attr("style", "color:#0f172a;font-weight:700;");
+        content.select("small").attr("style", "color:#64748b;font-size:13px;line-height:1.6;");
+        content.select("a").attr("style",
+                "display:inline-block;padding:12px 22px;background-color:#0f766e;color:#ffffff!important;"
+                        + "font-size:15px;font-weight:700;line-height:1.2;text-decoration:none;border-radius:8px;");
+
+        String preheader = code == EmailTemplateCode.ACCOUNT_VERIFICATION
+                ? "Xác thực email để bắt đầu sử dụng tài khoản GastroAI."
+                : "Sử dụng liên kết bảo mật để đặt lại mật khẩu GastroAI.";
+        String typeLabel = code == EmailTemplateCode.ACCOUNT_VERIFICATION
+                ? "XÁC THỰC TÀI KHOẢN"
+                : "BẢO MẬT TÀI KHOẢN";
+
+        return """
+                <!doctype html>
+                <html lang="vi">
+                <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+                  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">%s</div>
+                  <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="width:100%%;background-color:#f1f5f9;">
+                    <tr>
+                      <td align="center" style="padding:32px 16px;">
+                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="width:100%%;max-width:600px;background-color:#ffffff;border:1px solid #e2e8f0;border-radius:14px;">
+                          <tr>
+                            <td style="padding:24px 28px;background-color:#0f766e;border-radius:14px 14px 0 0;">
+                              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                  <td style="width:42px;height:42px;text-align:center;background-color:#ffffff;color:#0f766e;font-size:21px;font-weight:700;border-radius:10px;">G</td>
+                                  <td style="padding-left:12px;color:#ffffff;">
+                                    <div style="font-size:20px;font-weight:700;line-height:1.2;">GastroAI</div>
+                                    <div style="margin-top:3px;font-size:11px;letter-spacing:1.2px;opacity:.9;">%s</div>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:32px 28px 24px;">%s</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:18px 28px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:12px;line-height:1.6;">
+                              Đây là email tự động từ GastroAI. Vui lòng không trả lời email này.<br>
+                              Thông tin sức khỏe trên GastroAI chỉ mang tính tham khảo.
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </body>
+                </html>
+                """.formatted(preheader, typeLabel, content.body().html());
     }
 
     private void validateVariables(EmailTemplateCode code, String field, String template,
