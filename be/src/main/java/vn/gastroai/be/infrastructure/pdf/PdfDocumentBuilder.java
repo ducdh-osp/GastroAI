@@ -281,8 +281,6 @@ public class PdfDocumentBuilder {
         return this;
     }
 
-    /** Dòng mở đầu 1 tin nhắn chat: đường kẻ mảnh phía trên, tên người nói + giờ. */
-        /** Dòng mở đầu 1 tin nhắn chat. Từ tin thứ 2 trở đi mới có đường kẻ ngăn cách phía trên. */
     public PdfDocumentBuilder messageHeader(String speaker, String time) {
         Phrase phrase = new Phrase();
         phrase.add(new Chunk(sanitize(speaker), speakerFont));
