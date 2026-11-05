@@ -16,7 +16,10 @@ import vn.gastroai.be.infrastructure.persistence.postgres.TriageAlertMessageRepo
 import vn.gastroai.be.infrastructure.persistence.postgres.TriageAlertRepository;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /** Trao doi 2 chieu nhan vien <-> benh nhan trong 1 canh bao (tach khoi chatbot). */
 @Service
@@ -24,6 +27,7 @@ public class TriageAlertConversationService {
 
     private static final String TX = "postgresTransactionManager";
     private static final int MAX_CONTENT_LENGTH = 2000;
+    private static final int PREVIEW_LENGTH = 80;
 
     public record StaffMessageResult(
             Long alertId,
@@ -45,6 +49,15 @@ public class TriageAlertConversationService {
             Instant occurredAt,
             List<PatientMessageItem> messages,
             boolean canReply) {
+    }
+
+    public record PatientConversationSummary(
+            Long id,
+            Instant occurredAt,
+            String status,
+            String lastMessagePreview,
+            Instant lastMessageAt,
+            long unreadCount) {
     }
 
     private final TriageAlertRepository triageAlertRepository;
@@ -89,6 +102,41 @@ public class TriageAlertConversationService {
                 message.getContent(),
                 message.getReadAt(),
                 message.getCreatedAt()));
+    }
+
+    /** Danh sach cuoc trao doi (canh bao da co tin cua nhan vien), tin moi nhat len dau. */
+    @Transactional(value = TX, readOnly = true)
+    public List<PatientConversationSummary> listForPatient(Long patientId) {
+        List<TriageAlert> alerts = triageAlertRepository.findWithStaffMessagesForPatient(patientId);
+        if (alerts.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, List<TriageAlertMessage>> messagesByAlert = messageRepository
+                .findByAlertIdInOrderByCreatedAtAscIdAsc(alerts.stream().map(TriageAlert::getId).toList())
+                .stream()
+                .collect(Collectors.groupingBy(TriageAlertMessage::getAlertId));
+
+        return alerts.stream()
+                .map(alert -> {
+                    List<TriageAlertMessage> messages = messagesByAlert.getOrDefault(alert.getId(), List.of());
+                    TriageAlertMessage last = messages.isEmpty() ? null : messages.get(messages.size() - 1);
+                    long unread = messages.stream()
+                            .filter(message -> !message.fromPatient() && message.getReadAt() == null)
+                            .count();
+                    return new PatientConversationSummary(
+                            alert.getId(),
+                            alert.getOccurredAt(),
+                            alert.getStatus().name(),
+                            last == null ? null : preview(last.getContent()),
+                            last == null ? alert.getOccurredAt() : last.getCreatedAt(),
+                            unread);
+                })
+                .sorted(Comparator.comparing(PatientConversationSummary::lastMessageAt).reversed())
+                .toList();
+    }
+
+    private static String preview(String content) {
+        return content.length() > PREVIEW_LENGTH ? content.substring(0, PREVIEW_LENGTH) : content;
     }
 
     /** Benh nhan mo trang trao doi: danh dau da xem tin cua nhan vien. */

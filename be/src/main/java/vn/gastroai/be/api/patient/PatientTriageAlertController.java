@@ -13,6 +13,7 @@ import vn.gastroai.be.api.support.AuthenticatedRequest;
 import vn.gastroai.be.application.triage.TriageAlertConversationService;
 
 import java.security.Principal;
+import java.util.List;
 
 /** Benh nhan xem va tra loi tin nhan cua bac si trong 1 canh bao cap cuu. */
 @RestController
@@ -23,6 +24,12 @@ public class PatientTriageAlertController {
 
     public PatientTriageAlertController(TriageAlertConversationService conversationService) {
         this.conversationService = conversationService;
+    }
+
+    @GetMapping
+    public List<TriageAlertConversationService.PatientConversationSummary> list(
+            Principal principal, Authentication authentication) {
+        return conversationService.listForPatient(AuthenticatedRequest.patientId(principal, authentication));
     }
 
     @GetMapping("/{alertId}")

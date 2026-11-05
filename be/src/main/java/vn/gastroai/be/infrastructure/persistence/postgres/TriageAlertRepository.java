@@ -65,6 +65,11 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
     /** Buoc 2 gop trung: canh bao gan nhat cua benh nhan (bat ke trang thai). */
     Optional<TriageAlert> findFirstByPatient_IdOrderByOccurredAtDescIdDesc(Long patientId);
 
+    /** Cac canh bao cua benh nhan da duoc nhan vien nhan it nhat 1 tin. */
+    @Query("SELECT a FROM TriageAlert a WHERE a.patient.id = :patientId AND EXISTS ("
+            + "SELECT m.id FROM TriageAlertMessage m WHERE m.alertId = a.id AND m.senderType <> 'PATIENT')")
+    List<TriageAlert> findWithStaffMessagesForPatient(@Param("patientId") Long patientId);
+
     @Query("SELECT a.patient.id AS patientId, count(a) AS total FROM TriageAlert a "
             + "WHERE a.patient.id IN :patientIds "
             + "AND a.outcome = vn.gastroai.be.domain.triage.TriageAlertOutcome.FALSE_ALARM "

@@ -199,6 +199,59 @@ class TriageAlertConversationServiceTest {
     }
 
     @Test
+    void listForPatientSortsByLastMessageAndCountsUnreadStaffMessages() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        TriageAlert older = new TriageAlert(patient, null, null, "A", null, Instant.parse("2026-09-01T00:00:00Z"));
+        older.setId(10L);
+        older.setStatus(TriageAlertStatus.RESOLVED);
+        TriageAlert newer = new TriageAlert(patient, null, null, "B", null, Instant.parse("2026-09-02T00:00:00Z"));
+        newer.setId(11L);
+        newer.setStatus(TriageAlertStatus.IN_PROGRESS);
+        when(triageAlertRepository.findWithStaffMessagesForPatient(1L)).thenReturn(List.of(newer, older));
+
+        TriageAlertMessage oldStaff = new TriageAlertMessage(10L, "DOCTOR", 9L, "Da xu ly");
+        oldStaff.setCreatedAt(Instant.parse("2026-09-03T00:00:00Z"));
+        oldStaff.setReadAt(Instant.parse("2026-09-03T00:01:00Z"));
+        TriageAlertMessage newStaff = new TriageAlertMessage(11L, "DOCTOR", 9L, "x".repeat(100));
+        newStaff.setCreatedAt(Instant.parse("2026-09-02T01:00:00Z"));
+        TriageAlertMessage newStaff2 = new TriageAlertMessage(11L, "ADMIN", 1L, "Goi lai");
+        newStaff2.setCreatedAt(Instant.parse("2026-09-02T02:00:00Z"));
+        when(messageRepository.findByAlertIdInOrderByCreatedAtAscIdAsc(List.of(11L, 10L)))
+                .thenReturn(List.of(newStaff, newStaff2, oldStaff));
+
+        List<TriageAlertConversationService.PatientConversationSummary> result = service.listForPatient(1L);
+
+        assertEquals(List.of(10L, 11L), result.stream()
+                .map(TriageAlertConversationService.PatientConversationSummary::id).toList());
+        assertEquals(0, result.get(0).unreadCount());
+        assertEquals("Da xu ly", result.get(0).lastMessagePreview());
+        assertEquals(2, result.get(1).unreadCount());
+        assertEquals("Goi lai", result.get(1).lastMessagePreview());
+    }
+
+    @Test
+    void listForPatientTruncatesPreviewTo80Characters() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        TriageAlert alert = new TriageAlert(patient, null, null, "A", null, Instant.now());
+        alert.setId(10L);
+        when(triageAlertRepository.findWithStaffMessagesForPatient(1L)).thenReturn(List.of(alert));
+        when(messageRepository.findByAlertIdInOrderByCreatedAtAscIdAsc(List.of(10L)))
+                .thenReturn(List.of(new TriageAlertMessage(10L, "DOCTOR", 9L, "x".repeat(100))));
+
+        assertEquals(80, service.listForPatient(1L).get(0).lastMessagePreview().length());
+    }
+
+    @Test
+    void listForPatientReturnsEmptyWithoutQueryingMessages() {
+        when(triageAlertRepository.findWithStaffMessagesForPatient(1L)).thenReturn(List.of());
+
+        assertTrue(service.listForPatient(1L).isEmpty());
+        verify(messageRepository, never()).findByAlertIdInOrderByCreatedAtAscIdAsc(any());
+    }
+
+    @Test
     void patientOpeningWithNothingNewDoesNotRecordRead() {
         alert(TriageAlertStatus.RESOLVED, 9L, "DOCTOR");
         when(messageRepository.markStaffMessagesRead(eq(10L), any())).thenReturn(0);

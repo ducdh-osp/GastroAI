@@ -1,7 +1,7 @@
-import { SendOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SendOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Empty, Input, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   getTriageConversation,
   replyTriageConversation,
@@ -14,8 +14,12 @@ import { formatDateTime } from '../../lib/format'
 const { Title, Text } = Typography
 const { TextArea } = Input
 
+const POLL_INTERVAL_MS = 10000
+
 export default function TriageConversationPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const location = useLocation()
   const alertId = Number(id)
   const [conversation, setConversation] = useState<TriageConversation | null>(null)
   const [loading, setLoading] = useState(true)
@@ -59,6 +63,27 @@ export default function TriageConversationPage() {
     return () => window.removeEventListener('gastroai:notification', refresh)
   }, [load])
 
+  // Dự phòng khi mất WebSocket: cuộc trao đổi chưa đóng thì tải lại mỗi 10 giây.
+  const pollConversation = conversation !== null && conversation.status !== 'RESOLVED'
+  useEffect(() => {
+    if (!pollConversation) return
+    const intervalId = setInterval(() => load(true), POLL_INTERVAL_MS)
+    return () => clearInterval(intervalId)
+  }, [pollConversation, load])
+
+  // Quay lại tab trình duyệt: tải lại ngay.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') load(true)
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [load])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' })
   }, [conversation?.messages.length])
@@ -77,6 +102,12 @@ export default function TriageConversationPage() {
     })
   }
 
+  // key 'default' = trang được mở thẳng (không có trang trước trong app).
+  function handleBack() {
+    if (location.key !== 'default') navigate(-1)
+    else navigate('/triage-alerts')
+  }
+
   const sending = sendGuard.inFlightId !== null
   const closed = conversation?.status === 'RESOLVED'
 
@@ -84,7 +115,14 @@ export default function TriageConversationPage() {
     <AppShell>
       <div className="flex h-[calc(100svh-3rem)] min-h-0 flex-col gap-4 overflow-hidden sm:h-[calc(100svh-4rem)]">
         <div className="shrink-0">
-          <Text type="secondary">Cảnh báo khẩn cấp</Text>
+          <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleBack} className="-ml-2 mb-1">
+            Quay lại
+          </Button>
+          <div>
+            <Link to="/triage-alerts" className="text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-300">
+              Cảnh báo khẩn cấp
+            </Link>
+          </div>
           <Title level={2} className="mb-1! mt-1!">Trao đổi với bác sĩ</Title>
           {conversation && (
             <Text type="secondary">{formatDateTime(conversation.occurredAt)}</Text>

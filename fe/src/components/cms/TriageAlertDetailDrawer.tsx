@@ -75,6 +75,8 @@ const ACTION_COLORS: Partial<Record<TriageAlertActionType, string>> = {
 
 const STAFF_LABELS: Record<string, string> = { ADMIN: 'Admin', DOCTOR: 'Bác sĩ' }
 
+const POLL_INTERVAL_MS = 10000
+
 function describeActor(type: string | null, id: number | null): string | null {
   if (!type) return null
   if (type === 'PATIENT') return 'Bệnh nhân'
@@ -138,6 +140,28 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
     handledReloadKey.current = reloadKey
     if (alertId !== null) load(alertId, true)
   }, [reloadKey, alertId, load])
+
+  // Dự phòng khi mất WebSocket: cảnh báo chưa đóng thì tải lại mỗi 10 giây.
+  const pollDetail = detail !== null && detail.alert.status !== 'RESOLVED'
+  useEffect(() => {
+    if (alertId === null || !pollDetail) return
+    const intervalId = setInterval(() => load(alertId, true), POLL_INTERVAL_MS)
+    return () => clearInterval(intervalId)
+  }, [alertId, pollDetail, load])
+
+  // Quay lại tab trình duyệt: tải lại ngay.
+  useEffect(() => {
+    if (alertId === null) return
+    const refresh = () => {
+      if (document.visibilityState === 'visible') load(alertId, true)
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [alertId, load])
 
   const alert = detail?.alert ?? null
   const isClaimer = alert !== null && user?.userId === alert.claimedById && user?.userType === alert.claimedByType

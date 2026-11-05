@@ -17,6 +17,25 @@ export interface TriageConversation {
   canReply: boolean
 }
 
+export interface TriageConversationSummary {
+  id: number
+  occurredAt: string
+  status: TriageConversation['status']
+  lastMessagePreview: string | null
+  lastMessageAt: string
+  unreadCount: number
+}
+
+/** Các cuộc trao đổi mà bác sĩ/nhân viên đã nhắn, tin mới nhất lên đầu. */
+export async function listTriageConversations(): Promise<TriageConversationSummary[]> {
+  try {
+    const { data } = await apiClient.get<TriageConversationSummary[]>('/patient/triage-alerts')
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể tải danh sách trao đổi. Vui lòng thử lại.')
+  }
+}
+
 /** Mở trang trao đổi - BE đồng thời đánh dấu đã xem tin của bác sĩ. */
 export async function getTriageConversation(alertId: number): Promise<TriageConversation> {
   try {

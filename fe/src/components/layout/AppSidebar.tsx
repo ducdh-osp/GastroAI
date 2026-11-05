@@ -5,6 +5,7 @@ import {
   BulbOutlined,
   CoffeeOutlined,
   CommentOutlined,
+  CustomerServiceOutlined,
   DownOutlined,
   ExperimentOutlined,
   FileSearchOutlined,
@@ -22,13 +23,14 @@ import {
   ScanOutlined,
 } from '@ant-design/icons'
 import { Badge, Button, Dropdown, message, notification, Switch } from 'antd'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
 import { useTheme } from '../../stores/themeStore'
 import { Logo } from '../brand/Logo'
 import { getUnreadNotificationCount, markNotificationRead } from '../../api/notifications'
 import { checkDueMedications, confirmMedicationDose } from '../../api/medication'
+import { listTriageConversations } from '../../api/patientTriageAlerts'
 import { useNotificationSocket } from '../../hooks/useNotificationSocket'
 
 const NAV_ITEMS = [
@@ -50,6 +52,10 @@ const NAV_ITEMS = [
   { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
 ]
 
+const TRIAGE_NAV_ITEM = {
+  key: 'triage-alerts', label: 'Trao đổi với bác sĩ', icon: <CustomerServiceOutlined />, to: '/triage-alerts',
+}
+
 
 /** Sidebar cố định cho các trang bệnh nhân sau khi đăng nhập — cùng cấu trúc với CmsSidebar
  * (bên admin) và cùng nền tối, nhưng dùng tông xanh ngọc đậm (#0f2926) thay vì slate để 2
@@ -60,6 +66,40 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [triageSummary, setTriageSummary] = useState({ count: 0, unread: 0 })
+
+  const refreshTriageSummary = useCallback(() => {
+    if (!token) return
+    void listTriageConversations()
+      .then((items) => setTriageSummary({
+        count: items.length,
+        unread: items.reduce((total, item) => total + item.unreadCount, 0),
+      }))
+      .catch(() => {})
+  }, [token])
+
+  useEffect(() => {
+    refreshTriageSummary()
+    window.addEventListener('gastroai:notification', refreshTriageSummary)
+    window.addEventListener('gastroai:notification-state', refreshTriageSummary)
+    return () => {
+      window.removeEventListener('gastroai:notification', refreshTriageSummary)
+      window.removeEventListener('gastroai:notification-state', refreshTriageSummary)
+    }
+  }, [refreshTriageSummary])
+
+  // Rời trang trao đổi -> cập nhật lại số tin chưa đọc.
+  const previousPathname = useRef(location.pathname)
+  useEffect(() => {
+    if (previousPathname.current.startsWith('/triage-alerts/') && previousPathname.current !== location.pathname) {
+      refreshTriageSummary()
+    }
+    previousPathname.current = location.pathname
+  }, [location.pathname, refreshTriageSummary])
+
+  const navItems = triageSummary.count > 0
+    ? [NAV_ITEMS[0], TRIAGE_NAV_ITEM, ...NAV_ITEMS.slice(1)]
+    : NAV_ITEMS
 
   useEffect(() => {
     const refreshUnreadCount = () => {
@@ -187,8 +227,10 @@ export function AppSidebar() {
         </div>
 
         <nav className="mt-2 space-y-0.5 px-3">
-          {NAV_ITEMS.map((item) => {
-            const active = item.to === location.pathname
+          {navItems.map((item) => {
+            const active = item.key === TRIAGE_NAV_ITEM.key
+              ? location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+              : item.to === location.pathname
             return (
               <Link
                 key={item.key}
@@ -202,6 +244,9 @@ export function AppSidebar() {
                   {item.label}
                   {item.key === 'notifications' && unreadCount > 0 && (
                     <Badge count={unreadCount} overflowCount={99} size="small" />
+                  )}
+                  {item.key === TRIAGE_NAV_ITEM.key && triageSummary.unread > 0 && (
+                    <Badge count={triageSummary.unread} overflowCount={99} size="small" />
                   )}
                 </span>
               </Link>

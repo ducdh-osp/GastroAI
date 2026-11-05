@@ -65,6 +65,44 @@ class PatientTriageAlertControllerTest {
 
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
+    void listReturnsOwnConversations() throws Exception {
+        when(conversationService.listForPatient(1L)).thenReturn(List.of(
+                new TriageAlertConversationService.PatientConversationSummary(10L,
+                        Instant.parse("2026-09-30T00:00:00Z"), "IN_PROGRESS", "Ban hay den vien",
+                        Instant.parse("2026-09-30T00:06:00Z"), 2)));
+
+        mockMvc.perform(get("/api/v1/patient/triage-alerts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(10))
+                .andExpect(jsonPath("$[0].status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$[0].lastMessagePreview").value("Ban hay den vien"))
+                .andExpect(jsonPath("$[0].lastMessageAt").exists())
+                .andExpect(jsonPath("$[0].unreadCount").value(2));
+
+        verify(conversationService).listForPatient(1L);
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void listReturnsEmptyArrayWhenNoConversation() throws Exception {
+        when(conversationService.listForPatient(1L)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/patient/triage-alerts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "DOCTOR")
+    void listIsForbiddenForCmsRole() throws Exception {
+        mockMvc.perform(get("/api/v1/patient/triage-alerts"))
+                .andExpect(status().isForbidden());
+
+        verify(conversationService, never()).listForPatient(any());
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
     void otherPatientsAlertIsNotFound() throws Exception {
         when(conversationService.getForPatient(1L, 99L))
                 .thenThrow(new ResourceNotFoundException("Không tìm thấy cảnh báo"));

@@ -21,6 +21,8 @@ public interface TriageAlertMessageRepository extends JpaRepository<TriageAlertM
 
     List<TriageAlertMessage> findByAlertIdOrderByCreatedAtAscIdAsc(Long alertId);
 
+    List<TriageAlertMessage> findByAlertIdInOrderByCreatedAtAscIdAsc(Collection<Long> alertIds);
+
     @Query("SELECT count(m) FROM TriageAlertMessage m "
             + "WHERE m.alertId = :alertId AND m.senderType <> 'PATIENT'")
     long countStaffMessages(@Param("alertId") Long alertId);
