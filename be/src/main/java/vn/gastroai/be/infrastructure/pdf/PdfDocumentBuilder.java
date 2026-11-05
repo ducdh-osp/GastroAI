@@ -30,6 +30,7 @@ public class PdfDocumentBuilder {
     private static final Color TEXT = new Color(0x1E, 0x29, 0x3B);
     private static final Color MUTED = new Color(0x64, 0x74, 0x8B);
     private static final Color BORDER = new Color(0xE2, 0xE8, 0xF0);
+    private static final Color DIVIDER = new Color(0xCB, 0xD5, 0xE1);
     private static final Color ZEBRA = new Color(0xF8, 0xFA, 0xFC);
     private static final Color WARNING_RED = new Color(0xB9, 0x1C, 0x1C);
     private static final Color WARNING_BG = new Color(0xFE, 0xF2, 0xF2);
@@ -58,6 +59,7 @@ public class PdfDocumentBuilder {
     private final Font smallGrayFont;
     private final Font warningFont;
     private final String missingCharReplacement;
+    private boolean hasMessage = false;
 
     public PdfDocumentBuilder() {
         this.document = new Document(PageSize.A4, 48, 48, 72, 64);
@@ -121,7 +123,7 @@ public class PdfDocumentBuilder {
 
     public PdfDocumentBuilder title(String text) {
         Paragraph p = new Paragraph(sanitize(text), titleFont);
-        p.setSpacingAfter(2);
+        p.setSpacingAfter(10);
         add(p);
         return this;
     }
@@ -133,10 +135,10 @@ public class PdfDocumentBuilder {
         cell.setBorderWidth(1.5f);
         cell.setPaddingLeft(0);
         cell.setPaddingTop(0);
-        cell.setPaddingBottom(10);
+        cell.setPaddingBottom(14);
 
         PdfPTable table = singleColumn();
-        table.setSpacingAfter(14);
+        table.setSpacingAfter(22);
         table.addCell(cell);
         add(table);
         return this;
@@ -152,8 +154,8 @@ public class PdfDocumentBuilder {
         cell.setPaddingBottom(5);
 
         PdfPTable table = singleColumn();
-        table.setSpacingBefore(18);
-        table.setSpacingAfter(8);
+        table.setSpacingBefore(28);
+        table.setSpacingAfter(12);
         table.addCell(cell);
         add(table);
         return this;
@@ -206,7 +208,7 @@ public class PdfDocumentBuilder {
         }
 
         PdfPTable block = singleColumn();
-        block.setSpacingBefore(18);
+        block.setSpacingBefore(28);
         block.setKeepTogether(true);
         block.addCell(cell);
         add(block);
@@ -216,7 +218,7 @@ public class PdfDocumentBuilder {
     public PdfDocumentBuilder paragraph(String text) {
         Paragraph p = new Paragraph(sanitize(text), normalFont);
         p.setLeading(0, 1.45f);
-        p.setSpacingAfter(6);
+        p.setSpacingAfter(10);
         add(p);
         return this;
     }
@@ -267,8 +269,8 @@ public class PdfDocumentBuilder {
     public PdfDocumentBuilder note(String text) {
         PdfPCell cell = new PdfPCell(new Phrase(sanitize(text), smallGrayFont));
         cell.setBorder(Rectangle.TOP);
-        cell.setBorderColor(BORDER);
-        cell.setBorderWidth(0.5f);
+        cell.setBorderColor(DIVIDER);
+        cell.setBorderWidth(1f);
         cell.setPaddingLeft(0);
         cell.setPaddingTop(8);
 
@@ -279,22 +281,27 @@ public class PdfDocumentBuilder {
         return this;
     }
 
-    /** Dòng mở đầu 1 tin nhắn chat: đường kẻ mảnh phía trên, tên người nói + giờ. */
     public PdfDocumentBuilder messageHeader(String speaker, String time) {
         Phrase phrase = new Phrase();
         phrase.add(new Chunk(sanitize(speaker), speakerFont));
         phrase.add(new Chunk("   " + sanitize(time), smallGrayFont));
 
         PdfPCell cell = new PdfPCell(phrase);
-        cell.setBorder(Rectangle.TOP);
-        cell.setBorderColor(BORDER);
-        cell.setBorderWidth(0.5f);
+        if (hasMessage) {
+            cell.setBorder(Rectangle.TOP);
+            cell.setBorderColor(DIVIDER);
+            cell.setBorderWidth(1f);
+            cell.setPaddingTop(12);
+        } else {
+            cell.setBorder(Rectangle.NO_BORDER);
+            cell.setPaddingTop(0);
+        }
         cell.setPaddingLeft(0);
-        cell.setPaddingTop(8);
-        cell.setPaddingBottom(2);
+        cell.setPaddingBottom(4);
+        hasMessage = true;
 
         PdfPTable table = singleColumn();
-        table.setSpacingBefore(10);
+        table.setSpacingBefore(20);
         table.addCell(cell);
         add(table);
         return this;
@@ -311,8 +318,8 @@ public class PdfDocumentBuilder {
         cell.setPaddingLeft(10);
 
         PdfPTable table = singleColumn();
-        table.setSpacingBefore(4);
-        table.setSpacingAfter(6);
+        table.setSpacingBefore(10);
+        table.setSpacingAfter(12);
         table.setKeepTogether(true);
         table.addCell(cell);
         add(table);
