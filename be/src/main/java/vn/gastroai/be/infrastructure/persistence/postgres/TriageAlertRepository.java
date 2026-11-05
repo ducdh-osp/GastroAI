@@ -52,14 +52,12 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
     Page<TriageAlert> findPageByStatuses(
             @Param("statuses") Collection<TriageAlertStatus> statuses, Pageable pageable);
 
-    /** Buoc 1 gop trung: canh bao chua dong co hoat dong gan nhat sau :after (dung Pageable 1 dong). */
+    /** Buoc 1 gop trung: canh bao NEW/IN_PROGRESS co hoat dong gan nhat (dung Pageable 1 dong). */
     @Query("SELECT a FROM TriageAlert a WHERE a.patient.id = :patientId "
             + "AND a.status <> vn.gastroai.be.domain.triage.TriageAlertStatus.RESOLVED "
-            + "AND COALESCE(a.lastRepeatedAt, a.occurredAt) > :after "
             + "ORDER BY COALESCE(a.lastRepeatedAt, a.occurredAt) DESC, a.id DESC")
-    List<TriageAlert> findRecentOpenForPatient(
+    List<TriageAlert> findLatestOpenForPatient(
             @Param("patientId") Long patientId,
-            @Param("after") Instant after,
             Pageable pageable);
 
     /** Buoc 2 gop trung: canh bao gan nhat cua benh nhan (bat ke trang thai). */

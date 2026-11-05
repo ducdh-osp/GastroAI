@@ -84,7 +84,7 @@ export async function listTriageAlerts(view: TriageAlertView, page: number, size
   return data
 }
 
-/** Xem chi tiết - BE đồng thời đánh dấu đã đọc tin của bệnh nhân. */
+/** Xem chi tiết - chỉ khi người xem đang tiếp nhận, BE mới đánh dấu đã đọc tin của bệnh nhân. */
 export async function getTriageAlertDetail(alertId: number): Promise<TriageAlertDetail> {
   const { data } = await cmsApiClient.get<TriageAlertDetail>(`/cms/triage-alerts/${alertId}`)
   return data

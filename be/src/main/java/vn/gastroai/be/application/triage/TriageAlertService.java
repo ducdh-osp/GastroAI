@@ -43,7 +43,6 @@ public class TriageAlertService {
 
     private static final String TX = "postgresTransactionManager";
 
-    private static final Duration DEDUPE_WINDOW = Duration.ofMinutes(5);
     private static final Duration FALSE_ALARM_WINDOW = Duration.ofMinutes(30);
 
     private static final int MAX_PAGE_SIZE = 100;
@@ -73,7 +72,7 @@ public class TriageAlertService {
     }
 
     /**
-     * Gop trung theo thu tu: (1) canh bao chua dong co hoat dong trong 5 phut, (2) canh bao gan
+     * Gop trung theo thu tu: (1) canh bao NEW/IN_PROGRESS gan nhat (khong gioi han thoi gian), (2) canh bao gan
      * nhat bi danh dau bao nham trong 30 phut, (3) tao moi. Chi (3) phat TriageAlertEvent.
      */
     @Transactional(TX)
@@ -91,7 +90,7 @@ public class TriageAlertService {
         Instant now = Instant.now();
 
         Optional<TriageAlert> openAlert = triageAlertRepository
-                .findRecentOpenForPatient(patientId, now.minus(DEDUPE_WINDOW), PageRequest.of(0, 1))
+                .findLatestOpenForPatient(patientId, PageRequest.of(0, 1))
                 .stream().findFirst();
         if (openAlert.isPresent()) {
             return mergeRepeat(openAlert.get(), messageContent, matchedGroups, now,
@@ -198,12 +197,20 @@ public class TriageAlertService {
         return new PageImpl<>(toResponses(result.getContent()), pageable, result.getTotalElements());
     }
 
-    /** Chi tiet cho CMS; dong thoi danh dau da doc cac tin cua benh nhan. */
+    /**
+     * Chi tiet cho CMS. Chi nguoi dang tiep nhan xem moi danh dau da doc tin cua benh nhan;
+     * nguoi khac (ke ca ADMIN) xem khong lam mat trang thai chua doc.
+     */
     @Transactional(TX)
-    public TriageAlertDetailResponse getDetail(Long alertId) {
-        // Chay UPDATE truoc: query @Modifying xoa persistence context nen entity doc truoc do se bi detach.
-        messageRepository.markPatientMessagesRead(alertId, Instant.now());
+    public TriageAlertDetailResponse getDetail(Long alertId, Long viewerId, String viewerType) {
         TriageAlert alert = findAlertOrThrow(alertId);
+        boolean viewerIsClaimer = viewerId.equals(alert.getClaimedById())
+                && viewerType.equals(alert.getClaimedByType());
+        if (viewerIsClaimer) {
+            // Query @Modifying xoa persistence context -> doc lai entity sau UPDATE.
+            messageRepository.markPatientMessagesRead(alertId, Instant.now());
+            alert = findAlertOrThrow(alertId);
+        }
 
         List<TriageAlertDetailResponse.ActionItem> actions = actionRepository
                 .findByAlertIdOrderByCreatedAtAscIdAsc(alertId).stream()

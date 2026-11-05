@@ -136,7 +136,7 @@ class TriageAlertServiceTest {
         TriageAlert existing = new TriageAlert(patient, 7L, 9L, "Non ra mau",
                 "[\"XUAT_HUYET_TIEU_HOA\"]", Instant.now().minusSeconds(60));
         existing.setId(50L);
-        when(triageAlertRepository.findRecentOpenForPatient(eq(1L), any(), any()))
+        when(triageAlertRepository.findLatestOpenForPatient(eq(1L), any()))
                 .thenReturn(List.of(existing));
         when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -152,6 +152,30 @@ class TriageAlertServiceTest {
         verifyAction(TriageAlertActionType.REPEATED);
         verify(eventPublisher).publishEvent(argThat((TriageAlertActivityEvent event) ->
                 event.alertId().equals(50L) && event.type().equals("REPEATED")));
+        verify(eventPublisher, never()).publishEvent(any(TriageAlertEvent.class));
+    }
+
+    @Test
+    void createAndPublishMergesIntoInProgressAlertEvenAfter10Minutes() {
+        Patient patient = patient(1L, "Nguyen Van A", "0901234567");
+        when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
+        TriageAlert existing = new TriageAlert(patient, 7L, 9L, "Non ra mau",
+                null, Instant.now().minus(Duration.ofMinutes(10)));
+        existing.setId(50L);
+        existing.setStatus(TriageAlertStatus.IN_PROGRESS);
+        existing.setClaimedById(9L);
+        existing.setClaimedByType("DOCTOR");
+        when(triageAlertRepository.findLatestOpenForPatient(eq(1L), any()))
+                .thenReturn(List.of(existing));
+        when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Long alertId = service.createAndPublish(1L, null, null, "Van con non ra mau", List.of());
+
+        assertEquals(50L, alertId);
+        assertEquals(TriageAlertStatus.IN_PROGRESS, existing.getStatus());
+        assertEquals(1, existing.getRepeatCount());
+        assertEquals("Van con non ra mau", existing.getLastMessageContent());
+        verify(triageAlertRepository, never()).save(argThat(alert -> alert.getId() == null));
         verify(eventPublisher, never()).publishEvent(any(TriageAlertEvent.class));
     }
 
@@ -582,13 +606,51 @@ class TriageAlertServiceTest {
     }
 
     @Test
-    void getDetailMarksPatientMessagesReadBeforeLoading() {
+    void getDetailByClaimerMarksPatientMessagesRead() {
         inProgressAlert(7L, "DOCTOR");
 
-        TriageAlertDetailResponse detail = service.getDetail(10L);
+        TriageAlertDetailResponse detail = service.getDetail(10L, 7L, "DOCTOR");
 
         assertEquals(10L, detail.alert().id());
         verify(messageRepository).markPatientMessagesRead(eq(10L), any());
+    }
+
+    @Test
+    void getDetailByOtherDoctorKeepsMessagesUnread() {
+        inProgressAlert(7L, "DOCTOR");
+
+        service.getDetail(10L, 5L, "DOCTOR");
+
+        verify(messageRepository, never()).markPatientMessagesRead(any(), any());
+    }
+
+    @Test
+    void getDetailByAdminWhoDidNotClaimKeepsMessagesUnread() {
+        inProgressAlert(7L, "DOCTOR");
+
+        service.getDetail(10L, 1L, "ADMIN");
+
+        verify(messageRepository, never()).markPatientMessagesRead(any(), any());
+    }
+
+    @Test
+    void getDetailComparesBothIdAndAccountType() {
+        // Admin #7 va Bac si #7 la 2 tai khoan khac nhau (2 bang MySQL rieng).
+        inProgressAlert(7L, "DOCTOR");
+
+        service.getDetail(10L, 7L, "ADMIN");
+
+        verify(messageRepository, never()).markPatientMessagesRead(any(), any());
+    }
+
+    @Test
+    void getDetailOfUnclaimedAlertKeepsMessagesUnread() {
+        TriageAlert alert = inProgressAlert(null, null);
+        alert.setStatus(TriageAlertStatus.NEW);
+
+        service.getDetail(10L, 7L, "DOCTOR");
+
+        verify(messageRepository, never()).markPatientMessagesRead(any(), any());
     }
 
     @Test
@@ -596,6 +658,7 @@ class TriageAlertServiceTest {
         when(triageAlertRepository.findById(404L)).thenReturn(Optional.empty());
 
         assertThrows(vn.gastroai.be.application.support.ResourceNotFoundException.class,
-                () -> service.getDetail(404L));
+                () -> service.getDetail(404L, 7L, "DOCTOR"));
+        verify(messageRepository, never()).markPatientMessagesRead(any(), any());
     }
 }

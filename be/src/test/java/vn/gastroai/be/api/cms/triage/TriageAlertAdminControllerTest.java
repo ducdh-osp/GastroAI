@@ -110,7 +110,7 @@ class TriageAlertAdminControllerTest {
     @Test
     @WithMockUser(username = "9", roles = "DOCTOR")
     void detailReturnsAlertActionsAndMessages() throws Exception {
-        when(triageAlertService.getDetail(10L)).thenReturn(new TriageAlertDetailResponse(
+        when(triageAlertService.getDetail(10L, 9L, "DOCTOR")).thenReturn(new TriageAlertDetailResponse(
                 alert("IN_PROGRESS", 9L, "DOCTOR", null, null),
                 List.of(new TriageAlertDetailResponse.ActionItem(1L, "CREATED", null, null, null,
                         Instant.parse("2026-09-30T00:00:00Z"))),
@@ -121,7 +121,20 @@ class TriageAlertAdminControllerTest {
                 .andExpect(jsonPath("$.alert.id").value(10))
                 .andExpect(jsonPath("$.actions[0].actionType").value("CREATED"));
 
+        verify(triageAlertService).getDetail(10L, 9L, "DOCTOR");
         verify(auditLogService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "7", roles = "ADMIN")
+    void detailPassesAdminAsViewer() throws Exception {
+        when(triageAlertService.getDetail(10L, 7L, "ADMIN")).thenReturn(new TriageAlertDetailResponse(
+                alert("IN_PROGRESS", 9L, "DOCTOR", null, null), List.of(), List.of()));
+
+        mockMvc.perform(get("/api/v1/cms/triage-alerts/10"))
+                .andExpect(status().isOk());
+
+        verify(triageAlertService).getDetail(10L, 7L, "ADMIN");
     }
 
     @Test

@@ -32,10 +32,6 @@ CREATE TABLE triage_alert_actions (
 CREATE INDEX idx_triage_alert_actions_alert
     ON triage_alert_actions(alert_id, created_at);
 
--- Bo canh bao demo tu V46 (va thong bao Admin di kem) khoi man CMS.
-DELETE FROM notifications WHERE dedupe_key LIKE 'DEMO30D:TRIAGE:%';
-DELETE FROM triage_alerts WHERE message_content LIKE '[DEMO-30D]%';
-
 UPDATE triage_alerts SET outcome = 'HANDLED' WHERE status = 'RESOLVED';
 
 INSERT INTO triage_alert_actions (alert_id, action_type, created_at)

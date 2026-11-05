@@ -48,8 +48,11 @@ public class TriageAlertAdminController {
     }
 
     @GetMapping("/{alertId}")
-    public TriageAlertDetailResponse detail(@PathVariable Long alertId) {
-        return triageAlertService.getDetail(alertId);
+    public TriageAlertDetailResponse detail(
+            @PathVariable Long alertId,
+            Authentication authentication) {
+        return triageAlertService.getDetail(
+                alertId, Long.valueOf(authentication.getName()), resolveRole(authentication));
     }
 
     @PostMapping("/{alertId}/claim")
