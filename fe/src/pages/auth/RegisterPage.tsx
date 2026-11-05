@@ -64,10 +64,45 @@ export default function RegisterPage() {
         <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 255, message: 'Email tối đa 255 ký tự' }]}>
           <Input maxLength={255} placeholder="ban@example.com" />
         </Form.Item>
-        <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, message: 'Nhập mật khẩu' }, { validator: (_, value: string) => !value || meetsPasswordRequirements(value) ? Promise.resolve() : Promise.reject(new Error(PASSWORD_REQUIREMENTS_MESSAGE)) }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}>
+        <Form.Item
+          label="Mật khẩu"
+          name="password"
+          extra={PASSWORD_REQUIREMENTS_MESSAGE}
+          rules={[
+            { required: true, message: 'Nhập mật khẩu' },
+            {
+              validator: (_, value: string) =>
+                !value || meetsPasswordRequirements(value)
+                  ? Promise.resolve()
+                  : Promise.reject(new Error(PASSWORD_REQUIREMENTS_MESSAGE)),
+            },
+            { max: 72, message: 'Mật khẩu tối đa 72 ký tự' },
+            {
+              validator: (_, value: string) =>
+                !value || isAtMostUtf8Bytes(value, 72)
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')),
+            },
+          ]}
+        >
           <Input.Password maxLength={72} />
         </Form.Item>
-        <Form.Item label="Xác nhận mật khẩu" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu' }]}>
+        <Form.Item
+          label="Xác nhận mật khẩu"
+          name="confirmPassword"
+          dependencies={['password']}
+          rules={[
+            { required: true, message: 'Nhập lại mật khẩu' },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                if (!value || getFieldValue('password') === value) {
+                  return Promise.resolve()
+                }
+                return Promise.reject(new Error('Mật khẩu xác nhận không khớp.'))
+              },
+            }),
+          ]}
+        >
           <Input.Password />
         </Form.Item>
         <Button type="primary" htmlType="submit" block loading={loading}>Đăng ký</Button>

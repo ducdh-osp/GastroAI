@@ -68,7 +68,22 @@ export default function ChangePasswordPage() {
             <Form.Item label="Mật khẩu mới" name="newPassword" extra={PASSWORD_REQUIREMENTS_MESSAGE} rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { validator: (_, value: string) => !value || meetsPasswordRequirements(value) ? Promise.resolve() : Promise.reject(new Error(PASSWORD_REQUIREMENTS_MESSAGE)) }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}>
               <Input.Password maxLength={72} autoComplete="new-password" />
             </Form.Item>
-            <Form.Item label="Xác nhận mật khẩu mới" name="confirmPassword" rules={[{ required: true, message: 'Nhập lại mật khẩu mới' }]}>
+            <Form.Item
+              label="Xác nhận mật khẩu mới"
+              name="confirmPassword"
+              dependencies={['newPassword']}
+              rules={[
+                { required: true, message: 'Nhập lại mật khẩu mới' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('newPassword') === value) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject(new Error('Mật khẩu xác nhận không khớp.'))
+                  },
+                }),
+              ]}
+            >
               <Input.Password autoComplete="new-password" />
             </Form.Item>
             <Button type="primary" htmlType="submit" block loading={loading}>Đổi mật khẩu</Button>
