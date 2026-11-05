@@ -87,7 +87,11 @@ public class AuthService {
     public void register(String email, String password, String name) {
         PatientPasswordPolicy.validate(password);
         String normalizedEmail = normalize(email);
-        if (patients.findByEmail(normalizedEmail).isPresent()) {
+        Instant now = Instant.now();
+        Patient existing = patients.findByEmailForUpdate(normalizedEmail).orElse(null);
+        // Scheduler chay moi phut, nhung xoa lai tai day de nguoi dung co the dang ky
+        // ngay lap tuc trong khoang thoi gian giua hai lan scheduler chay.
+        if (existing != null && !deleteIfExpiredUnverified(existing, now)) {
             throw new IllegalStateException("Email da duoc su dung");
         }
         String rawToken = UUID.randomUUID() + UUID.randomUUID().toString();
@@ -98,7 +102,7 @@ public class AuthService {
         patient.setRole(UserRole.PATIENT);
         patient.setEmailVerified(false);
         patient.setVerificationTokenHash(hash(rawToken));
-        patient.setVerificationTokenExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
+        patient.setVerificationTokenExpiresAt(now.plus(24, ChronoUnit.HOURS));
         patient = patients.saveAndFlush(patient);
         mail.send(patient, rawToken);
     }
@@ -127,15 +131,30 @@ public class AuthService {
     @Transactional("postgresTransactionManager")
     public void resendVerification(String email) {
         String normalizedEmail = normalize(email);
-        Patient patient = patients.findByEmail(normalizedEmail).orElse(null);
+        Patient patient = patients.findByEmailForUpdate(normalizedEmail).orElse(null);
         if (patient == null || patient.isEmailVerified()) {
             return;
         }
 
+        Instant now = Instant.now();
+        if (deleteIfExpiredUnverified(patient, now)) {
+            return;
+        }
         String rawToken = UUID.randomUUID() + UUID.randomUUID().toString();
         patient.setVerificationTokenHash(hash(rawToken));
-        patient.setVerificationTokenExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
+        patient.setVerificationTokenExpiresAt(now.plus(24, ChronoUnit.HOURS));
         mail.send(patient, rawToken);
+    }
+
+    private boolean deleteIfExpiredUnverified(Patient patient, Instant now) {
+        if (patient.isEmailVerified()
+                || patient.getVerificationTokenExpiresAt() == null
+                || patient.getVerificationTokenExpiresAt().isAfter(now)) {
+            return false;
+        }
+        patients.delete(patient);
+        patients.flush();
+        return true;
     }
 
     /**

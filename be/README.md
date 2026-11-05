@@ -95,6 +95,8 @@ Nếu máy đã có Postgres/MySQL chạy port khác 5432/3306 (vd trùng port v
 Email được ghi vào bảng `email_outbox` trước, sau đó worker gửi bất đồng bộ qua SMTP. Vì vậy lỗi
 SMTP tạm thời không làm rollback đăng ký; worker tự retry sau 1, 5 và 30 phút. Payload outbox chứa
 token một lần được mã hóa AES-GCM bằng `EMAIL_PAYLOAD_ENCRYPTION_KEY`.
+Tài khoản chưa xác thực sẽ bị xóa trong tối đa một phút sau khi token 24 giờ hết hạn;
+người dùng có thể đăng ký lại ngay bằng cùng email.
 
 Khi chạy local, backend mặc định dùng
 MailHog/Mailpit tại `localhost:1025` (không cần tài khoản hoặc TLS), nên cần bật MailHog/Mailpit

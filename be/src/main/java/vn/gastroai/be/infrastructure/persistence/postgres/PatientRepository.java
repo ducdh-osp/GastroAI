@@ -3,12 +3,14 @@ package vn.gastroai.be.infrastructure.persistence.postgres;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import vn.gastroai.be.domain.auth.Patient;
 
+import java.time.Instant;
 import java.util.Optional;
 
 public interface PatientRepository extends JpaRepository<Patient, Long> {
@@ -20,6 +22,15 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     Optional<Patient> findByVerificationTokenHash(String hash);
 
     Optional<Patient> findByPasswordResetTokenHash(String hash);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            delete from Patient p
+            where p.emailVerified = false
+              and p.verificationTokenExpiresAt is not null
+              and p.verificationTokenExpiresAt <= :now
+            """)
+    long deleteExpiredUnverified(@Param("now") Instant now);
 
     @Query("""
             select p from Patient p
