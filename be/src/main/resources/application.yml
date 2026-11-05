@@ -104,6 +104,9 @@ app:
     revoked-token:
       # Runs after the login-history cleanup by default; override in production if needed.
       cleanup-cron: ${REVOKED_TOKEN_CLEANUP_CRON:0 30 3 * * *}
+    unverified-account:
+      # Xoa trong toi da 1 phut sau khi token xac thuc email het han.
+      cleanup-cron: ${UNVERIFIED_ACCOUNT_CLEANUP_CRON:0 * * * * *}
     # Đọc bởi ClientRequestInfoResolver — danh sách IP reverse proxy tin cậy, CHỈ các IP này
     # mới được phép "khai" IP thật qua header X-Forwarded-For (chống giả mạo IP trong log).
     # Để trống nếu chạy local không qua proxy nào.

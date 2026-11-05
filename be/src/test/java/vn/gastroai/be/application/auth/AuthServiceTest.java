@@ -3,6 +3,7 @@ package vn.gastroai.be.application.auth;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.mockito.InOrder;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -52,7 +53,7 @@ class AuthServiceTest {
 
     @Test
     void registerStoresHashAndSendsVerificationMail() {
-        when(patients.findByEmail("user@example.com")).thenReturn(Optional.empty());
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.empty());
         when(encoder.encode("Password1!")).thenReturn("bcrypt");
         when(patients.saveAndFlush(any(Patient.class))).thenAnswer(invocation -> {
             Patient patient = invocation.getArgument(0);
@@ -88,7 +89,7 @@ class AuthServiceTest {
     @Test
     void registerAccepts72Utf8BytesEvenWhenCharacterCountIsBelowLimit() {
         String password = "A1!" + "ă".repeat(34) + "a"; // 72 UTF-8 bytes
-        when(patients.findByEmail("user@example.com")).thenReturn(Optional.empty());
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.empty());
         when(encoder.encode(password)).thenReturn("bcrypt");
         when(patients.saveAndFlush(any(Patient.class))).thenAnswer(invocation ->
                 (Patient) invocation.getArgument(0));
@@ -97,6 +98,86 @@ class AuthServiceTest {
 
         verify(encoder).encode(password);
         verify(mail).send(any(Patient.class), anyString());
+    }
+
+    @Test
+    void registerDeletesExpiredUnverifiedAccountBeforeReusingEmail() {
+        Patient expired = patient();
+        expired.setEmailVerified(false);
+        expired.setVerificationTokenExpiresAt(Instant.now().minusSeconds(1));
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(expired));
+        when(encoder.encode("Password1!")).thenReturn("new-bcrypt");
+        when(patients.saveAndFlush(any(Patient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.register("user@example.com", "Password1!", "New User");
+
+        InOrder order = inOrder(patients);
+        order.verify(patients).delete(expired);
+        order.verify(patients).flush();
+        order.verify(patients).saveAndFlush(argThat((Patient patient) -> patient != expired
+                && patient.getEmail().equals("user@example.com")
+                && !patient.isEmailVerified()));
+        verify(mail).send(argThat(patient -> patient != expired), anyString());
+    }
+
+    @Test
+    void registerDoesNotDeleteVerifiedAccountEvenIfOldExpiryRemains() {
+        Patient verified = patient();
+        verified.setEmailVerified(true);
+        verified.setVerificationTokenExpiresAt(Instant.now().minusSeconds(1));
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(verified));
+
+        assertEquals("Email da duoc su dung", assertThrows(IllegalStateException.class,
+                () -> service.register("user@example.com", "Password1!", "User")).getMessage());
+
+        verify(patients, never()).delete(any(Patient.class));
+        verify(encoder, never()).encode(anyString());
+        verifyNoInteractions(mail);
+    }
+
+    @Test
+    void registerKeepsUnverifiedAccountWhileVerificationTokenIsStillValid() {
+        Patient unverified = patient();
+        unverified.setEmailVerified(false);
+        unverified.setVerificationTokenExpiresAt(Instant.now().plusSeconds(60));
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(unverified));
+
+        assertEquals("Email da duoc su dung", assertThrows(IllegalStateException.class,
+                () -> service.register("user@example.com", "Password1!", "User")).getMessage());
+
+        verify(patients, never()).delete(any(Patient.class));
+        verify(encoder, never()).encode(anyString());
+        verifyNoInteractions(mail);
+    }
+
+    @Test
+    void resendDeletesExpiredUnverifiedAccountInsteadOfExtendingIt() {
+        Patient expired = patient();
+        expired.setEmailVerified(false);
+        expired.setVerificationTokenExpiresAt(Instant.now().minusSeconds(1));
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(expired));
+
+        service.resendVerification("USER@example.com");
+
+        verify(patients).delete(expired);
+        verify(patients).flush();
+        verifyNoInteractions(mail);
+    }
+
+    @Test
+    void resendReplacesTokenWhileExistingVerificationTokenIsStillValid() {
+        Patient unverified = patient();
+        unverified.setEmailVerified(false);
+        unverified.setVerificationTokenHash("old-hash");
+        unverified.setVerificationTokenExpiresAt(Instant.now().plusSeconds(60));
+        when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(unverified));
+
+        service.resendVerification("USER@example.com");
+
+        assertNotEquals("old-hash", unverified.getVerificationTokenHash());
+        assertTrue(unverified.getVerificationTokenExpiresAt().isAfter(Instant.now().plusSeconds(23 * 60 * 60)));
+        verify(patients, never()).delete(any(Patient.class));
+        verify(mail).send(same(unverified), anyString());
     }
 
     @Test
