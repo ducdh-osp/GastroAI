@@ -15,6 +15,7 @@ const { Title, Text } = Typography
 const { TextArea } = Input
 
 const POLL_INTERVAL_MS = 10000
+const MAX_MESSAGE_LENGTH = 2000
 
 export default function TriageConversationPage() {
   const { id } = useParams<{ id: string }>()
@@ -137,19 +138,19 @@ export default function TriageConversationPage() {
           styles={{ body: { display: 'flex', height: '100%', minHeight: 0, flexDirection: 'column', gap: 12 } }}
         >
           <Spin spinning={loading} wrapperClassName="min-h-0 flex-1 overflow-y-auto">
-            <div className="flex flex-col gap-3 p-1">
+            <div className="flex min-w-0 flex-col gap-3 p-1">
               {conversation && conversation.messages.length === 0 && (
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có tin nhắn" />
               )}
               {conversation?.messages.map((item) => (
                 <div key={item.id} className={`flex ${item.mine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${item.mine
+                  <div className={`min-w-0 max-w-[85%] rounded-2xl px-4 py-2 sm:max-w-[80%] ${item.mine
                     ? 'bg-teal-600 text-white'
                     : 'bg-slate-100 text-slate-900 dark:bg-neutral-800 dark:text-slate-100'}`}>
                     {!item.mine && (
                       <div className="mb-1 text-xs font-semibold text-teal-700 dark:text-teal-400">{item.senderLabel}</div>
                     )}
-                    <div className="whitespace-pre-wrap break-words">{item.content}</div>
+                    <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.content}</div>
                     <div className={`mt-1 text-xs ${item.mine ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>
                       {formatDateTime(item.createdAt)}
                     </div>
@@ -167,11 +168,13 @@ export default function TriageConversationPage() {
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="Nhập tin nhắn"
                 autoSize={{ minRows: 2, maxRows: 5 }}
-                maxLength={2000}
-                showCount
+                maxLength={MAX_MESSAGE_LENGTH}
                 disabled={sending}
               />
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between gap-3">
+                <Text type="secondary" className="text-xs tabular-nums">
+                  {draft.length} / {MAX_MESSAGE_LENGTH}
+                </Text>
                 <Button type="primary" icon={<SendOutlined />} loading={sending}
                   disabled={draft.trim().length === 0} onClick={handleSend}>
                   Gửi

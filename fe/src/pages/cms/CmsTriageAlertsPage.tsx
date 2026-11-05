@@ -118,10 +118,12 @@ export default function CmsTriageAlertsPage() {
 
   const columns: ColumnsType<TriageAlert> = [
     {
-      title: 'Hoạt động gần nhất',
+      title: <span className="whitespace-nowrap">Hoạt động gần nhất</span>,
       key: 'lastActivity',
-      width: 150,
-      render: (_, record) => formatDateTime(record.lastRepeatedAt ?? record.occurredAt),
+      width: 180,
+      render: (_, record) => (
+        <span className="whitespace-nowrap">{formatDateTime(record.lastRepeatedAt ?? record.occurredAt)}</span>
+      ),
     },
     {
       title: 'Bệnh nhân',
@@ -175,7 +177,7 @@ export default function CmsTriageAlertsPage() {
       ),
     },
     {
-      title: 'Tin mới',
+      title: <span className="whitespace-nowrap">Tin mới</span>,
       key: 'unread',
       width: 90,
       align: 'center',
@@ -220,13 +222,16 @@ export default function CmsTriageAlertsPage() {
                 <SafetyOutlined className="mr-2" />
                 Cảnh báo khẩn cấp
               </Title>
-              <Text type="secondary">Tin nhắn trợ lý AI nhận diện có dấu hiệu khẩn cấp</Text>
-              {connectionState !== 'connected' && (
-                <Badge
-                  status={connectionState === 'connecting' ? 'processing' : 'error'}
-                  text={connectionState === 'connecting' ? 'Đang kết nối...' : 'Mất kết nối realtime - đang thử lại'}
-                />
-              )}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <Text type="secondary">Tin nhắn trợ lý AI nhận diện có dấu hiệu khẩn cấp</Text>
+                {connectionState !== 'connected' && (
+                  <Badge
+                    className="whitespace-nowrap"
+                    status={connectionState === 'connecting' ? 'processing' : 'error'}
+                    text={connectionState === 'connecting' ? 'Đang kết nối...' : 'Mất kết nối realtime - đang thử lại'}
+                  />
+                )}
+              </div>
             </div>
             <Segmented<TriageAlertView>
               options={VIEW_OPTIONS}
@@ -265,7 +270,7 @@ export default function CmsTriageAlertsPage() {
               onClick: () => setSelectedId(record.id),
               className: 'cursor-pointer',
             })}
-            scroll={{ x: 960 }}
+            scroll={{ x: 990 }}
             tableLayout="fixed"
             locale={{ emptyText: loadError ? 'Lỗi tải dữ liệu' : 'Chưa có cảnh báo khẩn cấp nào' }}
           />

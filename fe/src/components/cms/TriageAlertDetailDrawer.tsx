@@ -76,6 +76,8 @@ const ACTION_COLORS: Partial<Record<TriageAlertActionType, string>> = {
 const STAFF_LABELS: Record<string, string> = { ADMIN: 'Admin', DOCTOR: 'Bác sĩ' }
 
 const POLL_INTERVAL_MS = 10000
+const MAX_MESSAGE_LENGTH = 2000
+const MAX_NOTE_LENGTH = 1000
 
 function describeActor(type: string | null, id: number | null): string | null {
   if (!type) return null
@@ -213,12 +215,14 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
     return {
       key: action.id,
       color: ACTION_COLORS[action.actionType] ?? 'blue',
-      title: formatDateTime(action.createdAt),
+      title: <span className="whitespace-nowrap">{formatDateTime(action.createdAt)}</span>,
       content: (
         <div className="min-w-0">
           <Text strong>{ACTION_LABELS[action.actionType] ?? action.actionType}</Text>
           {actor && <Text type="secondary"> · {actor}</Text>}
-          {action.detail && <div className="whitespace-pre-wrap break-words text-sm">{action.detail}</div>}
+          {action.detail && (
+            <div className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{action.detail}</div>
+          )}
         </div>
       ),
     }
@@ -237,7 +241,7 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
 
         {alert && (
           <div className="flex flex-col gap-5">
-            <Descriptions column={1} bordered size="small" styles={{ label: { width: 140, whiteSpace: 'nowrap' } }}>
+            <Descriptions column={1} bordered size="small" styles={{ label: { width: 120, whiteSpace: 'nowrap' }, content: { minWidth: 0 } }}>
               <Descriptions.Item label="Bệnh nhân">
                 <Space wrap size={4}>
                   <Text strong>{alert.patientFullName ?? `Bệnh nhân #${alert.patientId}`}</Text>
@@ -267,13 +271,13 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
                 </Descriptions.Item>
               )}
               <Descriptions.Item label="Tin gốc">
-                <Paragraph className="mb-0! whitespace-pre-wrap">{alert.messageContent}</Paragraph>
+                <Paragraph className="mb-0! whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{alert.messageContent}</Paragraph>
               </Descriptions.Item>
               {alert.repeatCount > 0 && (
                 <Descriptions.Item label="Tin mới nhất">
                   <Space orientation="vertical" size={2} className="w-full">
                     <Tag color="red">Lặp lại ×{alert.repeatCount}</Tag>
-                    <Paragraph className="mb-0! whitespace-pre-wrap">{alert.lastMessageContent}</Paragraph>
+                    <Paragraph className="mb-0! whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{alert.lastMessageContent}</Paragraph>
                     {alert.lastRepeatedAt && (
                       <Text type="secondary" className="text-xs">{formatDateTime(alert.lastRepeatedAt)}</Text>
                     )}
@@ -282,7 +286,7 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
               )}
               {alert.resolutionNote && (
                 <Descriptions.Item label={alert.outcome === 'FALSE_ALARM' ? 'Lý do' : 'Ghi chú'}>
-                  <Paragraph className="mb-0! whitespace-pre-wrap">{alert.resolutionNote}</Paragraph>
+                  <Paragraph className="mb-0! whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{alert.resolutionNote}</Paragraph>
                 </Descriptions.Item>
               )}
             </Descriptions>
@@ -327,11 +331,11 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
                   const fromPatient = item.senderType === 'PATIENT'
                   return (
                     <div key={item.id} className={`flex ${fromPatient ? 'justify-start' : 'justify-end'}`}>
-                      <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${fromPatient
+                      <div className={`min-w-0 max-w-[85%] rounded-2xl px-3 py-2 sm:max-w-[80%] ${fromPatient
                         ? 'bg-slate-100 text-slate-900 dark:bg-neutral-800 dark:text-slate-100'
                         : 'bg-teal-600 text-white'}`}>
-                        <div className="whitespace-pre-wrap break-words">{item.content}</div>
-                        <div className={`mt-1 text-xs ${fromPatient ? 'text-slate-500 dark:text-slate-400' : 'text-white/80'}`}>
+                        <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.content}</div>
+                        <div className={`mt-1 break-words text-xs ${fromPatient ? 'text-slate-500 dark:text-slate-400' : 'text-white/80'}`}>
                           {fromPatient
                             ? alert.patientFullName ?? 'Bệnh nhân'
                             : describeActor(item.senderType, item.senderId)}
@@ -350,11 +354,13 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
                     onChange={(event) => setDraft(event.target.value)}
                     placeholder="Nhập tin nhắn cho bệnh nhân"
                     autoSize={{ minRows: 2, maxRows: 6 }}
-                    maxLength={2000}
-                    showCount
+                    maxLength={MAX_MESSAGE_LENGTH}
                     disabled={busy}
                   />
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-between gap-3">
+                    <Text type="secondary" className="text-xs tabular-nums">
+                      {draft.length} / {MAX_MESSAGE_LENGTH}
+                    </Text>
                     <Button type="primary" icon={<SendOutlined />} loading={guard.inFlightId === 'send'}
                       disabled={busy || draft.trim().length === 0} onClick={handleSend}>
                       Gửi
@@ -386,14 +392,18 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
         }}
         destroyOnHidden
       >
-        <TextArea
-          value={dialogText}
-          onChange={(event) => setDialogText(event.target.value)}
-          placeholder={dialog === 'falseAlarm' ? 'Lý do (bắt buộc)' : 'Ghi chú (không bắt buộc)'}
-          autoSize={{ minRows: 3, maxRows: 8 }}
-          maxLength={1000}
-          showCount
-        />
+        <div className="flex flex-col gap-1">
+          <TextArea
+            value={dialogText}
+            onChange={(event) => setDialogText(event.target.value)}
+            placeholder={dialog === 'falseAlarm' ? 'Lý do (bắt buộc)' : 'Ghi chú (không bắt buộc)'}
+            autoSize={{ minRows: 3, maxRows: 8 }}
+            maxLength={MAX_NOTE_LENGTH}
+          />
+          <Text type="secondary" className="self-end text-xs tabular-nums">
+            {dialogText.length} / {MAX_NOTE_LENGTH}
+          </Text>
+        </div>
       </Modal>
     </Drawer>
   )
