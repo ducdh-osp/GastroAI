@@ -5,5 +5,6 @@ public enum NotificationType {
     MEDICATION_REMINDER,
     SECURITY_ALERT,
     TRIAGE_ALERT,
-    SYSTEM
+    SYSTEM,
+    TRIAGE_DOCTOR_MESSAGE
 }

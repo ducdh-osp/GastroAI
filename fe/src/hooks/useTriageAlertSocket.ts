@@ -27,6 +27,20 @@ export interface TriageAlertStatusChangedSocketEvent {
   statusChangedAt: string
 }
 
+export type TriageAlertActivityType =
+  | 'REPEATED'
+  | 'REPEATED_AFTER_FALSE_ALARM'
+  | 'MESSAGE_SENT'
+  | 'PATIENT_MESSAGE'
+  | 'PATIENT_READ'
+
+/** Chi bao "canh bao nay vua co thay doi" - FE tu goi API tai lai. */
+export interface TriageAlertActivitySocketEvent {
+  alertId: number
+  type: TriageAlertActivityType
+  occurredAt: string
+}
+
 export type TriageSocketConnectionState = 'connecting' | 'connected' | 'disconnected'
 
 interface UseTriageAlertSocketOptions {
@@ -34,6 +48,7 @@ interface UseTriageAlertSocketOptions {
   enabled: boolean
   onAlert: (event: TriageAlertSocketEvent) => void
   onStatusChange: (event: TriageAlertStatusChangedSocketEvent) => void
+  onActivity?: (event: TriageAlertActivitySocketEvent) => void
   /**
    * Goi moi khi ket noi THANH CONG - ca lan dau lan @stomp/stompjs tu dong noi lai sau khi
    * roi mang. Dung de dong bo lai danh sach tu API, bu lai nhung canh bao phat sinh trong
@@ -44,6 +59,7 @@ interface UseTriageAlertSocketOptions {
 
 const ALERTS_DESTINATION = '/topic/triage-alerts'
 const STATUS_DESTINATION = '/topic/triage-alerts-status'
+const ACTIVITY_DESTINATION = '/topic/triage-alerts-activity'
 
 
 function resolveWsUrl(): string {
@@ -56,6 +72,7 @@ export function useTriageAlertSocket({
   enabled,
   onAlert,
   onStatusChange,
+  onActivity,
   onConnected,
 }: UseTriageAlertSocketOptions): { connectionState: TriageSocketConnectionState } {
   const [connectionState, setConnectionState] = useState<TriageSocketConnectionState>('disconnected')
@@ -66,6 +83,8 @@ export function useTriageAlertSocket({
   onAlertRef.current = onAlert
   const onStatusChangeRef = useRef(onStatusChange)
   onStatusChangeRef.current = onStatusChange
+  const onActivityRef = useRef(onActivity)
+  onActivityRef.current = onActivity
   const onConnectedRef = useRef(onConnected)
   onConnectedRef.current = onConnected
 
@@ -101,7 +120,15 @@ export function useTriageAlertSocket({
         }
       })
 
-      // Dang ky 2 kenh xong roi moi dong bo lai danh sach - neu dong bo truoc, canh bao
+      client.subscribe(ACTIVITY_DESTINATION, (message: IMessage) => {
+        try {
+          onActivityRef.current?.(JSON.parse(message.body) as TriageAlertActivitySocketEvent)
+        } catch {
+          // Bo qua ban tin khong parse duoc.
+        }
+      })
+
+      // Dang ky cac kenh xong roi moi dong bo lai danh sach - neu dong bo truoc, canh bao
       // den dung giua luc dang tai se lot vao khe ho va mat (@stomp/stompjs goi onConnect
       // ca lan dau lan moi lan tu dong noi lai, nen 1 cho nay la du cho ca 2 truong hop).
       onConnectedRef.current?.()

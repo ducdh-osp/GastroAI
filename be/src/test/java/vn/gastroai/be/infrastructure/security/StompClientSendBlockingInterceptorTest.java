@@ -42,6 +42,17 @@ class StompClientSendBlockingInterceptorTest {
     }
 
     @Test
+    void cmsCanSubscribeToTriageActivityButPatientCannot() {
+        Message<byte[]> cms = stompMessage(StompCommand.SUBSCRIBE, "/topic/triage-alerts-activity",
+                Map.of("HTTP_SESSION_ID", "s1", "CMS_USER_TYPE", "DOCTOR"));
+        Message<byte[]> patient = stompMessage(StompCommand.SUBSCRIBE, "/topic/triage-alerts-activity",
+                Map.of("PATIENT_ID", 7L));
+
+        assertSame(cms, interceptor.preSend(cms, null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(patient, null));
+    }
+
+    @Test
     void blocksSubscribeToDisallowedDestination() {
         Message<byte[]> message = stompMessage(StompCommand.SUBSCRIBE, "/topic/khac");
 

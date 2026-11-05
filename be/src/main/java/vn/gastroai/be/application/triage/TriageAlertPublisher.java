@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import vn.gastroai.be.application.config.AppRuntimeConfigService;
+import vn.gastroai.be.domain.triage.TriageAlertActivityEvent;
 import vn.gastroai.be.domain.triage.TriageAlertEvent;
 import vn.gastroai.be.domain.triage.TriageAlertStatusChangedEvent;
 
@@ -13,6 +14,8 @@ public class TriageAlertPublisher {
     static final String DESTINATION = "/topic/triage-alerts";
 
     static final String DESTINATION_STATUS = "/topic/triage-alerts-status";
+
+    static final String DESTINATION_ACTIVITY = "/topic/triage-alerts-activity";
 
     private static final Logger log = LoggerFactory.getLogger(TriageAlertPublisher.class);
 
@@ -48,6 +51,15 @@ public class TriageAlertPublisher {
         } catch (Exception exception) {
             log.error("Khong the day cap nhat trang thai canh bao Triage id={}: {}",
                     event.id(), exception.getMessage(), exception);
+        }
+    }
+
+    public void publishActivity(TriageAlertActivityEvent event) {
+        try {
+            messagingTemplate.convertAndSend(DESTINATION_ACTIVITY, event);
+        } catch (Exception exception) {
+            log.error("Khong the day hoat dong canh bao Triage id={}: {}",
+                    event.alertId(), exception.getMessage(), exception);
         }
     }
 }

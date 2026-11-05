@@ -16,7 +16,7 @@ import java.util.Set;
 public class StompClientSendBlockingInterceptor implements ChannelInterceptor {
 
     private static final Set<String> CMS_DESTINATIONS = Set.of(
-            "/topic/triage-alerts", "/topic/triage-alerts-status");
+            "/topic/triage-alerts", "/topic/triage-alerts-status", "/topic/triage-alerts-activity");
     private static final String ADMIN_NOTIFICATION_DESTINATION = "/topic/notifications/admin";
     private static final String PATIENT_NOTIFICATION_PREFIX = "/topic/notifications/patient/";
 

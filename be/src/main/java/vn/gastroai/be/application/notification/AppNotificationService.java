@@ -135,6 +135,26 @@ public class AppNotificationService {
         return Optional.of(response);
     }
 
+    /** Bac si/nhan vien nhan cho benh nhan trong khung trao doi cua canh bao cap cuu. */
+    @Transactional("postgresTransactionManager")
+    public Optional<NotificationResponse> recordTriageDoctorMessage(Long patientId, Long alertId,
+                                                                    Long messageId, String content) {
+        String dedupeKey = "TRIAGE_MESSAGE:" + messageId;
+        if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
+            return Optional.empty();
+        }
+        String preview = content.length() > 120 ? content.substring(0, 120) : content;
+        AppNotification notification = new AppNotification(
+                NotificationRecipientType.PATIENT, patientId, NotificationType.TRIAGE_DOCTOR_MESSAGE,
+                "Bác sĩ vừa nhắn cho bạn", preview, "TRIAGE_ALERT", alertId,
+                "/triage-alerts/" + alertId, dedupeKey);
+        notification = notificationRepository.save(notification);
+        NotificationResponse response = toResponse(notification, null);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                NotificationRecipientType.PATIENT, patientId, response));
+        return Optional.of(response);
+    }
+
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public NotificationPageResponse listPatient(Long patientId, NotificationType type,
                                                 boolean unreadOnly, Pageable pageable) {
