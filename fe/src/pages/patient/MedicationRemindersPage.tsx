@@ -290,8 +290,8 @@ export default function MedicationRemindersPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0 max-w-2xl">
+        <div className="mb-6">
+          <div className="min-w-0">
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhắc uống thuốc</Title>
             <Text type="secondary">
@@ -299,7 +299,7 @@ export default function MedicationRemindersPage() {
               <Link to="/medical-profile">Hồ sơ bệnh lý</Link>.
             </Text>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2 max-sm:justify-start">
             <Button
               icon={<SyncOutlined spin={checkingDue} />}
               loading={checkingDue}
