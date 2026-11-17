@@ -36,7 +36,7 @@ Bệnh nhân xem tiến triển **của chính họ** ([SCR-PT-06-StreakTuanThu.
 
 | Nguyên tắc | Cách áp dụng | Vì sao |
 | :--- | :--- | :--- |
-| Số liệu phải dẫn tới hành động, không chỉ để "biết" | "Triệu chứng được hỏi nhiều nhất" nên gợi ý trực tiếp: nội dung tài liệu nào cần bổ sung/cập nhật | Một dashboard chỉ để ngắm không mang lại giá trị vận hành — mục tiêu là giúp Admin/Bác sĩ *quyết định* nên làm gì tiếp theo |
+| Số liệu phải dẫn tới hành động, không chỉ để "biết" | "Triệu chứng được hỏi nhiều nhất" nên gợi ý trực tiếp: nội dung tài liệu nào cần bổ sung/cập nhật | Một dashboard chỉ để ngắm không mang lại giá trị vận hành — mục tiêu là giúp Admin/Biên tập chuyên môn y khoa *quyết định* nên làm gì tiếp theo |
 | Số lượt cảnh báo Triage cần đặt cạnh ngữ cảnh | Không chỉ hiện con số, nên dẫn thẳng sang [SCR-AD-13-GiamSatCanhBao.md](SCR-AD-13-GiamSatCanhBao.md) để xem chi tiết | Một con số tăng đột biến có ý nghĩa khác hẳn nếu không biết chi tiết đứng sau nó là gì |
 | Xuất báo cáo giữ nguyên bộ lọc đang xem | Xuất đúng khoảng thời gian/phạm vi đang hiển thị trên màn, không phải luôn xuất toàn bộ | Người xuất báo cáo thường đã lọc đúng thứ họ cần trình bày (vd báo cáo tháng cho cấp trên) — xuất khác với những gì đang xem trên màn hình gây nhầm lẫn |
 

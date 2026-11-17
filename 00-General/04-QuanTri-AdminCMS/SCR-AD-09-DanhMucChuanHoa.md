@@ -3,7 +3,7 @@
 | Thuộc tính | Giá trị |
 | :--- | :--- |
 | UC | `UC0060` |
-| Actor | Admin, Bác sĩ |
+| Actor | Admin, Biên tập chuyên môn y khoa |
 | Mục tiêu nghiệp vụ | Tạo ra danh sách chuẩn để bệnh nhân chọn thay vì gõ tự do ở những nơi dữ liệu sạch quan trọng hơn linh hoạt diễn đạt |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
 

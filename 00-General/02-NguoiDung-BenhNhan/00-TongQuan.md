@@ -156,3 +156,4 @@ Mọi màn hình **ghi nhận** dữ liệu (ăn uống, Bristol, xác nhận th
 | Phiên bản | Ngày | Nội dung |
 | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
+| v1.1 | 2026-11-17 | Thêm trường "Liên hệ khẩn cấp" vào `SCR-PT-01` — cần cho kịch bản escalate ở `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md` sau khi bỏ vai trò "Bác sĩ" |

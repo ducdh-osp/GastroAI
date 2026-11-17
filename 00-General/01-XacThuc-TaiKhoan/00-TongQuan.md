@@ -131,7 +131,7 @@ Link xác thực tài khoản có thể "sống" lâu hơn (người dùng có t
 
 ## 5. Ma trận phân quyền
 
-| Hành động | Khách | Bệnh nhân | Admin/Bác sĩ |
+| Hành động | Khách | Bệnh nhân | Admin |
 | :--- | :---: | :---: | :---: |
 | Đăng ký/Đăng nhập/Quên mật khẩu | ✓ | — | ✓ (lối vào riêng, tách biệt khỏi cổng bệnh nhân) |
 | Xác thực email | ✓ | ✓ | N/A |
@@ -170,4 +170,5 @@ Link xác thực tài khoản có thể "sống" lâu hơn (người dùng có t
 | :--- | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo (file gộp, mô tả theo implementation) | BA |
 | v1.1 | 2026-11-14 | Tách theo màn hình thành thư mục riêng | BA |
-| v2.0 | 2026-11-14 | Viết lại hoàn toàn theo trải nghiệm người dùng thực tế thay vì mô tả theo code | BA |
+| v2.0 | 2026-11-14 | Viết lại hoàn toàn theo trải nghiệm người dùng thực tế thay vì mô tả theo code |
+| v2.1 | 2026-11-17 | Bỏ vai trò "Bác sĩ" khỏi cổng CMS (xem lý do ở `04-QuanTri-AdminCMS/00-TongQuan.md`) — chỉ còn "Admin" ở ma trận phân quyền §5 | BA |

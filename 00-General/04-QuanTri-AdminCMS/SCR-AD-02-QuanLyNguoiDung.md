@@ -3,13 +3,13 @@
 | Thuộc tính | Giá trị |
 | :--- | :--- |
 | UC | `UC0046` |
-| Actor | Admin (chỉ Admin — Bác sĩ không có quyền ở màn này) |
+| Actor | Admin (chỉ Admin — Biên tập chuyên môn y khoa không có quyền ở màn này) |
 | Mục tiêu nghiệp vụ | Cho Admin xử lý các tình huống cần can thiệp vào tài khoản bệnh nhân (vi phạm, yêu cầu hỗ trợ, nghi ngờ gian lận) |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
 
-## 1. Vì sao chỉ Admin, không phải Bác sĩ
+## 1. Vì sao chỉ Admin
 
-Khoá/mở tài khoản là quyết định **quản trị hệ thống**, không phải quyết định chuyên môn y tế — một Bác sĩ giỏi không nhất thiết nên có quyền khoá tài khoản người dùng. Tách rõ ranh giới này tránh tình trạng cấp quyền "tiện thể" rồi dần dần Bác sĩ có toàn quyền hệ thống ngoài ý muốn.
+Khoá/mở tài khoản là quyết định **quản trị hệ thống**, không phải quyết định chuyên môn y tế — người biên tập nội dung y khoa giỏi không nhất thiết nên có quyền khoá tài khoản người dùng. Tách rõ ranh giới này tránh tình trạng cấp quyền "tiện thể" rồi dần dần vai trò nội dung có toàn quyền hệ thống ngoài ý muốn.
 
 ## 2. Thiết kế màn hình
 

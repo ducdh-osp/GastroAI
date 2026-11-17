@@ -3,7 +3,7 @@
 | Thuộc tính | Giá trị |
 | :--- | :--- |
 | UC | `UC0066` |
-| Actor | Admin, Bác sĩ |
+| Actor | Admin, Biên tập chuyên môn y khoa |
 | Mục tiêu nghiệp vụ | Duy trì 1 bộ chủ đề gọn gàng dùng chung cho cả bài viết lẫn FAQ — tránh phân loại nội dung lộn xộn theo thời gian |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
 

@@ -78,7 +78,7 @@ Với câu trả lời dài (giải thích triệu chứng, liệt kê lưu ý),
 2. **Chia đoạn (`UC0032`)**: cắt tài liệu dài thành các đoạn vừa đủ ngắn để tra cứu chính xác, nhưng đủ dài để giữ nguyên ngữ cảnh — cắt quá vụn làm mất ý nghĩa đoạn văn, cắt quá dài làm loãng kết quả tìm kiếm.
 3. **Tạo vector (`UC0033`)**: biến mỗi đoạn thành 1 dạng dữ liệu máy so sánh được mức độ liên quan, kèm theo thông tin tài liệu gốc/trang/thời điểm — đây chính là thứ cho phép "trích dẫn nguồn" ở `UC0029` trỏ về đúng chỗ.
 
-Toàn bộ quy trình này không có màn hình bệnh nhân nhìn thấy — nhưng *tốc độ và chất lượng* của nó quyết định trực tiếp kho tri thức có "theo kịp" tài liệu y khoa cập nhật hay không (xem `UC0048/049` ở `04-QuanTri-AdminCMS/` — nơi Admin/Bác sĩ nạp tài liệu, kích hoạt quy trình này chạy).
+Toàn bộ quy trình này không có màn hình bệnh nhân nhìn thấy — nhưng *tốc độ và chất lượng* của nó quyết định trực tiếp kho tri thức có "theo kịp" tài liệu y khoa cập nhật hay không (xem `UC0048/049` ở `04-QuanTri-AdminCMS/` — nơi Admin nạp tài liệu và Biên tập chuyên môn y khoa xác nhận đối chiếu nguồn trước khi kích hoạt quy trình này cho AI dùng).
 
 ### 2.5 Đo lường chất lượng truy xuất (`UC0037`)
 
@@ -120,7 +120,7 @@ Gợi ý mức độ chăm sóc (`UC0041`) chỉ có ý nghĩa nếu đi kèm **
 
 ### 3.4 Khi hệ thống cảnh báo, điều gì xảy ra phía sau (`UC0036`)
 
-Cảnh báo không chỉ hiện cho bệnh nhân thấy (`UC0035`) — phải đồng thời đẩy sang cho đội ngũ giám sát (Admin/Bác sĩ) theo thời gian thực, để con người có thể chủ động liên hệ nếu cần, không chỉ dựa vào việc bệnh nhân tự ý thức được mức độ nghiêm trọng và tự đi khám. Đây là lớp bảo vệ thứ hai, dành cho trường hợp bệnh nhân đọc cảnh báo nhưng chủ quan bỏ qua.
+Cảnh báo không chỉ hiện cho bệnh nhân thấy (`UC0035`) — phải đồng thời đẩy sang cho Admin trực theo thời gian thực, để có người xác nhận tình trạng theo một **kịch bản vận hành cố định, không mang tính phán đoán y khoa** (gọi xác nhận, escalate nếu không liên lạc được — xem `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md`), không chỉ dựa vào việc bệnh nhân tự ý thức được mức độ nghiêm trọng và tự đi khám. Đây là lớp bảo vệ thứ hai, dành cho trường hợp bệnh nhân đọc cảnh báo nhưng chủ quan bỏ qua — vai trò của Admin ở đây là **vận hành** (đảm bảo cảnh báo được tiếp nhận và escalate đúng quy trình), không phải đưa ra chẩn đoán.
 
 ### 3.5 Đo lường độ nhạy của bộ lọc (`UC0038`)
 
@@ -167,3 +167,4 @@ Cũng như `UC0037` ở lớp RAG, cần một tập câu hỏi/tình huống ki
 | Phiên bản | Ngày | Nội dung |
 | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
+| v1.1 | 2026-11-17 | Bỏ "Bác sĩ" khỏi §2.4/§3.4 — đổi thành Admin (vận hành) + Biên tập chuyên môn y khoa (duyệt nội dung), theo quyết định đổi mô hình vai trò ở `04-QuanTri-AdminCMS/00-TongQuan.md` |

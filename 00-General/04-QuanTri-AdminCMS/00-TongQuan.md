@@ -4,11 +4,18 @@
 | :--- | :--- |
 | **Phân hệ** | Quản trị (Admin/CMS) — lõi |
 | **UC nguồn** | `UC0045 - UC0066 (22 UC)` |
-| **Actor** | Admin, Bác sĩ (2 vai trò chính dùng cổng này — có cả Biên tập nội dung cho vài màn) |
-| **Tài liệu liên quan** | `01-XacThuc-TaiKhoan/` (cơ chế đăng nhập/mật khẩu dùng chung) · `02-NguoiDung-BenhNhan/` (nơi nội dung do Admin quản lý hiển thị ra) · `03-AIChatbot-RAG/` (nơi dữ liệu Admin nạp vào được AI sử dụng) |
-| **Phiên bản** | v1.0 — viết theo trải nghiệm người dùng thực tế |
+| **Actor** | Admin, Biên tập chuyên môn y khoa (2 vai trò nội bộ — không còn "Bác sĩ", xem lý do ngay dưới) |
+| **Tài liệu liên quan** | `01-XacThuc-TaiKhoan/` (cơ chế đăng nhập/mật khẩu dùng chung) · `02-NguoiDung-BenhNhan/` (nơi nội dung do phân hệ này quản lý hiển thị ra) · `03-AIChatbot-RAG/` (nơi dữ liệu nạp vào được AI sử dụng) |
+| **Phiên bản** | v1.1 — bỏ vai trò "Bác sĩ", xem §0 |
 
-> Người dùng của phân hệ này **khác hẳn** bệnh nhân: đây là đội ngũ nội bộ (Admin, Bác sĩ) — người dùng thành thạo, lặp lại thao tác hàng ngày, cần **hiệu quả và chính xác** hơn là cần được "thuyết phục" hay "trấn an" như bệnh nhân. Triết lý thiết kế vì vậy đổi khác: ưu tiên bảng dữ liệu dày đặc thông tin, thao tác hàng loạt, bộ lọc mạnh — thay vì giao diện tối giản từng bước như phân hệ bệnh nhân.
+> ## 0. Quyết định đổi mô hình vai trò (2026-11-17)
+> Hệ thống chuyển sang xoay quanh chatbot AI — AI đảm nhận phần lớn việc tư vấn trực tiếp cho bệnh nhân, nên vai trò "Bác sĩ" như một tài khoản vận hành CMS riêng biệt **không còn cần thiết và không thực tế** với quy mô đồ án 4 người (không có bác sĩ thật trong team để "đóng vai" tài khoản này). Quyết định này đã được đánh giá qua 2 góc nhìn trước khi áp dụng:
+> - **Góc nhìn quy trình/RBAC** (`ba-bigtech-10yr`): Doctor không chỉ là 1 role UI mà là 1 account type/bảng riêng ở tầng dữ liệu — bỏ hẳn, không gộp mập mờ vào Admin, để RBAC vẫn còn ý nghĩa thật trong đồ án. Giữ **2 role: Admin + Biên tập chuyên môn y khoa**.
+> - **Góc nhìn an toàn lâm sàng** (`ba-gastro-10yr`): không cần dựng lại vai trò "Bác sĩ" vận hành (phi thực tế), **nhưng bắt buộc giữ lại bước xác nhận nội dung y khoa có đối chiếu nguồn kiểm chứng** ở 3 nơi rủi ro cao — kho tài liệu RAG (`SCR-AD-04`), từ khoá Triage (`SCR-AD-07`), FAQ/bài viết (`SCR-AD-10`/`SCR-AD-11`) — chỉ đổi danh xưng người thực hiện, không bỏ bước duyệt. Và màn giám sát cảnh báo khẩn cấp (`SCR-AD-13`) phải đổi thành kịch bản vận hành cố định, không để Admin tự phán đoán y khoa khi không có ai chuyên môn.
+>
+> **Nguyên tắc trung thực học thuật xuyên suốt từ đây**: nội dung y tế trong hệ thống (tài liệu RAG, FAQ, bài viết) là **do nhóm biên soạn/đối chiếu từ tài liệu y khoa đã công bố**, không phải do bác sĩ hành nghề thẩm định — mọi nơi trước đây ghi "Bác sĩ duyệt" nay ghi rõ "Biên tập chuyên môn y khoa" với đúng nghĩa này.
+
+> Người dùng của phân hệ này **khác hẳn** bệnh nhân: đây là đội ngũ nội bộ (Admin, Biên tập chuyên môn y khoa) — người dùng thành thạo, lặp lại thao tác hàng ngày, cần **hiệu quả và chính xác** hơn là cần được "thuyết phục" hay "trấn an" như bệnh nhân. Triết lý thiết kế vì vậy đổi khác: ưu tiên bảng dữ liệu dày đặc thông tin, thao tác hàng loạt, bộ lọc mạnh — thay vì giao diện tối giản từng bước như phân hệ bệnh nhân.
 
 > **Vai trò của phân hệ này với "sức mạnh AI" không phải là sử dụng AI trực tiếp, mà là *nuôi* và *giám sát* AI**: đây là nơi nạp tài liệu y khoa cho AI học, cấu hình cách AI hoạt động, và theo dõi AI có đang trả lời đúng/an toàn hay không. Một AI tư vấn tốt chỉ bền vững nếu đội ngũ vận hành có đủ công cụ để liên tục kiểm tra và cải thiện nó — đó là lý do phân hệ này quan trọng không kém phân hệ AI, dù không "hào nhoáng" bằng.
 
@@ -36,7 +43,7 @@
 
 | UC | Tên | Ghi chú |
 | :--- | :--- | :--- |
-| `UC0003`, `UC0005`, `UC0007` | Đăng xuất / Đổi mật khẩu / Lịch sử đăng nhập | Admin/Bác sĩ dùng **đúng cơ chế nghiệp vụ** đã mô tả ở `01-XacThuc-TaiKhoan/` — chỉ khác route (`/cms/...`) và tông màu giao diện tách biệt khỏi cổng bệnh nhân. Không lặp lại tài liệu. |
+| `UC0003`, `UC0005`, `UC0007` | Đăng xuất / Đổi mật khẩu / Lịch sử đăng nhập | Nhân sự CMS dùng **đúng cơ chế nghiệp vụ** đã mô tả ở `01-XacThuc-TaiKhoan/` — chỉ khác route (`/cms/...`) và tông màu giao diện tách biệt khỏi cổng bệnh nhân. Không lặp lại tài liệu. |
 | `UC0057` | Sao lưu định kỳ CSDL | Tác vụ nền tự động (lịch chạy định kỳ), không có màn hình — xem §4 |
 | `UC0058` | Khôi phục dữ liệu từ backup | Thao tác kỹ thuật do đội vận hành thực hiện trực tiếp khi có sự cố, không qua giao diện web — xem §4 |
 
@@ -48,9 +55,8 @@ Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để gi�
 
 ## 3. Chân dung người dùng cần hình dung
 
-- **Admin**: toàn quyền — quản lý người dùng, phân quyền, cấu hình hệ thống, xem thống kê toàn diện.
-- **Bác sĩ**: góc nhìn chuyên môn — quản lý nội dung y khoa (tài liệu, bài viết, FAQ, từ khoá Triage), xem cảnh báo khẩn cấp, nhưng **không** có quyền quản lý tài khoản người dùng hay phân quyền hệ thống (đây là ranh giới quan trọng: chuyên môn y tế không đồng nghĩa với quyền quản trị hệ thống).
-- **Biên tập nội dung** (vai trò hẹp hơn): chỉ soạn thảo bài viết/FAQ, không có quyền ở các màn nhạy cảm hơn (người dùng, phân quyền, audit log, cấu hình hệ thống).
+- **Admin**: toàn quyền vận hành — quản lý người dùng, phân quyền, cấu hình hệ thống, xem thống kê toàn diện, và trực xử lý cảnh báo khẩn cấp theo kịch bản cố định ([SCR-AD-13](SCR-AD-13-GiamSatCanhBao.md)). Không cần chuyên môn y tế để làm vai trò này — mọi việc ở đây là vận hành/kỹ thuật, không phải phán đoán lâm sàng.
+- **Biên tập chuyên môn y khoa**: soạn & duyệt nội dung y tế hiển thị cho bệnh nhân hoặc nạp cho AI học (tài liệu RAG, bài viết, FAQ, từ khoá Triage) — làm việc này bằng cách **đối chiếu với tài liệu y khoa đã công bố**, không phải bằng tư cách bác sĩ hành nghề thẩm định. Không có quyền quản lý tài khoản người dùng hay phân quyền hệ thống (ranh giới quan trọng: biên tập nội dung chuyên môn không đồng nghĩa với quyền quản trị hệ thống).
 
 ## 4. Sao lưu & khôi phục dữ liệu (`UC0057`, `UC0058`)
 
@@ -58,9 +64,10 @@ Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để gi�
 
 ## 5. Những yêu cầu không được bỏ sót (`ba-bigtech-10yr`)
 
-- **Ranh giới quyền hạn rõ ràng giữa Admin và Bác sĩ**: Bác sĩ có chuyên môn y tế nhưng không nên có toàn quyền hệ thống — nhầm lẫn 2 khái niệm "giỏi chuyên môn" và "được tin cậy quản trị hệ thống" là lỗi thiết kế phân quyền phổ biến.
+- **Ranh giới quyền hạn rõ ràng giữa Admin và Biên tập chuyên môn y khoa**: biên tập nội dung chuyên môn tốt không nên đồng nghĩa với toàn quyền hệ thống — nhầm lẫn 2 khái niệm "giỏi nội dung" và "được tin cậy quản trị hệ thống" là lỗi thiết kế phân quyền phổ biến.
+- **Không tự xưng thẩm quyền y tế mà hệ thống không có**: vì không còn vai trò "Bác sĩ" vận hành, mọi nội dung y tế công khai (FAQ, bài viết, tài liệu RAG) phải ghi rõ là do nhóm biên soạn/đối chiếu tài liệu y khoa đã công bố — tuyệt đối không dùng ngôn từ ngụ ý "đã được bác sĩ thẩm định" nếu thực tế không có. Đây là yêu cầu trung thực học thuật, không chỉ là tiểu tiết câu chữ.
 - **Mọi thao tác nhạy cảm đều phải để lại dấu vết**: sửa tài liệu, đổi phân quyền, truy cập dữ liệu người dùng — tất cả phải ghi vào Audit Log ([SCR-AD-06](SCR-AD-06-NhatKyHoatDong.md)), không có ngoại lệ "thao tác nhỏ không cần ghi".
-- **Dữ liệu bệnh nhân hiển thị ở đây vẫn là dữ liệu nhạy cảm**: dù người xem là Admin/Bác sĩ (không phải chính bệnh nhân), màn [SCR-AD-02](SCR-AD-02-QuanLyNguoiDung.md) vẫn phải tuân thủ nguyên tắc tối thiểu hoá hiển thị — chỉ hiện thông tin cần thiết cho mục đích quản lý tài khoản, không hiện toàn bộ nhật ký sức khoẻ cá nhân một cách không cần thiết.
+- **Dữ liệu bệnh nhân hiển thị ở đây vẫn là dữ liệu nhạy cảm**: dù người xem là nhân sự CMS (không phải chính bệnh nhân), màn [SCR-AD-02](SCR-AD-02-QuanLyNguoiDung.md) vẫn phải tuân thủ nguyên tắc tối thiểu hoá hiển thị — chỉ hiện thông tin cần thiết cho mục đích quản lý tài khoản, không hiện toàn bộ nhật ký sức khoẻ cá nhân một cách không cần thiết.
 
 ## 6. Traceability (UC ↔ Màn hình)
 
@@ -82,7 +89,7 @@ Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để gi�
 
 ## 7. Tham chiếu
 
-- `01-XacThuc-TaiKhoan/` — cơ chế đăng nhập/mật khẩu dùng chung cho Admin/Bác sĩ.
+- `01-XacThuc-TaiKhoan/` — cơ chế đăng nhập/mật khẩu dùng chung cho nhân sự CMS.
 - `02-NguoiDung-BenhNhan/` — nơi nội dung (bài viết, FAQ, tài liệu) do phân hệ này quản lý hiển thị ra cho bệnh nhân.
 - `03-AIChatbot-RAG/` — nơi tài liệu nạp vào ở `SCR-AD-04` được AI sử dụng, và nơi `SCR-AD-07`/`SCR-AD-08` điều khiển hành vi Triage/RAG.
 
@@ -91,3 +98,4 @@ Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để gi�
 | Phiên bản | Ngày | Nội dung |
 | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
+| v1.1 | 2026-11-17 | Bỏ vai trò "Bác sĩ" (xem §0) — đổi mô hình vai trò thành Admin + Biên tập chuyên môn y khoa; viết lại SCR-AD-01/03/04/07/10/11/13 |

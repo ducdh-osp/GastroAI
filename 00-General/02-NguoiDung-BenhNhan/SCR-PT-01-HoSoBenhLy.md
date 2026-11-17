@@ -36,6 +36,11 @@ Chia theo nhóm thông tin, mỗi nhóm 1 khối gọn, có thể mở/thu để
 │  ▾ Thông tin khác                                              │
 │    Chiều cao · Cân nặng (hỗ trợ tính các chỉ số liên quan)     │
 │                                                                 │
+│  ▾ Liên hệ khẩn cấp                                            │
+│    Họ tên · Số điện thoại · Mối quan hệ với bạn                 │
+│    ⓘ Chỉ dùng khi hệ thống phát hiện dấu hiệu nguy hiểm mà      │
+│      không liên lạc được trực tiếp với bạn                       │
+│                                                                 │
 │                              [     Lưu thay đổi     ]          │
 └───────────────────────────────────────────────────────────┘
 ```
@@ -49,6 +54,7 @@ Lần đầu vào màn này (chưa khai báo gì), nên có 1 banner nhẹ nhàn
 | Tiền sử bệnh lý | Một gợi ý đúng cho người khoẻ mạnh có thể sai hoàn toàn với người đang có bệnh nền (vd gợi ý ăn nhiều chất xơ không phù hợp lúc đang viêm loét cấp) |
 | Dị ứng/không dung nạp | AI tuyệt đối không nên gợi ý món ăn/nhóm thực phẩm mà bệnh nhân đã khai là dị ứng — đây là ranh giới an toàn, không phải gợi ý tuỳ chọn |
 | Thuốc đang dùng | Một số thuốc tiêu hoá có khung giờ uống quan trọng (trước/sau ăn) và có thể tương tác với nhau — biết bệnh nhân đang dùng gì giúp AI tránh đưa lời khuyên mâu thuẫn với phác đồ bác sĩ đã kê |
+| Liên hệ khẩn cấp | Không phục vụ AI tư vấn — phục vụ lớp an toàn cuối cùng ([04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md](../04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md)): khi hệ thống phát hiện dấu hiệu nguy hiểm mà không liên lạc được trực tiếp với bệnh nhân trong thời gian ngắn, đây là nơi duy nhất để escalate thay vì bỏ cuộc |
 
 ## 4. Hành vi cần có
 

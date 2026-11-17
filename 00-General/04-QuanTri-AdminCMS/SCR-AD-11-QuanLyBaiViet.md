@@ -3,9 +3,11 @@
 | Thuộc tính | Giá trị |
 | :--- | :--- |
 | UC | `UC0065` |
-| Actor | Admin, Bác sĩ |
+| Actor | Admin hoặc Biên tập chuyên môn y khoa (soạn), Biên tập chuyên môn y khoa (duyệt trước khi đăng) |
 | Mục tiêu nghiệp vụ | Soạn nội dung giáo dục chiều sâu hơn FAQ, hiển thị ở [SCR-PT-12-ThuVienKienThuc.md](../02-NguoiDung-BenhNhan/SCR-PT-12-ThuVienKienThuc.md) |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
+
+> **Trung thực học thuật** (giống [SCR-AD-10](SCR-AD-10-QuanLyFAQ.md)): "duyệt" nghĩa là đối chiếu với tài liệu y khoa đã công bố, không phải bác sĩ hành nghề thẩm định — không dùng ngôn từ ngụ ý khác với thực tế.
 
 ## 1. Khác biệt với FAQ ([SCR-AD-10](SCR-AD-10-QuanLyFAQ.md))
 
@@ -23,6 +25,7 @@ FAQ trả lời 1 câu hỏi ngắn gọn. Bài viết kiến thức là nội d
 │ │ Hiểu đúng về trào ngược    │ Dạ dày  │ ✓ Đã đăng  │ [Sửa][Ẩn] │ │
 │ │ dạ dày-thực quản            │         │            │           │ │
 │ │ Chế độ ăn low-FODMAP...     │ Chế độ ăn│⏳ Bản nháp│ [Sửa][Xoá]│ │
+│ │ Tương tác thuốc PPI cần biết │ Thuốc   │🔎 Chờ duyệt│[Duyệt] │ │
 │ └─────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────┘
 
@@ -34,7 +37,7 @@ FAQ trả lời 1 câu hỏi ngắn gọn. Bài viết kiến thức là nội d
 │  Nội dung                                                       │
 │  [___________________________________________________]        │
 │  [___________________________________________________]        │
-│       [Lưu nháp]              [    Đăng bài    ]              │
+│       [Lưu nháp]              [    Gửi duyệt    ]              │
 └───────────────────────────────────────────────────────────┘
 ```
 
@@ -42,7 +45,7 @@ FAQ trả lời 1 câu hỏi ngắn gọn. Bài viết kiến thức là nội d
 
 | Nguyên tắc | Cách áp dụng | Vì sao |
 | :--- | :--- | :--- |
-| Có trạng thái "bản nháp" tách biệt với "đã đăng" | Lưu nháp không công khai ngay | Bài viết dài cần thời gian soạn, có thể cần nhiều lần chỉnh sửa trước khi sẵn sàng công khai — không nên ép xong 1 lần |
+| Có trạng thái "bản nháp" tách biệt với "đã đăng", và **"Đăng bài" chỉ là gửi duyệt, không công khai ngay** | Lưu nháp → gửi duyệt → Biên tập chuyên môn y khoa đối chiếu nguồn, bấm duyệt riêng → mới thật sự hiển thị cho bệnh nhân | Bài dài, chiều sâu hơn FAQ — rủi ro nội dung sai còn cao hơn (xem [SCR-AD-10](SCR-AD-10-QuanLyFAQ.md) §1), không nên để tác giả tự xuất bản thẳng mà thiếu bước đối chiếu nguồn riêng |
 | Có thể "ẩn" bài đã đăng mà không xoá hẳn | Nút "Ẩn" riêng với "Xoá" | Khi nội dung cần rà soát lại (vd phác đồ điều trị thay đổi), ẩn tạm thời trong lúc cập nhật tốt hơn xoá hẳn rồi mất nội dung gốc để tham khảo khi viết lại |
 | Ảnh minh hoạ nên khuyến khích, không bắt buộc | Có nhưng không chặn đăng bài nếu thiếu | Bài có ảnh minh hoạ hấp dẫn hơn với bệnh nhân khi duyệt thư viện ([SCR-PT-12](../02-NguoiDung-BenhNhan/SCR-PT-12-ThuVienKienThuc.md)), nhưng không nên là rào cản khiến người biên soạn trì hoãn đăng nội dung quan trọng chỉ vì chưa tìm được ảnh phù hợp |
 
