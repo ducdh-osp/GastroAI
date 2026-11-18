@@ -50,7 +50,7 @@ class AuditAnomalyDetectorTest {
     }
 
     private AuditLog log(AuditAction action, Long actorId) {
-        AuditLog log = new AuditLog(Instant.now(), "ADMIN", actorId, "admin@gastroai.vn", action,
+            AuditLog log = new AuditLog(Instant.now(), "ADMIN", "ADMIN", actorId, "admin@gastroai.vn", action,
                 "PATIENT", "7", null, "10.0.0.1", "JUnit");
         ReflectionTestUtils.setField(log, "id", 99L);
         return log;

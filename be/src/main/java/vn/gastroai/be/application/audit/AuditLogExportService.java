@@ -30,7 +30,7 @@ public class AuditLogExportService {
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
 
     static final String[] HEADERS = {
-            "Mã log", "Thời gian", "Loại tài khoản", "Mã tài khoản", "Email",
+            "Mã log", "Thời gian", "Vai trò", "Mã tài khoản", "Email",
             "Hành động", "Mã hành động", "Loại đối tượng", "Mã đối tượng",
             "Chi tiết", "Địa chỉ IP", "Thiết bị"
     };
@@ -90,7 +90,7 @@ public class AuditLogExportService {
         return new String[] {
                 String.valueOf(log.id()),
                 TIME_FORMAT.format(log.occurredAt()),
-                actorLabel(log.actorType()),
+                actorLabel(log.actorRole(), log.actorType()),
                 log.actorId() == null ? "" : String.valueOf(log.actorId()),
                 nullToEmpty(log.actorEmail()),
                 actionLabel(log.action()),
@@ -142,15 +142,17 @@ public class AuditLogExportService {
         };
     }
 
-    private static String actorLabel(String actorType) {
-        if (actorType == null) {
+    private static String actorLabel(String actorRole, String actorType) {
+        String value = actorRole != null ? actorRole : actorType;
+        if (value == null) {
             return "";
         }
-        return switch (actorType) {
+        return switch (value) {
             case "ADMIN" -> "Admin";
+            case "CONTENT_EDITOR" -> "Biên tập";
             case "DOCTOR" -> "Bác sĩ";
             case "SYSTEM" -> "Hệ thống";
-            default -> actorType;
+            default -> value;
         };
     }
 

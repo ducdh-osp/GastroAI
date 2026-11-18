@@ -124,8 +124,14 @@ const TARGET_LABEL: Record<AuditTargetType, string> = {
 
 const ACTOR_LABEL: Record<string, string> = {
   ADMIN: 'Admin',
+  CONTENT_EDITOR: 'Biên tập',
   DOCTOR: 'Bác sĩ',
   SYSTEM: 'Hệ thống',
+}
+
+function actorLabel(log: { actorRole: string | null; actorType: string }) {
+  const value = log.actorRole ?? log.actorType
+  return ACTOR_LABEL[value] ?? value
 }
 
 const actionOptions = (Object.keys(ACTION_LABEL) as AuditAction[]).map((value) => ({
@@ -230,7 +236,7 @@ export default function CmsAuditLogsPage() {
       render: (_, log) => (
         <div>
           <div className="font-medium">{log.actorEmail ?? '—'}</div>
-          <Text type="secondary" className="text-xs">{ACTOR_LABEL[log.actorType] ?? log.actorType}</Text>
+          <Text type="secondary" className="text-xs">{actorLabel(log)}</Text>
         </div>
       ),
     },
@@ -392,7 +398,7 @@ export default function CmsAuditLogsPage() {
           <Descriptions.Item label="Người thực hiện">
             <Space wrap size={4}>
               <span>{selected.actorEmail ?? '—'}</span>
-              <Tag>{ACTOR_LABEL[selected.actorType] ?? selected.actorType}</Tag>
+              <Tag>{actorLabel(selected)}</Tag>
               {selected.actorId !== null && <Text type="secondary">#{selected.actorId}</Text>}
             </Space>
           </Descriptions.Item>

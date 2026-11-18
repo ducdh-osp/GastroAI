@@ -25,6 +25,10 @@ public class AuditLog {
     @Column(name = "actor_type", nullable = false, length = 20)
     private String actorType;
 
+    /** Vai trò của người thực hiện tại thời điểm thao tác. Chỉ để hiển thị, không dùng để đếm. */
+    @Column(name = "actor_role", length = 30)
+    private String actorRole;
+
     @Column(name = "actor_id")
     private Long actorId;
 
@@ -53,11 +57,12 @@ public class AuditLog {
     protected AuditLog() {
     }
 
-    public AuditLog(Instant occurredAt, String actorType, Long actorId, String actorEmail,
+    public AuditLog(Instant occurredAt, String actorType, String actorRole, Long actorId, String actorEmail,
                     AuditAction action, String targetType, String targetId, String detail,
                     String ipAddress, String userAgent) {
         this.occurredAt = occurredAt;
         this.actorType = actorType;
+        this.actorRole = actorRole;
         this.actorId = actorId;
         this.actorEmail = actorEmail;
         this.action = action;
@@ -71,6 +76,7 @@ public class AuditLog {
     public Long getId() { return id; }
     public Instant getOccurredAt() { return occurredAt; }
     public String getActorType() { return actorType; }
+    public String getActorRole() { return actorRole; }
     public Long getActorId() { return actorId; }
     public String getActorEmail() { return actorEmail; }
     public AuditAction getAction() { return action; }

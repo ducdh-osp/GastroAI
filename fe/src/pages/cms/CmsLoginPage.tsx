@@ -1,15 +1,14 @@
 import { AuditOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
-import { Alert, Button, Form, Input, Radio } from 'antd'
+import { Alert, Button, Form, Input } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { cmsLogin, type CmsRole } from '../../api/cmsAuth'
+import { cmsLogin } from '../../api/cmsAuth'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 interface LoginFormValues {
   email: string
   password: string
-  role: CmsRole
 }
 
 interface LoginErrorResponse {
@@ -76,7 +75,7 @@ export default function CmsLoginPage() {
     <AuthShell
       tone="admin"
       title="Cổng quản trị"
-      subtitle="Dành cho Admin và Bác sĩ."
+      subtitle="Dành cho nhân sự quản trị và biên tập nội dung."
       eyebrow="GastroAI · CMS"
       heroTitle="Không gian quản trị GastroAI"
       heroDescription="Quản lý người dùng, kho tài liệu y khoa và theo dõi hoạt động hệ thống ở một nơi duy nhất."
@@ -100,26 +99,7 @@ export default function CmsLoginPage() {
         layout="vertical"
         onFinish={onFinish}
         disabled={loading}
-        initialValues={{
-          role: 'ADMIN',
-        }}
       >
-        <Form.Item
-          label="Vai trò"
-          name="role"
-          rules={[
-            {
-              required: true,
-              message: 'Chọn vai trò',
-            },
-          ]}
-        >
-          <Radio.Group>
-            <Radio value="ADMIN">Admin</Radio>
-            <Radio value="DOCTOR">Bác sĩ</Radio>
-          </Radio.Group>
-        </Form.Item>
-
         <Form.Item
           label="Email"
           name="email"

@@ -66,7 +66,7 @@ class CmsLogoutClosesWebSocketIT {
                 .uri(URI.create("http://localhost:" + port + "/api/v1/cms/auth/login"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(
-                        "{\"email\":\"admin@gastroai.vn\",\"password\":\"1\",\"role\":\"ADMIN\"}"))
+                    "{\"email\":\"admin@gastroai.vn\",\"password\":\"1\"}"))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());

@@ -57,6 +57,7 @@ export interface AuditLog {
   id: number
   occurredAt: string
   actorType: string
+  actorRole: string | null
   actorId: number | null
   actorEmail: string | null
   action: AuditAction

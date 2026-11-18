@@ -91,8 +91,8 @@ class DocumentUploadControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "DOCTOR")
-        void doctorsCanReadDocumentStatus() throws Exception {
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorsCanReadDocumentStatus() throws Exception {
                 when(documentStatusService.findDocument(42L))
                                 .thenReturn(Optional.of(
                                                 document(DocumentStatus.PROCESSING, DocumentProcessingStage.CHUNKING)));
@@ -139,7 +139,7 @@ class DocumentUploadControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "DOCTOR")
+        @WithMockUser(roles = "CONTENT_EDITOR")
         void retryDelegatesToStatusService() throws Exception {
                 Document retried = document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING);
                 when(documentStatusService.retry(42L)).thenReturn(retried);

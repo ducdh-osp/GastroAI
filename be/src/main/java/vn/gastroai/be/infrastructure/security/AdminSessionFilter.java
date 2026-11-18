@@ -3,129 +3,72 @@ package vn.gastroai.be.infrastructure.security;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import vn.gastroai.be.application.auth.CmsAuthService;
-import vn.gastroai.be.domain.admin.CmsAccountType;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
-import vn.gastroai.be.infrastructure.persistence.mysql.DoctorRepository;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 @Component
 public class AdminSessionFilter extends OncePerRequestFilter {
-        private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
-        private final ObjectProvider<AdminRepository> admins;
-        private final ObjectProvider<DoctorRepository> doctors;
 
-        public AdminSessionFilter(
-                        ObjectProvider<AdminRepository> admins,
-                        ObjectProvider<DoctorRepository> doctors) {
-                this.admins = admins;
-                this.doctors = doctors;
+    private static final Set<String> CMS_ROLES = Set.of("ADMIN", "CONTENT_EDITOR");
+
+    private final ObjectProvider<AdminRepository> admins;
+
+    public AdminSessionFilter(ObjectProvider<AdminRepository> admins) {
+        this.admins = admins;
+    }
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain) throws ServletException, IOException {
+
+        HttpSession session = request.getSession(false);
+        Long accountId = CmsAuthService.sessionUserId(session);
+
+        if (accountId != null) {
+            String role = currentRole(accountId, session);
+
+            if (role != null) {
+                var authentication = new UsernamePasswordAuthenticationToken(
+                        accountId.toString(), null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                SecurityContext context = SecurityContextHolder.createEmptyContext();
+                context.setAuthentication(authentication);
+                SecurityContextHolder.setContext(context);
+            } else {
+                // Phiên CMS không còn hiệu lực: bỏ mọi quyền còn sót lại, kể cả quyền phiên bản cũ
+                // của bộ lọc này từng lưu vào phiên.
+                SecurityContextHolder.clearContext();
+                session.removeAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+            }
         }
 
-        @Override
-        protected void doFilterInternal(
-                        HttpServletRequest request,
-                        HttpServletResponse response,
-                        FilterChain filterChain)
-                        throws ServletException, IOException {
+        filterChain.doFilter(request, response);
+    }
 
-                HttpSession session = request.getSession(false);
-
-                if (session != null) {
-
-                        Object userId = session.getAttribute(CmsAuthService.AUTH_USER_ID);
-
-                        Object userType = session.getAttribute(CmsAuthService.AUTH_USER_TYPE);
-
-                        Object accountType = session.getAttribute(CmsAuthService.AUTH_ACCOUNT_TYPE);
-                        Object sessionVersion = session.getAttribute(CmsAuthService.AUTH_SESSION_VERSION);
-                        if (userId != null && userType != null) {
-
-                                String role = currentRole(userId, accountType, userType, sessionVersion);
-
-                                if (isCmsRole(role)) {
-
-                                        var authority = new SimpleGrantedAuthority("ROLE_" + role);
-
-                                        var authentication = new UsernamePasswordAuthenticationToken(
-                                                        userId.toString(),
-                                                        null,
-                                                        List.of(authority));
-                                        SecurityContext context = SecurityContextHolder.createEmptyContext();
-
-                                        context.setAuthentication(authentication);
-
-                                        SecurityContextHolder.setContext(context);
-
-                                        if (!securityContextRepository.containsContext(request)) {
-                                                securityContextRepository.saveContext(
-                                                                context,
-                                                                request,
-                                                                response);
-                                        }
-                                }
-                        }
-                }
-
-                filterChain.doFilter(request, response);
+    private String currentRole(Long accountId, HttpSession session) {
+        AdminRepository repository = admins.getIfAvailable();
+        if (repository == null) {
+            return null;
         }
-
-        private boolean isCmsRole(String role) {
-                return role != null && ("ADMIN".equals(role) || "DOCTOR".equals(role)
-                                || "CONTENT_EDITOR".equals(role));
-        }
-
-        /**
-         * Role duoc doc lai tu DB de thay doi RBAC co hieu luc o request ke tiep theo.
-         */
-       private String currentRole(Object userId, Object accountType, Object legacyRole, Object sessionVersion) {
-                if (accountType == null) {
-                        return isCmsRole(legacyRole.toString()) ? legacyRole.toString() : null;
-                }
-                Long id;
-                try {
-                        id = Long.valueOf(userId.toString());
-                } catch (NumberFormatException exception) {
-                        return null;
-                }
-                int version = sessionVersionOf(sessionVersion);
-                if (CmsAccountType.ADMIN.name().equals(accountType.toString())) {
-                        AdminRepository repository = admins.getIfAvailable();
-                        return repository == null ? null : repository.findById(id)
-                                        .filter(admin -> admin.getSessionVersion() == version)
-                                        .map(admin -> admin.getRole().name()).orElse(null);
-                }
-                if (CmsAccountType.DOCTOR.name().equals(accountType.toString())) {
-                        DoctorRepository repository = doctors.getIfAvailable();
-                        return repository == null ? null : repository.findById(id)
-                                        .filter(doctor -> doctor.getSessionVersion() == version)
-                                        .map(doctor -> doctor.getRole().name()).orElse(null);
-                }
-                return null;
-        }
-
-        /** Session tao truoc khi co tinh nang nay khong co so phien -> coi la 0 (khop gia tri mac dinh). */
-        private static int sessionVersionOf(Object value) {
-                if (value == null) {
-                        return 0;
-                }
-                try {
-                        return Integer.parseInt(value.toString());
-                } catch (NumberFormatException exception) {
-                        return -1;
-                }
-        }
+        return repository.findById(accountId)
+                .filter(account -> CmsAuthService.isCurrentSession(account, session))
+                .map(account -> account.getRole().name())
+                .filter(CMS_ROLES::contains)
+                .orElse(null);
+    }
 }
