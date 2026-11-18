@@ -3,6 +3,8 @@ package vn.gastroai.be.infrastructure.security;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.util.Map;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -60,5 +62,30 @@ class AdminWebSocketSessionRegistryTest {
         registry.closeSessionsFor("http-session-admin-a");
 
         verify(alreadyClosed, never()).close();
+    }
+
+    @Test
+    void closesEveryConnectionOfOneAccountAcrossHttpSessions() throws Exception {
+        WebSocketSession laptop = openSessionOf(1L);
+        WebSocketSession phone = openSessionOf(1L);
+        WebSocketSession otherAdmin = openSessionOf(2L);
+
+        registry.register("http-session-laptop", laptop);
+        registry.register("http-session-phone", phone);
+        registry.register("http-session-other", otherAdmin);
+
+        registry.closeSessionsOfAccount(1L);
+
+        verify(laptop).close();
+        verify(phone).close();
+        verify(otherAdmin, never()).close();
+    }
+
+    private static WebSocketSession openSessionOf(Long accountId) {
+        WebSocketSession session = mock(WebSocketSession.class);
+        when(session.isOpen()).thenReturn(true);
+        when(session.getAttributes()).thenReturn(
+                Map.of(AdminWebSocketHandshakeInterceptor.CMS_USER_ID_ATTRIBUTE, accountId));
+        return session;
     }
 }

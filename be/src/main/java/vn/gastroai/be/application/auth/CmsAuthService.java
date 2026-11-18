@@ -14,8 +14,10 @@ import vn.gastroai.be.application.readmodel.CmsAuthResult;
 import vn.gastroai.be.application.readmodel.LoginHistoryItem;
 import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.admin.AdminLoginHistory;
+import vn.gastroai.be.domain.admin.AdminPasswordHistory;
 import vn.gastroai.be.domain.auth.LoginOutcome;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminLoginHistoryRepository;
+import vn.gastroai.be.infrastructure.persistence.mysql.AdminPasswordHistoryRepository;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 
 import java.time.Instant;
@@ -41,18 +43,21 @@ public class CmsAuthService {
 
     private final AdminRepository adminRepository;
     private final AdminLoginHistoryRepository loginHistoryRepository;
+    private final AdminPasswordHistoryRepository passwordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final LoginSecurityPolicy loginSecurityPolicy;
     private final ClientRequestInfoResolver clientRequestInfoResolver;
 
     public CmsAuthService(
             AdminRepository adminRepository,
-            AdminLoginHistoryRepository loginHistoryRepository,
+           AdminLoginHistoryRepository loginHistoryRepository,
+            AdminPasswordHistoryRepository passwordHistoryRepository,
             PasswordEncoder passwordEncoder,
             LoginSecurityPolicy loginSecurityPolicy,
             ClientRequestInfoResolver clientRequestInfoResolver) {
         this.adminRepository = adminRepository;
         this.loginHistoryRepository = loginHistoryRepository;
+        this.passwordHistoryRepository = passwordHistoryRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginSecurityPolicy = loginSecurityPolicy;
         this.clientRequestInfoResolver = clientRequestInfoResolver;
@@ -104,7 +109,7 @@ public class CmsAuthService {
     @Transactional(value = "mysqlTransactionManager", noRollbackFor = {
             IllegalArgumentException.class, AccountLockedException.class
     })
-    public void changePassword(Long accountId, String currentPassword, String newPassword,
+    public int changePassword(Long accountId, String currentPassword, String newPassword,
             HttpServletRequest request) {
         Admin user = adminRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new AccessDeniedException("Tài khoản không tồn tại hoặc đã bị xóa"));
@@ -127,16 +132,16 @@ public class CmsAuthService {
             throw new IllegalArgumentException("Mật khẩu hiện tại không đúng");
         }
 
-        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
-            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
-        }
-        CmsPasswordPolicy.validate(newPassword);
+        PatientPasswordPolicy.validate(newPassword);
+        rejectReusedPassword(user, newPassword);
 
+        passwordHistoryRepository.save(new AdminPasswordHistory(user, user.getPasswordHash(), now));
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
         user.setSessionVersion(user.getSessionVersion() + 1);
         adminRepository.save(user);
+        return user.getSessionVersion();
     }
 
     public void logout(HttpServletRequest request) {
@@ -198,6 +203,15 @@ public class CmsAuthService {
             oldSession.invalidate();
         }
         return request.getSession(true);
+    }
+
+    private void rejectReusedPassword(Admin user, String newPassword) {
+        boolean reused = passwordEncoder.matches(newPassword, user.getPasswordHash())
+                || passwordHistoryRepository.findPasswordHashesByAdminId(user.getId()).stream()
+                        .anyMatch(previousHash -> passwordEncoder.matches(newPassword, previousHash));
+        if (reused) {
+            throw new IllegalArgumentException("Mật khẩu mới không được trùng với mật khẩu đã từng sử dụng");
+        }
     }
 
     private boolean isLocked(Admin user, Instant now) {

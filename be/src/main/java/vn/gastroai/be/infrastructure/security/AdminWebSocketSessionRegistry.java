@@ -38,14 +38,33 @@ public class AdminWebSocketSessionRegistry {
         if (sessions == null) {
             return;
         }
-        for (WebSocketSession wsSession : sessions) {
-            try {
-                if (wsSession.isOpen()) {
-                    wsSession.close();
-                }
-            } catch (IOException exception) {
-                // Bo qua - session co the da rot ket noi tu truoc, khong can lam gi them.
+        sessions.forEach(AdminWebSocketSessionRegistry::closeQuietly);
+    }
+
+    /**
+     * Đóng mọi kết nối realtime của một tài khoản CMS, ở mọi phiên và mọi máy.
+     * Dùng sau khi đổi mật khẩu: phiên cũ đã hết hiệu lực thì kết nối của nó cũng phải dừng nhận cảnh báo.
+     */
+    public void closeSessionsOfAccount(Long accountId) {
+        if (accountId == null) {
+            return;
+        }
+        sessionsByHttpSessionId.forEach((httpSessionId, sessions) -> sessions.stream()
+                .filter(wsSession -> accountId.equals(wsSession.getAttributes()
+                        .get(AdminWebSocketHandshakeInterceptor.CMS_USER_ID_ATTRIBUTE)))
+                .forEach(wsSession -> {
+                    unregister(httpSessionId, wsSession);
+                    closeQuietly(wsSession);
+                }));
+    }
+
+    private static void closeQuietly(WebSocketSession wsSession) {
+        try {
+            if (wsSession.isOpen()) {
+                wsSession.close();
             }
+        } catch (IOException exception) {
+            // Bo qua - session co the da rot ket noi tu truoc, khong can lam gi them.
         }
     }
 }

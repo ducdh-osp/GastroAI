@@ -18,6 +18,7 @@ import vn.gastroai.be.domain.admin.AdminLoginHistory;
 import vn.gastroai.be.domain.admin.CmsRole;
 import vn.gastroai.be.domain.auth.LoginOutcome;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminLoginHistoryRepository;
+import vn.gastroai.be.infrastructure.persistence.mysql.AdminPasswordHistoryRepository;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 
 import java.time.Instant;
@@ -41,6 +42,7 @@ class CmsAuthServiceLoginTest {
 
     @Mock private AdminRepository adminRepository;
     @Mock private AdminLoginHistoryRepository loginHistoryRepository;
+    @Mock private AdminPasswordHistoryRepository passwordHistoryRepository;
     @Mock private PasswordEncoder passwordEncoder;
 
     private CmsAuthService service;
@@ -49,7 +51,7 @@ class CmsAuthServiceLoginTest {
     @BeforeEach
     void setUp() {
         // Toi da 5 lan sai, khoa 10 phut - giong cau hinh mac dinh.
-        service = new CmsAuthService(adminRepository, loginHistoryRepository, passwordEncoder,
+        service = new CmsAuthService(adminRepository, loginHistoryRepository, passwordHistoryRepository, passwordEncoder,
                 new LoginSecurityPolicy(5, 10, 90), new ClientRequestInfoResolver(""));
     }
 

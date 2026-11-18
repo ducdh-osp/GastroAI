@@ -23,6 +23,7 @@ import vn.gastroai.be.application.commands.CmsLoginCommand;
 import vn.gastroai.be.application.readmodel.CmsAuthResult;
 import vn.gastroai.be.application.readmodel.LoginHistoryItem;
 import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.infrastructure.security.AdminWebSocketSessionRegistry;
 
 /**
  * UC0045 - API tài khoản của cổng CMS: đăng nhập, đăng xuất, lịch sử đăng nhập, đổi mật khẩu.
@@ -34,10 +35,13 @@ public class CmsAuthController {
 
     private final CmsAuthService cmsAuthService;
     private final AuditLogService auditLogService;
+    private final AdminWebSocketSessionRegistry webSocketSessions;
 
-    public CmsAuthController(CmsAuthService cmsAuthService, AuditLogService auditLogService) {
+    public CmsAuthController(CmsAuthService cmsAuthService, AuditLogService auditLogService,
+            AdminWebSocketSessionRegistry webSocketSessions) {
         this.cmsAuthService = cmsAuthService;
         this.auditLogService = auditLogService;
+        this.webSocketSessions = webSocketSessions;
     }
 
     @PostMapping("/api/v1/cms/auth/login")
@@ -74,16 +78,26 @@ public class CmsAuthController {
                 cmsAuthService.recentFailureCount(accountId));
     }
 
+    /**
+     * UC0005 - đổi mật khẩu xong vẫn ở lại trang, không bị đăng xuất.
+     * Mọi phiên khác của tài khoản hết hiệu lực vì số phiên tăng; phiên hiện tại được cấp mã mới
+     * (chống cố định phiên) và ghi số phiên mới nên vẫn dùng tiếp được.
+     */
     @PostMapping("/api/v1/cms/auth/change-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changePassword(@Valid @RequestBody ChangePasswordRequest body, HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         Long accountId = currentAccountId(session);
 
-        cmsAuthService.changePassword(accountId, body.currentPassword(), body.newPassword(), request);
+        int sessionVersion = cmsAuthService.changePassword(
+                accountId, body.currentPassword(), body.newPassword(), request);
         auditLogService.record(AuditAction.PASSWORD_CHANGE, "ADMIN", accountId, null);
-        // Service đã commit xong mới huỷ phiên hiện tại: commit lỗi thì người dùng vẫn còn đăng nhập.
-        session.invalidate();
+
+        // Service đã commit xong mới cập nhật phiên: commit lỗi thì phiên vẫn giữ nguyên như cũ.
+        request.changeSessionId();
+        session.setAttribute(CmsAuthService.AUTH_SESSION_VERSION, sessionVersion);
+        // Kết nối realtime mở bằng phiên cũ phải dừng; tab hiện tại tự kết nối lại bằng phiên mới.
+        webSocketSessions.closeSessionsOfAccount(accountId);
     }
 
     private Long currentAccountId(HttpSession session) {
