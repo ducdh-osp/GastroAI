@@ -13,11 +13,12 @@ const ACCEPTED_DOCUMENT_TYPES = new Set([
 
 interface ChatInputProps {
   disabled?: boolean
+  initialContent?: string
   onSend: (content: string, attachments: Attachment[]) => void
 }
 
-export function ChatInput({ disabled = false, onSend }: ChatInputProps) {
-  const [content, setContent] = useState('')
+export function ChatInput({ disabled = false, initialContent = '', onSend }: ChatInputProps) {
+  const [content, setContent] = useState(initialContent.slice(0, MAX_LENGTH))
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [fileError, setFileError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)

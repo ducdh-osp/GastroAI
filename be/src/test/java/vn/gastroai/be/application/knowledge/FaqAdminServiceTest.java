@@ -58,7 +58,7 @@ class FaqAdminServiceTest {
     void createAutoAssignsSortOrderAndDefaultsToDraft() {
         Faq existing = faq(1L, "Q1", "A1", "Cat1", 50, true);
         when(faqRepository.findAllByOrderBySortOrderAscIdAsc()).thenReturn(List.of(existing));
-        when(faqRepository.save(any(Faq.class))).thenAnswer(inv -> {
+        when(faqRepository.saveAndFlush(any(Faq.class))).thenAnswer(inv -> {
             Faq saved = inv.getArgument(0);
             saved.setId(10L);
             return saved;
@@ -78,12 +78,12 @@ class FaqAdminServiceTest {
     void createPublishedWithoutReviewerIsRejected() {
         CmsFaqRequest req = new CmsFaqRequest("Q", "A", "Cat", 10, true, "   ", null);
         assertThrows(IllegalArgumentException.class, () -> service.create(req));
-        verify(faqRepository, never()).save(any());
+        verify(faqRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void createPublishedWithReviewerStampsReviewTime() {
-        when(faqRepository.save(any(Faq.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(faqRepository.saveAndFlush(any(Faq.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CmsFaqRequest req = new CmsFaqRequest("Q", "A", "Cat", 10, true, "  BS. CKII Trần B  ", null);
         CmsFaqResponse res = service.create(req);
@@ -97,7 +97,7 @@ class FaqAdminServiceTest {
     void updateModifiesFieldsAndUnpublishes() {
         Faq existing = reviewed(faq(5L, "Q cũ", "A cũ", "Cat cũ", 10, true));
         when(faqRepository.findById(5L)).thenReturn(Optional.of(existing));
-        when(faqRepository.save(existing)).thenReturn(existing);
+        when(faqRepository.saveAndFlush(existing)).thenReturn(existing);
 
         CmsFaqRequest req = new CmsFaqRequest("Q mới", "A mới", "Cat mới", 15, false);
         CmsFaqResponse res = service.update(5L, req);
@@ -114,7 +114,7 @@ class FaqAdminServiceTest {
     void updateContentOfPublishedFaqWithoutNewReviewAutoUnpublishes() {
         Faq existing = reviewed(faq(5L, "Q", "A cũ", "Cat", 10, true));
         when(faqRepository.findById(5L)).thenReturn(Optional.of(existing));
-        when(faqRepository.save(existing)).thenReturn(existing);
+        when(faqRepository.saveAndFlush(existing)).thenReturn(existing);
 
         CmsFaqResponse res = service.update(5L, new CmsFaqRequest("Q", "A mới", "Cat", 10, true));
 
@@ -127,7 +127,7 @@ class FaqAdminServiceTest {
         Faq existing = reviewed(faq(5L, "Q", "A cũ", "Cat", 10, true));
         Instant oldReview = existing.getMedicalReviewedAt();
         when(faqRepository.findById(5L)).thenReturn(Optional.of(existing));
-        when(faqRepository.save(existing)).thenReturn(existing);
+        when(faqRepository.saveAndFlush(existing)).thenReturn(existing);
 
         CmsFaqResponse res = service.update(5L,
                 new CmsFaqRequest("Q", "A mới", "Cat", 10, true, "BS. Lê C", 0L));
@@ -141,7 +141,7 @@ class FaqAdminServiceTest {
     void updateCategoryOnlyKeepsPublishedWithExistingReview() {
         Faq existing = reviewed(faq(5L, "Q", "A", "Cat cũ", 10, true));
         when(faqRepository.findById(5L)).thenReturn(Optional.of(existing));
-        when(faqRepository.save(existing)).thenReturn(existing);
+        when(faqRepository.saveAndFlush(existing)).thenReturn(existing);
 
         CmsFaqResponse res = service.update(5L, new CmsFaqRequest("Q", "A", "Cat mới", 10, true));
 
@@ -158,7 +158,7 @@ class FaqAdminServiceTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.update(5L, new CmsFaqRequest("Q", "A", "Cat", 10, true)));
-        verify(faqRepository, never()).save(any());
+        verify(faqRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -169,14 +169,14 @@ class FaqAdminServiceTest {
 
         assertThrows(ObjectOptimisticLockingFailureException.class,
                 () -> service.update(5L, new CmsFaqRequest("Q", "A", "Cat", 10, false, null, 2L)));
-        verify(faqRepository, never()).save(any());
+        verify(faqRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void setPublishedFalseUnpublishes() {
         Faq existing = reviewed(faq(5L, "Q", "A", "Cat", 10, true));
         when(faqRepository.findById(5L)).thenReturn(Optional.of(existing));
-        when(faqRepository.save(existing)).thenReturn(existing);
+        when(faqRepository.saveAndFlush(existing)).thenReturn(existing);
 
         CmsFaqResponse res = service.setPublished(5L, new CmsFaqPublishRequest(false));
         assertFalse(res.published());
@@ -189,14 +189,14 @@ class FaqAdminServiceTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.setPublished(5L, new CmsFaqPublishRequest(true)));
-        verify(faqRepository, never()).save(any());
+        verify(faqRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void setPublishedTrueReusesStillValidReview() {
         Faq existing = reviewed(faq(5L, "Q", "A", "Cat", 10, false));
         when(faqRepository.findById(5L)).thenReturn(Optional.of(existing));
-        when(faqRepository.save(existing)).thenReturn(existing);
+        when(faqRepository.saveAndFlush(existing)).thenReturn(existing);
 
         CmsFaqResponse res = service.setPublished(5L, new CmsFaqPublishRequest(true));
         assertTrue(res.published());

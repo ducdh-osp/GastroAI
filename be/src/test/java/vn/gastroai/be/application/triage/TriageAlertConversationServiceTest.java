@@ -189,7 +189,7 @@ class TriageAlertConversationServiceTest {
         TriageAlertConversationService.PatientConversationView view = service.getForPatient(1L, 10L);
 
         assertTrue(view.canReply());
-        assertEquals(List.of("Bác sĩ", "Nhân viên y tế", "Bạn"),
+        assertEquals(List.of("Nhân sự hỗ trợ (lịch sử)", "Nhân sự hỗ trợ GastroAI", "Bạn"),
                 view.messages().stream().map(TriageAlertConversationService.PatientMessageItem::senderLabel).toList());
         assertFalse(view.messages().get(0).mine());
         verify(actionRepository).save(argThat(action ->

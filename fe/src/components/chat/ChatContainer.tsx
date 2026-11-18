@@ -16,6 +16,7 @@ export function ChatContainer() {
   // Khi FE điều hướng từ ChatHistoryPage với state { resumeSessionId, sessionTitle }
   const resumeSessionId: number | null = (location.state as { resumeSessionId?: number } | null)?.resumeSessionId ?? null
   const resumeTitle: string | null = (location.state as { sessionTitle?: string } | null)?.sessionTitle ?? null
+  const initialQuestion: string = (location.state as { initialQuestion?: string } | null)?.initialQuestion ?? ''
 
   const [messages, setMessages] = useState<Message[]>([])
   const [isReplying, setIsReplying] = useState(false)
@@ -272,7 +273,7 @@ export function ChatContainer() {
           onRetry={handleRetry}
           onRate={handleRate}
         />
-        <ChatInput disabled={isReplying || isLoadingHistory} onSend={handleSend} />
+        <ChatInput disabled={isReplying || isLoadingHistory} initialContent={initialQuestion} onSend={handleSend} />
       </Card>
     </div>
   )

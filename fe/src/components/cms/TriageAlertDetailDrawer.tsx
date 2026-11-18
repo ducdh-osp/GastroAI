@@ -252,6 +252,12 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
                 </Space>
               </Descriptions.Item>
               <Descriptions.Item label="Số điện thoại">{alert.patientPhone ?? '—'}</Descriptions.Item>
+              {detail?.emergencyContact && (
+                <Descriptions.Item label="Liên hệ khẩn cấp">
+                  {detail.emergencyContact.name} ({detail.emergencyContact.relationship}) · {detail.emergencyContact.phone}
+                  <Text type="secondary" className="block text-xs">Chỉ liên hệ khi không gọi được bệnh nhân theo quy trình xử lý cảnh báo.</Text>
+                </Descriptions.Item>
+              )}
               <Descriptions.Item label="Thời điểm">{formatDateTime(alert.occurredAt)}</Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <Space wrap size={4}>

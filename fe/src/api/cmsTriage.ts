@@ -76,6 +76,7 @@ export interface TriageAlertDetail {
   alert: TriageAlert
   actions: TriageAlertActionItem[]
   messages: TriageAlertMessageItem[]
+  emergencyContact: { name: string; phone: string; relationship: string } | null
 }
 
 /** Đang mở: NEW trước, IN_PROGRESS sau; trong nhóm theo hoạt động gần nhất. */

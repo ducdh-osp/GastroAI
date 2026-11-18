@@ -37,7 +37,7 @@ const TYPE_META: Record<NotificationType, { label: string; color: string }> = {
   SECURITY_ALERT: { label: 'An toàn & bảo mật', color: 'gold' },
   TRIAGE_ALERT: { label: 'Cảnh báo triage', color: 'red' },
   SYSTEM: { label: 'Hệ thống', color: 'blue' },
-  TRIAGE_DOCTOR_MESSAGE: { label: 'Tin nhắn bác sĩ', color: 'volcano' },
+  TRIAGE_DOCTOR_MESSAGE: { label: 'Cập nhật cảnh báo', color: 'volcano' },
 }
 
 function notificationIcon(type: NotificationType) {
@@ -186,7 +186,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
         { value: 'JOURNAL_REMINDER', label: 'Nhắc nhật ký' },
         { value: 'MEDICATION_REMINDER', label: 'Nhắc uống thuốc' },
         { value: 'SECURITY_ALERT', label: 'An toàn & bảo mật' },
-        { value: 'TRIAGE_DOCTOR_MESSAGE', label: 'Tin nhắn bác sĩ' },
+        { value: 'TRIAGE_DOCTOR_MESSAGE', label: 'Cập nhật cảnh báo' },
         { value: 'SYSTEM', label: 'Hệ thống' },
       ]
     : [

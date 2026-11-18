@@ -71,6 +71,15 @@ public class MedicalProfile {
     @Column(name = "dietary_restrictions", columnDefinition = "TEXT")
     private String dietaryRestrictions;
 
+    @Column(name = "emergency_contact_name", length = 150)
+    private String emergencyContactName;
+
+    @Column(name = "emergency_contact_phone", length = 20)
+    private String emergencyContactPhone;
+
+    @Column(name = "emergency_contact_relationship", length = 80)
+    private String emergencyContactRelationship;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 

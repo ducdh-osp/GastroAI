@@ -6,6 +6,7 @@ export interface KnowledgeArticleSummary {
   title: string
   summary: string
   category: string
+  readingMinutes: number
 }
 
 export interface KnowledgeArticleDetail extends KnowledgeArticleSummary {

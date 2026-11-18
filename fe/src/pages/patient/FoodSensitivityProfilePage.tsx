@@ -1,7 +1,8 @@
 import { BulbOutlined } from '@ant-design/icons'
-import { Alert, Card, Select, Spin, Table, Typography } from 'antd'
+import { Alert, Button, Card, Select, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { getFoodSensitivityProfile } from '../../api/foodSensitivity'
 import type { FoodCorrelationItem, FoodSensitivityProfileResponse } from '../../api/foodSensitivity'
@@ -166,6 +167,13 @@ export default function FoodSensitivityProfilePage() {
                 />
               </Card>
             </>
+          )}
+          {profile && profile.hasEnoughData && (
+            <div className="mt-4 text-right">
+              <Link to="/chat" state={{ initialQuestion: `Tôi muốn hiểu hồ sơ nhạy cảm thực phẩm của mình. Trong ${profile.daysAnalyzed} ngày qua, các món hay xuất hiện cùng triệu chứng gồm: ${profile.topCorrelations.slice(0, 3).map((item) => `${item.foodKeyword} (${item.timesWithSymptom}/${item.timesEaten} lần)`).join(', ') || 'chưa có món đủ dữ liệu'}. Đây chỉ là tương quan; tôi nên xem xét điều gì?` }}>
+                <Button type="primary">Hỏi AI về kết quả này</Button>
+              </Link>
+            </div>
           )}
         </Spin>
       </div>

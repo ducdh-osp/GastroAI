@@ -23,6 +23,9 @@ public record MedicalProfileResponse(
         List<String> pastSurgeries,
         List<String> currentMedications,
         List<String> dietaryRestrictions,
+        String emergencyContactName,
+        String emergencyContactPhone,
+        String emergencyContactRelationship,
         Instant updatedAt,
         boolean exists
 ) {

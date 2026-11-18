@@ -25,6 +25,7 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
   const [form] = Form.useForm<MedicationReminderFormValues>()
   const [medicineOptions, setMedicineOptions] = useState<{ value: string; label: string }[]>([])
   const [catalogLoadError, setCatalogLoadError] = useState(false)
+  const dosage = Form.useWatch('dosage', form)
 
   useEffect(() => {
     if (!open) return
@@ -98,6 +99,9 @@ export function MedicationReminderModal({ open, reminder, saving, onCancel, onSu
         <Form.Item label="Liều lượng" name="dosage" rules={[{ max: 200, message: 'Liều lượng tối đa 200 ký tự' }]}>
           <Input maxLength={200} showCount placeholder="Vd: 20mg, 1 viên" />
         </Form.Item>
+        {reminder && dosage !== undefined && dosage.trim() !== (reminder.dosage ?? '').trim() && (
+          <Alert className="mb-4" type="warning" showIcon message="Hãy trao đổi với bác sĩ trước khi tự thay đổi liều dùng." />
+        )}
         <Form.Item label="Các giờ uống trong ngày" name="timesOfDay" rules={[{ required: true, message: 'Chọn ít nhất một giờ nhắc' }]}>
           <Select mode="multiple" className="w-full" options={Array.from({ length: 96 }, (_, index) => {
             const hour = Math.floor(index / 4).toString().padStart(2, '0')

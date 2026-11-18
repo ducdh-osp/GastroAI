@@ -52,11 +52,17 @@ public class MedicalProfileService {
                 .map(this::toResponse)
                 .orElse(new MedicalProfileResponse(null, null, null, null, null, null, null,
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
-                        Collections.emptyList(), Collections.emptyList(), null, false));
+                        Collections.emptyList(), Collections.emptyList(), null, null, null, null, false));
     }
 
     @Transactional("postgresTransactionManager")
     public MedicalProfileResponse upsertProfile(Long patientId, MedicalProfileRequest request) {
+        boolean hasName = request.emergencyContactName() != null && !request.emergencyContactName().isBlank();
+        boolean hasPhone = request.emergencyContactPhone() != null && !request.emergencyContactPhone().isBlank();
+        boolean hasRelationship = request.emergencyContactRelationship() != null && !request.emergencyContactRelationship().isBlank();
+        if ((hasName || hasPhone || hasRelationship) && !(hasName && hasPhone && hasRelationship)) {
+            throw new IllegalArgumentException("Vui long khai bao du ho ten, so dien thoai va moi quan he cua lien he khan cap");
+        }
         MedicalProfile profile = medicalProfileRepository.findByPatientId(patientId)
                 .map(existing -> {
                     if (request.version() == null || !request.version().equals(existing.getVersion())) {
@@ -87,6 +93,9 @@ public class MedicalProfileService {
         profile.setPastSurgeries(toJson(request.pastSurgeries()));
         profile.setCurrentMedications(toJson(request.currentMedications()));
         profile.setDietaryRestrictions(toJson(request.dietaryRestrictions()));
+        profile.setEmergencyContactName(normalizeContact(request.emergencyContactName()));
+        profile.setEmergencyContactPhone(normalizeContact(request.emergencyContactPhone()));
+        profile.setEmergencyContactRelationship(normalizeContact(request.emergencyContactRelationship()));
 
         // Flush before building the response so @Version/updatedAt contain their committed
         // values and a concurrent update is reported by this request, not silently lost.
@@ -116,8 +125,15 @@ public class MedicalProfileService {
                 parseJson(profile.getPastSurgeries()),
                 parseJson(profile.getCurrentMedications()),
                 parseJson(profile.getDietaryRestrictions()),
+                profile.getEmergencyContactName(),
+                profile.getEmergencyContactPhone(),
+                profile.getEmergencyContactRelationship(),
                 profile.getUpdatedAt(),
                 true);
+    }
+
+    private static String normalizeContact(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private String toJson(List<String> value) {

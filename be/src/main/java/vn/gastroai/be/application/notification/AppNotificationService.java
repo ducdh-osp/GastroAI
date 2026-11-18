@@ -146,7 +146,7 @@ public class AppNotificationService {
         String preview = content.length() > 120 ? content.substring(0, 120) : content;
         AppNotification notification = new AppNotification(
                 NotificationRecipientType.PATIENT, patientId, NotificationType.TRIAGE_DOCTOR_MESSAGE,
-                "Bác sĩ vừa nhắn cho bạn", preview, "TRIAGE_ALERT", alertId,
+                "Cập nhật về cảnh báo sức khỏe", preview, "TRIAGE_ALERT", alertId,
                 "/triage-alerts/" + alertId, dedupeKey);
         notification = notificationRepository.save(notification);
         NotificationResponse response = toResponse(notification, null);

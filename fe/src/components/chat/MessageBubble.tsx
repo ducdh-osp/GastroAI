@@ -58,7 +58,8 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
             <WarningFilled className="mt-0.5 shrink-0 text-lg text-red-600" />
             <span>
               <strong className="block">Phát hiện dấu hiệu cần cấp cứu!</strong>
-              Vui lòng gọi <PhoneOutlined /> <strong>115</strong> hoặc đến ngay cơ sở y tế gần nhất.
+              Vui lòng gọi <PhoneOutlined /> <a href="tel:115" className="font-bold text-red-900 underline dark:text-red-100">115</a> hoặc đến ngay cơ sở y tế gần nhất.
+              <span className="mt-1 block font-medium">Đừng chờ phản hồi trong ứng dụng trước khi tìm trợ giúp.</span>
               {matchedGroupsText && (
                 <span className="mt-1 block text-red-800">Dấu hiệu phát hiện: {matchedGroupsText}</span>
               )}
