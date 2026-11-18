@@ -99,6 +99,7 @@ function KnowledgeArticleCard({ article }: { article: KnowledgeArticleSummary })
         }
       >
         <Tag color="cyan">{article.category}</Tag>
+        <Text type="secondary" className="ml-2 text-xs">Khoảng {article.readingMinutes} phút đọc</Text>
         <h2 className="mb-2 mt-3 text-lg font-semibold text-slate-800 transition-colors group-hover:text-teal-700 dark:text-white dark:group-hover:text-teal-400">
           {cleanTitle(article.title)}
         </h2>
@@ -145,6 +146,7 @@ function ArticleDetail({ slug }: { slug: string }) {
       {article && (
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Tag color="cyan">{article.category}</Tag>
+          <Text type="secondary" className="ml-2 text-xs">Khoảng {article.readingMinutes} phút đọc</Text>
           <Title level={2} className="mb-2! mt-3!">{cleanTitle(article.title)}</Title>
           <p className="my-5 text-base leading-7 text-slate-600 dark:text-white">{article.summary}</p>
           {!article.content.includes('/images/articles/') && illustration && (
@@ -168,7 +170,13 @@ function ArticleDetail({ slug }: { slug: string }) {
             <p className="mb-1 mt-2"><a href={article.sourceUrl} target="_blank" rel="noreferrer" className="text-teal-700 underline">{article.sourceName}</a></p>
             <Text type="secondary">Đường dẫn nguồn được kiểm tra ngày {new Intl.DateTimeFormat('vi-VN').format(new Date(`${article.sourceCheckedAt}T00:00:00`))}.</Text>
           </div>
+          <p className="mt-3 text-xs text-slate-500 dark:text-slate-300">Nội dung tham khảo từ tài liệu y khoa đã công bố; không phải thẩm định của bác sĩ hành nghề.</p>
           <p className="mb-0 mt-4 text-xs text-slate-500 dark:text-white">Thông tin tham khảo không thay thế chẩn đoán hoặc tư vấn của nhân viên y tế.</p>
+          <div className="mt-5 text-right">
+            <Link to="/chat" state={{ initialQuestion: `Tôi vừa đọc bài "${cleanTitle(article.title)}" trong thư viện kiến thức. Hãy giải thích thêm về chủ đề này trong trường hợp của tôi.` }}>
+              <Button type="primary">Hỏi AI về chủ đề này</Button>
+            </Link>
+          </div>
         </Card>
       )}
     </div>

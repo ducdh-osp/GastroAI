@@ -93,7 +93,7 @@ export default function FaqPage() {
             Câu hỏi thường gặp về Tiêu hóa
           </Title>
           <Paragraph className="!text-teal-100/90 text-sm sm:text-base max-w-2xl !mb-6">
-            Giải đáp nhanh chóng các băn khoăn về triệu chứng, cách xử trí tại nhà, chế độ dinh dưỡng và dấu hiệu cảnh báo từ đội ngũ chuyên khoa tiêu hóa.
+            Giải đáp nhanh về triệu chứng, dinh dưỡng và dấu hiệu cảnh báo. Đây là nội dung tham khảo, không phải thẩm định của bác sĩ hành nghề.
           </Paragraph>
 
           {/* Search bar inside banner */}

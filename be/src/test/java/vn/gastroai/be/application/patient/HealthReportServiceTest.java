@@ -50,7 +50,7 @@ class HealthReportServiceTest {
     // benh nhan chua khai bao - dung chung cho moi test khong can kiem tra phan ho so benh ly.
     private static final MedicalProfileResponse EMPTY_PROFILE = new MedicalProfileResponse(
             null, null, null, null, null, null, null,
-            List.of(), List.of(), List.of(), List.of(), List.of(), null, false);
+            List.of(), List.of(), List.of(), List.of(), List.of(), null, null, null, null, false);
 
     private Patient patient(String fullName) {
         Patient patient = new Patient();

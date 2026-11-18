@@ -16,6 +16,9 @@ export interface MedicalProfile {
   pastSurgeries: string[]
   currentMedications: string[]
   dietaryRestrictions: string[]
+  emergencyContactName: string | null
+  emergencyContactPhone: string | null
+  emergencyContactRelationship: string | null
   updatedAt: string | null
   exists: boolean
 }
@@ -32,6 +35,9 @@ export interface UpdateMedicalProfileRequest {
   pastSurgeries: string[]
   currentMedications: string[]
   dietaryRestrictions: string[]
+  emergencyContactName: string | null
+  emergencyContactPhone: string | null
+  emergencyContactRelationship: string | null
 }
 
 /** UC0009/UC0010 - luon tra ve 200, exists=false neu benh nhan chua khai bao lan nao. */

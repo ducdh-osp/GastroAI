@@ -6,6 +6,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import vn.gastroai.be.domain.auth.Patient;
+import vn.gastroai.be.domain.patient.MedicalProfile;
 import vn.gastroai.be.domain.triage.TriageAlert;
 import vn.gastroai.be.domain.triage.TriageAlertActionType;
 import vn.gastroai.be.domain.triage.TriageAlertActivityEvent;
@@ -14,6 +15,7 @@ import vn.gastroai.be.domain.triage.TriageAlertOutcome;
 import vn.gastroai.be.domain.triage.TriageAlertStatus;
 import vn.gastroai.be.domain.triage.TriageAlertStatusChangedEvent;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.MedicalProfileRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.TriageAlertActionRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.TriageAlertMessageRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.TriageAlertRepository;
@@ -41,11 +43,12 @@ class TriageAlertServiceTest {
     private final TriageAlertActionRepository actionRepository = mock(TriageAlertActionRepository.class);
     private final TriageAlertMessageRepository messageRepository = mock(TriageAlertMessageRepository.class);
     private final PatientRepository patientRepository = mock(PatientRepository.class);
+    private final MedicalProfileRepository medicalProfileRepository = mock(MedicalProfileRepository.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final TriageAlertService service = new TriageAlertService(
-            triageAlertRepository, actionRepository, messageRepository, patientRepository,
+            triageAlertRepository, actionRepository, messageRepository, patientRepository, medicalProfileRepository,
             eventPublisher, objectMapper);
 
     private Patient patient(Long id, String fullName, String phone) {
@@ -631,6 +634,23 @@ class TriageAlertServiceTest {
         service.getDetail(10L, 1L, "ADMIN");
 
         verify(messageRepository, never()).markPatientMessagesRead(any(), any());
+        verify(medicalProfileRepository, never()).findByPatientId(any());
+    }
+
+    @Test
+    void onlyAssignedAdminSeesEmergencyContactOnOpenAlert() {
+        inProgressAlert(7L, "ADMIN");
+        MedicalProfile profile = new MedicalProfile();
+        profile.setEmergencyContactName("Nguyen Van B");
+        profile.setEmergencyContactPhone("0901234567");
+        profile.setEmergencyContactRelationship("Cha");
+        when(medicalProfileRepository.findByPatientId(1L)).thenReturn(Optional.of(profile));
+
+        TriageAlertDetailResponse assigned = service.getDetail(10L, 7L, "ADMIN");
+        TriageAlertDetailResponse other = service.getDetail(10L, 8L, "ADMIN");
+
+        assertEquals("0901234567", assigned.emergencyContact().phone());
+        assertEquals(null, other.emergencyContact());
     }
 
     @Test

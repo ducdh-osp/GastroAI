@@ -45,14 +45,15 @@ export default function TriageConversationListPage() {
       <div className="flex h-[calc(100svh-3rem)] min-h-0 flex-col gap-4 overflow-hidden sm:h-[calc(100svh-4rem)]">
         <div className="shrink-0">
           <Text type="secondary">Cảnh báo khẩn cấp</Text>
-          <Title level={2} className="mb-1! mt-1!">Trao đổi với bác sĩ</Title>
+          <Title level={2} className="mb-1! mt-1!">Cảnh báo & hỗ trợ</Title>
+          <Text type="secondary">Nếu đang có dấu hiệu nguy hiểm, hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay. Không chờ phản hồi trong ứng dụng.</Text>
         </div>
 
         {error && <Alert type="error" showIcon title={error} className="shrink-0" />}
 
         <Spin spinning={loading} wrapperClassName="min-h-0 flex-1 overflow-y-auto">
           {!loading && !error && items.length === 0 && (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có trao đổi nào" className="mt-12" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có cuộc trao đổi nào liên quan đến cảnh báo" className="mt-12" />
           )}
           <div className="flex flex-col gap-3">
             {items.map((item) => {
@@ -69,7 +70,7 @@ export default function TriageConversationListPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <Text strong>{formatDateTime(item.occurredAt)}</Text>
-                        <Tag color={closed ? 'default' : 'green'}>{closed ? 'Đã kết thúc' : 'Đang trao đổi'}</Tag>
+                        <Tag color={closed ? 'default' : 'orange'}>{closed ? 'Đã kết thúc' : 'Đang theo dõi'}</Tag>
                       </div>
                       <Text
                         type="secondary"

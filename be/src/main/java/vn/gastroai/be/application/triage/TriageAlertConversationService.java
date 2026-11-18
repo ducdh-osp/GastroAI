@@ -175,7 +175,7 @@ public class TriageAlertConversationService {
             throw new IllegalStateException("Cảnh báo đã được đóng, không thể gửi thêm tin nhắn");
         }
         if (messageRepository.countStaffMessages(alertId) == 0) {
-            throw new IllegalStateException("Bác sĩ chưa liên hệ nên bạn chưa thể gửi tin nhắn tại đây");
+            throw new IllegalStateException("Nhân sự hỗ trợ chưa liên hệ nên bạn chưa thể gửi tin nhắn tại đây");
         }
 
         TriageAlertMessage message = messageRepository.save(
@@ -199,8 +199,8 @@ public class TriageAlertConversationService {
     private static PatientMessageItem toPatientItem(TriageAlertMessage message) {
         String label = switch (message.getSenderType()) {
             case TriageAlertMessage.SENDER_PATIENT -> "Bạn";
-            case "DOCTOR" -> "Bác sĩ";
-            default -> "Nhân viên y tế";
+            case "DOCTOR" -> "Nhân sự hỗ trợ (lịch sử)";
+            default -> "Nhân sự hỗ trợ GastroAI";
         };
         return new PatientMessageItem(
                 message.getId(), label, message.fromPatient(), message.getContent(), message.getCreatedAt());

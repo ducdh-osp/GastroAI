@@ -6,10 +6,16 @@ public record KnowledgeArticleSummary(
         String slug,
         String title,
         String summary,
-        String category) {
+        String category,
+        int readingMinutes) {
 
     public static KnowledgeArticleSummary from(KnowledgeArticle article) {
         return new KnowledgeArticleSummary(article.getSlug(), article.getTitle(), article.getSummary(),
-                article.getCategory());
+                article.getCategory(), estimateReadingMinutes(article.getContent()));
+    }
+
+    static int estimateReadingMinutes(String content) {
+        if (content == null || content.isBlank()) return 1;
+        return Math.max(1, (content.trim().split("\\s+").length + 199) / 200);
     }
 }

@@ -31,6 +31,10 @@ public record MedicalProfileRequest(
         List<@Size(max = 200, message = "moi muc toi da 200 ky tu") String> chronicConditions,
         List<@Size(max = 200, message = "moi muc toi da 200 ky tu") String> pastSurgeries,
         List<@Size(max = 200, message = "moi muc toi da 200 ky tu") String> currentMedications,
-        List<@Size(max = 200, message = "moi muc toi da 200 ky tu") String> dietaryRestrictions
+        List<@Size(max = 200, message = "moi muc toi da 200 ky tu") String> dietaryRestrictions,
+        @Size(max = 150) String emergencyContactName,
+        @Pattern(regexp = "^$|^\\+?[0-9]{9,15}$", message = "so dien thoai lien he khan cap khong hop le")
+        String emergencyContactPhone,
+        @Size(max = 80) String emergencyContactRelationship
 ) {
 }

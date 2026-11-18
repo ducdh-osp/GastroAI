@@ -22,6 +22,7 @@ import vn.gastroai.be.domain.triage.TriageAlertOutcome;
 import vn.gastroai.be.domain.triage.TriageAlertStatus;
 import vn.gastroai.be.domain.triage.TriageAlertStatusChangedEvent;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.MedicalProfileRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.TriageAlertActionRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.TriageAlertMessageRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.TriageAlertRepository;
@@ -53,6 +54,7 @@ public class TriageAlertService {
     private final TriageAlertActionRepository actionRepository;
     private final TriageAlertMessageRepository messageRepository;
     private final PatientRepository patientRepository;
+    private final MedicalProfileRepository medicalProfileRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
@@ -61,12 +63,14 @@ public class TriageAlertService {
             TriageAlertActionRepository actionRepository,
             TriageAlertMessageRepository messageRepository,
             PatientRepository patientRepository,
+            MedicalProfileRepository medicalProfileRepository,
             ApplicationEventPublisher eventPublisher,
             ObjectMapper objectMapper) {
         this.triageAlertRepository = triageAlertRepository;
         this.actionRepository = actionRepository;
         this.messageRepository = messageRepository;
         this.patientRepository = patientRepository;
+        this.medicalProfileRepository = medicalProfileRepository;
         this.eventPublisher = eventPublisher;
         this.objectMapper = objectMapper;
     }
@@ -234,7 +238,16 @@ public class TriageAlertService {
                         message.getCreatedAt()))
                 .toList();
 
-        return new TriageAlertDetailResponse(toResponse(alert), actions, messages);
+        TriageAlertDetailResponse.EmergencyContact contact = null;
+        if ("ADMIN".equals(viewerType) && viewerIsClaimer && alert.getStatus() == TriageAlertStatus.IN_PROGRESS) {
+            contact = medicalProfileRepository.findByPatientId(alert.getPatient().getId())
+                    .filter(profile -> profile.getEmergencyContactPhone() != null)
+                    .map(profile -> new TriageAlertDetailResponse.EmergencyContact(
+                            profile.getEmergencyContactName(), profile.getEmergencyContactPhone(),
+                            profile.getEmergencyContactRelationship()))
+                    .orElse(null);
+        }
+        return new TriageAlertDetailResponse(toResponse(alert), actions, messages, contact);
     }
 
     @Transactional(TX)

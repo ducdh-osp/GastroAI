@@ -28,6 +28,9 @@ interface MedicalProfileFormValues {
   pastSurgeries: string
   currentMedications: string[]
   dietaryRestrictions: string
+  emergencyContactName: string
+  emergencyContactPhone: string
+  emergencyContactRelationship: string
 }
 
 function listToText(items: string[]): string {
@@ -81,6 +84,9 @@ export default function MedicalProfilePage() {
           pastSurgeries: listToText(profile.pastSurgeries),
           currentMedications: profile.currentMedications,
           dietaryRestrictions: listToText(profile.dietaryRestrictions),
+          emergencyContactName: profile.emergencyContactName ?? '',
+          emergencyContactPhone: profile.emergencyContactPhone ?? '',
+          emergencyContactRelationship: profile.emergencyContactRelationship ?? '',
         })
         setExists(profile.exists)
         setVersion(profile.version)
@@ -121,6 +127,13 @@ export default function MedicalProfilePage() {
   }
 
   async function onFinish(values: MedicalProfileFormValues) {
+    const contactName = values.emergencyContactName?.trim() ?? ''
+    const contactPhone = values.emergencyContactPhone?.trim() ?? ''
+    const contactRelationship = values.emergencyContactRelationship?.trim() ?? ''
+    if ((contactName || contactPhone || contactRelationship) && !(contactName && contactPhone && contactRelationship)) {
+      setSaveError('Vui lòng điền đủ họ tên, số điện thoại và mối quan hệ của liên hệ khẩn cấp, hoặc để trống cả ba trường.')
+      return
+    }
     setSaveError(null)
     setSuccess(null)
     setSaving(true)
@@ -137,6 +150,9 @@ export default function MedicalProfilePage() {
         pastSurgeries: textToList(values.pastSurgeries),
         currentMedications: values.currentMedications ?? [],
         dietaryRestrictions: textToList(values.dietaryRestrictions),
+        emergencyContactName: contactName || null,
+        emergencyContactPhone: contactPhone || null,
+        emergencyContactRelationship: contactRelationship || null,
       })
       setExists(profile.exists)
       setVersion(profile.version)
@@ -236,6 +252,24 @@ export default function MedicalProfilePage() {
                 <Form.Item label="Ghi chú thêm về tiền sử bệnh" name="medicalHistory">
                   <Input.TextArea rows={3} placeholder="Thông tin khác chưa có mục riêng ở trên" />
                 </Form.Item>
+
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900 dark:bg-amber-950/20">
+                  <Text strong className="block">Liên hệ khẩn cấp</Text>
+                  <Text type="secondary" className="mb-4 block text-sm">
+                    Chỉ dùng khi hệ thống phát hiện dấu hiệu nguy hiểm mà không liên lạc được trực tiếp với bạn. Bạn có thể để trống mục này.
+                  </Text>
+                  <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                    <Form.Item label="Họ tên người liên hệ" name="emergencyContactName" rules={[{ max: 150, message: 'Họ tên tối đa 150 ký tự' }]}>
+                      <Input maxLength={150} autoComplete="off" placeholder="Họ tên người thân" />
+                    </Form.Item>
+                    <Form.Item label="Số điện thoại" name="emergencyContactPhone" rules={[{ pattern: /^\+?\d{9,15}$/, message: 'Nhập 9–15 chữ số, có thể bắt đầu bằng +' }]}>
+                      <Input maxLength={16} inputMode="tel" autoComplete="off" placeholder="Ví dụ: 0901234567 hoặc +84901234567" />
+                    </Form.Item>
+                    <Form.Item label="Mối quan hệ với bạn" name="emergencyContactRelationship" rules={[{ max: 80, message: 'Mối quan hệ tối đa 80 ký tự' }]}>
+                      <Input maxLength={80} autoComplete="off" placeholder="Ví dụ: Vợ/chồng, cha/mẹ" />
+                    </Form.Item>
+                  </div>
+                </div>
 
                 <Button type="primary" htmlType="submit" loading={saving}>
                   {exists ? 'Cập nhật hồ sơ' : 'Tạo hồ sơ bệnh lý'}

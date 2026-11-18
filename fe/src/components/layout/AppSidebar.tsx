@@ -53,7 +53,7 @@ const NAV_ITEMS = [
 ]
 
 const TRIAGE_NAV_ITEM = {
-  key: 'triage-alerts', label: 'Trao đổi với bác sĩ', icon: <CustomerServiceOutlined />, to: '/triage-alerts',
+  key: 'triage-alerts', label: 'Cảnh báo & hỗ trợ', icon: <CustomerServiceOutlined />, to: '/triage-alerts',
 }
 
 

@@ -124,13 +124,14 @@ export default function TriageConversationPage() {
               Cảnh báo khẩn cấp
             </Link>
           </div>
-          <Title level={2} className="mb-1! mt-1!">Trao đổi với bác sĩ</Title>
+          <Title level={2} className="mb-1! mt-1!">Cảnh báo & hỗ trợ</Title>
           {conversation && (
             <Text type="secondary">{formatDateTime(conversation.occurredAt)}</Text>
           )}
         </div>
 
         {error && <Alert type="error" showIcon title={error} className="shrink-0" />}
+        <Alert type="warning" showIcon title="Nếu bạn đang gặp dấu hiệu nguy hiểm, hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay. Tin nhắn ở đây không phải kênh cấp cứu hay tư vấn y khoa." className="shrink-0" />
         {closed && <Alert type="info" showIcon title="Cuộc trao đổi đã kết thúc" className="shrink-0" />}
 
         <Card
@@ -166,7 +167,7 @@ export default function TriageConversationPage() {
               <TextArea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder="Nhập tin nhắn"
+                placeholder="Cập nhật tình trạng cho nhân sự hỗ trợ (không dùng để yêu cầu cấp cứu)"
                 autoSize={{ minRows: 2, maxRows: 5 }}
                 maxLength={MAX_MESSAGE_LENGTH}
                 disabled={sending}

@@ -37,7 +37,8 @@ class MedicalProfileServiceTest {
                 LocalDate.of(1995, 5, 20), "MALE", 172, 65,
                 medicalHistory,
                 List.of("Penicillin"), List.of("Viem dai trang man"), List.of("Cat ruot thua 2020"),
-                List.of("Omeprazole 20mg"), List.of("Khong dung nap lactose"));
+                List.of("Omeprazole 20mg"), List.of("Khong dung nap lactose"),
+                "Nguyen Van B", "0901234567", "Cha");
     }
 
     @Test
@@ -72,6 +73,19 @@ class MedicalProfileServiceTest {
         assertEquals(List.of("Cat ruot thua 2020"), response.pastSurgeries());
         assertEquals(List.of("Omeprazole 20mg"), response.currentMedications());
         assertEquals(List.of("Khong dung nap lactose"), response.dietaryRestrictions());
+        assertEquals("Nguyen Van B", response.emergencyContactName());
+        assertEquals("0901234567", response.emergencyContactPhone());
+    }
+
+    @Test
+    void upsertRejectsIncompleteEmergencyContactBeforeSaving() {
+        MedicalProfileRequest incomplete = new MedicalProfileRequest(
+                null, null, null, null, null, null,
+                List.of(), List.of(), List.of(), List.of(), List.of(),
+                "Nguyen Van B", null, "Cha");
+
+        assertThrows(IllegalArgumentException.class, () -> service.upsertProfile(1L, incomplete));
+        verify(medicalProfileRepository, never()).saveAndFlush(any());
     }
 
     @Test

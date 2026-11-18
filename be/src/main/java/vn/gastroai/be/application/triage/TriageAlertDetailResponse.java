@@ -6,7 +6,13 @@ import java.util.List;
 public record TriageAlertDetailResponse(
         TriageAlertResponse alert,
         List<ActionItem> actions,
-        List<MessageItem> messages) {
+        List<MessageItem> messages,
+        EmergencyContact emergencyContact) {
+    public TriageAlertDetailResponse(TriageAlertResponse alert, List<ActionItem> actions, List<MessageItem> messages) {
+        this(alert, actions, messages, null);
+    }
+
+    public record EmergencyContact(String name, String phone, String relationship) {}
 
     public record ActionItem(
             Long id,

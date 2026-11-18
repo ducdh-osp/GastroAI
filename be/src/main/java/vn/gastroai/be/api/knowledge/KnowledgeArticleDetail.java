@@ -12,11 +12,13 @@ public record KnowledgeArticleDetail(
         String content,
         String sourceName,
         String sourceUrl,
-        LocalDate sourceCheckedAt) {
+        LocalDate sourceCheckedAt,
+        int readingMinutes) {
 
     public static KnowledgeArticleDetail from(KnowledgeArticle article) {
         return new KnowledgeArticleDetail(article.getSlug(), article.getTitle(), article.getSummary(),
                 article.getCategory(), article.getContent(),
-                article.getSourceName(), article.getSourceUrl(), article.getSourceCheckedAt());
+                article.getSourceName(), article.getSourceUrl(), article.getSourceCheckedAt(),
+                KnowledgeArticleSummary.estimateReadingMinutes(article.getContent()));
     }
 }
