@@ -1,6 +1,6 @@
 import { AuditOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons'
 import { Alert, Button, Form, Input } from 'antd'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cmsLogin } from '../../api/cmsAuth'
 import { AuthShell } from '../../components/auth/AuthShell'
@@ -22,6 +22,14 @@ const TRUST_ITEMS = [
   { icon: SafetyOutlined, text: 'Truy cập được giám sát theo tiêu chuẩn bảo mật' },
 ]
 
+/** Thời gian còn lại dạng phút:giây, ví dụ 9:05. */
+function formatRemaining(ms: number) {
+  const totalSeconds = Math.ceil(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
 export default function CmsLoginPage() {
   const { setUser } = useCmsAuth()
   const navigate = useNavigate()
@@ -29,6 +37,17 @@ export default function CmsLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [lockedUntil, setLockedUntil] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+
+  // Đang bị khoá thì cập nhật đồng hồ mỗi giây để hiện thời gian còn lại.
+  useEffect(() => {
+    if (!lockedUntil) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [lockedUntil])
+
+  const remainingMs = lockedUntil ? new Date(lockedUntil).getTime() - now : 0
+  const locked = remainingMs > 0
 
   async function onFinish(values: LoginFormValues) {
     setError(null)
@@ -55,20 +74,12 @@ export default function CmsLoginPage() {
       )
 
       if (response?.lockedUntil) {
+        setNow(Date.now())
         setLockedUntil(response.lockedUntil)
       }
     } finally {
       setLoading(false)
     }
-  }
-
-  function formatLockedUntil(value: string) {
-    const date = new Date(value)
-
-    return date.toLocaleString('vi-VN', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
   }
 
   return (
@@ -81,18 +92,23 @@ export default function CmsLoginPage() {
       heroDescription="Quản lý người dùng, kho tài liệu y khoa và theo dõi hoạt động hệ thống ở một nơi duy nhất."
       trustItems={TRUST_ITEMS}
     >
-      {error && (
+      {locked ? (
         <Alert
-          type={lockedUntil ? 'warning' : 'error'}
-          message={error}
-          description={
-            lockedUntil
-              ? `Tài khoản bị khóa đến ${formatLockedUntil(lockedUntil)}.`
-              : undefined
-          }
+          type="warning"
+          message="Tài khoản tạm khoá để bảo vệ bạn"
+          description={`Đã nhập sai mật khẩu nhiều lần liên tiếp. Thử lại sau ${formatRemaining(remainingMs)}.`}
           showIcon
           className="mb-4"
         />
+      ) : lockedUntil ? (
+        <Alert
+          type="info"
+          message="Đã hết thời gian khoá, bạn có thể đăng nhập lại."
+          showIcon
+          className="mb-4"
+        />
+      ) : (
+        error && <Alert type="error" message={error} showIcon className="mb-4" />
       )}
 
       <Form<LoginFormValues>
@@ -130,6 +146,7 @@ export default function CmsLoginPage() {
             htmlType="submit"
             block
             loading={loading}
+            disabled={locked}
           >
             Đăng nhập
           </Button>

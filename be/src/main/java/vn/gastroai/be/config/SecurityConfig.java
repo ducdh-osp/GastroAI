@@ -98,8 +98,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/cms/doctors/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
                       .hasAnyRole("ADMIN", "CONTENT_EDITOR")
-                        .requestMatchers("/api/v1/cms/backup/**")
-                        .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/dashboard/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/runtime-config/**")
