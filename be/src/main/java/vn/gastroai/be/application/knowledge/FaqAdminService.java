@@ -19,14 +19,14 @@ import vn.gastroai.be.infrastructure.persistence.postgres.FaqRepository;
 import java.time.Instant;
 import java.util.List;
 
-/** UC0062 - Quản lý câu hỏi thường gặp (FAQ) cho Admin/Bác sĩ trong CMS. */
+/** UC0062 - Quản lý câu hỏi thường gặp (FAQ) cho Admin / Biên tập chuyên môn y khoa trong CMS. */
 @Service
 public class FaqAdminService {
 
     private static final String TX = "postgresTransactionManager";
     private static final int SORT_STEP = 10;
     private static final String MSG_REVIEW_REQUIRED =
-            "FAQ muốn xuất bản bắt buộc phải có thông tin bác sĩ kiểm duyệt y khoa cho nội dung hiện tại";
+            "FAQ muốn xuất bản bắt buộc phải có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa cho nội dung hiện tại";
 
     private final FaqRepository faqRepository;
 
@@ -166,7 +166,7 @@ public class FaqAdminService {
             // Cần có người duyệt VÀ lần duyệt phải còn hiệu lực cho nội dung hiện tại
             if (reviewer == null || (newReviewer == null && faq.getMedicalReviewedAt() == null)) {
                 throw new IllegalArgumentException(
-                        "Không thể xuất bản FAQ khi chưa có thông tin bác sĩ kiểm duyệt y khoa cho nội dung hiện tại");
+                        "Không thể xuất bản FAQ khi chưa có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa cho nội dung hiện tại");
             }
             faq.setPublished(true);
             faq.setMedicalReviewer(reviewer);

@@ -1,5 +1,30 @@
-import { CloseCircleOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Empty, Input, Popconfirm, Select, Switch, Table, Tag, Tooltip, Typography, message } from 'antd'
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeInvisibleOutlined,
+  PlusOutlined,
+  SafetyCertificateOutlined,
+  SearchOutlined,
+} from '@ant-design/icons'
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Empty,
+  Form,
+  Input,
+  Modal,
+  Popconfirm,
+  Select,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+} from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -13,17 +38,31 @@ import {
 import { listArticleTopics, type ArticleTopic } from '../../api/cmsArticleTopics'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { formatDateTime } from '../../lib/format'
+import { useCmsAuth } from '../../stores/cmsAuthStore'
 
-const { Title, Text } = Typography
+const { Title, Text, Paragraph } = Typography
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'Tất cả trạng thái' },
-  { value: 'PUBLISHED', label: 'Đã xuất bản' },
-  { value: 'DRAFT', label: 'Bản nháp' },
+  { value: 'PUBLISHED', label: 'Đã đăng' },
+  { value: 'DRAFT', label: 'Bản nháp / Chờ duyệt' },
 ]
+
+interface ArticleReviewFormValues {
+  medicalReviewer: string
+  reviewConfirmed: boolean
+}
+
+const ARTICLE_REVIEW_CONFIRM_RULE = {
+  validator: (_: unknown, value: boolean) =>
+    value
+      ? Promise.resolve()
+      : Promise.reject(new Error('Vui lòng xác nhận đã đối chiếu bài viết với tài liệu y khoa đã công bố')),
+}
 
 export default function CmsArticlesPage() {
   const navigate = useNavigate()
+  const { user } = useCmsAuth()
 
   const [articles, setArticles] = useState<CmsArticleSummary[]>([])
   const [topics, setTopics] = useState<ArticleTopic[]>([])
@@ -41,6 +80,9 @@ export default function CmsArticlesPage() {
 
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [reviewArticle, setReviewArticle] = useState<CmsArticleSummary | null>(null)
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [reviewForm] = Form.useForm<ArticleReviewFormValues>()
   const requestId = useRef(0)
 
   useEffect(() => {
@@ -86,23 +128,65 @@ export default function CmsArticlesPage() {
     load()
   }, [load])
 
-  async function handleTogglePublish(article: CmsArticleSummary) {
-    const nextPublished = !article.published
-    if (nextPublished && !article.medicalReviewer?.trim()) {
-      message.warning('Bài viết chưa có bác sĩ duyệt y khoa độc lập. Vui lòng mở chỉnh sửa để hoàn tất kiểm duyệt trước khi xuất bản.')
-      return
+  function handleOpenReview(article: CmsArticleSummary) {
+    reviewForm.resetFields()
+    const defaultReviewer = user?.fullName
+      ? `${user.fullName} (${user.email})`
+      : user?.email || ''
+    reviewForm.setFieldsValue({
+      medicalReviewer: defaultReviewer,
+      reviewConfirmed: false,
+    })
+    setReviewArticle(article)
+  }
+
+  async function handleReviewSubmit(values: ArticleReviewFormValues) {
+    if (!reviewArticle) return
+    setReviewSubmitting(true)
+    try {
+      await publishCmsArticle(reviewArticle.id, {
+        published: true,
+        medicalReviewer: values.medicalReviewer.trim(),
+        version: reviewArticle.version,
+      })
+      message.success('Đã đối chiếu nguồn và duyệt đăng bài viết.')
+      setReviewArticle(null)
+      load()
+    } catch (err: unknown) {
+      message.error(extractArticleError(err, 'Không thể duyệt bài viết.'))
+    } finally {
+      setReviewSubmitting(false)
     }
+  }
+
+  async function handleHide(article: CmsArticleSummary) {
     setTogglingId(article.id)
     try {
       await publishCmsArticle(article.id, {
-        published: nextPublished,
-        medicalReviewer: nextPublished ? article.medicalReviewer : undefined,
+        published: false,
         version: article.version,
       })
-      message.success(nextPublished ? 'Đã xuất bản bài viết.' : 'Đã chuyển về bản nháp.')
+      message.success('Đã ẩn bài viết khỏi thư viện bệnh nhân.')
       load()
     } catch (err: unknown) {
-      message.error(extractArticleError(err, 'Không thể cập nhật trạng thái bài viết.'))
+      message.error(extractArticleError(err, 'Không thể ẩn bài viết.'))
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
+  async function handleRepublish(article: CmsArticleSummary) {
+    setTogglingId(article.id)
+    try {
+      await publishCmsArticle(article.id, {
+        published: true,
+        medicalReviewer: article.medicalReviewer ?? undefined,
+        version: article.version,
+      })
+      message.success('Đã hiển thị lại bài viết.')
+      load()
+    } catch (err: unknown) {
+      message.error(extractArticleError(err, 'Không thể hiển thị lại bài viết.'))
     } finally {
       setTogglingId(null)
     }
@@ -144,32 +228,67 @@ export default function CmsArticlesPage() {
     {
       title: 'Trạng thái',
       key: 'published',
-      width: 100,
-      render: (_, record) => (
-        <Tooltip title={record.published ? 'Đã xuất bản' : 'Bản nháp'}>
-          <Switch
-            checked={record.published}
-            loading={togglingId === record.id}
-            onChange={() => void handleTogglePublish(record)}
-            size="small"
-          />
-        </Tooltip>
-      ),
-    },
-    {
-      title: 'Duyệt y khoa',
-      key: 'medicalReviewer',
-      width: 180,
-      render: (_, record) =>
-        record.medicalReviewer ? (
-          <div>
-            <div className="text-xs font-medium text-slate-700 dark:text-white">{record.medicalReviewer}</div>
-            {record.medicalReviewedAt && (
-              <div className="text-[11px] text-slate-400 dark:text-white">{formatDateTime(record.medicalReviewedAt)}</div>
+      width: 210,
+      render: (_, record) => {
+        const hasValidReview = Boolean(record.medicalReviewer?.trim() && record.medicalReviewedAt)
+        return (
+          <div className="flex items-center gap-2 flex-wrap">
+            {record.published ? (
+              <>
+                <Tag color="green" className="m-0">Đã đăng</Tag>
+                <Popconfirm
+                  title="Ẩn bài viết này?"
+                  description="Bài viết sẽ tạm ẩn khỏi thư viện bệnh nhân mà không bị xóa nội dung gốc."
+                  okText="Ẩn"
+                  cancelText="Hủy"
+                  onConfirm={() => void handleHide(record)}
+                >
+                  <Button size="small" icon={<EyeInvisibleOutlined />} loading={togglingId === record.id}>
+                    Ẩn
+                  </Button>
+                </Popconfirm>
+              </>
+            ) : hasValidReview ? (
+              <>
+                <Tag color="default" className="m-0">Đang ẩn</Tag>
+                <Popconfirm
+                  title="Hiển thị lại bài viết?"
+                  description={`Nội dung đã được ${record.medicalReviewer} đối chiếu nguồn.`}
+                  okText="Hiển thị"
+                  cancelText="Hủy"
+                  onConfirm={() => void handleRepublish(record)}
+                >
+                  <Button size="small" type="primary" ghost icon={<CheckCircleOutlined />} loading={togglingId === record.id}>
+                    Hiển thị lại
+                  </Button>
+                </Popconfirm>
+              </>
+            ) : (
+              <>
+                <Tag color="orange" className="m-0">Chờ duyệt</Tag>
+                <Tooltip title="Biên tập chuyên môn y khoa đối chiếu nguồn y khoa công bố rồi duyệt đăng">
+                  <Button size="small" type="primary" ghost icon={<SafetyCertificateOutlined />} onClick={() => handleOpenReview(record)}>
+                    Duyệt
+                  </Button>
+                </Tooltip>
+              </>
             )}
           </div>
+        )
+      },
+    },
+    {
+      title: 'Đối chiếu nguồn',
+      key: 'medicalReviewer',
+      width: 190,
+      render: (_, record) =>
+        record.medicalReviewer && record.medicalReviewedAt ? (
+          <div>
+            <div className="text-xs font-medium text-slate-700 dark:text-white">{record.medicalReviewer}</div>
+            <div className="text-[11px] text-slate-400 dark:text-white">{formatDateTime(record.medicalReviewedAt)}</div>
+          </div>
         ) : (
-          <span className="text-xs text-slate-400 dark:text-white">Chưa ghi nhận</span>
+          <span className="text-xs text-slate-400 dark:text-white">Chưa đối chiếu nguồn</span>
         ),
     },
     {
@@ -222,11 +341,11 @@ export default function CmsArticlesPage() {
             <Text type="secondary">Kho tri thức</Text>
             <Title level={2} className="mb-1! mt-1!">Bài viết kiến thức tiêu hóa</Title>
             <Text type="secondary">
-              Quản lý các bài viết dài giáo dục sức khỏe đường tiêu hóa cho bệnh nhân, do bác sĩ biên soạn và duyệt y khoa.
+              Soạn thảo và đối chiếu nguồn y khoa đã công bố cho các bài viết giáo dục sức khỏe tiêu hóa hiển thị tới bệnh nhân.
             </Text>
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/cms/articles/new')}>
-            Thêm bài viết mới
+            Viết bài mới
           </Button>
         </div>
 
@@ -313,6 +432,61 @@ export default function CmsArticlesPage() {
             }}
           />
         </Card>
+
+        <Modal
+          title={
+            <div className="flex items-center gap-2 text-teal-700">
+              <SafetyCertificateOutlined />
+              <span>Đối chiếu nguồn y khoa & Duyệt bài viết</span>
+            </div>
+          }
+          open={Boolean(reviewArticle)}
+          onCancel={() => setReviewArticle(null)}
+          footer={null}
+          width={560}
+          destroyOnClose
+        >
+          {reviewArticle && (
+            <Form<ArticleReviewFormValues> form={reviewForm} layout="vertical" onFinish={handleReviewSubmit} className="mt-2">
+              <Alert
+                type="warning"
+                showIcon
+                className="mb-4"
+                message="Nội dung sẽ hiển thị tới bệnh nhân trong Thư viện kiến thức"
+                description="Chỉ duyệt đăng khi Biên tập chuyên môn y khoa đã đối chiếu nội dung bài viết với tài liệu y khoa đã công bố. Đây không phải thẩm định của bác sĩ hành nghề."
+              />
+              <Paragraph className="!mb-1 font-semibold text-slate-800 dark:text-white">{reviewArticle.title}</Paragraph>
+              <div className="mb-4 flex items-center gap-2">
+                <Tag color="cyan">{reviewArticle.category}</Tag>
+                <Link to={`/cms/articles/${reviewArticle.id}/edit`} className="text-xs text-teal-700 underline">
+                  Mở xem/chỉnh sửa toàn văn
+                </Link>
+              </div>
+
+              <Form.Item
+                name="medicalReviewer"
+                label="Người đối chiếu (Biên tập chuyên môn y khoa)"
+                rules={[
+                  { required: true, whitespace: true, message: 'Vui lòng nhập tên người đối chiếu nguồn' },
+                  { max: 200, message: 'Tối đa 200 ký tự' },
+                ]}
+              >
+                <Input placeholder="VD: Nguyễn Văn A - Biên tập chuyên môn y khoa" maxLength={200} />
+              </Form.Item>
+
+              <Form.Item name="reviewConfirmed" valuePropName="checked" rules={[ARTICLE_REVIEW_CONFIRM_RULE]}>
+                <Checkbox>Tôi xác nhận đã đối chiếu nội dung bài viết với tài liệu y khoa đã công bố</Checkbox>
+              </Form.Item>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Button onClick={() => setReviewArticle(null)}>Hủy</Button>
+                <Button type="primary" htmlType="submit" loading={reviewSubmitting}>
+                  Duyệt đăng bài
+                </Button>
+              </div>
+            </Form>
+          )}
+        </Modal>
       </div>
     </CmsAppShell>
   )

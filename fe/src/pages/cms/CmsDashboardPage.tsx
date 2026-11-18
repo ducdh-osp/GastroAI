@@ -31,6 +31,7 @@ import {
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Area,
   AreaChart,
@@ -340,6 +341,11 @@ export default function CmsDashboardPage() {
                           {data.summary.resolvedAlerts} đã xử lý
                         </span>
                       </div>
+                      <div className="mt-2">
+                        <Link to="/cms/triage-alerts" className="text-xs font-medium text-rose-600 hover:text-rose-700 hover:underline">
+                          Xem chi tiết cảnh báo →
+                        </Link>
+                      </div>
                     </div>
                     <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-50 text-rose-600 text-xl">
                       <AlertOutlined />
@@ -495,8 +501,29 @@ export default function CmsDashboardPage() {
             {/* Top Symptoms Bar Chart */}
             <Card
               title={<span className="font-semibold text-slate-800">Top Triệu chứng tiêu hóa được báo cáo</span>}
+              extra={
+                data.topSymptoms.length > 0 ? (
+                  <Space size="small" wrap>
+                    <Link to="/cms/documents" className="text-xs font-medium text-teal-700 hover:underline">
+                      Bổ sung tài liệu RAG
+                    </Link>
+                    <span className="text-slate-300">|</span>
+                    <Link to="/cms/articles/new" className="text-xs font-medium text-teal-700 hover:underline">
+                      Viết bài viết mới
+                    </Link>
+                  </Space>
+                ) : undefined
+              }
               className="rounded-2xl border-slate-100 shadow-sm"
             >
+              {data.topSymptoms.length > 0 && (
+                <Alert
+                  type="info"
+                  showIcon
+                  className="mb-4 text-xs"
+                  message={`Gợi ý nội dung: "${data.topSymptoms[0].symptomName}" đang là triệu chứng được ghi nhận nhiều nhất (${data.topSymptoms[0].totalCount} ca). Admin và Biên tập chuyên môn y khoa nên kiểm tra hoặc bổ sung tài liệu y khoa / bài viết liên quan.`}
+                />
+              )}
               <div className="h-64 w-full">
                 {data.topSymptoms.length === 0 ? (
                   <Empty description="Chưa có ghi nhận triệu chứng trong khoảng thời gian này." image={Empty.PRESENTED_IMAGE_SIMPLE} />

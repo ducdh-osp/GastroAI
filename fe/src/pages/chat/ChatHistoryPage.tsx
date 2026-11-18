@@ -1,6 +1,6 @@
-import { ClockCircleOutlined, LoadingOutlined, MessageOutlined } from '@ant-design/icons'
-import { Alert, Spin, Typography, message } from 'antd'
-import { useEffect, useRef, useState } from 'react'
+import { ClockCircleOutlined, LoadingOutlined, MessageOutlined, SearchOutlined } from '@ant-design/icons'
+import { Alert, Input, Spin, Typography, message } from 'antd'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deleteChatSession, downloadChatSessionPdf, getChatSessionMessages, listChatSessions } from '../../api/chat'
 import type { ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
@@ -10,11 +10,22 @@ import { HistoryMessagePanel } from '../../components/chat/HistoryMessagePanel'
 
 const { Title, Text } = Typography
 
+function getSessionTimeGroup(isoString: string): 'Hôm nay' | '7 ngày qua' | 'Trước đó' {
+  const target = new Date(isoString)
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const diffDays = (startOfToday - new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime()) / 86400000
+  if (diffDays <= 0) return 'Hôm nay'
+  if (diffDays < 7) return '7 ngày qua'
+  return 'Trước đó'
+}
+
 export default function ChatHistoryPage() {
   const navigate = useNavigate()
 
   // ── Danh sách phiên ──
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [loadingSessions, setLoadingSessions] = useState(true)
   const [sessionsError, setSessionsError] = useState<string | null>(null)
 
@@ -92,6 +103,21 @@ export default function ChatHistoryPage() {
       setExportingId(null)
     }
   }
+  const groupedSessions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    const filtered = q
+      ? sessions.filter((s) => s.title.toLowerCase().includes(q))
+      : sessions
+    const groups = new Map<string, ChatSessionSummary[]>()
+    for (const s of filtered) {
+      const label = getSessionTimeGroup(s.updatedAt)
+      const list = groups.get(label) ?? []
+      list.push(s)
+      groups.set(label, list)
+    }
+    return Array.from(groups.entries())
+  }, [sessions, searchQuery])
+
   return (
     <AppShell fixedViewport>
       <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col">
@@ -111,9 +137,19 @@ export default function ChatHistoryPage() {
           {/* ── Cột trái: danh sách phiên ── */}
           <aside className="flex min-h-0 w-80 shrink-0 flex-col">
             <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
-              <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-white/10">
-                <ClockCircleOutlined className="text-teal-600" />
-                <span className="font-medium text-slate-700 dark:text-white text-sm dark:text-white">Danh sách phiên</span>
+              <div className="shrink-0 space-y-2.5 border-b border-slate-100 px-4 py-3 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <ClockCircleOutlined className="text-teal-600" />
+                  <span className="font-medium text-slate-700 dark:text-white text-sm">Danh sách phiên</span>
+                </div>
+                <Input
+                  size="small"
+                  allowClear
+                  prefix={<SearchOutlined className="text-slate-400" />}
+                  placeholder="Tìm kiếm phiên trò chuyện..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
 
               {loadingSessions ? (
@@ -124,26 +160,35 @@ export default function ChatHistoryPage() {
                 <div className="min-h-0 flex-1 p-4">
                   <Alert type="error" message={sessionsError} showIcon />
                 </div>
-              ) : sessions.length === 0 ? (
+              ) : groupedSessions.length === 0 ? (
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-16 text-center">
                   <MessageOutlined className="text-3xl text-slate-300 mb-3" />
                   <Text type="secondary" className="text-sm">
-                    Chưa có phiên chat nào. Hãy bắt đầu tư vấn!
+                    {searchQuery.trim()
+                      ? `Không tìm thấy phiên phù hợp với "${searchQuery.trim()}"`
+                      : 'Chưa có phiên chat nào. Hãy bắt đầu tư vấn!'}
                   </Text>
                 </div>
               ) : (
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                  {sessions.map((session) => (
-                    <HistorySessionItem
-                      key={session.id}
-                      session={session}
-                      isSelected={selectedSession?.id === session.id}
-                      onClick={() => void handleSelectSession(session)}
-                      onDelete={() => void handleDeleteSession(session)}
-                      onExport={() => void handleExport(session)}
-                      deleting={deletingSessionId === session.id}
-                      exporting={exportingId === session.id}
-                    />
+                  {groupedSessions.map(([groupLabel, groupItems]) => (
+                    <div key={groupLabel}>
+                      <div className="sticky top-0 z-10 bg-slate-50/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 backdrop-blur-xs dark:bg-neutral-800/95 dark:text-slate-300">
+                        {groupLabel}
+                      </div>
+                      {groupItems.map((session) => (
+                        <HistorySessionItem
+                          key={session.id}
+                          session={session}
+                          isSelected={selectedSession?.id === session.id}
+                          onClick={() => void handleSelectSession(session)}
+                          onDelete={() => void handleDeleteSession(session)}
+                          onExport={() => void handleExport(session)}
+                          deleting={deletingSessionId === session.id}
+                          exporting={exportingId === session.id}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}

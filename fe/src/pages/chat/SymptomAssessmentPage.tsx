@@ -169,7 +169,7 @@ export default function SymptomAssessmentPage() {
   }
 
   function next() {
-    if (step === 0) {
+    if (step === 1) {
       if (!answers.primarySymptom) {
         showError('Vui lòng chọn triệu chứng chính ở mục 1.')
         return
@@ -187,27 +187,25 @@ export default function SymptomAssessmentPage() {
         return
       }
     }
-    if (step === 1) {
-      if (!answers.reportedSeverity) {
-        showError('Vui lòng chọn mức độ ảnh hưởng của triệu chứng ở mục 1.')
-        return
-      }
-      if (!answers.progression) {
-        showError('Vui lòng chọn diễn tiến triệu chứng gần đây ở mục 2.')
-        return
-      }
-      if (!answers.activityImpact) {
-        showError('Vui lòng chọn mức ảnh hưởng sinh hoạt ở mục 3.')
-        return
-      }
-    }
     setError(null)
     setStep((current) => current + 1)
     containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function submit() {
-    if (!answers.primarySymptom || !answers.duration || !answers.reportedSeverity || !answers.activityImpact || !answers.progression || !answers.patientGroup) {
+    if (!answers.reportedSeverity) {
+      showError('Vui lòng chọn mức độ ảnh hưởng của triệu chứng ở mục 1.')
+      return
+    }
+    if (!answers.progression) {
+      showError('Vui lòng chọn diễn tiến triệu chứng gần đây ở mục 2.')
+      return
+    }
+    if (!answers.activityImpact) {
+      showError('Vui lòng chọn mức ảnh hưởng sinh hoạt ở mục 3.')
+      return
+    }
+    if (!answers.primarySymptom || !answers.duration || !answers.patientGroup) {
       showError('Thiếu thông tin bắt buộc. Hãy quay lại kiểm tra các câu trả lời.')
       return
     }
@@ -277,7 +275,7 @@ export default function SymptomAssessmentPage() {
             <Steps
               current={step}
               responsive
-              items={[{ title: 'Triệu chứng' }, { title: 'Mức độ' }, { title: 'Dấu hiệu cảnh báo' }]}
+              items={[{ title: 'Dấu hiệu cảnh báo' }, { title: 'Triệu chứng' }, { title: 'Mức độ' }]}
             />
           </div>
         )}
@@ -298,10 +296,23 @@ export default function SymptomAssessmentPage() {
                 status={result.careRecommendation === 'EMERGENCY_CARE' ? 'error' : result.careRecommendation === 'SEE_DOCTOR' ? 'warning' : 'success'}
                 icon={result.emergency ? <ExclamationCircleOutlined /> : <CheckCircleOutlined />}
                 title={<span className="flex flex-wrap items-center justify-center gap-2">Mức đánh giá: <Tag color={severityColors[result.severityLevel]}>{severityLabels[result.severityLevel]}</Tag></span>}
-                subTitle="Kết quả dựa trên câu trả lời bạn cung cấp, không phải chẩn đoán."
+                subTitle="Đây là gợi ý sơ bộ dựa trên câu trả lời bạn cung cấp, không thay thế chẩn đoán của bác sĩ."
               />
               <Alert type={careAdvice.type} showIcon message={careAdvice.title} description={careAdvice.description} />
-              {result.emergency && <Alert className="mt-3" type="error" showIcon message="Nếu dấu hiệu đang xảy ra, hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay." />}
+              {result.emergency && (
+                <Alert
+                  className="mt-3"
+                  type="error"
+                  showIcon
+                  message={
+                    <span>
+                      Nếu dấu hiệu đang xảy ra, hãy gọi{' '}
+                      <a href="tel:115" className="font-bold underline">115</a>{' '}
+                      hoặc đến cơ sở y tế gần nhất ngay.
+                    </span>
+                  }
+                />
+              )}
             </Card>
 
             <Card title="Tóm tắt câu trả lời" className="rounded-2xl border-black/5 shadow-sm">
@@ -335,12 +346,89 @@ export default function SymptomAssessmentPage() {
             <div className="flex flex-wrap justify-end gap-3.5 pt-2">
               <Button size="middle" className="!h-10 !rounded-lg !px-5 font-medium" onClick={() => navigate(-1)}>Quay lại</Button>
               <Button size="middle" className="!h-10 !rounded-lg !px-5 font-medium" icon={<HeartOutlined />} onClick={restart}>Đánh giá mới</Button>
-              <Button type="primary" size="middle" className="!h-10 !rounded-lg !px-6 font-medium shadow-xs" onClick={() => navigate('/chat')}>Tư vấn thêm với Trợ lý AI</Button>
+              <Button
+                type="primary"
+                size="middle"
+                className="!h-10 !rounded-lg !px-6 font-medium shadow-xs"
+                onClick={() =>
+                  navigate('/chat', {
+                    state: {
+                      initialQuestion: `Tôi vừa sàng lọc triệu chứng "${symptomLabel(answers.primarySymptom)}" (kéo dài: ${durationLabel(answers.duration)}, mức độ: ${severityLabels[result.severityLevel]}, khuyến nghị: ${careAdvice.title}). Hãy tư vấn thêm giúp tôi về kết quả này.`,
+                    },
+                  })
+                }
+              >
+                Trò chuyện thêm với AI về kết quả này
+              </Button>
             </div>
           </div>
         ) : (
           <Card className="rounded-2xl border-black/5 shadow-sm">
             {step === 0 && (
+              <div className="space-y-6">
+                <div>
+                  <Title level={4} className="mb-1!">Kiểm tra dấu hiệu cảnh báo trước tiên</Title>
+                  <Text type="secondary">Chọn tất cả dấu hiệu bạn đang gặp để hệ thống sàng lọc nguy cơ khẩn cấp ngay. Nếu không có, cứ để trống và nhấn Tiếp tục.</Text>
+                </div>
+
+                {emergencySelected && (
+                  <Alert
+                    className="rounded-xl"
+                    type="error"
+                    showIcon
+                    message="Phát hiện dấu hiệu cần trợ giúp khẩn cấp"
+                    description={
+                      <span>
+                        Hãy ưu tiên gọi{' '}
+                        <a href="tel:115" className="font-bold underline">115</a>{' '}
+                        hoặc đến cơ sở y tế gần nhất ngay lập tức — đừng chờ hoàn thành công cụ sàng lọc trước khi tìm trợ giúp.
+                      </span>
+                    }
+                  />
+                )}
+
+                <section className="rounded-xl border border-red-200 bg-red-50/60 p-4.5">
+                  <div className="mb-3.5 flex items-start gap-2 text-red-900">
+                    <ExclamationCircleOutlined className="mt-1" />
+                    <div>
+                      <h3 className="m-0 font-semibold">Dấu hiệu cần trợ giúp khẩn cấp</h3>
+                      <p className="mb-0 mt-1 text-sm leading-5 text-red-800">Nếu đang gặp một trong các dấu hiệu này, hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay.</p>
+                    </div>
+                  </div>
+                  <Checkbox.Group
+                    value={answers.warningSigns}
+                    onChange={(values) => updateWarningGroup(values as WarningSign[], emergencyWarningOptions)}
+                    className="grid w-full gap-3 sm:grid-cols-2"
+                  >
+                    {emergencyWarningOptions.map((option) => (
+                      <Checkbox key={option.value} value={option.value} className="!m-0 rounded-lg border border-red-100 bg-white px-3.5 py-3 leading-5 dark:border-red-900/50 dark:bg-neutral-800">
+                        {option.label}
+                      </Checkbox>
+                    ))}
+                  </Checkbox.Group>
+                </section>
+
+                <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-4.5">
+                  <div className="mb-3.5 text-amber-950">
+                    <h3 className="m-0 font-semibold">Dấu hiệu nên được nhân viên y tế xem xét</h3>
+                    <p className="mb-0 mt-1 text-sm leading-5 text-amber-900">Các dấu hiệu này sẽ được ghi nhận trong kết quả để bạn trao đổi với nhân viên y tế.</p>
+                  </div>
+                  <Checkbox.Group
+                    value={answers.warningSigns}
+                    onChange={(values) => updateWarningGroup(values as WarningSign[], clinicianReviewWarningOptions)}
+                    className="grid w-full gap-3 sm:grid-cols-2"
+                  >
+                    {clinicianReviewWarningOptions.map((option) => (
+                      <Checkbox key={option.value} value={option.value} className="!m-0 rounded-lg border border-amber-100 bg-white px-3.5 py-3 leading-5 dark:border-amber-900/50 dark:bg-neutral-800">
+                        {option.label}
+                      </Checkbox>
+                    ))}
+                  </Checkbox.Group>
+                </section>
+              </div>
+            )}
+
+            {step === 1 && (
               <div className="space-y-7">
                 <section>
                   <div className="flex items-center gap-2.5">
@@ -441,7 +529,7 @@ export default function SymptomAssessmentPage() {
               </div>
             )}
 
-            {step === 1 && (
+            {step === 2 && (
               <div className="space-y-7">
                 <section>
                   <div className="flex items-center gap-2.5">
@@ -506,56 +594,6 @@ export default function SymptomAssessmentPage() {
                     ))}
                   </div>
                 </section>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-6">
-                <div>
-                  <Title level={4} className="mb-1!">Bạn có đang gặp dấu hiệu nào dưới đây không?</Title>
-                  <Text type="secondary">Chọn tất cả dấu hiệu đang có. Nếu không có, cứ để trống và tiếp tục.</Text>
-                </div>
-
-                <section className="rounded-xl border border-red-200 bg-red-50/60 p-4.5">
-                  <div className="mb-3.5 flex items-start gap-2 text-red-900">
-                    <ExclamationCircleOutlined className="mt-1" />
-                    <div>
-                      <h3 className="m-0 font-semibold">Dấu hiệu cần trợ giúp khẩn cấp</h3>
-                      <p className="mb-0 mt-1 text-sm leading-5 text-red-800">Nếu đang gặp một trong các dấu hiệu này, hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay.</p>
-                    </div>
-                  </div>
-                  <Checkbox.Group
-                    value={answers.warningSigns}
-                    onChange={(values) => updateWarningGroup(values as WarningSign[], emergencyWarningOptions)}
-                    className="grid w-full gap-3 sm:grid-cols-2"
-                  >
-                    {emergencyWarningOptions.map((option) => (
-                      <Checkbox key={option.value} value={option.value} className="!m-0 rounded-lg border border-red-100 bg-white px-3.5 py-3 leading-5 dark:border-red-900/50 dark:bg-neutral-800">
-                        {option.label}
-                      </Checkbox>
-                    ))}
-                  </Checkbox.Group>
-                </section>
-
-                <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-4.5">
-                  <div className="mb-3.5 text-amber-950">
-                    <h3 className="m-0 font-semibold">Dấu hiệu nên được nhân viên y tế xem xét</h3>
-                    <p className="mb-0 mt-1 text-sm leading-5 text-amber-900">Các dấu hiệu này sẽ được ghi nhận trong kết quả để bạn trao đổi với nhân viên y tế.</p>
-                  </div>
-                  <Checkbox.Group
-                    value={answers.warningSigns}
-                    onChange={(values) => updateWarningGroup(values as WarningSign[], clinicianReviewWarningOptions)}
-                    className="grid w-full gap-3 sm:grid-cols-2"
-                  >
-                    {clinicianReviewWarningOptions.map((option) => (
-                      <Checkbox key={option.value} value={option.value} className="!m-0 rounded-lg border border-amber-100 bg-white px-3.5 py-3 leading-5 dark:border-amber-900/50 dark:bg-neutral-800">
-                        {option.label}
-                      </Checkbox>
-                    ))}
-                  </Checkbox.Group>
-                </section>
-
-                {emergencySelected && <Alert className="rounded-xl" type="error" showIcon message="Bạn đã chọn dấu hiệu cần trợ giúp khẩn cấp. Hãy ưu tiên gọi 115 hoặc đến cơ sở y tế gần nhất." />}
               </div>
             )}
 

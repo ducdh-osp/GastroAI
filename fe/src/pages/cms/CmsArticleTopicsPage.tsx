@@ -19,7 +19,7 @@ interface TopicFormValues {
   sortOrder?: number | null
 }
 
-/** UC0066 - Admin/Bác sĩ quản lý chủ đề dùng để phân loại bài viết kiến thức (và FAQ sau này). */
+/** UC0066 - Admin / Biên tập chuyên môn y khoa quản lý chủ đề dùng chung cho bài viết kiến thức và FAQ. */
 export default function CmsArticleTopicsPage() {
   const [topics, setTopics] = useState<ArticleTopic[]>([])
   const [loading, setLoading] = useState(true)

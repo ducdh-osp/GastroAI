@@ -110,6 +110,29 @@ export function CmsBroadcastPage() {
     }
   }
 
+  const handleConfirmBroadcast = (values: SendBroadcastRequest) => {
+    Modal.confirm({
+      title: 'Xác nhận gửi broadcast',
+      content: (
+        <div className="space-y-1.5 text-sm text-slate-700">
+          <p className="mb-0">
+            Tiêu đề: <strong>{values.title}</strong>
+          </p>
+          <p className="mb-0">
+            Thông báo sẽ được gửi tới toàn bộ bệnh nhân (tự động trừ những người đã tắt "Thông báo hệ thống" trong cài đặt cá nhân).
+          </p>
+          <p className="mb-0 font-medium text-red-600">
+            Hành động này không thể thu hồi sau khi gửi.
+          </p>
+        </div>
+      ),
+      okText: 'Xác nhận gửi',
+      cancelText: 'Hủy',
+      centered: true,
+      onOk: () => handleSendBroadcast(values),
+    })
+  }
+
   const handleViewDetail = (item: BroadcastAnnouncement) => {
     setSelectedItem(item)
     setDetailModalOpen(true)
@@ -285,7 +308,7 @@ export function CmsBroadcastPage() {
           <Form
             form={form}
             layout="vertical"
-            onFinish={handleSendBroadcast}
+            onFinish={handleConfirmBroadcast}
             initialValues={{
               targetGroup: 'ALL',
               sendWebSocket: true,
