@@ -132,7 +132,7 @@ public class CmsAuthService {
             throw new IllegalArgumentException("Mật khẩu hiện tại không đúng");
         }
 
-        PatientPasswordPolicy.validate(newPassword);
+        PasswordPolicy.validate(newPassword);
         rejectReusedPassword(user, newPassword);
 
         passwordHistoryRepository.save(new AdminPasswordHistory(user, user.getPasswordHash(), now));

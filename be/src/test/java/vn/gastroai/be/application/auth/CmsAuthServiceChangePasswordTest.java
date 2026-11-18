@@ -164,7 +164,7 @@ class CmsAuthServiceChangePasswordTest {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.changePassword(1L, "matkhau-cu", "yeu12345", request));
 
-        assertEquals(PatientPasswordPolicy.REQUIREMENTS_MESSAGE, ex.getMessage());
+        assertEquals(PasswordPolicy.REQUIREMENTS_MESSAGE, ex.getMessage());
         assertEquals("hash-cu", admin.getPasswordHash());
         assertEquals(2, admin.getFailedLoginAttempts());
         assertEquals(0, admin.getSessionVersion());
