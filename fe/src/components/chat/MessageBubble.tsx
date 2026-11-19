@@ -110,6 +110,12 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
           )}
 
           {message.sources && message.sources.length > 0 && <SourceReferences sources={message.sources} />}
+
+          {!isPatient && message.status !== 'sending' && !isFailed && message.content.trim().length > 0 && (
+            <p className="mt-2.5 mb-0 border-t border-slate-200/70 pt-2 text-xs italic text-slate-500 dark:border-white/10 dark:text-slate-300">
+              Đây là gợi ý sơ bộ dựa trên tài liệu y khoa, không thay thế thăm khám trực tiếp.
+            </p>
+          )}
         </div>
 
         {!isPatient && message.relatedQuestions && message.relatedQuestions.length > 0 && (

@@ -106,7 +106,7 @@ public class KnowledgeArticleAdminService {
 
         if (published) {
             if (request.medicalReviewer() == null || request.medicalReviewer().isBlank()) {
-                throw new IllegalArgumentException("Bài viết muốn xuất bản bắt buộc phải có thông tin bác sĩ kiểm duyệt y khoa");
+                throw new IllegalArgumentException("Bài viết muốn xuất bản bắt buộc phải có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa");
             }
             article.setPublished(true);
             article.setMedicalReviewer(request.medicalReviewer().trim());
@@ -179,7 +179,7 @@ public class KnowledgeArticleAdminService {
                         ? request.medicalReviewer().trim()
                         : article.getMedicalReviewer();
                 if (reviewer == null || reviewer.isBlank()) {
-                    throw new IllegalArgumentException("Bài viết muốn xuất bản bắt buộc phải có thông tin bác sĩ kiểm duyệt y khoa");
+                    throw new IllegalArgumentException("Bài viết muốn xuất bản bắt buộc phải có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa");
                 }
                 article.setPublished(true);
                 article.setMedicalReviewer(reviewer);
@@ -213,7 +213,7 @@ public class KnowledgeArticleAdminService {
                     ? request.medicalReviewer().trim()
                     : article.getMedicalReviewer();
             if (reviewer == null || reviewer.isBlank()) {
-                throw new IllegalArgumentException("Không thể xuất bản bài viết khi chưa có thông tin bác sĩ kiểm duyệt y khoa");
+                throw new IllegalArgumentException("Không thể xuất bản bài viết khi chưa có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa");
             }
             article.setPublished(true);
             article.setMedicalReviewer(reviewer);

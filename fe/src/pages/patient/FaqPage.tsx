@@ -41,44 +41,41 @@ export default function FaqPage() {
 
   const hasQuery = Boolean(activeSearch.trim())
 
-  const MAX_RESULTS = 5
-
-  // Chỉ hiển thị tối đa 5 kết quả khi người dùng ấn Enter tra cứu
-  const { filteredFaqs, totalMatches } = useMemo(() => {
-    if (!hasQuery) return { filteredFaqs: [], totalMatches: 0 }
+  const groupedFaqs = useMemo(() => {
     const q = activeSearch.toLowerCase().trim()
-    const matches = faqs.filter(
-      (faq) =>
-        faq.question.toLowerCase().includes(q) ||
-        faq.answer.toLowerCase().includes(q) ||
-        faq.category.toLowerCase().includes(q)
-    )
-    return {
-      filteredFaqs: matches.slice(0, MAX_RESULTS),
-      totalMatches: matches.length,
-    }
-  }, [faqs, activeSearch, hasQuery])
+    const matched = q
+      ? faqs.filter(
+          (faq) =>
+            faq.question.toLowerCase().includes(q) ||
+            faq.answer.toLowerCase().includes(q) ||
+            faq.category.toLowerCase().includes(q)
+        )
+      : faqs
 
-  const collapseItems = useMemo(() => {
-    return filteredFaqs.map((faq) => ({
-      key: String(faq.id),
-      label: (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-1 pr-2">
-          <span className="font-semibold text-slate-800 dark:text-white text-base">
+    const groups = new Map<string, FaqItem[]>()
+    for (const faq of matched) {
+      const cat = faq.category?.trim() || 'Câu hỏi chung'
+      const list = groups.get(cat) ?? []
+      list.push(faq)
+      groups.set(cat, list)
+    }
+    return Array.from(groups.entries()).map(([category, items]) => ({
+      category,
+      items: items.map((faq) => ({
+        key: String(faq.id),
+        label: (
+          <span className="font-semibold text-slate-800 dark:text-white text-base py-0.5 block">
             {faq.question}
           </span>
-          <Tag color="cyan" className="self-start sm:self-auto shrink-0">
-            {faq.category}
-          </Tag>
-        </div>
-      ),
-      children: (
-        <div className="pt-2 pb-4 text-slate-700 dark:text-white leading-relaxed border-t border-slate-100 dark:text-white dark:border-white/10">
-          <MarkdownContent content={faq.answer} />
-        </div>
-      ),
+        ),
+        children: (
+          <div className="pt-2 pb-4 text-slate-700 dark:text-white leading-relaxed border-t border-slate-100 dark:border-white/10">
+            <MarkdownContent content={faq.answer} />
+          </div>
+        ),
+      })),
     }))
-  }, [filteredFaqs])
+  }, [faqs, activeSearch])
 
   return (
     <AppShell>
@@ -100,14 +97,13 @@ export default function FaqPage() {
           <div className="max-w-xl">
             <Input
               size="large"
-              placeholder="Nhập từ khóa và nhấn Enter để tra cứu (VD: trào ngược, dạ dày...)"
+              placeholder="Tìm câu hỏi của bạn (VD: trào ngược, thang Bristol, dạ dày...)"
               prefix={<SearchOutlined className="text-teal-600 text-lg mr-1 cursor-pointer" onClick={handleSearch} />}
               value={inputSearch}
               onChange={(e) => {
-                setInputSearch(e.target.value)
-                if (!e.target.value.trim()) {
-                  setActiveSearch('')
-                }
+                const nextVal = e.target.value
+                setInputSearch(nextVal)
+                setActiveSearch(nextVal.trim())
               }}
               onPressEnter={handleSearch}
               allowClear
@@ -126,7 +122,7 @@ export default function FaqPage() {
           </div>
         </div>
 
-        {/* Main Content: Accordion */}
+        {/* Main Content: Grouped Accordions */}
         <Card className="rounded-xl shadow-xs border-slate-200 dark:border-slate-800 dark:bg-slate-900/40" styles={{ body: { padding: 16 } }}>
           {loading ? (
             <div className="p-4 space-y-4">
@@ -134,37 +130,27 @@ export default function FaqPage() {
               <Skeleton active paragraph={{ rows: 2 }} />
               <Skeleton active paragraph={{ rows: 2 }} />
             </div>
-          ) : !hasQuery ? (
-            <div className="py-12 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 mb-3 text-xl">
-                <SearchOutlined />
-              </div>
-              <Title level={5} className="!text-slate-700 dark:!text-white !mb-1">
-                Tra cứu câu hỏi thường gặp
-              </Title>
-              <Paragraph type="secondary" className="text-sm max-w-md mx-auto !mb-0">
-                Nhập từ khóa bệnh lý hoặc triệu chứng vào ô tìm kiếm và nhấn Enter để xem các câu hỏi giải đáp.
-              </Paragraph>
-            </div>
-          ) : collapseItems.length > 0 ? (
-            <div className="space-y-3">
-              <Collapse
-                items={collapseItems}
-                bordered={false}
-                defaultActiveKey={collapseItems.length > 0 ? [collapseItems[0].key] : []}
-                className="bg-transparent"
-                expandIconPosition="end"
-              />
-              {totalMatches > MAX_RESULTS && (
-                <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-slate-600 dark:text-slate-300 px-4 py-3 sm:py-3.5 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700/60 shadow-xs">
-                  <span>
-                    Hiển thị <strong>{filteredFaqs.length}</strong> trên tổng số <strong>{totalMatches}</strong> câu hỏi phù hợp nhất.
-                  </span>
-                  <span className="text-teal-600 dark:text-teal-400 font-medium text-xs sm:text-sm">
-                    Thử thêm từ khóa chi tiết hơn để có kết quả chính xác.
-                  </span>
-                </div>
-              )}
+          ) : groupedFaqs.length > 0 ? (
+            <div className="space-y-6">
+              {groupedFaqs.map((group, groupIdx) => (
+                <section key={group.category} className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    <Title level={5} className="!mb-0 !text-teal-800 dark:!text-teal-300">
+                      {group.category}
+                    </Title>
+                    <Tag color="cyan" className="m-0 text-xs">
+                      {group.items.length}
+                    </Tag>
+                  </div>
+                  <Collapse
+                    items={group.items}
+                    bordered={false}
+                    defaultActiveKey={hasQuery && groupIdx === 0 && group.items.length > 0 ? [group.items[0].key] : []}
+                    className="bg-transparent"
+                    expandIconPosition="end"
+                  />
+                </section>
+              ))}
             </div>
           ) : (
             <div className="py-12">
@@ -173,7 +159,9 @@ export default function FaqPage() {
                 description={
                   <div className="space-y-1">
                     <Text className="text-slate-600 dark:text-white font-medium">
-                      Không tìm thấy câu hỏi phù hợp với "{activeSearch}"
+                      {hasQuery
+                        ? `Không tìm thấy câu hỏi phù hợp với "${activeSearch}"`
+                        : 'Chưa có câu hỏi thường gặp nào được công khai.'}
                     </Text>
                     <p className="text-xs text-slate-400 dark:text-slate-400">
                       Hãy thử từ khóa khác hoặc đặt câu hỏi trực tiếp cho Trợ lý AI GastroAI bên dưới.
@@ -194,19 +182,19 @@ export default function FaqPage() {
               </div>
               <div className="space-y-1">
                 <h4 className="font-semibold text-teal-950 text-sm dark:text-white">
-                  Vẫn còn thắc mắc về triệu chứng?
+                  Không tìm thấy câu trả lời?
                 </h4>
                 <p className="text-xs text-teal-800/80 dark:text-teal-200/80">
-                  Trò chuyện riêng tư với Trợ lý AI GastroAI để được giải đáp và sàng lọc triệu chứng ngay tức thì.
+                  Trò chuyện riêng tư với Trợ lý AI GastroAI để được giải đáp theo tình trạng tiêu hóa của riêng bạn.
                 </p>
                 <div className="pt-2">
-                  <Link to="/chat">
+                  <Link to="/chat" state={hasQuery ? { initialQuestion: activeSearch } : undefined}>
                     <Button
                       type="primary"
                       size="small"
                       className="bg-teal-600 hover:bg-teal-700"
                     >
-                      Bắt đầu chat ngay
+                      Hỏi AI trực tiếp
                     </Button>
                   </Link>
                 </div>

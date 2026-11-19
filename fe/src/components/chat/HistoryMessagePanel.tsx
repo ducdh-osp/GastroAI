@@ -193,7 +193,7 @@ export function HistoryMessagePanel({
                       <WarningFilled className="shrink-0 text-red-600 mt-0.5" />
                       <span>
                         <strong className="block">Phát hiện dấu hiệu cần cấp cứu!</strong>
-                        Vui lòng gọi <PhoneOutlined /> <strong>115</strong>.
+                        Vui lòng gọi <PhoneOutlined /> <a href="tel:115" className="font-bold text-red-900 underline">115</a>.
                         {matchedGroupsText && (
                           <span className="mt-1 block text-red-800">Dấu hiệu phát hiện: {matchedGroupsText}</span>
                         )}

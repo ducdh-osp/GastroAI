@@ -25,6 +25,7 @@
 
 | Mã màn hình | File | Tên màn hình | UC |
 | :--- | :--- | :--- | :--- |
+| `SCR-AD-00` | [SCR-AD-00-TrangChu.md](SCR-AD-00-TrangChu.md) | Trang chủ & khung điều hướng | *(không có mã UC riêng — thay thế sidebar, xem file)* |
 | `SCR-AD-01` | [SCR-AD-01-DangNhapQuanTri.md](SCR-AD-01-DangNhapQuanTri.md) | Đăng nhập quản trị | `UC0045` |
 | `SCR-AD-02` | [SCR-AD-02-QuanLyNguoiDung.md](SCR-AD-02-QuanLyNguoiDung.md) | Quản lý người dùng (bệnh nhân) | `UC0046` |
 | `SCR-AD-03` | [SCR-AD-03-PhanQuyenRBAC.md](SCR-AD-03-PhanQuyenRBAC.md) | Phân quyền nhân sự nội bộ | `UC0047` |
@@ -49,13 +50,17 @@
 
 ---
 
+## 1.1 Điều hướng — không còn sidebar
+
+Giống phân hệ bệnh nhân, CMS cũng bỏ sidebar cố định — đăng nhập xong vào thẳng `SCR-AD-00` (Trang chủ), chọn chức năng từ đó. Header cố định (logo, chuông thông báo, tài khoản) trên mọi màn, bấm logo để quay về Trang chủ chọn việc khác. Chi tiết: [SCR-AD-00-TrangChu.md](SCR-AD-00-TrangChu.md).
+
 ## 2. Vì sao các màn hình được nhóm như trên — đặc biệt là "Kho tài liệu y khoa"
 
 Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để giữ đơn giản), ở đây **nhiều UC gộp vào 1 màn** vì đó là cách nhân viên vận hành thực tế làm việc: khi một tài liệu y khoa cần cập nhật, người quản lý tài liệu muốn **thấy luôn trong 1 màn**: tải lên, xem phiên bản cũ, theo dõi đang xử lý tới đâu, tìm lại tài liệu cũ, xoá nếu lỗi thời — tách thành 5 màn riêng biệt (đúng theo 5 mã UC) sẽ bắt họ nhảy qua lại liên tục giữa các màn cho cùng 1 công việc, hiệu quả làm việc giảm hẳn. Nguyên tắc tương tự áp dụng cho "Nhật ký hoạt động" (xem + lọc + cảnh báo bất thường + xuất file đều là các góc nhìn khác nhau trên **cùng một bộ dữ liệu log**, không phải 4 nghiệp vụ tách biệt).
 
 ## 3. Chân dung người dùng cần hình dung
 
-- **Admin**: toàn quyền vận hành — quản lý người dùng, phân quyền, cấu hình hệ thống, xem thống kê toàn diện, và trực xử lý cảnh báo khẩn cấp theo kịch bản cố định ([SCR-AD-13](SCR-AD-13-GiamSatCanhBao.md)). Không cần chuyên môn y tế để làm vai trò này — mọi việc ở đây là vận hành/kỹ thuật, không phải phán đoán lâm sàng.
+- **Admin**: toàn quyền vận hành — quản lý người dùng, phân quyền, cấu hình hệ thống, xem thống kê toàn diện. Với cảnh báo khẩn cấp ([SCR-AD-13](SCR-AD-13-GiamSatCanhBao.md)), hệ thống tự động xử lý phần lớn (push, SMS, gọi tự động) — Admin chỉ xuất hiện ở **đúng 1 bước**: xác nhận escalate tới người liên hệ khẩn cấp khi mọi kênh tự động đều không có phản hồi. Không cần chuyên môn y tế để làm vai trò này — mọi việc ở đây là vận hành/xác nhận, không phải phán đoán lâm sàng.
 - **Biên tập chuyên môn y khoa**: soạn & duyệt nội dung y tế hiển thị cho bệnh nhân hoặc nạp cho AI học (tài liệu RAG, bài viết, FAQ, từ khoá Triage) — làm việc này bằng cách **đối chiếu với tài liệu y khoa đã công bố**, không phải bằng tư cách bác sĩ hành nghề thẩm định. Không có quyền quản lý tài khoản người dùng hay phân quyền hệ thống (ranh giới quan trọng: biên tập nội dung chuyên môn không đồng nghĩa với quyền quản trị hệ thống).
 
 ## 4. Sao lưu & khôi phục dữ liệu (`UC0057`, `UC0058`)
@@ -99,3 +104,6 @@ Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để gi�
 | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
 | v1.1 | 2026-11-17 | Bỏ vai trò "Bác sĩ" (xem §0) — đổi mô hình vai trò thành Admin + Biên tập chuyên môn y khoa; viết lại SCR-AD-01/03/04/07/10/11/13 |
+| v1.2 | 2026-11-19 | Viết lại `SCR-AD-13` theo hướng AI-first (review lại qua `ba-bigtech-10yr` + `ba-gastro-10yr`): hệ thống tự động hoá push/SMS/gọi tự động, Admin chỉ còn 1 bước xác nhận escalate duy nhất thay vì tự tay gọi điện theo kịch bản như v1.1 |
+| v1.3 | 2026-11-19 | `UC0072` (SMS) cắt khỏi phạm vi — `SCR-AD-13` viết lại bỏ bước SMS, rút ngắn mốc "Cần can thiệp" từ 10' xuống 5' để bù lớp đệm đã mất |
+| v1.4 | 2026-11-19 | Bỏ điều hướng kiểu sidebar — thêm `SCR-AD-00` (Trang chủ & header) làm điểm xuất phát duy nhất; cập nhật §1.1 |

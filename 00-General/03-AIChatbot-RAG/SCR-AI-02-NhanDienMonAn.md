@@ -1,8 +1,10 @@
 # SCR-AI-02 — Nhận diện món ăn qua ảnh
 
+> ⚠️ **ĐÃ CẮT KHỎI PHẠM VI ĐỒ ÁN (quyết định 2026-11-19, Đức) — không triển khai.** Giữ lại nội dung dưới đây chỉ để tham khảo/lưu vết lý do thiết kế ban đầu, không phải màn hình cần làm.
+
 | Thuộc tính | Giá trị |
 | :--- | :--- |
-| UC | `UC0044` |
+| UC | `UC0044` — **cắt, không triển khai** |
 | Actor | Bệnh nhân |
 | Mục tiêu nghiệp vụ | Giảm ma sát khi ghi nhật ký ăn uống — chụp ảnh thay vì gõ chữ, đặc biệt hữu ích khi đang ở ngoài, không tiện gõ |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |

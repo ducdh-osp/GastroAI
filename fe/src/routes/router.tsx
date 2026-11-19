@@ -1,4 +1,4 @@
-import { createBrowserRouter, Outlet } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import LoginPage from '../pages/auth/LoginPage'
 import CmsLoginPage from '../pages/cms/CmsLoginPage'
 import CmsHomePage from '../pages/cms/CmsHomePage'
@@ -20,7 +20,6 @@ import BristolPage from '../pages/patient/BristolPage'
 import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
 import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
 import ChatPage from '../pages/chat/ChatPage'
-import ChatHistoryPage from '../pages/chat/ChatHistoryPage'
 import SymptomAssessmentPage from '../pages/chat/SymptomAssessmentPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { CmsProtectedRoute } from './CmsProtectedRoute'
@@ -200,7 +199,7 @@ export const router = createBrowserRouter([
         path: '/chat-history',
         element: (
           <ProtectedRoute>
-            <ChatHistoryPage />
+            <Navigate to="/chat" replace />
           </ProtectedRoute>
         ),
       },

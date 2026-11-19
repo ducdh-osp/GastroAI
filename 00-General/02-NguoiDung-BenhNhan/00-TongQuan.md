@@ -18,6 +18,7 @@
 
 | Mã màn hình | File | Tên màn hình | UC |
 | :--- | :--- | :--- | :--- |
+| `SCR-PT-00` | [SCR-PT-00-TrangChu.md](SCR-PT-00-TrangChu.md) | Trang chủ & khung điều hướng | *(không có mã UC riêng — thay thế sidebar, xem file)* |
 | `SCR-PT-01` | [SCR-PT-01-HoSoBenhLy.md](SCR-PT-01-HoSoBenhLy.md) | Hồ sơ bệnh lý cá nhân | `UC0009`, `UC0010` |
 | `SCR-PT-02` | [SCR-PT-02-NhatKyAnUong.md](SCR-PT-02-NhatKyAnUong.md) | Nhật ký ăn uống | `UC0011`, `UC0020` (phần ăn uống) |
 | `SCR-PT-03` | [SCR-PT-03-LichSuAnUong.md](SCR-PT-03-LichSuAnUong.md) | Lịch sử & biểu đồ ăn uống | `UC0012` |
@@ -45,8 +46,14 @@ Ngoài ra, màn **Xuất nhật ký sức khoẻ ra PDF** (`UC0019`) không ph�
 
 ## 2. Hành trình sử dụng hằng ngày (tổng quan)
 
+Không còn sidebar liệt kê sẵn mọi chức năng — mọi hành trình dưới đây đều xuất phát từ **Trang chủ** (`SCR-PT-00`), nơi duy nhất để chọn chức năng. Header (logo + chuông thông báo + tài khoản) cố định trên mọi màn, bấm logo bất cứ lúc nào để quay về Trang chủ chọn việc khác — xem chi tiết ở [SCR-PT-00-TrangChu.md](SCR-PT-00-TrangChu.md).
+
 ```text
                     [ Bệnh nhân mở app buổi sáng ]
+                                  │
+                                  ▼
+                          [ SCR-PT-00 ]
+                           Trang chủ
                                   │
                    ┌──────────────┼──────────────┐
                    ▼              ▼              ▼
@@ -157,3 +164,4 @@ Mọi màn hình **ghi nhận** dữ liệu (ăn uống, Bristol, xác nhận th
 | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
 | v1.1 | 2026-11-17 | Thêm trường "Liên hệ khẩn cấp" vào `SCR-PT-01` — cần cho kịch bản escalate ở `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md` sau khi bỏ vai trò "Bác sĩ" |
+| v1.2 | 2026-11-19 | Bỏ điều hướng kiểu sidebar — thêm `SCR-PT-00` (Trang chủ & header) làm điểm xuất phát duy nhất để chọn chức năng; cập nhật §2 |

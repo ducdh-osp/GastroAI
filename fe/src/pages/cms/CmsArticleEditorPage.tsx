@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined, EyeOutlined, FormOutlined, SaveOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, EyeOutlined, FormOutlined, SaveOutlined, SendOutlined } from '@ant-design/icons'
 import {
   Alert,
   Button,
@@ -11,7 +11,6 @@ import {
   Row,
   Select,
   Spin,
-  Switch,
   Tabs,
   Typography,
   message,
@@ -27,7 +26,6 @@ import {
   type CmsArticleInput,
 } from '../../api/cmsArticles'
 import { listArticleTopics, type ArticleTopic } from '../../api/cmsArticleTopics'
-import { listCmsDoctors, type CmsDoctorOption } from '../../api/cmsDoctors'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 
@@ -42,8 +40,6 @@ interface FormValues {
   sourceName: string
   sourceUrl: string
   sourceCheckedAt?: dayjs.Dayjs
-  medicalReviewer?: string
-  published: boolean
   sortOrder?: number
 }
 
@@ -54,58 +50,23 @@ export default function CmsArticleEditorPage() {
 
   const [form] = Form.useForm<FormValues>()
   const [topics, setTopics] = useState<ArticleTopic[]>([])
-  const [doctors, setDoctors] = useState<CmsDoctorOption[]>([])
   const [articleVersion, setArticleVersion] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
+  const [submitMode, setSubmitMode] = useState<'draft' | 'review'>('review')
   const [error, setError] = useState<string | null>(null)
   const [contentWatch, setContentWatch] = useState('')
-
-  const getDoctorSelectOptions = (existingReviewer?: string | null) => {
-    const list = doctors.map((d) => {
-      const val = d.fullName ? `${d.fullName} (${d.email})` : d.displayName
-      return {
-        value: val,
-        label: (
-          <div className="flex items-center justify-between py-0.5">
-            <span className="font-medium text-slate-800 dark:text-white">{d.fullName ?? d.displayName}</span>
-            <span className="text-xs text-slate-400">({d.email})</span>
-          </div>
-        ),
-        searchKey: `${d.fullName ?? ''} ${d.displayName} ${d.email}`.toLowerCase(),
-      }
-    })
-    if (existingReviewer && existingReviewer.trim() && !list.some((o) => o.value === existingReviewer.trim())) {
-      list.unshift({
-        value: existingReviewer.trim(),
-        label: (
-          <div className="flex items-center justify-between py-0.5">
-            <span className="font-medium text-slate-800 dark:text-white">{existingReviewer.trim()}</span>
-            <span className="text-xs text-amber-500">(Bác sĩ đã duyệt trước đó)</span>
-          </div>
-        ),
-        searchKey: existingReviewer.toLowerCase(),
-      })
-    }
-    return list
-  }
 
   useEffect(() => {
     listArticleTopics()
       .then((data) => setTopics(data))
-      .catch(() => {})
-    listCmsDoctors()
-      .then((data) => setDoctors(data))
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   useEffect(() => {
     if (!id) {
-      // Default values cho bài viết mới
       form.setFieldsValue({
-        published: false,
         sourceCheckedAt: dayjs(),
-        medicalReviewer: undefined,
       })
       return
     }
@@ -124,8 +85,6 @@ export default function CmsArticleEditorPage() {
           sourceName: article.sourceName,
           sourceUrl: article.sourceUrl,
           sourceCheckedAt: article.sourceCheckedAt ? dayjs(article.sourceCheckedAt) : undefined,
-          medicalReviewer: article.medicalReviewer || undefined,
-          published: article.published,
           sortOrder: article.sortOrder,
         })
         setContentWatch(article.content || '')
@@ -140,10 +99,17 @@ export default function CmsArticleEditorPage() {
     setContentWatch(val)
   }
 
+  function triggerSubmit(mode: 'draft' | 'review') {
+    setSubmitMode(mode)
+    form.submit()
+  }
+
   async function handleSubmit(values: FormValues) {
     setSaving(true)
     setError(null)
     try {
+      // Theo SCR-AD-11: Lưu nháp hoặc Gửi duyệt đều KHÔNG tự động công khai ngay;
+      // Biên tập chuyên môn y khoa phải đối chiếu nguồn và bấm Duyệt riêng ở danh sách.
       const payload: CmsArticleInput = {
         title: values.title.trim(),
         slug: values.slug?.trim() || undefined,
@@ -153,18 +119,21 @@ export default function CmsArticleEditorPage() {
         sourceName: values.sourceName.trim(),
         sourceUrl: values.sourceUrl.trim(),
         sourceCheckedAt: values.sourceCheckedAt ? values.sourceCheckedAt.format('YYYY-MM-DD') : undefined,
-        medicalReviewer: values.medicalReviewer?.trim() || undefined,
-        published: values.published,
+        medicalReviewer: undefined,
+        published: false,
         sortOrder: values.sortOrder,
         version: isEdit ? articleVersion : undefined,
       }
 
       if (isEdit && id) {
         await updateCmsArticle(Number(id), payload)
-        message.success('Đã cập nhật bài viết thành công.')
       } else {
         await createCmsArticle(payload)
-        message.success('Đã tạo bài viết mới thành công.')
+      }
+      if (submitMode === 'review') {
+        message.success('Đã gửi bài viết sang trạng thái Chờ duyệt. Biên tập chuyên môn y khoa cần đối chiếu nguồn và bấm Duyệt trong danh sách.')
+      } else {
+        message.success('Đã lưu bản nháp bài viết.')
       }
       navigate('/cms/articles')
     } catch (err: unknown) {
@@ -184,9 +153,12 @@ export default function CmsArticleEditorPage() {
             Quay lại danh sách bài viết
           </Button>
           <div className="flex gap-2">
-            <Button onClick={() => navigate('/cms/articles')}>Huỷ</Button>
-            <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => form.submit()}>
-              {isEdit ? 'Lưu thay đổi' : 'Tạo bài viết'}
+            <Button onClick={() => navigate('/cms/articles')} disabled={saving}>Huỷ</Button>
+            <Button icon={<SaveOutlined />} loading={saving && submitMode === 'draft'} disabled={saving} onClick={() => triggerSubmit('draft')}>
+              Lưu nháp
+            </Button>
+            <Button type="primary" icon={<SendOutlined />} loading={saving && submitMode === 'review'} disabled={saving} onClick={() => triggerSubmit('review')}>
+              Gửi duyệt
             </Button>
           </div>
         </div>
@@ -308,62 +280,16 @@ export default function CmsArticleEditorPage() {
                 </Card>
               </Col>
 
-              {/* Cột phải: Cài đặt xuất bản & nguồn */}
+              {/* Cột phải: Quy trình duyệt & nguồn */}
               <Col xs={24} lg={8}>
-                <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Xuất bản & Kiểm duyệt">
-                  {isEdit && (
-                    <Alert
-                      type="info"
-                      showIcon
-                      className="mb-4 text-xs"
-                      message="Quy định kiểm duyệt y khoa"
-                      description="Khi sửa nội dung bài viết đã công khai mà không có thông tin duyệt y khoa mới, bài viết sẽ tự động chuyển về Bản nháp để yêu cầu kiểm duyệt lại."
-                    />
-                  )}
-
-                  <Form.Item name="published" label="Trạng thái xuất bản" valuePropName="checked">
-                    <Switch checkedChildren="Công khai" unCheckedChildren="Bản nháp" />
-                  </Form.Item>
-
-                  <Form.Item
-                    noStyle
-                    shouldUpdate={(prev, curr) => prev.published !== curr.published}
-                  >
-                    {({ getFieldValue }) => {
-                      const isPublished = Boolean(getFieldValue('published'))
-                      return (
-                        <Form.Item
-                          name="medicalReviewer"
-                          label="Bác sĩ duyệt y khoa"
-                          extra={
-                            isPublished
-                              ? 'Bắt buộc khi xuất bản công khai. Người duyệt phải độc lập với người biên soạn.'
-                              : 'Chọn bác sĩ hoặc chuyên gia phụ trách duyệt nội dung bài viết này.'
-                          }
-                          rules={[
-                            {
-                              required: isPublished,
-                              whitespace: true,
-                              message: 'Vui lòng chọn bác sĩ duyệt y khoa trước khi công khai bài viết',
-                            },
-                            { max: 200, message: 'Tối đa 200 ký tự' },
-                          ]}
-                        >
-                          <Select
-                            showSearch
-                            allowClear
-                            placeholder="Tìm kiếm và chọn bác sĩ duyệt y khoa..."
-                            options={getDoctorSelectOptions(getFieldValue('medicalReviewer'))}
-                            filterOption={(input, option) =>
-                              Boolean((option as { searchKey?: string })?.searchKey?.includes(input.toLowerCase().trim()))
-                            }
-                            notFoundContent="Không tìm thấy bác sĩ phù hợp"
-                          />
-                        </Form.Item>
-                      )
-                    }}
-                  </Form.Item>
-
+                <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Quy trình duyệt & hiển thị">
+                  <Alert
+                    type="info"
+                    showIcon
+                    className="mb-4 text-xs"
+                    message="Tách biệt soạn thảo và duyệt đăng"
+                    description="Bài viết sau khi Lưu nháp hoặc Gửi duyệt sẽ ở trạng thái Chờ duyệt, không tự công khai ngay. Biên tập chuyên môn y khoa cần đối chiếu với tài liệu y khoa đã công bố và bấm Duyệt riêng ở danh sách bài viết."
+                  />
 
                   <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn sẽ hiển thị trước.">
                     <InputNumber min={0} className="w-full" placeholder="0" />

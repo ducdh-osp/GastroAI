@@ -18,7 +18,6 @@ import {
   LineChartOutlined,
   LogoutOutlined,
   MedicineBoxOutlined,
-  MessageOutlined,
   QuestionCircleOutlined,
   ScanOutlined,
 } from '@ant-design/icons'
@@ -37,7 +36,6 @@ const NAV_ITEMS = [
   { key: 'notifications', label: 'Thông báo', icon: <BellOutlined />, to: '/notifications' },
   { key: 'home', label: 'Trang chủ', icon: <HomeOutlined />, to: '/' },
   { key: 'chat', label: 'Tư vấn sức khỏe', icon: <CommentOutlined />, to: '/chat' },
-  { key: 'chat-history', label: 'Lịch sử phiên chat', icon: <MessageOutlined />, to: '/chat-history' },
   { key: 'articles', label: 'Bài viết tiêu hoá', icon: <FileSearchOutlined />, to: '/articles' },
   { key: 'faq', label: 'Hỏi đáp thường gặp', icon: <QuestionCircleOutlined />, to: '/faq' },
   { key: 'medical-profile', label: 'Hồ sơ bệnh lý', icon: <FileTextOutlined />, to: '/medical-profile' },

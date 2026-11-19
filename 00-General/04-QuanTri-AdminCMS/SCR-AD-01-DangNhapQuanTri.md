@@ -42,7 +42,7 @@ Không có nút "Đăng ký" ở màn này — tài khoản nội bộ chỉ đ�
 | Khác biệt duy nhất so với cổng bệnh nhân | Vì sao |
 | :--- | :--- |
 | Không có luồng "Đăng ký" | Tài khoản nội bộ do Admin cấp (`SCR-AD-03`), không tự phục vụ |
-| Sau đăng nhập, hệ thống tự route theo vai trò đã lưu sẵn trong tài khoản — không hỏi lại người dùng | Admin và Biên tập chuyên môn y khoa thấy bộ menu khác nhau ngay từ đầu (xem ma trận phân quyền ở từng màn), nhưng việc xác định "ai đang là ai" là trách nhiệm của hệ thống, không phải của người đăng nhập |
+| Sau đăng nhập, luôn vào Trang chủ CMS (`SCR-AD-00`) — hệ thống tự route theo vai trò đã lưu sẵn trong tài khoản, không hỏi lại người dùng | Admin và Biên tập chuyên môn y khoa thấy bộ ô chức năng khác nhau trên cùng 1 Trang chủ (xem [SCR-AD-00](SCR-AD-00-TrangChu.md) §3 và ma trận phân quyền ở từng màn), nhưng việc xác định "ai đang là ai" là trách nhiệm của hệ thống, không phải của người đăng nhập |
 
 > **Ghi chú khoảng cách với code hiện tại**: bản dựng hiện tại ở `CmsLoginPage.tsx` có radio chọn "Admin"/"Bác sĩ" ngay tại màn đăng nhập (người dùng tự khai vai trò, gửi lên server để server biết tra bảng nào). Đây là thiết kế cần sửa độc lập với việc bỏ Doctor — kể cả khi còn 2 loại tài khoản, hệ thống vẫn nên tự xác định được loại tài khoản từ email nhập vào, không cần hỏi người dùng. Khi bỏ hẳn bảng Doctor riêng, vấn đề này tự nhiên biến mất vì chỉ còn 1 nơi để tra.
 

@@ -30,7 +30,7 @@
 
 | UC | Tên | Vì sao không tách màn |
 | :--- | :--- | :--- |
-| `UC0003` | Đăng xuất | Người dùng không cần "1 màn hình" để đăng xuất — chỉ cần 1 hành động rõ ràng ở menu tài khoản, có xác nhận nhẹ để tránh bấm nhầm. |
+| `UC0003` | Đăng xuất | Người dùng không cần "1 màn hình" để đăng xuất — chỉ cần 1 hành động rõ ràng ở dropdown tài khoản trên header (xem `02-NguoiDung-BenhNhan/SCR-PT-00-TrangChu.md` §2), có xác nhận nhẹ để tránh bấm nhầm. |
 | `UC0006` | Phân quyền RBAC cơ bản | Đây là quy tắc "ai được làm gì", không phải thứ bệnh nhân/Admin "thao tác" trên 1 màn hình riêng — nó thấm vào mọi màn hình khác (ẩn/hiện chức năng theo vai trò). UI để *gán* vai trò nằm ở `UC0047`. |
 
 ---
@@ -69,9 +69,12 @@
                                          │    (không bắt nhập lại  │
                                          │     từ đầu)             │
                                          ▼                         ▼
-                              [ Đã đăng nhập — bắt đầu trò chuyện với AI ]
-                                     (→ 02-NguoiDung-BenhNhan/)
+                                  [ SCR-PT-00 / SCR-AD-00 ]
+                                   Trang chủ — chọn chức năng
+                                  (→ 02-NguoiDung-BenhNhan/ hoặc
+                                     → 04-QuanTri-AdminCMS/)
                                          │
+                   (Mọi lúc, từ dropdown tài khoản trên header)
                           ┌──────────────┼──────────────┐
                           ▼              ▼               ▼
                    "Đổi mật khẩu"  "Ai từng đăng    "Thoát ra"
@@ -93,7 +96,7 @@
 8. **Đổi mật khẩu (`UC0005` → `SCR-AUTH-06`)`**: khác bước 7 ở chỗ người dùng **đang đăng nhập**, nên cần xác nhận lại mật khẩu hiện tại trước khi cho đổi — đây là bước xác thực lại danh tính (re-authentication) cho một thao tác nhạy cảm, phòng trường hợp ai đó dùng chung máy/thiết bị chưa đăng xuất.
 9. **Lịch sử đăng nhập (`UC0007` → `SCR-AUTH-07`)**: tính năng **tạo niềm tin** — với dữ liệu sức khoẻ, người dùng cần cảm thấy họ có thể tự kiểm tra "có ai khác đang vào tài khoản của tôi không" bất cứ lúc nào, không phải chờ liên hệ hỗ trợ.
 10. **Phân quyền (`UC0006`)**: không phải một hành trình người dùng trải nghiệm trực tiếp — là quy tắc nền để các phân hệ khác biết "ai được thấy gì".
-11. **Kết thúc hành trình Auth**: ngay khi đăng nhập thành công, người dùng nên được đưa thẳng tới nơi họ có thể bắt đầu trò chuyện với AI hoặc tiếp tục việc đang dang dở — đây là bàn giao sang `02-NguoiDung-BenhNhan/`.
+11. **Kết thúc hành trình Auth**: ngay khi đăng nhập thành công, người dùng vào thẳng **Trang chủ** (`SCR-PT-00` cho bệnh nhân, `SCR-AD-00` cho nhân sự CMS) — nơi duy nhất để chọn chức năng tiếp theo, không còn menu cố định liệt kê sẵn mọi thứ. Đây là bàn giao sang `02-NguoiDung-BenhNhan/` hoặc `04-QuanTri-AdminCMS/`.
 
 ---
 
@@ -172,3 +175,4 @@ Link xác thực tài khoản có thể "sống" lâu hơn (người dùng có t
 | v1.1 | 2026-11-14 | Tách theo màn hình thành thư mục riêng | BA |
 | v2.0 | 2026-11-14 | Viết lại hoàn toàn theo trải nghiệm người dùng thực tế thay vì mô tả theo code |
 | v2.1 | 2026-11-17 | Bỏ vai trò "Bác sĩ" khỏi cổng CMS (xem lý do ở `04-QuanTri-AdminCMS/00-TongQuan.md`) — chỉ còn "Admin" ở ma trận phân quyền §5 | BA |
+| v2.2 | 2026-11-19 | Điểm đến sau đăng nhập đổi thành Trang chủ (`SCR-PT-00`/`SCR-AD-00`) thay vì "vào thẳng app" — đổi mật khẩu/đăng xuất/lịch sử đăng nhập giờ truy cập qua dropdown tài khoản trên header, không còn sidebar | BA |
