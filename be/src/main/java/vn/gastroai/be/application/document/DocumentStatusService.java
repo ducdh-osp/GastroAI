@@ -52,6 +52,9 @@ public class DocumentStatusService {
         document.setStatus(DocumentStatus.PROCESSING);
         document.setProcessingStage(DocumentProcessingStage.EXTRACTION);
         document.setErrorMessage(null);
+        // Xu ly lai thi noi dung co the khac, phai xac nhan lai.
+        document.setContentApprovedAt(null);
+        document.setContentApprovedBy(null);
 
         documentRepository.save(document);
     }
@@ -77,11 +80,8 @@ public class DocumentStatusService {
         document.setStatus(DocumentStatus.DONE);
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
-
-        if (!document.isCurrentVersion() && rootOf(document).getUnpublishedAt() == null) {
-            documentRepository.clearCurrent(document.groupId());
-            document.setCurrentVersion(true);
-        }
+        // SCR-AD-04 §3.1b - xu ly ky thuat xong chua phai la xong: cho Bien tap xac nhan noi dung
+        // (approveContent) roi chatbot moi dung. Ban dang dung (neu co) van phuc vu trong luc cho.
 
         documentRepository.save(document);
     }
@@ -111,9 +111,31 @@ public class DocumentStatusService {
             DocumentStatus status,
             int page,
             int size) {
+        return list(query, status, null, null, page, size);
+    }
+
+    /**
+     * UC0055 / SCR-AD-04 §3.4 - tìm theo tên, nguồn và thời điểm cập nhật.
+     * Ngày lọc tính theo giờ Việt Nam, cả hai đầu đều tính trọn ngày.
+     */
+    @Transactional(readOnly = true)
+    public vn.gastroai.be.api.document.DocumentPageResponse list(
+            String query,
+            DocumentStatus status,
+            java.time.LocalDate updatedFrom,
+            java.time.LocalDate updatedTo,
+            int page,
+            int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
+        if (updatedFrom != null && updatedTo != null && updatedFrom.isAfter(updatedTo)) {
+            throw new IllegalArgumentException("Từ ngày phải trước hoặc bằng Đến ngày");
+        }
+        Instant updatedFromInclusive = updatedFrom == null ? null
+                : updatedFrom.atStartOfDay(vn.gastroai.be.application.support.VietnamDateRange.ZONE).toInstant();
+        Instant updatedToExclusive = updatedTo == null ? null
+                : updatedTo.plusDays(1).atStartOfDay(vn.gastroai.be.application.support.VietnamDateRange.ZONE).toInstant();
 
         String normalizedQuery = query == null || query.isBlank()
                 ? ""
@@ -139,6 +161,10 @@ public class DocumentStatusService {
 
         List<DocumentListRow> filtered = latestPerGroup.stream()
                 .filter(d -> status == null || d.getStatus() == status)
+                .filter(d -> updatedFromInclusive == null
+                        || (d.getUpdatedAt() != null && !d.getUpdatedAt().isBefore(updatedFromInclusive)))
+                .filter(d -> updatedToExclusive == null
+                        || (d.getUpdatedAt() != null && d.getUpdatedAt().isBefore(updatedToExclusive)))
                 .filter(d -> normalizedQuery.isEmpty()
                         || (d.getTitle() != null && vn.gastroai.be.application.support.VietnameseText
                                 .normalize(d.getTitle()).contains(normalizedQuery))
@@ -184,7 +210,8 @@ public class DocumentStatusService {
                             row.getVersionNo(),
                             group == null ? null : group.getCurrentVersionNo(),
                             group == null ? 1 : group.getVersionCount().intValue(),
-                            group != null && group.getUnpublishedAt() != null);
+                            group != null && group.getUnpublishedAt() != null,
+                            row.getContentApprovedAt() != null);
                 })
                 .toList();
 
@@ -217,20 +244,20 @@ public class DocumentStatusService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
         return documentRepository.findGroup(document.groupId()).stream()
                 .map(d -> new DocumentVersionResponse(d.getId(), d.getVersionNo(), d.getTitle(), d.getStatus(),
-                        d.isCurrentVersion(), d.getUploadedAt(), d.getErrorMessage()))
+                        d.isCurrentVersion(), d.getUploadedAt(), d.getErrorMessage(),
+                        d.getContentApprovedAt() != null, d.getContentApprovedBy(), d.getContentApprovedAt()))
                 .toList();
     }
 
     @Transactional
     public void activateVersion(Long documentId, Long versionId) {
-        Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
-        Document target = documentRepository.findById(versionId)
-                .filter(v -> v.groupId().equals(document.groupId()))
-                .orElseThrow(() -> new ResourceNotFoundException("Phiên bản không thuộc tài liệu này"));
+        Document target = versionInGroup(documentId, versionId);
 
         if (target.getStatus() != DocumentStatus.DONE) {
             throw new IllegalStateException("Chỉ dùng được phiên bản đã xử lý xong");
+        }
+        if (target.getContentApprovedAt() == null) {
+            throw new IllegalStateException("Phiên bản này chưa được Biên tập xác nhận nội dung nên chưa dùng cho AI được");
         }
         clearUnpublishedFlag(target);
         if (target.isCurrentVersion()) {
@@ -238,6 +265,36 @@ public class DocumentStatusService {
         }
         documentRepository.clearCurrent(target.groupId());
         target.setCurrentVersion(true);
+        documentRepository.save(target);
+    }
+
+    /**
+     * UC0048 / SCR-AD-04 §3.1b - Biên tập xác nhận đã đối chiếu nội dung với nguồn y khoa đã công bố.
+     * Sau bước này chatbot mới dùng phiên bản: nó thành bản đang dùng nếu mới hơn bản hiện tại
+     * và tài liệu không bị gỡ.
+     */
+    @Transactional
+    public void approveContent(Long documentId, Long versionId, String approverEmail) {
+        Document target = versionInGroup(documentId, versionId);
+
+        if (target.getStatus() != DocumentStatus.DONE) {
+            throw new IllegalStateException("Chỉ xác nhận được phiên bản đã xử lý xong");
+        }
+        if (target.getContentApprovedAt() != null) {
+            throw new IllegalStateException("Phiên bản này đã được xác nhận nội dung");
+        }
+        target.setContentApprovedAt(Instant.now());
+        target.setContentApprovedBy(approverEmail);
+
+        boolean newerThanCurrent = documentRepository.findGroup(target.groupId()).stream()
+                .filter(Document::isCurrentVersion)
+                .findFirst()
+                .map(current -> target.getVersionNo() > current.getVersionNo())
+                .orElse(true);
+        if (!target.isCurrentVersion() && newerThanCurrent && rootOf(target).getUnpublishedAt() == null) {
+            documentRepository.clearCurrent(target.groupId());
+            target.setCurrentVersion(true);
+        }
         documentRepository.save(target);
     }
 
@@ -269,16 +326,16 @@ public class DocumentStatusService {
         documentRepository.save(root);
     }
 
-    /** UC0050 - dang lai: bat phien ban DONE moi nhat cua nhom. */
+    /** UC0050 - dang lai: bat phien ban DONE moi nhat da duoc Bien tap xac nhan noi dung. */
     @Transactional
     public void publish(Long documentId) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
         Long groupId = document.groupId();
         Document latestDone = documentRepository.findGroup(groupId).stream()
-                .filter(v -> v.getStatus() == DocumentStatus.DONE)
+                .filter(v -> v.getStatus() == DocumentStatus.DONE && v.getContentApprovedAt() != null)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Chưa có phiên bản nào xử lý xong để đăng"));
+                .orElseThrow(() -> new IllegalStateException("Chưa có phiên bản nào được xác nhận nội dung để đăng"));
 
         clearUnpublishedFlag(latestDone);
         if (latestDone.isCurrentVersion()) {
@@ -335,6 +392,15 @@ public class DocumentStatusService {
         int start = Math.max(0, index - SNIPPET_RADIUS);
         int end = Math.min(text.length(), index + q.length() + SNIPPET_RADIUS);
         return (start > 0 ? "…" : "") + text.substring(start, end) + (end < text.length() ? "…" : "");
+    }
+
+    /** Phiên bản versionId phải thuộc cùng tài liệu với documentId, nếu không coi như không tìm thấy. */
+    private Document versionInGroup(Long documentId, Long versionId) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
+        return documentRepository.findById(versionId)
+                .filter(v -> v.groupId().equals(document.groupId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Phiên bản không thuộc tài liệu này"));
     }
 
     /** Dong goc cua nhom chua phien ban nay (chinh no neu no la ban goc). */

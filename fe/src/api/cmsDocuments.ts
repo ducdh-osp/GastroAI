@@ -24,11 +24,16 @@ export interface CmsDocumentItem {
   currentVersionNo: number | null
   versionCount: number
   unpublished: boolean
+  /** Bản mới nhất đã được Biên tập xác nhận nội dung chưa (SCR-AD-04 §3.1b). */
+  contentApproved: boolean
 }
 
 export async function listCmsDocuments(params: {
   q?: string
   status?: DocumentStatus
+  /** Ngày cập nhật, dạng YYYY-MM-DD theo giờ Việt Nam. */
+  updatedFrom?: string
+  updatedTo?: string
   page?: number
   size?: number
 } = {}): Promise<CmsDocumentPage> {
@@ -70,6 +75,9 @@ export interface CmsDocumentVersion {
   currentVersion: boolean
   uploadedAt: string
   errorMessage: string | null
+  contentApproved: boolean
+  contentApprovedBy: string | null
+  contentApprovedAt: string | null
 }
 export interface CmsDocumentStats {
   total: number
@@ -114,6 +122,10 @@ export async function listCmsDocumentVersions(documentId: number): Promise<CmsDo
 
 export async function activateCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/activate`)
+}
+/** SCR-AD-04 §3.1b - chỉ Biên tập gọi được (BE trả 403 với Admin). */
+export async function approveCmsDocumentContent(documentId: number, versionId: number): Promise<void> {
+  await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/approve`)
 }
 export async function deleteCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.delete(`/documents/${documentId}/versions/${versionId}`)

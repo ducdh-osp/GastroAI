@@ -1,5 +1,6 @@
 package vn.gastroai.be.api.document;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,6 +11,7 @@ import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -52,9 +54,11 @@ public class DocumentUploadController {
     public ResponseEntity<DocumentPageResponse> list(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) DocumentStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate updatedFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate updatedTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size) {
-        return ResponseEntity.ok(documentStatusService.list(q, status, page, size));
+        return ResponseEntity.ok(documentStatusService.list(q, status, updatedFrom, updatedTo, page, size));
     }
 
     @PostMapping("/{documentId}/retry")
@@ -65,8 +69,7 @@ public class DocumentUploadController {
 
     /**
      * UC0049 - tai len phien ban moi cho 1 tai lieu da co. Ban moi chua duoc dung
-     * cho
-     * toi khi xu ly xong (xem DocumentStatusService.markDone).
+     * cho toi khi xu ly xong VA Bien tap xac nhan noi dung (xem approveContent).
      */
     @PostMapping("/{documentId}/versions")
     public ResponseEntity<DocumentStatusResponse> uploadVersion(
@@ -82,6 +85,17 @@ public class DocumentUploadController {
     @GetMapping("/{documentId}/versions")
     public ResponseEntity<List<DocumentVersionResponse>> listVersions(@PathVariable Long documentId) {
         return ResponseEntity.ok(documentStatusService.listVersions(documentId));
+    }
+
+    /** UC0048 / SCR-AD-04 §3.1b - Biên tập xác nhận nội dung trước khi chatbot dùng (SecurityConfig chỉ cho CONTENT_EDITOR). */
+    @PostMapping("/{documentId}/versions/{versionId}/approve")
+    public ResponseEntity<Void> approveContent(
+            @PathVariable Long documentId,
+            @PathVariable Long versionId) {
+        documentStatusService.approveContent(documentId, versionId, auditLogService.currentActorEmail());
+        auditLogService.record(AuditAction.DOCUMENT_APPROVE_CONTENT, "DOCUMENT", documentId,
+                "Xác nhận nội dung phiên bản id=" + versionId);
+        return ResponseEntity.noContent().build();
     }
 
     /** UC0049 - chuyen chatbot sang dung 1 phien ban cu (phai da xu ly xong). */
@@ -103,7 +117,7 @@ public class DocumentUploadController {
         return ResponseEntity.noContent().build();
     }
 
-    /** UC0050 - dang lai phien ban DONE moi nhat. */
+    /** UC0050 - dang lai phien ban DONE moi nhat da duoc xac nhan noi dung. */
     @PostMapping("/{documentId}/publish")
     public ResponseEntity<Void> publish(@PathVariable Long documentId) {
         documentStatusService.publish(documentId);

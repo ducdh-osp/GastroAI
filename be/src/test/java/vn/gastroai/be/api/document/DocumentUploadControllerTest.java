@@ -126,8 +126,8 @@ class DocumentUploadControllerTest {
                                 42L, "IBS guide", "/path", "https://example.com",
                                 DocumentStatus.DONE, DocumentProcessingStage.DONE,
                                 null, 10L, java.time.Instant.now(), java.time.Instant.now(),
-                                1, 1, 1, false);
-                when(documentStatusService.list(null, null, 0, 15))
+                                                               1, 1, 1, false, true);
+                when(documentStatusService.list(null, null, null, null, 0, 15))
                                 .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15,
                                                 new DocumentStats(1, 1, 0, 0)));
 
@@ -214,6 +214,29 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isNoContent());
 
                 verify(documentStatusService).activateVersion(42L, 7L);
+        }
+
+        // SCR-AD-04 §3.1b - chi Bien tap duoc xac nhan noi dung, ghi lai ai xac nhan.
+        @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCanApproveDocumentContent() throws Exception {
+                when(auditLogService.currentActorEmail()).thenReturn("bientap@gastroai.vn");
+
+                mockMvc.perform(post("/api/v1/documents/42/versions/7/approve"))
+                                .andExpect(status().isNoContent());
+
+                verify(documentStatusService).approveContent(42L, 7L, "bientap@gastroai.vn");
+                verify(auditLogService).record(eq(AuditAction.DOCUMENT_APPROVE_CONTENT), eq("DOCUMENT"), eq(42L), any());
+        }
+
+        // Admin tai len va xu ly ky thuat, nhung khong tu duyet noi dung y khoa.
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void adminCannotApproveDocumentContent() throws Exception {
+                mockMvc.perform(post("/api/v1/documents/42/versions/7/approve"))
+                                .andExpect(status().isForbidden());
+
+                verify(documentStatusService, never()).approveContent(any(), any(), any());
         }
 
         @Test

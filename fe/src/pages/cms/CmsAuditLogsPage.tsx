@@ -48,6 +48,7 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   DOCUMENT_UPLOAD: 'Tải lên tài liệu',
   DOCUMENT_NEW_VERSION: 'Tải phiên bản mới',
   DOCUMENT_ACTIVATE_VERSION: 'Kích hoạt phiên bản',
+  DOCUMENT_APPROVE_CONTENT: 'Xác nhận nội dung tài liệu',
   DOCUMENT_UPDATE_INFO: 'Đổi thông tin tài liệu',
   DOCUMENT_PUBLISH: 'Đăng tài liệu',
   DOCUMENT_UNPUBLISH: 'Gỡ tài liệu',

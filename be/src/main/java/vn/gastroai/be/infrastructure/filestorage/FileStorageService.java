@@ -63,6 +63,18 @@ public class FileStorageService {
 
         return targetPath;
     }
+    
+    public java.util.Optional<Path> findStored(String storedPath) {
+        if (storedPath == null || storedPath.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        Path root = storageDirectory.toAbsolutePath().normalize();
+        Path file = Paths.get(storedPath).toAbsolutePath().normalize();
+        if (!file.startsWith(root) || !Files.isRegularFile(file)) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(file);
+    }
 
     public void delete(Path filePath) {
         if (filePath == null) {

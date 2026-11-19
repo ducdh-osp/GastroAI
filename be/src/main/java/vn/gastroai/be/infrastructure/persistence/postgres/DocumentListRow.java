@@ -18,4 +18,5 @@ public interface DocumentListRow {
     Instant getUpdatedAt();
     Integer getVersionNo();
     Long getGroupId();
+    Instant getContentApprovedAt();
 }

@@ -17,12 +17,14 @@ import {
   ReloadOutlined,
   SearchOutlined,
   UploadOutlined,
+  FileSearchOutlined,
   FileWordOutlined,
 } from '@ant-design/icons'
 import {
   Button,
   Card,
   Col,
+  DatePicker,
   Drawer,
   Empty,
   Input,
@@ -42,10 +44,11 @@ import {
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { UploadFile } from 'antd/es/upload/interface'
-import dayjs from 'dayjs'
+import dayjs, { type Dayjs } from 'dayjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   activateCmsDocumentVersion,
+  approveCmsDocumentContent,
   deleteCmsDocument,
   deleteCmsDocumentVersion,
   listCmsDocuments,
@@ -64,6 +67,7 @@ import {
 } from '../../api/cmsDocuments'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { DocumentContentSearch } from '../../components/cms/DocumentContentSearch'
+import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 const { Title, Text } = Typography
 const { Dragger } = Upload
@@ -90,6 +94,9 @@ function fileIconOf(source: string | null) {
 }
 
 export default function CmsDocumentsPage() {
+  const { user } = useCmsAuth()
+  // SCR-AD-04 §3.1b - chỉ Biên tập chuyên môn y khoa được xác nhận nội dung cho AI dùng.
+  const canApproveContent = user?.userType === 'CONTENT_EDITOR'
   const [items, setItems] = useState<CmsDocumentItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -98,6 +105,7 @@ export default function CmsDocumentsPage() {
   // Filters
   const [search, setSearch] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<DocumentStatus | undefined>(undefined)
+  const [updatedRange, setUpdatedRange] = useState<[Dayjs, Dayjs] | null>(null)
 
   // So lieu 4 o thong ke - BE tinh tren TOAN BO tai lieu, khong theo bo loc/trang.
   const [stats, setStats] = useState<CmsDocumentStats>(EMPTY_STATS)
@@ -135,6 +143,8 @@ export default function CmsDocumentsPage() {
       const res = await listCmsDocuments({
         q: search.trim() || undefined,
         status: selectedStatus,
+        updatedFrom: updatedRange?.[0].format('YYYY-MM-DD'),
+        updatedTo: updatedRange?.[1].format('YYYY-MM-DD'),
         page,
         size: PAGE_SIZE,
       })
@@ -146,7 +156,7 @@ export default function CmsDocumentsPage() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [search, selectedStatus, page])
+  }, [search, selectedStatus, updatedRange, page])
 
   useEffect(() => {
     loadData()
@@ -298,6 +308,21 @@ export default function CmsDocumentsPage() {
     })
   }
 
+  function handleApprove(version: CmsDocumentVersion) {
+    if (!historyItem) return Promise.resolve()
+    const target = historyItem
+    return runBusy(`approve-${version.id}`, async () => {
+      try {
+        await approveCmsDocumentContent(target.id, version.id)
+        message.success(`Đã xác nhận nội dung phiên bản v${version.versionNo}`)
+        await openHistory(target)
+        loadData()
+      } catch (err) {
+        message.error(errorMessageOf(err, 'Không xác nhận được nội dung'))
+      }
+    })
+  }
+
   function handleDeleteVersion(version: CmsDocumentVersion) {
     if (!historyItem) return Promise.resolve()
     const target = historyItem
@@ -361,9 +386,18 @@ export default function CmsDocumentsPage() {
     })
   }
 
-  function renderStatusTag(status: DocumentStatus) {
+  function renderStatusTag(status: DocumentStatus, contentApproved = true) {
     switch (status) {
       case 'DONE':
+        if (!contentApproved) {
+          return (
+            <Tooltip title="Biên tập cần đối chiếu nội dung với nguồn y khoa rồi xác nhận trong Lịch sử phiên bản. Chatbot chưa dùng bản này.">
+              <Tag icon={<FileSearchOutlined />} color="gold">
+                Chờ xác nhận nội dung
+              </Tag>
+            </Tooltip>
+          )
+        }
         return (
           <Tag icon={<CheckCircleOutlined />} color="success">
             Sẵn sàng (RAG)
@@ -451,7 +485,7 @@ export default function CmsDocumentsPage() {
       dataIndex: 'status',
       key: 'status',
       width: 140,
-      render: (status: DocumentStatus) => renderStatusTag(status),
+      render: (status: DocumentStatus, record) => renderStatusTag(status, record.contentApproved),
     },
     {
       title: 'Phiên bản',
@@ -575,6 +609,7 @@ export default function CmsDocumentsPage() {
           </Popconfirm>
           <Popconfirm
             title={`Xóa tài liệu và tất cả ${record.versionCount} phiên bản?`}
+            description="Chatbot sẽ không còn trích dẫn tài liệu này cho bệnh nhân. Không thể hoàn tác."
             okText="Xóa tất cả"
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
@@ -694,12 +729,23 @@ export default function CmsDocumentsPage() {
                           { label: 'Lỗi', value: 'ERROR' },
                         ]}
                       />
-                      {(search || selectedStatus !== undefined) && (
+                      <DatePicker.RangePicker
+                        format="DD/MM/YYYY"
+                        placeholder={['Cập nhật từ ngày', 'Đến ngày']}
+                        value={updatedRange}
+                        onChange={(range) => {
+                          setUpdatedRange(range && range[0] && range[1] ? [range[0], range[1]] : null)
+                          setPage(0)
+                        }}
+                        disabledDate={(date) => date.isAfter(dayjs(), 'day')}
+                      />
+                      {(search || selectedStatus !== undefined || updatedRange) && (
                         <Button
                           type="link"
                           onClick={() => {
                             setSearch('')
                             setSelectedStatus(undefined)
+                            setUpdatedRange(null)
                           }}
                         >
                           Đặt lại bộ lọc
@@ -759,7 +805,19 @@ export default function CmsDocumentsPage() {
             pagination={false}
             columns={[
               { title: 'Bản', dataIndex: 'versionNo', width: 60, render: (v: number) => `v${v}` },
-              { title: 'Trạng thái', dataIndex: 'status', width: 120, render: (s: DocumentStatus) => renderStatusTag(s) },
+              {
+                title: 'Trạng thái',
+                dataIndex: 'status',
+                width: 150,
+                render: (s: DocumentStatus, v) => (
+                  <Space orientation="vertical" size={2}>
+                    {renderStatusTag(s, v.contentApproved)}
+                    {v.contentApproved && v.contentApprovedBy && (
+                      <Text type="secondary" className="text-xs">Xác nhận: {v.contentApprovedBy}</Text>
+                    )}
+                  </Space>
+                ),
+              },
               {
                 title: 'Thời gian tải lên',
                 dataIndex: 'uploadedAt',
@@ -776,7 +834,29 @@ export default function CmsDocumentsPage() {
                     && v.status !== 'PROCESSING'
                   return (
                     <Space size={4}>
-                      {v.currentVersion ? (
+                      {v.status === 'DONE' && !v.contentApproved ? (
+                        canApproveContent ? (
+                          <Popconfirm
+                            title={`Xác nhận dùng v${v.versionNo} cho AI?`}
+                            description="Bạn đã đối chiếu nội dung với nguồn y khoa đã công bố (phác đồ, hướng dẫn điều trị chính thức)?"
+                            okText="Xác nhận dùng cho AI"
+                            cancelText="Hủy"
+                            disabled={busyKey !== null}
+                            onConfirm={() => handleApprove(v)}
+                          >
+                            <Button
+                              size="small"
+                              type="primary"
+                              loading={busyKey === `approve-${v.id}`}
+                              disabled={busyKey !== null}
+                            >
+                              Xác nhận dùng cho AI
+                            </Button>
+                          </Popconfirm>
+                        ) : (
+                          <Text type="secondary" className="text-xs">Chờ Biên tập xác nhận</Text>
+                        )
+                      ) : v.currentVersion ? (
                         <Tag color="green">Đang dùng</Tag>
                       ) : v.status === 'DONE' ? (
                         <Popconfirm

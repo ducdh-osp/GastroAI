@@ -78,6 +78,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/chat/**").hasRole("PATIENT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
                       .hasAnyRole("ADMIN", "CONTENT_EDITOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/documents/*/versions/*/approve")
+                        .hasRole("CONTENT_EDITOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/documents/**")
                       .hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         // SockJS cannot attach the Authorization header during its HTTP handshake.
@@ -97,7 +99,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/cms/catalogs/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/doctors/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
-                      .hasAnyRole("ADMIN", "CONTENT_EDITOR")
+                        .hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/dashboard/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/runtime-config/**")

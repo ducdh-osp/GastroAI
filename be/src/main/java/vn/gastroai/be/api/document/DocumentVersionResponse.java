@@ -11,5 +11,8 @@ public record DocumentVersionResponse(
         DocumentStatus status,
         boolean currentVersion,
         Instant uploadedAt,
-        String errorMessage) {
+        String errorMessage,
+        boolean contentApproved,
+        String contentApprovedBy,
+        Instant contentApprovedAt) {
 }
