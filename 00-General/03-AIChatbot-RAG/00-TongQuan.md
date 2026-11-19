@@ -21,7 +21,7 @@
 | **Lớp trả lời (RAG)** | `UC0028, 029, 030, 031, 032, 033, 037` | Không — kết quả hiện trên `SCR-PT-08-ChatAI.md` |
 | **Lớp an toàn (Triage)** | `UC0034, 036, 038, 040` | Không — kết quả hiện trên `SCR-PT-08-ChatAI.md` (cảnh báo) và trên các màn Admin (`04-QuanTri-AdminCMS/`) |
 | **Màn hình thật** | `UC0039`, `UC0041` | [SCR-AI-01-SangLocTrieuChung.md](SCR-AI-01-SangLocTrieuChung.md) |
-| **Màn hình thật** | `UC0044` | [SCR-AI-02-NhanDienMonAn.md](SCR-AI-02-NhanDienMonAn.md) |
+| **Đã cắt khỏi phạm vi** | `UC0044` | [SCR-AI-02-NhanDienMonAn.md](SCR-AI-02-NhanDienMonAn.md) — không triển khai, xem ghi chú trong file |
 | **Đã mô tả UI ở phân hệ khác** | `UC0035, 042, 043` | `02-NguoiDung-BenhNhan/SCR-PT-08-ChatAI.md` (chỉ mô tả *cơ chế* ở đây, không lặp lại UI) |
 | **UI ở phân hệ Admin** | `UC0037, 038` | `04-QuanTri-AdminCMS/` (trang đánh giá chất lượng AI) |
 
@@ -120,7 +120,7 @@ Gợi ý mức độ chăm sóc (`UC0041`) chỉ có ý nghĩa nếu đi kèm **
 
 ### 3.4 Khi hệ thống cảnh báo, điều gì xảy ra phía sau (`UC0036`)
 
-Cảnh báo không chỉ hiện cho bệnh nhân thấy (`UC0035`) — phải đồng thời đẩy sang cho Admin trực theo thời gian thực, để có người xác nhận tình trạng theo một **kịch bản vận hành cố định, không mang tính phán đoán y khoa** (gọi xác nhận, escalate nếu không liên lạc được — xem `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md`), không chỉ dựa vào việc bệnh nhân tự ý thức được mức độ nghiêm trọng và tự đi khám. Đây là lớp bảo vệ thứ hai, dành cho trường hợp bệnh nhân đọc cảnh báo nhưng chủ quan bỏ qua — vai trò của Admin ở đây là **vận hành** (đảm bảo cảnh báo được tiếp nhận và escalate đúng quy trình), không phải đưa ra chẩn đoán.
+Cảnh báo không chỉ hiện cho bệnh nhân thấy (`UC0035`) — hệ thống đồng thời **tự động** xác nhận lại tình trạng bệnh nhân (push, rồi gọi tự động nếu đã tích hợp), không chỉ dựa vào việc bệnh nhân tự ý thức được mức độ nghiêm trọng và tự đi khám. Admin trực chỉ được kéo vào **khi mọi kênh tự động đều không có phản hồi** — xem luồng đầy đủ ở `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md`. Đây là lớp bảo vệ thứ hai, dành cho trường hợp bệnh nhân đọc cảnh báo nhưng chủ quan bỏ qua (hoặc không mở app để thấy cảnh báo) — vai trò của Admin ở đây là **xác nhận cuối cùng trước khi escalate tới bên thứ 3**, không phải đưa ra chẩn đoán.
 
 ### 3.5 Đo lường độ nhạy của bộ lọc (`UC0038`)
 
@@ -132,9 +132,9 @@ Cũng như `UC0037` ở lớp RAG, cần một tập câu hỏi/tình huống ki
 
 `UC0039` + `UC0041` là trường hợp đặc biệt: có màn hình thật ([SCR-AI-01-SangLocTrieuChung.md](SCR-AI-01-SangLocTrieuChung.md)) vì đây là lúc hệ thống **chủ động hỏi theo từng bước** thay vì chờ bệnh nhân tự mô tả tự do — hữu ích khi bệnh nhân không biết nên mô tả triệu chứng thế nào cho đủ, hoặc khi cần thu thập thông tin có hệ thống hơn là 1 câu hỏi ngẫu hứng.
 
-## 5. Nhận diện món ăn qua ảnh — mở rộng cách ghi nhật ký
+## 5. Nhận diện món ăn qua ảnh — đã cắt khỏi phạm vi
 
-`UC0044` ([SCR-AI-02-NhanDienMonAn.md](SCR-AI-02-NhanDienMonAn.md)) không thuộc 2 lớp trên — đây là một lối tắt nhập liệu cho `02-NguoiDung-BenhNhan/SCR-PT-02-NhatKyAnUong.md`: thay vì gõ tên món, chụp ảnh để AI nhận diện giúp.
+`UC0044` ([SCR-AI-02-NhanDienMonAn.md](SCR-AI-02-NhanDienMonAn.md)) — **cắt khỏi phạm vi đồ án (2026-11-19)**, không triển khai. Bệnh nhân ghi nhật ký ăn uống bằng nhập tay tự do ở `02-NguoiDung-BenhNhan/SCR-PT-02-NhatKyAnUong.md` như bình thường, không có lối tắt chụp ảnh.
 
 ---
 
@@ -155,7 +155,7 @@ Cũng như `UC0037` ở lớp RAG, cần một tập câu hỏi/tình huống ki
 | `UC0037`, `UC0038` | Báo cáo ở `04-QuanTri-AdminCMS/` (trang đánh giá AI) |
 | `UC0039`, `UC0041` | [SCR-AI-01-SangLocTrieuChung.md](SCR-AI-01-SangLocTrieuChung.md) |
 | `UC0042`, `UC0043` | UI ở `SCR-PT-08-ChatAI.md` |
-| `UC0044` | [SCR-AI-02-NhanDienMonAn.md](SCR-AI-02-NhanDienMonAn.md) |
+| `UC0044` | **Cắt khỏi phạm vi** — [SCR-AI-02-NhanDienMonAn.md](SCR-AI-02-NhanDienMonAn.md) giữ lại chỉ để tham khảo |
 
 ## 8. Tham chiếu
 
@@ -168,3 +168,5 @@ Cũng như `UC0037` ở lớp RAG, cần một tập câu hỏi/tình huống ki
 | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
 | v1.1 | 2026-11-17 | Bỏ "Bác sĩ" khỏi §2.4/§3.4 — đổi thành Admin (vận hành) + Biên tập chuyên môn y khoa (duyệt nội dung), theo quyết định đổi mô hình vai trò ở `04-QuanTri-AdminCMS/00-TongQuan.md` |
+| v1.2 | 2026-11-19 | `UC0044` (nhận diện món ăn qua ảnh) cắt khỏi phạm vi đồ án — cập nhật §1, §5, §7 |
+| v1.3 | 2026-11-19 | Sửa §3.4 (`UC0036`) bị lệch so với `SCR-AD-13` đã viết lại AI-first — mô tả cũ vẫn ghi "Admin tự gọi xác nhận theo kịch bản" dù màn đó đã đổi thành hệ thống tự động, Admin chỉ xác nhận bước cuối |

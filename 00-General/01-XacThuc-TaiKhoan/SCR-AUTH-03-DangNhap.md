@@ -41,7 +41,7 @@ Nếu đăng ký là "màn hình thuyết phục", đăng nhập là "màn hình
 | Tài khoản chưa xác thực email | Banner ngay trên form: "Email chưa được xác thực" + nút "Gửi lại email xác thực" | Cho lối thoát **tại chỗ**, không bắt người dùng tự đi tìm lại email cũ hay quay về màn đăng ký |
 | Nhập sai liên tiếp quá nhiều lần | "Tài khoản tạm khoá để bảo vệ bạn, thử lại sau N phút" — đếm ngược rõ ràng | Phải nói rõ đây là **bảo vệ**, không phải phạt, và luôn cho biết chính xác còn bao lâu — mập mờ chỉ khiến người dùng thật thêm hoảng |
 | Tài khoản bị quản trị viên vô hiệu hoá | "Tài khoản đã bị tạm ngưng, vui lòng liên hệ hỗ trợ" | Khác hẳn trường hợp tự khoá do nhập sai — người dùng cần biết đây là quyết định của con người, không tự gỡ được bằng thao tác kỹ thuật |
-| Đăng nhập thành công | Vào thẳng app, không có màn hình trung gian "chào mừng" choán thời gian | Người dùng quay lại không cần được chào lại từ đầu mỗi lần |
+| Đăng nhập thành công | Vào thẳng Trang chủ (`02-NguoiDung-BenhNhan/SCR-PT-00-TrangChu.md`), không có màn hình trung gian "chào mừng" choán thời gian | Người dùng quay lại không cần được chào lại từ đầu mỗi lần |
 
 ## 4. Về việc khoá tạm thời (`UC0008`)
 
@@ -51,4 +51,4 @@ Số lần cho phép sai trước khi khoá, và thời gian khoá, là một đ
 
 - Lối ra khi quên mật khẩu: [SCR-AUTH-04-QuenMatKhau.md](SCR-AUTH-04-QuenMatKhau.md)
 - Lối ra khi chưa xác thực: [SCR-AUTH-02-XacThucEmail.md](SCR-AUTH-02-XacThucEmail.md)
-- Sau khi vào: `02-NguoiDung-BenhNhan/`
+- Sau khi vào: `02-NguoiDung-BenhNhan/SCR-PT-00-TrangChu.md`

@@ -25,6 +25,7 @@
 
 | Mã màn hình | File | Tên màn hình | UC |
 | :--- | :--- | :--- | :--- |
+| `SCR-AD-00` | [SCR-AD-00-TrangChu.md](SCR-AD-00-TrangChu.md) | Trang chủ & khung điều hướng | *(không có mã UC riêng — thay thế sidebar, xem file)* |
 | `SCR-AD-01` | [SCR-AD-01-DangNhapQuanTri.md](SCR-AD-01-DangNhapQuanTri.md) | Đăng nhập quản trị | `UC0045` |
 | `SCR-AD-02` | [SCR-AD-02-QuanLyNguoiDung.md](SCR-AD-02-QuanLyNguoiDung.md) | Quản lý người dùng (bệnh nhân) | `UC0046` |
 | `SCR-AD-03` | [SCR-AD-03-PhanQuyenRBAC.md](SCR-AD-03-PhanQuyenRBAC.md) | Phân quyền nhân sự nội bộ | `UC0047` |
@@ -48,6 +49,10 @@
 | `UC0058` | Khôi phục dữ liệu từ backup | Thao tác kỹ thuật do đội vận hành thực hiện trực tiếp khi có sự cố, không qua giao diện web — xem §4 |
 
 ---
+
+## 1.1 Điều hướng — không còn sidebar
+
+Giống phân hệ bệnh nhân, CMS cũng bỏ sidebar cố định — đăng nhập xong vào thẳng `SCR-AD-00` (Trang chủ), chọn chức năng từ đó. Header cố định (logo, chuông thông báo, tài khoản) trên mọi màn, bấm logo để quay về Trang chủ chọn việc khác. Chi tiết: [SCR-AD-00-TrangChu.md](SCR-AD-00-TrangChu.md).
 
 ## 2. Vì sao các màn hình được nhóm như trên — đặc biệt là "Kho tài liệu y khoa"
 
@@ -100,3 +105,5 @@ Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để gi�
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
 | v1.1 | 2026-11-17 | Bỏ vai trò "Bác sĩ" (xem §0) — đổi mô hình vai trò thành Admin + Biên tập chuyên môn y khoa; viết lại SCR-AD-01/03/04/07/10/11/13 |
 | v1.2 | 2026-11-19 | Viết lại `SCR-AD-13` theo hướng AI-first (review lại qua `ba-bigtech-10yr` + `ba-gastro-10yr`): hệ thống tự động hoá push/SMS/gọi tự động, Admin chỉ còn 1 bước xác nhận escalate duy nhất thay vì tự tay gọi điện theo kịch bản như v1.1 |
+| v1.3 | 2026-11-19 | `UC0072` (SMS) cắt khỏi phạm vi — `SCR-AD-13` viết lại bỏ bước SMS, rút ngắn mốc "Cần can thiệp" từ 10' xuống 5' để bù lớp đệm đã mất |
+| v1.4 | 2026-11-19 | Bỏ điều hướng kiểu sidebar — thêm `SCR-AD-00` (Trang chủ & header) làm điểm xuất phát duy nhất; cập nhật §1.1 |

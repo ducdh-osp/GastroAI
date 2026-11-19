@@ -29,7 +29,7 @@
 └─────────────────────────────────────┘
 ```
 
-Nằm trong khu vực "tài khoản của tôi" — không phải chức năng cần nổi bật ở menu chính, vì người dùng chỉ ghé qua đây khi chủ động muốn, không phải việc làm thường xuyên.
+Nằm trong dropdown tài khoản trên header (xem `02-NguoiDung-BenhNhan/SCR-PT-00-TrangChu.md` §2) — không phải 1 ô trên Trang chủ, vì người dùng chỉ ghé qua đây khi chủ động muốn, không phải việc làm thường xuyên như các chức năng chính.
 
 ## 3. Hành vi cần có
 
