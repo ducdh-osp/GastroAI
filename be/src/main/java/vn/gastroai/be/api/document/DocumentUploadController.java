@@ -1,9 +1,16 @@
 package vn.gastroai.be.api.document;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import vn.gastroai.be.application.document.DocumentReviewService;
 import vn.gastroai.be.application.document.DocumentStatusService;
 import vn.gastroai.be.application.document.DocumentUploadService;
 import vn.gastroai.be.domain.audit.AuditAction;
@@ -11,6 +18,7 @@ import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.domain.rag.Document;
 import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -21,14 +29,17 @@ public class DocumentUploadController {
     private final DocumentUploadService documentUploadService;
     private final DocumentStatusService documentStatusService;
     private final AuditLogService auditLogService;
+    private final DocumentReviewService documentReviewService;
 
     public DocumentUploadController(
             DocumentUploadService documentUploadService,
             DocumentStatusService documentStatusService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            DocumentReviewService documentReviewService) {
         this.documentUploadService = documentUploadService;
         this.documentStatusService = documentStatusService;
         this.auditLogService = auditLogService;
+        this.documentReviewService = documentReviewService;
     }
 
     @PostMapping
@@ -85,6 +96,30 @@ public class DocumentUploadController {
     @GetMapping("/{documentId}/versions")
     public ResponseEntity<List<DocumentVersionResponse>> listVersions(@PathVariable Long documentId) {
         return ResponseEntity.ok(documentStatusService.listVersions(documentId));
+    }
+    @GetMapping("/{documentId}/review")
+    public ResponseEntity<DocumentReviewResponse> review(@PathVariable Long documentId) {
+        return ResponseEntity.ok(documentReviewService.review(documentId));
+    }
+
+    /**
+     * File gốc của 1 phiên bản, mở xem ngay trên trình duyệt (inline) chứ không tải về.
+     * FE tải bằng axios rồi tạo đường dẫn blob: cho iframe, nên không cần nới X-Frame-Options.
+     */
+    @GetMapping("/{documentId}/file")
+    public ResponseEntity<Resource> originalFile(@PathVariable Long documentId) {
+        DocumentReviewService.OriginalFile file = documentReviewService.originalFile(documentId);
+        MediaType contentType = "PDF".equals(file.fileType())
+                ? MediaType.APPLICATION_PDF
+                : MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        return ResponseEntity.ok()
+                .contentType(contentType)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline()
+                                .filename(file.path().getFileName().toString(), StandardCharsets.UTF_8).build()
+                                .toString())
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(new FileSystemResource(file.path()));
     }
 
     /** UC0048 / SCR-AD-04 §3.1b - Biên tập xác nhận nội dung trước khi chatbot dùng (SecurityConfig chỉ cho CONTENT_EDITOR). */

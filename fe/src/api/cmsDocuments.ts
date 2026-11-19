@@ -123,6 +123,33 @@ export async function listCmsDocumentVersions(documentId: number): Promise<CmsDo
 export async function activateCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/activate`)
 }
+/** SCR-AD-04 §3.1b - nội dung 1 phiên bản để đối chiếu trước khi xác nhận. */
+export interface CmsDocumentReview {
+  id: number
+  title: string
+  versionNo: number
+  status: DocumentStatus
+  currentVersion: boolean
+  contentApproved: boolean
+  contentApprovedBy: string | null
+  contentApprovedAt: string | null
+  /** PDF xem bằng iframe; DOCX hoặc không có file gốc thì xem fullText. */
+  originalFileType: 'PDF' | 'DOCX' | null
+  fullText: string | null
+  chunks: { chunkIndex: number; content: string }[]
+}
+
+export async function getCmsDocumentReview(documentId: number): Promise<CmsDocumentReview> {
+  const { data } = await cmsApiClient.get<CmsDocumentReview>(`/documents/${documentId}/review`)
+  return data
+}
+
+/** Tải file gốc kèm phiên đăng nhập, trả về Blob để tạo đường dẫn blob: cho iframe. */
+export async function getCmsDocumentFile(documentId: number): Promise<Blob> {
+  const { data } = await cmsApiClient.get<Blob>(`/documents/${documentId}/file`, { responseType: 'blob' })
+  return data
+}
+
 /** SCR-AD-04 §3.1b - chỉ Biên tập gọi được (BE trả 403 với Admin). */
 export async function approveCmsDocumentContent(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/approve`)

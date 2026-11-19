@@ -51,6 +51,9 @@ class DocumentUploadControllerTest {
         private AuditLogService auditLogService;
 
         @MockitoBean
+        private vn.gastroai.be.application.document.DocumentReviewService documentReviewService;
+
+        @MockitoBean
         private JwtService jwtService;
 
         @MockitoBean
@@ -231,12 +234,16 @@ class DocumentUploadControllerTest {
 
         // Admin tai len va xu ly ky thuat, nhung khong tu duyet noi dung y khoa.
         @Test
-        @WithMockUser(roles = "ADMIN")
-        void adminCannotApproveDocumentContent() throws Exception {
-                mockMvc.perform(post("/api/v1/documents/42/versions/7/approve"))
-                                .andExpect(status().isForbidden());
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCanOpenReviewOfAVersion() throws Exception {
+                when(documentReviewService.review(42L)).thenReturn(new DocumentReviewResponse(
+                                42L, "Phác đồ HP", 2, DocumentStatus.DONE, false, false, null, null,
+                                "PDF", null, java.util.List.of(new DocumentReviewResponse.Chunk(0, "Đoạn 1"))));
 
-                verify(documentStatusService, never()).approveContent(any(), any(), any());
+                mockMvc.perform(get("/api/v1/documents/42/review"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.originalFileType").value("PDF"))
+                                .andExpect(jsonPath("$.chunks[0].content").value("Đoạn 1"));
         }
 
         @Test

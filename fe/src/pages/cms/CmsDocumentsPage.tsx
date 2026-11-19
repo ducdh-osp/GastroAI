@@ -8,6 +8,7 @@ import {
   EyeInvisibleOutlined,
   EyeOutlined,
   FilePdfOutlined,
+  MoreOutlined,
   FileTextOutlined,
   HistoryOutlined,
   InboxOutlined,
@@ -26,6 +27,7 @@ import {
   Col,
   DatePicker,
   Drawer,
+  Dropdown,
   Empty,
   Input,
   Modal,
@@ -48,7 +50,6 @@ import dayjs, { type Dayjs } from 'dayjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   activateCmsDocumentVersion,
-  approveCmsDocumentContent,
   deleteCmsDocument,
   deleteCmsDocumentVersion,
   listCmsDocuments,
@@ -67,6 +68,7 @@ import {
 } from '../../api/cmsDocuments'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { DocumentContentSearch } from '../../components/cms/DocumentContentSearch'
+import { DocumentReviewDrawer } from '../../components/cms/DocumentReviewDrawer'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 const { Title, Text } = Typography
@@ -84,6 +86,16 @@ function errorMessageOf(err: unknown, fallback: string): string {
 function fileNameWithoutExtension(name: string) {
   const dot = name.lastIndexOf('.')
   return dot > 0 ? name.slice(0, dot) : name
+}
+
+// SCR-AD-04 §3.1 - bước xử lý nói bằng lời của người dùng, không dùng từ kỹ thuật.
+const STAGE_LABEL: Record<DocumentProcessingStage, string> = {
+  PENDING: 'Đang chờ xử lý',
+  EXTRACTION: 'Đang đọc nội dung',
+  CHUNKING: 'Đang chia đoạn',
+  EMBEDDING: 'Đang lập chỉ mục',
+  DONE: 'Đã xử lý xong',
+  ERROR: 'Lỗi xử lý',
 }
 
 function fileIconOf(source: string | null) {
@@ -134,6 +146,8 @@ export default function CmsDocumentsPage() {
 
   // UC0049 - ngan keo lich su phien ban
   const [historyItem, setHistoryItem] = useState<CmsDocumentItem | null>(null)
+  // SCR-AD-04 §3.1b - phiên bản đang mở trong ngăn kéo "Xem & xác nhận nội dung".
+  const [reviewId, setReviewId] = useState<number | null>(null)
   const [versions, setVersions] = useState<CmsDocumentVersion[]>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
 
@@ -308,21 +322,6 @@ export default function CmsDocumentsPage() {
     })
   }
 
-  function handleApprove(version: CmsDocumentVersion) {
-    if (!historyItem) return Promise.resolve()
-    const target = historyItem
-    return runBusy(`approve-${version.id}`, async () => {
-      try {
-        await approveCmsDocumentContent(target.id, version.id)
-        message.success(`Đã xác nhận nội dung phiên bản v${version.versionNo}`)
-        await openHistory(target)
-        loadData()
-      } catch (err) {
-        message.error(errorMessageOf(err, 'Không xác nhận được nội dung'))
-      }
-    })
-  }
-
   function handleDeleteVersion(version: CmsDocumentVersion) {
     if (!historyItem) return Promise.resolve()
     const target = historyItem
@@ -391,7 +390,7 @@ export default function CmsDocumentsPage() {
       case 'DONE':
         if (!contentApproved) {
           return (
-            <Tooltip title="Biên tập cần đối chiếu nội dung với nguồn y khoa rồi xác nhận trong Lịch sử phiên bản. Chatbot chưa dùng bản này.">
+            <Tooltip title="Biên tập cần mở “Xem & xác nhận”, đối chiếu file gốc với các đoạn rồi xác nhận. Chatbot chưa dùng bản này.">
               <Tag icon={<FileSearchOutlined />} color="gold">
                 Chờ xác nhận nội dung
               </Tag>
@@ -426,37 +425,122 @@ export default function CmsDocumentsPage() {
     }
   }
 
-  function renderStageInfo(stage: DocumentProcessingStage, status: DocumentStatus) {
-    if (status === 'ERROR') {
-      return <Text type="danger" className="text-xs font-medium">Thất bại</Text>
+
+
+  // SCR-AD-04 §3.1 - gộp trạng thái, phiên bản và bước xử lý thành 1 câu: tài liệu này đang thế nào với chatbot.
+  function renderProcessingState(record: CmsDocumentItem) {
+    const servingNote = record.currentVersionNo !== null && !record.unpublished
+      ? `Chatbot vẫn đang dùng v${record.currentVersionNo}`
+      : 'Chatbot chưa dùng tài liệu này'
+
+    if (record.status === 'ERROR') {
+      return (
+        <div className="space-y-1">
+          <Tag icon={<CloseCircleOutlined />} color="error">Lỗi xử lý v{record.versionNo}</Tag>
+          {record.errorMessage && (
+            <button
+              type="button"
+              onClick={() => setErrorModalItem(record)}
+              className="block max-w-xs cursor-pointer truncate text-left text-xs text-red-500 hover:underline"
+            >
+              {record.errorMessage}
+            </button>
+          )}
+          <Text type="secondary" className="block text-xs">{servingNote}</Text>
+        </div>
+      )
     }
-    switch (stage) {
-      case 'PENDING':
-        return <Text type="secondary" className="text-xs">Pending</Text>
-      case 'EXTRACTION':
-        return <Text className="text-xs text-blue-600 font-medium">Trích xuất văn bản</Text>
-      case 'CHUNKING':
-        return <Text className="text-xs text-purple-600 font-medium">Phân đoạn (Chunking)</Text>
-      case 'EMBEDDING':
-        return <Text className="text-xs text-amber-600 font-medium">Vector Embedding</Text>
-      case 'DONE':
-        return <Text type="success" className="text-xs font-medium">Hoàn tất 100%</Text>
-      default:
-        return <Text className="text-xs">{stage}</Text>
+    if (record.status === 'PENDING' || record.status === 'PROCESSING') {
+      return (
+        <div className="space-y-1">
+          <Tag icon={record.status === 'PENDING' ? <ClockCircleOutlined /> : <LoadingOutlined spin />} color="processing">
+            {STAGE_LABEL[record.processingStage]} v{record.versionNo}
+          </Tag>
+          <Text type="secondary" className="block text-xs">{servingNote}</Text>
+        </div>
+      )
+    }
+    if (!record.contentApproved) {
+      return (
+        <div className="space-y-1">
+          <Tag icon={<FileSearchOutlined />} color="gold">Chờ xác nhận nội dung v{record.versionNo}</Tag>
+          <Text type="secondary" className="block text-xs">{servingNote}</Text>
+        </div>
+      )
+    }
+    if (record.unpublished) {
+      return <Tag color="default">Đã gỡ khỏi chatbot</Tag>
+    }
+    return (
+      <Tag icon={<CheckCircleOutlined />} color="success">
+        Đang dùng cho AI · v{record.currentVersionNo ?? record.versionNo}
+      </Tag>
+    )
+  }
+
+  function confirmTogglePublish(record: CmsDocumentItem) {
+    Modal.confirm({
+      title: record.unpublished ? 'Đăng lại tài liệu cho chatbot?' : 'Gỡ tài liệu khỏi chatbot?',
+      content: record.unpublished
+        ? 'Chatbot sẽ dùng lại phiên bản đã xác nhận nội dung mới nhất.'
+        : 'Chatbot sẽ không trích dẫn tài liệu này nữa. Dữ liệu vẫn được giữ, có thể đăng lại.',
+      okText: 'Đồng ý',
+      cancelText: 'Hủy',
+      onOk: () => handleTogglePublish(record),
+    })
+  }
+
+  function confirmDelete(record: CmsDocumentItem) {
+    Modal.confirm({
+      title: `Xóa tài liệu và tất cả ${record.versionCount} phiên bản?`,
+      content: 'Chatbot sẽ không còn trích dẫn tài liệu này cho bệnh nhân. Không thể hoàn tác.',
+      okText: 'Xóa tất cả',
+      okButtonProps: { danger: true },
+      cancelText: 'Hủy',
+      onOk: () => handleDelete(record),
+    })
+  }
+
+  // SCR-AD-04 §2 - mọi thao tác gom vào 1 menu [···] có chữ, thay cho hàng biểu tượng không tên.
+  function actionMenu(record: CmsDocumentItem) {
+    const processing = record.status === 'PENDING' || record.status === 'PROCESSING'
+    return {
+      items: [
+        ...(record.status === 'DONE'
+          ? [{
+              key: 'review',
+              icon: <FileSearchOutlined />,
+              label: !record.contentApproved && canApproveContent ? 'Xem & xác nhận nội dung' : 'Xem nội dung',
+            }]
+          : []),
+        ...(record.status === 'ERROR' ? [{ key: 'retry', icon: <RedoOutlined />, label: 'Thử xử lý lại' }] : []),
+        { key: 'version', icon: <CloudUploadOutlined />, label: 'Tải phiên bản mới', disabled: processing },
+        { key: 'history', icon: <HistoryOutlined />, label: 'Lịch sử phiên bản' },
+        { key: 'rename', icon: <EditOutlined />, label: 'Sửa tên / nguồn' },
+        {
+          key: 'publish',
+          icon: record.unpublished ? <EyeOutlined /> : <EyeInvisibleOutlined />,
+          label: record.unpublished ? 'Đăng lại cho chatbot' : 'Gỡ khỏi chatbot',
+          disabled: !record.unpublished && record.currentVersionNo === null,
+        },
+        { type: 'divider' as const },
+        { key: 'delete', icon: <DeleteOutlined />, label: 'Xóa tài liệu', danger: true },
+      ],
+      onClick: ({ key }: { key: string }) => {
+        if (key === 'review') setReviewId(record.id)
+        if (key === 'retry') void handleRetry(record)
+        if (key === 'version') openUploadVersion(record)
+        if (key === 'history') void openHistory(record)
+        if (key === 'rename') openRename(record)
+        if (key === 'publish') confirmTogglePublish(record)
+        if (key === 'delete') confirmDelete(record)
+      },
     }
   }
 
   const columns: ColumnsType<CmsDocumentItem> = [
     {
-      title: 'Mã',
-      dataIndex: 'id',
-      key: 'id',
-      width: 65,
-      align: 'center',
-      render: (id: number) => <span className="text-slate-400 dark:text-white text-xs">#{id}</span>,
-    },
-    {
-      title: 'Tài liệu & Nguồn',
+      title: 'Tên tài liệu',
       key: 'title',
       render: (_, record) => (
         <div className="space-y-1">
@@ -471,7 +555,7 @@ export default function CmsDocumentsPage() {
                 href={record.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="hover:underline truncate max-w-sm"
+                className="max-w-sm truncate hover:underline"
               >
                 {record.sourceUrl}
               </a>
@@ -481,152 +565,34 @@ export default function CmsDocumentsPage() {
       ),
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: 140,
-      render: (status: DocumentStatus, record) => renderStatusTag(status, record.contentApproved),
+      title: 'Trạng thái xử lý',
+      key: 'state',
+      width: 280,
+      render: (_, record) => renderProcessingState(record),
     },
     {
-      title: 'Phiên bản',
-      key: 'version',
-      width: 140,
-      render: (_, record) => (
-        <Space orientation="vertical" size={2}>
-          <Text className="text-xs">v{record.versionNo} · {record.versionCount} phiên bản</Text>
-          {record.unpublished ? (
-            <Tag color="default">Đã gỡ</Tag>
-          ) : record.currentVersionNo !== null ? (
-            <Tag color="green">Đang dùng v{record.currentVersionNo}</Tag>
-          ) : (
-            <Tag color="orange">Chưa sẵn sàng</Tag>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Giai đoạn số hóa',
-      key: 'processingStage',
-      width: 160,
-      render: (_, record) => (
-        <div className="space-y-0.5">
-          {renderStageInfo(record.processingStage, record.status)}
-          {record.status === 'ERROR' && record.errorMessage && (
-            <button
-              type="button"
-              onClick={() => setErrorModalItem(record)}
-              className="text-xs text-red-500 hover:underline block text-left cursor-pointer"
-            >
-              Xem chi tiết lỗi
-            </button>
-          )}
-        </div>
-      ),
-    },
-    {
-      title: <span className="whitespace-nowrap">Đoạn trích dẫn</span>,
-      dataIndex: 'chunkCount',
-      key: 'chunkCount',
-      width: 150,
-      align: 'center',
-      render: (chunks: number, record) =>
-        record.status === 'DONE' ? (
-          <Tag color="cyan">{chunks} chunks</Tag>
-        ) : (
-          <span className="text-slate-300 text-xs">-</span>
-        ),
-    },
-    {
-      title: 'Thời gian tải lên',
-      dataIndex: 'uploadedAt',
-      key: 'uploadedAt',
-      width: 150,
+      title: 'Cập nhật',
+      dataIndex: 'updatedAt',
+      key: 'updatedAt',
+      width: 130,
       render: (val: string) => (
-        <span className="text-xs text-slate-500 dark:text-white">
-          {dayjs(val).format('DD/MM/YYYY HH:mm')}
-        </span>
+        <span className="text-xs text-slate-500 dark:text-white">{dayjs(val).format('DD/MM/YYYY HH:mm')}</span>
       ),
     },
     {
-      title: 'Thao tác',
+      title: '',
       key: 'actions',
-      width: 230,
+      width: 64,
       align: 'center',
       render: (_, record) => (
-        <Space size="small">
-          {record.status === 'ERROR' && (
-            <Button
-              type="text"
-              size="small"
-              icon={<RedoOutlined />}
-              title="Thử xử lý lại"
-              className="text-amber-600 hover:text-amber-700"
-              loading={busyKey === `retry-${record.id}`}
-              disabled={busyKey !== null}
-              onClick={() => handleRetry(record)}
-            />
-          )}
-          <Tooltip title="Lịch sử phiên bản">
-            <Button type="text" size="small" icon={<HistoryOutlined />} onClick={() => openHistory(record)} />
-          </Tooltip>
-          <Tooltip title="Đổi thông tin">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              disabled={busyKey !== null}
-              onClick={() => openRename(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Tải phiên bản mới">
-            <Button
-              type="text"
-              size="small"
-              icon={<CloudUploadOutlined />}
-              disabled={busyKey !== null || record.status === 'PENDING' || record.status === 'PROCESSING'}
-              onClick={() => openUploadVersion(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title={record.unpublished ? 'Đăng lại tài liệu?' : 'Gỡ tài liệu khỏi chatbot?'}
-            description={record.unpublished
-              ? 'Chatbot sẽ dùng lại phiên bản đã xử lý xong mới nhất.'
-              : 'Chatbot sẽ không trích dẫn tài liệu này nữa.'}
-            okText="Đồng ý"
-            cancelText="Hủy"
-            onConfirm={() => handleTogglePublish(record)}
-            disabled={busyKey !== null || (!record.unpublished && record.currentVersionNo === null)}
-          >
-            <Tooltip title={record.unpublished ? 'Đăng lại' : 'Gỡ khỏi chatbot'}>
-              <Button
-                type="text"
-                size="small"
-                loading={busyKey === `publish-${record.id}`}
-                disabled={busyKey !== null || (!record.unpublished && record.currentVersionNo === null)}
-                icon={record.unpublished ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-              />
-            </Tooltip>
-          </Popconfirm>
-          <Popconfirm
-            title={`Xóa tài liệu và tất cả ${record.versionCount} phiên bản?`}
-            description="Chatbot sẽ không còn trích dẫn tài liệu này cho bệnh nhân. Không thể hoàn tác."
-            okText="Xóa tất cả"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-            onConfirm={() => handleDelete(record)}
-            disabled={busyKey !== null}
-          >
-            <Button
-              type="text"
-              size="small"
-              danger
-              loading={busyKey === `delete-${record.id}`}
-              disabled={busyKey !== null}
-              icon={<DeleteOutlined />}
-              title="Xóa tài liệu"
-            />
-          </Popconfirm>
-        </Space>
+        <Dropdown menu={actionMenu(record)} trigger={['click']} disabled={busyKey !== null}>
+          <Button
+            type="text"
+            icon={<MoreOutlined />}
+            aria-label={`Thao tác với ${record.title}`}
+            loading={busyKey !== null && busyKey.endsWith(`-${record.id}`)}
+          />
+        </Dropdown>
       ),
     },
   ]
@@ -790,6 +756,17 @@ export default function CmsDocumentsPage() {
           ]}
         />
 
+        {/* SCR-AD-04 §3.1b - Xem file gốc cạnh các đoạn chatbot sẽ trích, rồi xác nhận */}
+        <DocumentReviewDrawer
+          documentId={reviewId}
+          canApprove={canApproveContent}
+          onClose={() => setReviewId(null)}
+          onApproved={() => {
+            loadData()
+            if (historyItem) void openHistory(historyItem)
+          }}
+        />
+
         {/* UC0049 - Ngăn kéo lịch sử phiên bản */}
         <Drawer
           title={historyItem ? `Lịch sử phiên bản — ${historyItem.title}` : ''}
@@ -835,27 +812,9 @@ export default function CmsDocumentsPage() {
                   return (
                     <Space size={4}>
                       {v.status === 'DONE' && !v.contentApproved ? (
-                        canApproveContent ? (
-                          <Popconfirm
-                            title={`Xác nhận dùng v${v.versionNo} cho AI?`}
-                            description="Bạn đã đối chiếu nội dung với nguồn y khoa đã công bố (phác đồ, hướng dẫn điều trị chính thức)?"
-                            okText="Xác nhận dùng cho AI"
-                            cancelText="Hủy"
-                            disabled={busyKey !== null}
-                            onConfirm={() => handleApprove(v)}
-                          >
-                            <Button
-                              size="small"
-                              type="primary"
-                              loading={busyKey === `approve-${v.id}`}
-                              disabled={busyKey !== null}
-                            >
-                              Xác nhận dùng cho AI
-                            </Button>
-                          </Popconfirm>
-                        ) : (
-                          <Text type="secondary" className="text-xs">Chờ Biên tập xác nhận</Text>
-                        )
+                        <Button size="small" type={canApproveContent ? 'primary' : 'default'} onClick={() => setReviewId(v.id)}>
+                          {canApproveContent ? 'Xem & xác nhận' : 'Xem nội dung'}
+                        </Button>
                       ) : v.currentVersion ? (
                         <Tag color="green">Đang dùng</Tag>
                       ) : v.status === 'DONE' ? (
