@@ -58,6 +58,7 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   PATIENT_UNLOCK: 'Mở khoá bệnh nhân',
   PATIENT_DATA_VIEW: 'Xem dữ liệu bệnh nhân',
   PASSWORD_CHANGE: 'Đổi mật khẩu',
+  CMS_LOGIN: 'Đăng nhập CMS',
   SYSTEM_RESTORE: 'Khôi phục dữ liệu',
   ANOMALY_DETECTED: 'Cảnh báo bất thường',
   ANOMALY_RULE_UPDATE: 'Sửa quy tắc cảnh báo',

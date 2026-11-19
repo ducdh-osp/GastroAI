@@ -118,6 +118,7 @@ public class AuditLogExportService {
             case PATIENT_UNLOCK -> "Mở khoá bệnh nhân";
             case PATIENT_DATA_VIEW -> "Xem dữ liệu bệnh nhân";
             case PASSWORD_CHANGE -> "Đổi mật khẩu";
+            case CMS_LOGIN -> "Đăng nhập CMS";
             case SYSTEM_RESTORE -> "Khôi phục dữ liệu";
             case ANOMALY_DETECTED -> "Cảnh báo bất thường";
             case ANOMALY_RULE_UPDATE -> "Sửa quy tắc cảnh báo";

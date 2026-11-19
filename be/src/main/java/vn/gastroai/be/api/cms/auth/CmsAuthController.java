@@ -46,7 +46,10 @@ public class CmsAuthController {
 
     @PostMapping("/api/v1/cms/auth/login")
     public CmsAuthResult login(@Valid @RequestBody CmsLoginRequest request, HttpServletRequest httpRequest) {
-        return cmsAuthService.login(new CmsLoginCommand(request.email(), request.password()), httpRequest);
+        CmsAuthResult result = cmsAuthService.login(new CmsLoginCommand(request.email(), request.password()), httpRequest);
+        // Ghi vào nhật ký để quy tắc MULTI_IP phát hiện được đăng nhập từ nhiều nơi (UC0063).
+        auditLogService.record(AuditAction.CMS_LOGIN, "ADMIN", result.userId(), null);
+        return result;
     }
 
     @PostMapping("/api/v1/cms/auth/logout")
