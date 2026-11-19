@@ -55,7 +55,7 @@ Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để gi�
 
 ## 3. Chân dung người dùng cần hình dung
 
-- **Admin**: toàn quyền vận hành — quản lý người dùng, phân quyền, cấu hình hệ thống, xem thống kê toàn diện, và trực xử lý cảnh báo khẩn cấp theo kịch bản cố định ([SCR-AD-13](SCR-AD-13-GiamSatCanhBao.md)). Không cần chuyên môn y tế để làm vai trò này — mọi việc ở đây là vận hành/kỹ thuật, không phải phán đoán lâm sàng.
+- **Admin**: toàn quyền vận hành — quản lý người dùng, phân quyền, cấu hình hệ thống, xem thống kê toàn diện. Với cảnh báo khẩn cấp ([SCR-AD-13](SCR-AD-13-GiamSatCanhBao.md)), hệ thống tự động xử lý phần lớn (push, SMS, gọi tự động) — Admin chỉ xuất hiện ở **đúng 1 bước**: xác nhận escalate tới người liên hệ khẩn cấp khi mọi kênh tự động đều không có phản hồi. Không cần chuyên môn y tế để làm vai trò này — mọi việc ở đây là vận hành/xác nhận, không phải phán đoán lâm sàng.
 - **Biên tập chuyên môn y khoa**: soạn & duyệt nội dung y tế hiển thị cho bệnh nhân hoặc nạp cho AI học (tài liệu RAG, bài viết, FAQ, từ khoá Triage) — làm việc này bằng cách **đối chiếu với tài liệu y khoa đã công bố**, không phải bằng tư cách bác sĩ hành nghề thẩm định. Không có quyền quản lý tài khoản người dùng hay phân quyền hệ thống (ranh giới quan trọng: biên tập nội dung chuyên môn không đồng nghĩa với quyền quản trị hệ thống).
 
 ## 4. Sao lưu & khôi phục dữ liệu (`UC0057`, `UC0058`)
@@ -99,3 +99,4 @@ Khác với phân hệ bệnh nhân (mỗi UC gần như 1 màn riêng để gi�
 | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
 | v1.1 | 2026-11-17 | Bỏ vai trò "Bác sĩ" (xem §0) — đổi mô hình vai trò thành Admin + Biên tập chuyên môn y khoa; viết lại SCR-AD-01/03/04/07/10/11/13 |
+| v1.2 | 2026-11-19 | Viết lại `SCR-AD-13` theo hướng AI-first (review lại qua `ba-bigtech-10yr` + `ba-gastro-10yr`): hệ thống tự động hoá push/SMS/gọi tự động, Admin chỉ còn 1 bước xác nhận escalate duy nhất thay vì tự tay gọi điện theo kịch bản như v1.1 |

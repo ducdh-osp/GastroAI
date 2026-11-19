@@ -26,12 +26,12 @@
 
 | UC | Tên | Vì sao không có màn |
 | :--- | :--- | :--- |
-| `UC0067` | Cảnh báo khẩn cấp qua WebSocket | Cơ chế đẩy tin — kết quả hiện ở `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md` |
+| `UC0067` | Cảnh báo khẩn cấp qua WebSocket | Cơ chế đẩy tin — chỉ 1 phần của luồng escalation tự động hoá nhiều kênh ở `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md`, dùng khi cần đẩy case "Cần can thiệp" tới dashboard Admin |
 | `UC0068` | Nhắc uống thuốc trong ứng dụng | Hiện dưới dạng thông báo nổi (popup), đã mô tả ở `02-NguoiDung-BenhNhan/SCR-PT-07-NhacThuoc.md` |
 | `UC0069` | Email xác thực tài khoản | Cơ chế gửi — màn nhận kết quả ở `01-XacThuc-TaiKhoan/SCR-AUTH-02-XacThucEmail.md` |
 | `UC0070` | Email đặt lại mật khẩu | Cơ chế gửi — màn nhận kết quả ở `01-XacThuc-TaiKhoan/SCR-AUTH-05-DatLaiMatKhau.md` |
 | `UC0071` | Email nhắc uống thuốc khi offline | Mở rộng của `UC0068` — xem §2.2 |
-| `UC0072` | SMS OTP | Ưu tiên thấp nhất, có thể cắt nếu không triển khai — xem §2.3 |
+| `UC0072` | SMS (OTP + nhắc escalation khẩn cấp) | Hạ tầng dùng chung — xem §2.3, đã đổi mức ưu tiên |
 
 ---
 
@@ -41,7 +41,7 @@
 
 | Loại thông báo | Kênh | Vì sao |
 | :--- | :--- | :--- |
-| Cảnh báo Triage (bệnh nhân có dấu hiệu nguy hiểm) | WebSocket thời gian thực tới dashboard Admin | Duy nhất bắt buộc — vài phút chậm trễ có thể ảnh hưởng tới an toàn bệnh nhân |
+| Cảnh báo Triage (bệnh nhân có dấu hiệu nguy hiểm) | Push → SMS → gọi tự động (tới bệnh nhân, tự động theo bậc) + WebSocket thời gian thực (tới dashboard Admin, chỉ khi cần can thiệp) | Duy nhất bắt buộc — vài phút chậm trễ có thể ảnh hưởng tới an toàn bệnh nhân. Chi tiết luồng: `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md` |
 | Nhắc uống thuốc | Trong ứng dụng (nếu đang mở) → email (nếu không mở ứng dụng) | Ưu tiên kênh tức thời trước; chỉ "hạ" xuống email khi bệnh nhân không ở gần ứng dụng — không nên làm phiền bằng email nếu họ đang mở app và đã thấy thông báo rồi |
 | Email xác thực/đặt lại mật khẩu | Email — kênh duy nhất hợp lý vì bản chất là xác minh quyền sở hữu hộp thư đó | |
 | Broadcast hệ thống (bảo trì, tài liệu mới) | Trong ứng dụng | Không khẩn cấp, không cần làm phiền qua email/SMS |
@@ -50,9 +50,16 @@
 
 Bệnh nhân không phải lúc nào cũng mở ứng dụng đúng giờ uống thuốc — thông báo trong app vô dụng nếu họ không mở app lên nhìn thấy. Email là lớp dự phòng cho đúng tình huống này: **chỉ gửi khi xác định bệnh nhân không đang online** (gửi cả 2 kênh cùng lúc là thừa, gây cảm giác bị làm phiền). Nội dung email nhắc nhở nên **chung chung** ("bạn có lịch nhắc thuốc cần xác nhận"), không nêu tên thuốc hay liều lượng cụ thể trong nội dung email — vì email là kênh kém an toàn hơn (có thể bị người khác xem trên thiết bị dùng chung, hộp thư chuyển tiếp nhầm...), không nên để lộ chi tiết tình trạng sức khoẻ cụ thể qua kênh này.
 
-### 2.3 Vì sao SMS OTP là ưu tiên thấp nhất (`UC0072`)
+### 2.3 SMS (`UC0072`) — đã đổi mức ưu tiên khi trở thành kênh escalation an toàn
 
-Gửi SMS luôn phát sinh chi phí dịch vụ theo từng tin nhắn, trong khi email đã đủ đáp ứng các nhu cầu xác thực/thông báo hiện tại với chi phí thấp hơn nhiều. Tính năng này chỉ nên triển khai nếu có nhu cầu thực tế rõ ràng và điều kiện chi phí cho phép — không nên là mục tiêu phải có ngay từ đầu.
+Ban đầu SMS chỉ phục vụ OTP, ưu tiên thấp nhất (phát sinh chi phí theo tin nhắn, trong khi email đủ đáp ứng xác thực với chi phí thấp hơn). **Nhưng từ khi SMS được tái dùng làm kênh nhắc tự động trong luồng xử lý cảnh báo khẩn cấp** (`04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md` Bước 2 — nhắc bệnh nhân xác nhận an toàn khi không mở app), nó không còn là "có thể cắt" nữa: thiếu kênh này, bệnh nhân không mở app đúng lúc gặp nguy hiểm sẽ không nhận được bất kỳ nhắc nhở nào ngoài push (vô dụng nếu không mở app).
+
+| Mục đích dùng SMS | Mức ưu tiên |
+| :--- | :--- |
+| OTP xác thực (mục đích ban đầu) | Có thể cắt nếu thiếu thời gian — email đã đủ dùng |
+| Nhắc xác nhận an toàn trong luồng cảnh báo khẩn cấp (`SCR-AD-13`) | **Nên có** — là 1 trong số ít kênh tiếp cận được bệnh nhân khi không mở app, hạ tầng gửi SMS dùng chung cho cả 2 mục đích nên làm 1 lần dùng được cho cả 2 |
+
+Gọi điện tự động (TTS) ở cùng luồng là bước tiếp theo, tốn kém và phức tạp tích hợp hơn hẳn SMS — xem ghi chú tính khả thi ở `SCR-AD-13-GiamSatCanhBao.md` §1.
 
 ### 2.4 Độ trễ chấp nhận được cho email (bất đồng bộ)
 
@@ -75,7 +82,7 @@ Khác với cảnh báo Triage (phải tức thời), các email khác có thể
 | `UC0069` | `01-XacThuc-TaiKhoan/SCR-AUTH-02-XacThucEmail.md` |
 | `UC0070` | `01-XacThuc-TaiKhoan/SCR-AUTH-05-DatLaiMatKhau.md` |
 | `UC0071` | Mở rộng `UC0068` — không màn riêng |
-| `UC0072` | Không triển khai màn — ưu tiên thấp nhất |
+| `UC0072` | Không có màn riêng — hạ tầng SMS dùng chung cho OTP và `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md` |
 | `UC0073`, `UC0076` | `SCR-NT-01` |
 | `UC0074` | `SCR-NT-02` |
 | `UC0075` | `SCR-NT-03` |
@@ -85,3 +92,4 @@ Khác với cảnh báo Triage (phải tức thời), các email khác có thể
 | Phiên bản | Ngày | Nội dung |
 | :--- | :--- | :--- |
 | v1.0 | 2026-11-14 | Khởi tạo, viết theo trải nghiệm người dùng thực tế |
+| v1.1 | 2026-11-19 | Đổi mức ưu tiên SMS (`UC0072`) từ "có thể cắt" thành "nên có" — SMS giờ là hạ tầng dùng chung cho cả OTP và luồng escalation cảnh báo khẩn cấp tự động hoá ở `04-QuanTri-AdminCMS/SCR-AD-13-GiamSatCanhBao.md` |
