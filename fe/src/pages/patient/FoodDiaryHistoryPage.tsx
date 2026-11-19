@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useState } from 'react'
 import { getFoodDiaryTrend, listFoodDiary } from '../../api/foodDiary'
 import type { DailyCountPoint, FoodDiaryEntry, MealType } from '../../api/foodDiary'
+import { HealthReportButton } from '../../components/healthReport/HealthReportButton'
 import { AppShell } from '../../components/layout/AppShell'
 import { FoodDiaryTrendChart } from '../../components/foodDiary/FoodDiaryTrendChart'
 import { usePagedList } from '../../hooks/usePagedList'
@@ -54,10 +55,13 @@ export default function FoodDiaryHistoryPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl">
-        <div className="mb-6">
-          <Text type="secondary">Theo dõi sức khỏe</Text>
-          <Title level={2} className="mb-1! mt-1!">Lịch sử ăn uống</Title>
-          <Text type="secondary">Xem riêng biểu đồ tổng quan và danh sách đầy đủ các bữa ăn đã ghi nhận.</Text>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <Text type="secondary">Theo dõi sức khỏe</Text>
+            <Title level={2} className="mb-1! mt-1!">Lịch sử ăn uống</Title>
+            <Text type="secondary">Xem riêng biểu đồ tổng quan và danh sách đầy đủ các bữa ăn đã ghi nhận.</Text>
+          </div>
+          <HealthReportButton />
         </div>
 
         <Tabs
