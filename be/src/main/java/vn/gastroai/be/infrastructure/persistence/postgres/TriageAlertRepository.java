@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.triage.TriageAlert;
 import vn.gastroai.be.domain.triage.TriageAlertOutcome;
 import vn.gastroai.be.domain.triage.TriageAlertStatus;
+import vn.gastroai.be.domain.triage.TriagePatientResponse;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -38,23 +39,27 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
             @Param("startDate") Instant startDate,
             @Param("endDate") Instant endDate);
 
+    String STATUS = "vn.gastroai.be.domain.triage.TriageAlertStatus.";
+
     /**
-     * Danh sach CMS: NEW truoc, roi IN_PROGRESS, roi RESOLVED; trong nhom theo hoat dong
-     * gan nhat. Pageable truyen vao KHONG duoc co Sort (thu tu da co san trong query).
+     * Danh sach CMS (SCR-AD-13): "Can can thiep" truoc (trong do ca qua han failsafe len dau), roi
+     * "He thong dang tu xu ly", roi "Da xu ly"; trong nhom theo hoat dong gan nhat.
+     * Pageable truyen vao KHONG duoc co Sort (thu tu da co san trong query).
      */
     @Query(value = "SELECT a FROM TriageAlert a JOIN FETCH a.patient WHERE a.status IN :statuses "
             + "ORDER BY CASE a.status "
-            + "WHEN vn.gastroai.be.domain.triage.TriageAlertStatus.NEW THEN 0 "
-            + "WHEN vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS THEN 1 "
+            + "WHEN " + STATUS + "NEEDS_INTERVENTION THEN 0 "
+            + "WHEN " + STATUS + "AUTO_HANDLING THEN 1 "
             + "ELSE 2 END, "
+            + "CASE WHEN a.failsafeAt IS NOT NULL THEN 0 ELSE 1 END, "
             + "COALESCE(a.lastRepeatedAt, a.occurredAt) DESC, a.id DESC",
             countQuery = "SELECT count(a) FROM TriageAlert a WHERE a.status IN :statuses")
     Page<TriageAlert> findPageByStatuses(
             @Param("statuses") Collection<TriageAlertStatus> statuses, Pageable pageable);
 
-    /** Buoc 1 gop trung: canh bao NEW/IN_PROGRESS co hoat dong gan nhat (dung Pageable 1 dong). */
+    /** Buoc 1 gop trung: canh bao con mo co hoat dong gan nhat (dung Pageable 1 dong). */
     @Query("SELECT a FROM TriageAlert a WHERE a.patient.id = :patientId "
-            + "AND a.status <> vn.gastroai.be.domain.triage.TriageAlertStatus.RESOLVED "
+            + "AND a.status <> " + STATUS + "RESOLVED "
             + "ORDER BY COALESCE(a.lastRepeatedAt, a.occurredAt) DESC, a.id DESC")
     List<TriageAlert> findLatestOpenForPatient(
             @Param("patientId") Long patientId,
@@ -63,37 +68,89 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
     /** Buoc 2 gop trung: canh bao gan nhat cua benh nhan (bat ke trang thai). */
     Optional<TriageAlert> findFirstByPatient_IdOrderByOccurredAtDescIdDesc(Long patientId);
 
-    /** Cac canh bao cua benh nhan da duoc nhan vien nhan it nhat 1 tin. */
-    @Query("SELECT a FROM TriageAlert a WHERE a.patient.id = :patientId AND EXISTS ("
-            + "SELECT m.id FROM TriageAlertMessage m WHERE m.alertId = a.id AND m.senderType <> 'PATIENT')")
-    List<TriageAlert> findWithStaffMessagesForPatient(@Param("patientId") Long patientId);
-
     @Query("SELECT a.patient.id AS patientId, count(a) AS total FROM TriageAlert a "
             + "WHERE a.patient.id IN :patientIds "
             + "AND a.outcome = vn.gastroai.be.domain.triage.TriageAlertOutcome.FALSE_ALARM "
             + "GROUP BY a.patient.id")
     List<PatientAlertCount> countFalseAlarmsByPatient(@Param("patientIds") Collection<Long> patientIds);
 
+    // ===== Bo hen gio (TriageEscalationScheduler) =====
+
+    /** Ca "dang tu xu ly" da qua moc ma benh nhan van im lang. */
+    @Query("SELECT a.id FROM TriageAlert a WHERE a.status = " + STATUS + "AUTO_HANDLING "
+            + "AND a.occurredAt <= :cutoff ORDER BY a.occurredAt")
+    List<Long> findIdsDueForEscalation(@Param("cutoff") Instant cutoff);
+
+    /** Ca "can can thiep" qua thoi han ma chua Admin nao ra tay, failsafe chua chay. */
+    @Query("SELECT a.id FROM TriageAlert a WHERE a.status = " + STATUS + "NEEDS_INTERVENTION "
+            + "AND a.acknowledgedAt IS NULL AND a.failsafeAt IS NULL "
+            + "AND a.needsInterventionAt <= :cutoff ORDER BY a.needsInterventionAt")
+    List<Long> findIdsDueForFailsafe(@Param("cutoff") Instant cutoff);
+
+    /**
+     * Chuyen "Can can thiep" - chi khi con dang tu xu ly (dieu kien trong WHERE chan 2 noi cung
+     * chuyen: bo hen gio va benh nhan bam [Can ho tro] cung luc).
+     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query("UPDATE TriageAlert a SET a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS, "
+    @Query("UPDATE TriageAlert a SET a.status = " + STATUS + "NEEDS_INTERVENTION, "
+            + "a.needsInterventionAt = :now, a.updatedAt = :now "
+            + "WHERE a.id = :id AND a.status = " + STATUS + "AUTO_HANDLING")
+    int escalateIfAuto(@Param("id") Long id, @Param("now") Instant now);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE TriageAlert a SET a.failsafeAt = :now, a.updatedAt = :now "
+            + "WHERE a.id = :id AND a.status = " + STATUS + "NEEDS_INTERVENTION "
+            + "AND a.acknowledgedAt IS NULL AND a.failsafeAt IS NULL")
+    int markFailsafeIfDue(@Param("id") Long id, @Param("now") Instant now);
+
+    /**
+     * Admin ra tay (ghi lien he / nhan tin) -> dung failsafe. Ca con dang tu xu ly thi chuyen luon
+     * "Can can thiep" (Admin chu dong vao som).
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE TriageAlert a SET a.status = " + STATUS + "NEEDS_INTERVENTION, "
+            + "a.needsInterventionAt = COALESCE(a.needsInterventionAt, :now), "
+            + "a.acknowledgedAt = COALESCE(a.acknowledgedAt, :now), a.updatedAt = :now "
+            + "WHERE a.id = :id AND a.status <> " + STATUS + "RESOLVED")
+    int acknowledgeIfOpen(@Param("id") Long id, @Param("now") Instant now);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE TriageAlert a SET a.patientResponse = :response, a.patientRespondedAt = :now, "
+            + "a.updatedAt = :now WHERE a.id = :id")
+    int recordPatientResponse(
+            @Param("id") Long id,
+            @Param("response") TriagePatientResponse response,
+            @Param("now") Instant now);
+
+    // ===== Tiep nhan "Toi dang lien he" (tu nguyen, de 2 Admin khong cung goi 1 nguoi than) =====
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE TriageAlert a SET a.status = " + STATUS + "NEEDS_INTERVENTION, "
+            + "a.needsInterventionAt = COALESCE(a.needsInterventionAt, :now), "
+            + "a.acknowledgedAt = COALESCE(a.acknowledgedAt, :now), "
             + "a.claimedById = :claimerId, a.claimedByType = :claimerType, "
             + "a.claimedAt = :now, a.updatedAt = :now "
-            + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.NEW")
-    int claimIfNew(
+            + "WHERE a.id = :id AND a.status <> " + STATUS + "RESOLVED AND a.claimedById IS NULL")
+    int claimIfOpen(
             @Param("id") Long id,
             @Param("claimerId") Long claimerId,
             @Param("claimerType") String claimerType,
             @Param("now") Instant now);
 
     /**
-     * Tra lai canh bao ve NEW - chi nguoi da tiep nhan (claimedById/claimedByType) duoc goi.
+     * Tra lai: bo tiep nhan va DAT LAI dong ho failsafe (acknowledgedAt = null, tinh lai tu luc tra)
+     * - tra lai nghia la khong con ai lo ca nay, phai de failsafe bao ve tiep.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query("UPDATE TriageAlert a SET a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.NEW, "
-            + "a.claimedById = null, a.claimedByType = null, a.claimedAt = null, a.updatedAt = :now "
-            + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS "
+    @Query("UPDATE TriageAlert a SET a.claimedById = null, a.claimedByType = null, a.claimedAt = null, "
+            + "a.acknowledgedAt = null, a.needsInterventionAt = :now, a.updatedAt = :now "
+            + "WHERE a.id = :id AND a.status = " + STATUS + "NEEDS_INTERVENTION "
             + "AND a.claimedById = :claimerId AND a.claimedByType = :claimerType")
     int releaseIfClaimedBy(
             @Param("id") Long id,
@@ -101,52 +158,31 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
             @Param("claimerType") String claimerType,
             @Param("now") Instant now);
 
-    /** ADMIN tra lai ho canh bao dang IN_PROGRESS cua nguoi khac. */
+    /** ADMIN tra lai ho ca dang do nguoi khac tiep nhan. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query("UPDATE TriageAlert a SET a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.NEW, "
-            + "a.claimedById = null, a.claimedByType = null, a.claimedAt = null, a.updatedAt = :now "
-            + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS")
+    @Query("UPDATE TriageAlert a SET a.claimedById = null, a.claimedByType = null, a.claimedAt = null, "
+            + "a.acknowledgedAt = null, a.needsInterventionAt = :now, a.updatedAt = :now "
+            + "WHERE a.id = :id AND a.status = " + STATUS + "NEEDS_INTERVENTION AND a.claimedById IS NOT NULL")
     int releaseAsAdmin(
             @Param("id") Long id,
             @Param("now") Instant now);
 
     /**
-     * Danh dau RESOLVED (kem outcome/ghi chu) chi khi nguoi goi (resolverId/resolverType) dung la
-     * nguoi da tiep nhan canh bao nay (claimedById/claimedByType) VA canh bao dang IN_PROGRESS.
-     * Day la duong di thuong, danh cho Bac si/Admin tu dong ho canh bao minh tiep nhan.
+     * Dong ca dang mo. Theo SCR-AD-13 "1 Admin bat ky" xu ly duoc, nen khong bat buoc la nguoi tiep
+     * nhan; resolvedBy ghi dung nguoi dong (PATIENT khi benh nhan tu bam [An toan]).
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
-    @Query("UPDATE TriageAlert a SET a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.RESOLVED, "
+    @Query("UPDATE TriageAlert a SET a.status = " + STATUS + "RESOLVED, "
             + "a.outcome = :outcome, a.resolutionNote = :note, "
             + "a.resolvedAt = :now, a.resolvedById = :resolverId, a.resolvedByType = :resolverType, "
             + "a.updatedAt = :now "
-            + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS "
-            + "AND a.claimedById = :resolverId AND a.claimedByType = :resolverType")
-    int resolveIfClaimedBy(
+            + "WHERE a.id = :id AND a.status <> " + STATUS + "RESOLVED")
+    int closeIfOpen(
             @Param("id") Long id,
             @Param("resolverId") Long resolverId,
             @Param("resolverType") String resolverType,
-            @Param("outcome") TriageAlertOutcome outcome,
-            @Param("note") String note,
-            @Param("now") Instant now);
-
-    /**
-     * Quyen "dong ho" rieng cho ADMIN: khong can la nguoi da tiep nhan, chi can canh bao
-     * dang IN_PROGRESS. claimedById/claimedByType giu nguyen de van biet ai thuc su xu ly,
-     * chi resolvedByType duoc ghi cung la 'ADMIN'.
-     */
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Transactional
-    @Query("UPDATE TriageAlert a SET a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.RESOLVED, "
-            + "a.outcome = :outcome, a.resolutionNote = :note, "
-            + "a.resolvedAt = :now, a.resolvedById = :adminId, a.resolvedByType = 'ADMIN', "
-            + "a.updatedAt = :now "
-            + "WHERE a.id = :id AND a.status = vn.gastroai.be.domain.triage.TriageAlertStatus.IN_PROGRESS")
-    int resolveAsAdminOverride(
-            @Param("id") Long id,
-            @Param("adminId") Long adminId,
             @Param("outcome") TriageAlertOutcome outcome,
             @Param("note") String note,
             @Param("now") Instant now);

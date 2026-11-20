@@ -28,5 +28,14 @@ public record TriageAlertResponse(
         Instant lastRepeatedAt,
         long unreadPatientMessages,
         long staffMessageCount,
-        long patientFalseAlarmCount) {
+        long patientFalseAlarmCount,
+        /** Luc chuyen "Can can thiep" - FE dem nguoc failsafe tu moc nay. */
+        Instant needsInterventionAt,
+        /** Admin dau tien ra tay; co gia tri thi failsafe khong chay. */
+        Instant acknowledgedAt,
+        /** Failsafe da chay (qua han ma khong Admin nao xu ly). */
+        Instant failsafeAt,
+        /** SAFE / NEED_HELP - cau tra loi cua benh nhan cho "Ban co on khong?". */
+        String patientResponse,
+        Instant patientRespondedAt) {
 }

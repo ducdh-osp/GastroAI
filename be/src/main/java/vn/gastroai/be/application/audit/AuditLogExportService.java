@@ -141,6 +141,10 @@ public class AuditLogExportService {
             case TRIAGE_ALERT_RELEASE -> "Trả lại cảnh báo cấp cứu";
             case TRIAGE_ALERT_FALSE_ALARM -> "Đánh dấu báo nhầm/spam";
             case TRIAGE_ALERT_MESSAGE -> "Nhắn tin cho bệnh nhân";
+            case TRIAGE_ALERT_ESCALATE -> "Chuyển cảnh báo sang Cần can thiệp";
+            case TRIAGE_ALERT_FAILSAFE -> "Failsafe cảnh báo khẩn cấp";
+            case TRIAGE_ALERT_CONTACT -> "Ghi kết quả liên hệ khẩn cấp";
+            case TRIAGE_ALERT_PATIENT_RESPONSE -> "Bệnh nhân trả lời hỏi thăm";
         };
     }
 

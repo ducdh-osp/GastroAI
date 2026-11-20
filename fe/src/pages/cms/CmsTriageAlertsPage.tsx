@@ -12,6 +12,7 @@ import {
 import { describeMatchedGroups } from '../../api/chat'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import {
+  TRIAGE_OUTCOME_LABELS,
   TRIAGE_STATUS_COLORS,
   TRIAGE_STATUS_LABELS,
   TriageAlertDetailDrawer,
@@ -23,23 +24,28 @@ import {
   type TriageAlertActivitySocketEvent,
   type TriageAlertStatusChangedSocketEvent,
 } from '../../hooks/useTriageAlertSocket'
+import { useNow } from '../../hooks/useNow'
 import { formatDateTime } from '../../lib/format'
+import { FAILSAFE_AFTER_MS, formatCountdown, INTERVENTION_AFTER_MS, msUntil } from '../../lib/triageTimers'
 
 const { Title, Text } = Typography
 
 const PAGE_SIZE = 20
 
-const VIEW_OPTIONS: { label: string; value: TriageAlertView }[] = [
-  { label: 'Đang mở', value: 'OPEN' },
-  { label: 'Đã đóng', value: 'CLOSED' },
-  { label: 'Tất cả', value: 'ALL' },
-]
+/** SCR-AD-13: 3 tab, "Cần can thiệp" đầu tiên - đó là toàn bộ việc Admin phải làm. */
+type TabView = Extract<TriageAlertView, 'INTERVENTION' | 'AUTO' | 'CLOSED'>
 
 const CLAIMER_TYPE_LABELS: Record<string, string> = { ADMIN: 'Admin', DOCTOR: 'Bác sĩ' }
 
+interface OpenCounts {
+  intervention: number
+  auto: number
+}
+
 export default function CmsTriageAlertsPage() {
   const { isAuthenticated } = useCmsAuth()
-  const [view, setView] = useState<TriageAlertView>('OPEN')
+  const [view, setView] = useState<TabView>('INTERVENTION')
+  const [counts, setCounts] = useState<OpenCounts | null>(null)
   const [page, setPage] = useState(0)
   const [alerts, setAlerts] = useState<TriageAlert[]>([])
   const [total, setTotal] = useState(0)
@@ -55,10 +61,21 @@ export default function CmsTriageAlertsPage() {
   const selectedIdRef = useRef(selectedId)
   selectedIdRef.current = selectedId
 
+  // Số ca ở 2 tab còn mở - hiện trên tab để Admin thấy ngay có việc hay không.
+  const loadCounts = useCallback(() => {
+    Promise.all([listTriageAlerts('INTERVENTION', 0, 1), listTriageAlerts('AUTO', 0, 1)])
+      .then(([intervention, auto]) => setCounts({
+        intervention: intervention.totalElements,
+        auto: auto.totalElements,
+      }))
+      .catch(() => undefined)
+  }, [])
+
   const loadSeq = useRef(0)
   const loadAlerts = useCallback((silent = false) => {
     const mySeq = ++loadSeq.current
     if (!silent) setLoading(true)
+    loadCounts()
     const { view: currentView, page: currentPage } = queryRef.current
     listTriageAlerts(currentView, currentPage, PAGE_SIZE)
       .then((result) => {
@@ -76,7 +93,7 @@ export default function CmsTriageAlertsPage() {
       .finally(() => {
         if (mySeq === loadSeq.current) setLoading(false)
       })
-  }, [])
+  }, [loadCounts])
 
   useEffect(() => { loadAlerts() }, [view, page, loadAlerts])
 
@@ -105,12 +122,18 @@ export default function CmsTriageAlertsPage() {
       try {
         const updated = await claimTriageAlert(alertId)
         setAlerts((prev) => prev.map((a) => (a.id === alertId ? updated : a)))
-        message.success('Đã tiếp nhận cảnh báo')
+        message.success(updated.status === 'NEEDS_INTERVENTION' && view === 'AUTO'
+          ? 'Đã chuyển sang Cần can thiệp'
+          : 'Đã đánh dấu bạn đang liên hệ')
+        loadAlerts(true)
       } catch (err) {
-        message.error(extractTriageErrorMessage(err, 'Không thể tiếp nhận cảnh báo này.'))
+        message.error(extractTriageErrorMessage(err, 'Không thể nhận ca này.'))
       }
     })
   }
+
+  // Đồng hồ đếm ngược chỉ chạy khi đang xem ca còn mở.
+  const now = useNow(view !== 'CLOSED' && alerts.length > 0)
 
   const handleAlertChanged = useCallback((updated: TriageAlert) => {
     setAlerts((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
@@ -160,21 +183,8 @@ export default function CmsTriageAlertsPage() {
     {
       title: 'Trạng thái',
       key: 'status',
-      width: 190,
-      render: (_, record) => (
-        <div>
-          <Tag color={TRIAGE_STATUS_COLORS[record.status]}>{TRIAGE_STATUS_LABELS[record.status]}</Tag>
-          {record.outcome === 'HANDLED' && <Tag color="green">Xử lý xong</Tag>}
-          {record.outcome === 'FALSE_ALARM' && <Tag>Báo nhầm/Spam</Tag>}
-          {record.claimedByType && (
-            <div>
-              <Text type="secondary" className="text-xs">
-                {CLAIMER_TYPE_LABELS[record.claimedByType] ?? record.claimedByType} #{record.claimedById} tiếp nhận
-              </Text>
-            </div>
-          )}
-        </div>
-      ),
+      width: 230,
+      render: (_, record) => <StatusCell alert={record} now={now} />,
     },
     {
       title: <span className="whitespace-nowrap">Tin mới</span>,
@@ -186,30 +196,35 @@ export default function CmsTriageAlertsPage() {
         : null),
     },
     {
-      title: '', key: 'actions', width: 120,
+      title: '', key: 'actions', width: 150,
       render: (_, record) => {
-        if (record.status !== 'NEW') return null
+        if (record.status === 'RESOLVED' || record.claimedById !== null) return null
         const busy = actionGuard.inFlightId === record.id
         const disabled = actionGuard.inFlightId !== null && actionGuard.inFlightId !== record.id
         return (
           <Button
             size="small"
-            type="primary"
             loading={busy}
             disabled={disabled}
+            type={record.status === 'AUTO_HANDLING' ? 'default' : 'primary'}
             onClick={(event) => {
               event.stopPropagation()
               void handleClaim(record.id)
             }}
           >
-            Tiếp nhận
+            {record.status === 'AUTO_HANDLING' ? 'Can thiệp ngay' : 'Tôi đang liên hệ'}
           </Button>
         )
       },
     },
   ]
 
-  const openCount = view === 'OPEN' ? total : null
+  const overdueCount = view === 'INTERVENTION' ? alerts.filter((alert) => alert.failsafeAt && !alert.acknowledgedAt).length : 0
+  const tabOptions: { label: string; value: TabView }[] = [
+    { label: `Cần can thiệp${counts ? ` (${counts.intervention})` : ''}`, value: 'INTERVENTION' },
+    { label: `Hệ thống đang tự xử lý${counts ? ` (${counts.auto})` : ''}`, value: 'AUTO' },
+    { label: 'Đã xử lý', value: 'CLOSED' },
+  ]
 
   return (
     <CmsAppShell>
@@ -223,7 +238,6 @@ export default function CmsTriageAlertsPage() {
                 Cảnh báo khẩn cấp
               </Title>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <Text type="secondary">Tin nhắn trợ lý AI nhận diện có dấu hiệu khẩn cấp</Text>
                 {connectionState !== 'connected' && (
                   <Badge
                     className="whitespace-nowrap"
@@ -233,8 +247,8 @@ export default function CmsTriageAlertsPage() {
                 )}
               </div>
             </div>
-            <Segmented<TriageAlertView>
-              options={VIEW_OPTIONS}
+            <Segmented<TabView>
+              options={tabOptions}
               value={view}
               onChange={(value) => {
                 setView(value)
@@ -246,8 +260,13 @@ export default function CmsTriageAlertsPage() {
 
         {loadError && <Alert type="error" showIcon title={loadError} className="shrink-0" />}
 
-        {!loadError && !loading && openCount !== null && openCount > 0 && (
-          <Alert className="shrink-0" type="warning" showIcon title={`${openCount} cảnh báo đang mở`} />
+        {!loadError && counts !== null && counts.intervention > 0 && (
+          <Alert
+            className="shrink-0"
+            type="error"
+            showIcon
+            title={`${counts.intervention} ca cần can thiệp${overdueCount > 0 ? ` · ${overdueCount} ca QUÁ HẠN` : ''}`}
+          />
         )}
 
         <Card
@@ -268,11 +287,17 @@ export default function CmsTriageAlertsPage() {
             }}
             onRow={(record) => ({
               onClick: () => setSelectedId(record.id),
-              className: 'cursor-pointer',
+              className: record.failsafeAt && !record.acknowledgedAt && record.status === 'NEEDS_INTERVENTION'
+                ? 'cursor-pointer bg-red-50 dark:bg-red-950/30'
+                : 'cursor-pointer',
             })}
             scroll={{ x: 990 }}
             tableLayout="fixed"
-            locale={{ emptyText: loadError ? 'Lỗi tải dữ liệu' : 'Chưa có cảnh báo khẩn cấp nào' }}
+            locale={{
+              emptyText: loadError
+                ? 'Lỗi tải dữ liệu'
+                : view === 'INTERVENTION' ? 'Không có ca nào cần can thiệp' : 'Chưa có cảnh báo nào',
+            }}
           />
         </Card>
       </div>
@@ -284,5 +309,55 @@ export default function CmsTriageAlertsPage() {
         onAlertChanged={handleAlertChanged}
       />
     </CmsAppShell>
+  )
+}
+
+/**
+ * Ô trạng thái: nói rõ ca đang ở bước nào của SCR-AD-13 và còn bao lâu tới bước kế tiếp,
+ * để Admin không phải mở từng ca mới biết.
+ */
+function StatusCell({ alert, now }: { alert: TriageAlert; now: number }) {
+  if (alert.status === 'RESOLVED') {
+    return (
+      <div>
+        <Tag color={TRIAGE_STATUS_COLORS.RESOLVED}>{TRIAGE_STATUS_LABELS.RESOLVED}</Tag>
+        {alert.outcome && (
+          <Tag color={alert.outcome === 'FALSE_ALARM' ? 'default' : 'green'}>{TRIAGE_OUTCOME_LABELS[alert.outcome]}</Tag>
+        )}
+      </div>
+    )
+  }
+
+  if (alert.status === 'AUTO_HANDLING') {
+    const remaining = msUntil(alert.occurredAt, INTERVENTION_AFTER_MS, now)
+    return (
+      <div>
+        <Tag color={TRIAGE_STATUS_COLORS.AUTO_HANDLING}>{TRIAGE_STATUS_LABELS.AUTO_HANDLING}</Tag>
+        <Text type="secondary" className="block text-xs tabular-nums">
+          Đang chờ bệnh nhân trả lời · chuyển Admin sau {formatCountdown(remaining ?? 0)}
+        </Text>
+      </div>
+    )
+  }
+
+  const overdue = alert.failsafeAt !== null && alert.acknowledgedAt === null
+  const failsafeIn = alert.acknowledgedAt === null && alert.failsafeAt === null
+    ? msUntil(alert.needsInterventionAt, FAILSAFE_AFTER_MS, now)
+    : null
+  return (
+    <div>
+      <Tag color={TRIAGE_STATUS_COLORS.NEEDS_INTERVENTION}>{TRIAGE_STATUS_LABELS.NEEDS_INTERVENTION}</Tag>
+      {overdue && <Tag color="red" className="font-semibold">QUÁ HẠN</Tag>}
+      {alert.patientResponse === 'NEED_HELP' && <Tag color="volcano">Bệnh nhân bấm Cần hỗ trợ</Tag>}
+      <Text type="secondary" className="block text-xs tabular-nums">
+        {alert.claimedById !== null
+          ? `${CLAIMER_TYPE_LABELS[alert.claimedByType ?? ''] ?? alert.claimedByType} #${alert.claimedById} đang liên hệ`
+          : alert.acknowledgedAt
+            ? 'Đã có Admin xử lý'
+            : failsafeIn !== null
+              ? `Chưa ai xử lý · failsafe sau ${formatCountdown(failsafeIn)}`
+              : 'Chưa ai xử lý'}
+      </Text>
+    </div>
   )
 }

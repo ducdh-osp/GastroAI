@@ -50,7 +50,7 @@ public class TriageAlert {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private TriageAlertStatus status = TriageAlertStatus.NEW;
+    private TriageAlertStatus status = TriageAlertStatus.AUTO_HANDLING;
 
     @Column(name = "claimed_by_type", length = 20)
     private String claimedByType;
@@ -87,6 +87,25 @@ public class TriageAlert {
     @Column(name = "last_repeated_at")
     private Instant lastRepeatedAt;
 
+    /** Luc chuyen "Can can thiep" - moc tinh thoi han failsafe. */
+    @Column(name = "needs_intervention_at")
+    private Instant needsInterventionAt;
+
+    /** Admin dau tien ra tay (tiep nhan / ghi lien he / nhan tin) - co gia tri thi failsafe khong chay. */
+    @Column(name = "acknowledged_at")
+    private Instant acknowledgedAt;
+
+    /** Luc failsafe chay (khong Admin nao xac nhan trong thoi han). */
+    @Column(name = "failsafe_at")
+    private Instant failsafeAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "patient_response", length = 20)
+    private TriagePatientResponse patientResponse;
+
+    @Column(name = "patient_responded_at")
+    private Instant patientRespondedAt;
+
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 
@@ -106,6 +125,6 @@ public class TriageAlert {
         this.messageContent = messageContent;
         this.matchedGroups = matchedGroups;
         this.occurredAt = occurredAt;
-        this.status = TriageAlertStatus.NEW;
+        this.status = TriageAlertStatus.AUTO_HANDLING;
     }
 }

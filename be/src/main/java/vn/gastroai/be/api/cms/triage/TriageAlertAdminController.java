@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.audit.AuditLogService;
-import vn.gastroai.be.application.triage.TriageAlertConversationService;
 import vn.gastroai.be.application.triage.TriageAlertDetailResponse;
 import vn.gastroai.be.application.triage.TriageAlertResponse;
 import vn.gastroai.be.application.triage.TriageAlertService;
@@ -25,14 +24,11 @@ public class TriageAlertAdminController {
     private static final String TARGET = "TRIAGE_ALERT";
 
     private final TriageAlertService triageAlertService;
-    private final TriageAlertConversationService conversationService;
     private final AuditLogService auditLogService;
 
     public TriageAlertAdminController(TriageAlertService triageAlertService,
-                                      TriageAlertConversationService conversationService,
                                       AuditLogService auditLogService) {
         this.triageAlertService = triageAlertService;
-        this.conversationService = conversationService;
         this.auditLogService = auditLogService;
     }
 
@@ -64,7 +60,7 @@ public class TriageAlertAdminController {
         String claimerType = resolveRole(authentication);
         TriageAlertResponse alert = triageAlertService.claim(alertId, claimerId, claimerType);
         auditLogService.record(AuditAction.TRIAGE_ALERT_CLAIM, TARGET, alertId,
-                "Bệnh nhân #" + alert.patientId() + " · Mới → Đang xử lý");
+                "Bệnh nhân #" + alert.patientId() + " · Tôi đang liên hệ");
         return alert;
     }
 
@@ -76,23 +72,24 @@ public class TriageAlertAdminController {
         Long actorId = Long.valueOf(authentication.getName());
         TriageAlertResponse alert = triageAlertService.release(alertId, actorId, resolveRole(authentication));
         auditLogService.record(AuditAction.TRIAGE_ALERT_RELEASE, TARGET, alertId,
-                "Bệnh nhân #" + alert.patientId() + " · Đang xử lý → Mới");
+                "Bệnh nhân #" + alert.patientId() + " · Trả lại, failsafe tính lại từ lúc này");
         return alert;
     }
 
-    @PostMapping("/{alertId}/messages")
-    public TriageAlertDetailResponse.MessageItem sendMessage(
+    /** SCR-AD-13 buoc 3 - ghi ket qua goi nguoi than / benh nhan / 115. */
+    @PostMapping("/{alertId}/contact")
+    public TriageAlertResponse recordContact(
             @PathVariable Long alertId,
-            @Valid @RequestBody TriageAlertMessageRequest request,
+            @Valid @RequestBody TriageAlertContactRequest request,
             Authentication authentication) {
 
-        Long staffId = Long.valueOf(authentication.getName());
-        TriageAlertConversationService.StaffMessageResult result = conversationService.sendStaffMessage(
-                alertId, staffId, resolveRole(authentication), request.content());
-        // Khong ghi noi dung y te vao nhat ky, chi ghi do dai.
-        auditLogService.record(AuditAction.TRIAGE_ALERT_MESSAGE, TARGET, alertId,
-                "Bệnh nhân #" + result.patientId() + " · " + result.message().content().length() + " ký tự");
-        return result.message();
+        Long actorId = Long.valueOf(authentication.getName());
+        TriageAlertResponse alert = triageAlertService.recordContact(
+                alertId, actorId, resolveRole(authentication), request.result(), request.note());
+        // Chi ghi loai ket qua, khong ghi ghi chu (co the chua thong tin y te / so dien thoai).
+        auditLogService.record(AuditAction.TRIAGE_ALERT_CONTACT, TARGET, alertId,
+                "Bệnh nhân #" + alert.patientId() + " · " + request.result().label());
+        return alert;
     }
 
     @PostMapping("/{alertId}/resolve")
@@ -130,11 +127,11 @@ public class TriageAlertAdminController {
 
     private static String describeClose(TriageAlertResponse alert, Long resolverId, String resolverType,
                                         String closedLabel) {
-        String detail = "Bệnh nhân #" + alert.patientId() + " · Đang xử lý → " + closedLabel;
+        String detail = "Bệnh nhân #" + alert.patientId() + " · → " + closedLabel;
         boolean resolvedBySomeoneElse = alert.claimedById() != null
                 && (!alert.claimedById().equals(resolverId) || !resolverType.equals(alert.claimedByType()));
         if (resolvedBySomeoneElse) {
-            detail += " (Admin đóng hộ, người tiếp nhận: " + alert.claimedByType() + " #" + alert.claimedById() + ")";
+            detail += " (người đang liên hệ: " + alert.claimedByType() + " #" + alert.claimedById() + ")";
         }
         return detail;
     }

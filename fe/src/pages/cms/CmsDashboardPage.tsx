@@ -332,7 +332,7 @@ export default function CmsDashboardPage() {
                       <div className="mt-2 flex items-center gap-2">
                         {data.summary.newAlerts > 0 ? (
                           <Tag color="red" className="m-0 text-xs font-semibold animate-pulse">
-                            {data.summary.newAlerts} mới
+                            {data.summary.newAlerts} cần can thiệp
                           </Tag>
                         ) : (
                           <Tag color="green" className="m-0 text-xs">Ổn định</Tag>

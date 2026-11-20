@@ -1,7 +1,7 @@
 import { Client, type IMessage } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { useEffect, useRef, useState } from 'react'
-import type { TriageAlertStatus } from '../api/cmsTriage'
+import type { TriageActorType, TriageAlertStatus } from '../api/cmsTriage'
 
 
 export interface TriageAlertSocketEvent {
@@ -23,7 +23,7 @@ export interface TriageAlertStatusChangedSocketEvent {
   claimedById: number | null
   claimedByType: 'ADMIN' | 'DOCTOR' | null
   resolvedById: number | null
-  resolvedByType: 'ADMIN' | 'DOCTOR' | null
+  resolvedByType: TriageActorType | null
   statusChangedAt: string
 }
 
@@ -33,6 +33,9 @@ export type TriageAlertActivityType =
   | 'MESSAGE_SENT'
   | 'PATIENT_MESSAGE'
   | 'PATIENT_READ'
+  | 'PATIENT_NEEDS_HELP'
+  | 'CONTACT_RECORDED'
+  | 'FAILSAFE'
 
 /** Chi bao "canh bao nay vua co thay doi" - FE tu goi API tai lai. */
 export interface TriageAlertActivitySocketEvent {

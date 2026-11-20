@@ -1,5 +1,7 @@
 package vn.gastroai.be.application.notification;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,7 +14,7 @@ import vn.gastroai.be.domain.notification.NotificationCreatedEvent;
 import vn.gastroai.be.domain.notification.NotificationRecipientType;
 import vn.gastroai.be.domain.notification.NotificationState;
 import vn.gastroai.be.domain.notification.NotificationType;
-import vn.gastroai.be.domain.triage.TriageAlertEvent;
+import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.AppNotificationRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.NotificationStateRepository;
 
@@ -25,15 +27,20 @@ import java.util.Optional;
 @Service
 public class AppNotificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(AppNotificationService.class);
+
     private final AppNotificationRepository notificationRepository;
     private final NotificationStateRepository stateRepository;
+    private final AdminRepository adminRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public AppNotificationService(AppNotificationRepository notificationRepository,
                                   NotificationStateRepository stateRepository,
+                                  AdminRepository adminRepository,
                                   org.springframework.context.ApplicationEventPublisher eventPublisher) {
         this.notificationRepository = notificationRepository;
         this.stateRepository = stateRepository;
+        this.adminRepository = adminRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -117,41 +124,72 @@ public class AppNotificationService {
                 NotificationRecipientType.ADMIN, null, response));
         return Optional.of(response);
     }
-    /** Notification triage là broadcast cho CMS Admin và được lưu cùng transaction với alert. */
+    /**
+     * Ca cap cuu vua dong (benh nhan bao an toan / Admin dong ca / bao nham): thong bao cua ca do
+     * khong con viec gi phai lam nua -> danh dau da doc cho moi Admin va cho benh nhan.
+     */
     @Transactional("postgresTransactionManager")
-    public Optional<NotificationResponse> recordTriageAlert(TriageAlertEvent event) {
-        String dedupeKey = "TRIAGE_ALERT:" + event.id();
+    public void markTriageAlertNotificationsRead(Long alertId) {
+        Instant now = Instant.now();
+        stateRepository.markTriageAlertPatientNotificationsRead(alertId, now);
+        // Thong bao Admin la broadcast, trang thai doc luu theo tung Admin; bang admins o MySQL.
+        // MySQL loi thi bo qua phan nay, KHONG de lam hong viec dong ca.
+        List<Long> adminIds;
+        try {
+            adminIds = adminRepository.findAllIds();
+        } catch (RuntimeException ex) {
+            log.warn("Khong lay duoc danh sach Admin de danh dau da doc thong bao ca {}", alertId, ex);
+            return;
+        }
+        for (Long adminId : adminIds) {
+            stateRepository.markTriageAlertAdminNotificationsRead(alertId, adminId, now);
+        }
+    }
+
+    /**
+     * SCR-AD-13 buoc 1: hoi tham benh nhan ngay khi co canh bao. FE hien popup co 2 nut
+     * [An toan] [Can ho tro]. reminder = lan nhac lai khi failsafe chay.
+     */
+    @Transactional("postgresTransactionManager")
+    public Optional<NotificationResponse> recordTriageCheckIn(Long patientId, Long alertId, boolean reminder) {
+        String dedupeKey = (reminder ? "TRIAGE_CHECK_IN_REMINDER:" : "TRIAGE_CHECK_IN:") + alertId;
         if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
             return Optional.empty();
         }
+        String title = reminder ? "Nhắc lại: Bạn có ổn không?" : "Bạn có ổn không?";
+        String message = "GastroAI vừa ghi nhận dấu hiệu cần chú ý trong điều bạn mô tả. "
+                + "Bấm \"An toàn\" nếu bạn ổn, hoặc \"Cần hỗ trợ\" để nhân sự GastroAI liên hệ ngay.";
         AppNotification notification = new AppNotification(
-                NotificationRecipientType.ADMIN, null, NotificationType.TRIAGE_ALERT,
-                "Cảnh báo triage mới", event.messageContent(), "TRIAGE_ALERT", event.id(),
+                NotificationRecipientType.PATIENT, patientId, NotificationType.TRIAGE_CHECK_IN,
+                title, message, "TRIAGE_ALERT", alertId, null, dedupeKey);
+        notification = notificationRepository.save(notification);
+        NotificationResponse response = toResponse(notification, null);
+        eventPublisher.publishEvent(new NotificationCreatedEvent(
+                NotificationRecipientType.PATIENT, patientId, response));
+        return Optional.of(response);
+    }
+
+    /**
+     * SCR-AD-13 buoc 3/4: bao TOAN BO Admin dang truc (broadcast, khong gan cho 1 nguoi). Lan dau
+     * chong trung theo alertId; cac lan bao dong lai (failsafe, benh nhan bam Can ho tro lan nua)
+     * luon gui moi.
+     */
+    @Transactional("postgresTransactionManager")
+    public Optional<NotificationResponse> recordTriageNeedsIntervention(Long alertId, String patientName,
+                                                                        String reason, boolean realert) {
+        String dedupeKey = realert ? null : "TRIAGE_INTERVENTION:" + alertId;
+        if (dedupeKey != null && notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
+            return Optional.empty();
+        }
+        String name = patientName == null || patientName.isBlank() ? "Bệnh nhân" : patientName.trim();
+        AppNotification notification = new AppNotification(
+                NotificationRecipientType.ADMIN, null, NotificationType.TRIAGE_INTERVENTION,
+                "Cần can thiệp: " + name, reason, "TRIAGE_ALERT", alertId,
                 "/cms/triage-alerts", dedupeKey);
         notification = notificationRepository.save(notification);
         NotificationResponse response = toResponse(notification, null);
         eventPublisher.publishEvent(new NotificationCreatedEvent(
                 NotificationRecipientType.ADMIN, null, response));
-        return Optional.of(response);
-    }
-
-    /** Bac si/nhan vien nhan cho benh nhan trong khung trao doi cua canh bao cap cuu. */
-    @Transactional("postgresTransactionManager")
-    public Optional<NotificationResponse> recordTriageDoctorMessage(Long patientId, Long alertId,
-                                                                    Long messageId, String content) {
-        String dedupeKey = "TRIAGE_MESSAGE:" + messageId;
-        if (notificationRepository.findByDedupeKey(dedupeKey).isPresent()) {
-            return Optional.empty();
-        }
-        String preview = content.length() > 120 ? content.substring(0, 120) : content;
-        AppNotification notification = new AppNotification(
-                NotificationRecipientType.PATIENT, patientId, NotificationType.TRIAGE_DOCTOR_MESSAGE,
-                "Cập nhật về cảnh báo sức khỏe", preview, "TRIAGE_ALERT", alertId,
-                "/triage-alerts/" + alertId, dedupeKey);
-        notification = notificationRepository.save(notification);
-        NotificationResponse response = toResponse(notification, null);
-        eventPublisher.publishEvent(new NotificationCreatedEvent(
-                NotificationRecipientType.PATIENT, patientId, response));
         return Optional.of(response);
     }
 

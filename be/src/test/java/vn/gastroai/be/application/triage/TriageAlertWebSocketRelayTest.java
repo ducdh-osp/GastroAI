@@ -19,7 +19,7 @@ class TriageAlertWebSocketRelayTest {
     void onAlertForwardsEventToPublisher() {
         TriageAlertEvent event = new TriageAlertEvent(
                 100L, 1L, "Nguyen Van A", "0901234567", null, null,
-                "Toi bi dau bung du doi", List.of("DAU_BUNG_CAP_TINH"), "NEW",
+                "Toi bi dau bung du doi", List.of("DAU_BUNG_CAP_TINH"), "AUTO_HANDLING",
                 Instant.parse("2026-09-30T00:00:00Z"));
 
         relay.onAlert(event);
@@ -30,7 +30,7 @@ class TriageAlertWebSocketRelayTest {
     @Test
     void onStatusChangeForwardsEventToPublisher() {
         TriageAlertStatusChangedEvent event = new TriageAlertStatusChangedEvent(
-                10L, "IN_PROGRESS", 5L, "ADMIN", null, null, Instant.parse("2026-09-30T00:05:00Z"));
+                10L, "NEEDS_INTERVENTION", 5L, "ADMIN", null, null, Instant.parse("2026-09-30T00:05:00Z"));
 
         relay.onStatusChange(event);
 

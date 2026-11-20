@@ -36,5 +36,13 @@ public enum AuditAction {
     CONTENT_TOGGLE_ACTIVE,
     TRIAGE_ALERT_RELEASE,
     TRIAGE_ALERT_FALSE_ALARM,
-    TRIAGE_ALERT_MESSAGE
+    TRIAGE_ALERT_MESSAGE,
+    /** SCR-AD-13: he thong chuyen "Can can thiep" (benh nhan im lang / bam Can ho tro). */
+    TRIAGE_ALERT_ESCALATE,
+    /** SCR-AD-13 failsafe: khong Admin nao xac nhan trong thoi han. */
+    TRIAGE_ALERT_FAILSAFE,
+    /** Admin ghi ket qua lien he nguoi than / benh nhan / 115. */
+    TRIAGE_ALERT_CONTACT,
+    /** Benh nhan tra loi "Ban co on khong?". */
+    TRIAGE_ALERT_PATIENT_RESPONSE
 }

@@ -8,21 +8,20 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
-import vn.gastroai.be.application.triage.TriageAlertConversationService;
+import vn.gastroai.be.application.audit.AuditLogService;
+import vn.gastroai.be.application.triage.TriageAlertService;
+import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.domain.triage.TriagePatientResponse;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
-
-import java.time.Instant;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -35,7 +34,10 @@ class PatientTriageAlertControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private TriageAlertConversationService conversationService;
+    private TriageAlertService triageAlertService;
+
+    @MockitoBean
+    private AuditLogService auditLogService;
 
     @MockitoBean
     private JwtService jwtService;
@@ -48,122 +50,85 @@ class PatientTriageAlertControllerTest {
 
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
-    void patientSeesOwnConversation() throws Exception {
-        when(conversationService.getForPatient(1L, 10L)).thenReturn(
-                new TriageAlertConversationService.PatientConversationView(10L, "IN_PROGRESS",
-                        Instant.parse("2026-09-30T00:00:00Z"),
-                        List.of(new TriageAlertConversationService.PatientMessageItem(
-                                77L, "Bác sĩ", false, "Ban hay den vien", Instant.parse("2026-09-30T00:06:00Z"))),
-                        true));
+    void checkInSafeIsRecordedAndAudited() throws Exception {
+        when(triageAlertService.respondToCheckIn(1L, 10L, TriagePatientResponse.SAFE))
+                .thenReturn(new TriageAlertService.CheckInResult(10L, "SAFE", false));
 
-        mockMvc.perform(get("/api/v1/patient/triage-alerts/10"))
+        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/check-in").with(csrf())
+                        .contentType("application/json").content("{\"response\":\"SAFE\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.canReply").value(true))
-                .andExpect(jsonPath("$.messages[0].senderLabel").value("Bác sĩ"))
-                .andExpect(jsonPath("$.messages[0].senderId").doesNotExist());
+                .andExpect(jsonPath("$.alertId").value(10))
+                .andExpect(jsonPath("$.response").value("SAFE"))
+                .andExpect(jsonPath("$.alreadyClosed").value(false));
+
+        verify(auditLogService).record(AuditAction.TRIAGE_ALERT_PATIENT_RESPONSE, "TRIAGE_ALERT", 10L,
+                "Bệnh nhân #1 · An toàn");
     }
 
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
-    void listReturnsOwnConversations() throws Exception {
-        when(conversationService.listForPatient(1L)).thenReturn(List.of(
-                new TriageAlertConversationService.PatientConversationSummary(10L,
-                        Instant.parse("2026-09-30T00:00:00Z"), "IN_PROGRESS", "Ban hay den vien",
-                        Instant.parse("2026-09-30T00:06:00Z"), 2)));
+    void checkInNeedHelpPassesResponse() throws Exception {
+        when(triageAlertService.respondToCheckIn(1L, 10L, TriagePatientResponse.NEED_HELP))
+                .thenReturn(new TriageAlertService.CheckInResult(10L, "NEED_HELP", false));
 
-        mockMvc.perform(get("/api/v1/patient/triage-alerts"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(10))
-                .andExpect(jsonPath("$[0].status").value("IN_PROGRESS"))
-                .andExpect(jsonPath("$[0].lastMessagePreview").value("Ban hay den vien"))
-                .andExpect(jsonPath("$[0].lastMessageAt").exists())
-                .andExpect(jsonPath("$[0].unreadCount").value(2));
+        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/check-in").with(csrf())
+                        .contentType("application/json").content("{\"response\":\"NEED_HELP\"}"))
+                .andExpect(status().isOk());
 
-        verify(conversationService).listForPatient(1L);
+        verify(auditLogService).record(AuditAction.TRIAGE_ALERT_PATIENT_RESPONSE, "TRIAGE_ALERT", 10L,
+                "Bệnh nhân #1 · Cần hỗ trợ");
     }
 
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
-    void listReturnsEmptyArrayWhenNoConversation() throws Exception {
-        when(conversationService.listForPatient(1L)).thenReturn(List.of());
+    void answeringAClosedAlertIsNotAudited() throws Exception {
+        when(triageAlertService.respondToCheckIn(1L, 10L, TriagePatientResponse.SAFE))
+                .thenReturn(new TriageAlertService.CheckInResult(10L, "SAFE", true));
 
-        mockMvc.perform(get("/api/v1/patient/triage-alerts"))
+        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/check-in").with(csrf())
+                        .contentType("application/json").content("{\"response\":\"SAFE\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
-    }
+                .andExpect(jsonPath("$.alreadyClosed").value(true));
 
-    @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void listIsForbiddenForCmsRole() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/triage-alerts"))
-                .andExpect(status().isForbidden());
-
-        verify(conversationService, never()).listForPatient(any());
+        verify(auditLogService, never()).record(any(), any(), any(), any());
     }
 
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void otherPatientsAlertIsNotFound() throws Exception {
-        when(conversationService.getForPatient(1L, 99L))
+        when(triageAlertService.respondToCheckIn(1L, 99L, TriagePatientResponse.SAFE))
                 .thenThrow(new ResourceNotFoundException("Không tìm thấy cảnh báo"));
 
-        mockMvc.perform(get("/api/v1/patient/triage-alerts/99"))
+        mockMvc.perform(post("/api/v1/patient/triage-alerts/99/check-in").with(csrf())
+                        .contentType("application/json").content("{\"response\":\"SAFE\"}"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     @WithMockUser(username = "1", roles = "PATIENT")
-    void patientReplyPassesContent() throws Exception {
-        when(conversationService.replyAsPatient(1L, 10L, "Toi dang di"))
-                .thenReturn(new TriageAlertConversationService.PatientMessageItem(
-                        78L, "Bạn", true, "Toi dang di", Instant.parse("2026-09-30T00:07:00Z")));
-
-        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/messages").with(csrf())
-                        .contentType("application/json").content("{\"content\":\"Toi dang di\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mine").value(true));
-    }
-
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void patientReplyBeforeStaffMessageIsConflict() throws Exception {
-        when(conversationService.replyAsPatient(1L, 10L, "alo"))
-                .thenThrow(new IllegalStateException("Bác sĩ chưa liên hệ nên bạn chưa thể gửi tin nhắn tại đây"));
-
-        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/messages").with(csrf())
-                        .contentType("application/json").content("{\"content\":\"alo\"}"))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    @WithMockUser(username = "1", roles = "PATIENT")
-    void patientReplyRejectsBlankContent() throws Exception {
-        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/messages").with(csrf())
-                        .contentType("application/json").content("{\"content\":\"\"}"))
+    void checkInRequiresResponse() throws Exception {
+        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/check-in").with(csrf())
+                        .contentType("application/json").content("{}"))
                 .andExpect(status().isBadRequest());
 
-        verify(conversationService, never()).replyAsPatient(any(), any(), any());
+        verify(triageAlertService, never()).respondToCheckIn(any(), any(), any());
     }
 
     @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void cmsRoleIsForbidden() throws Exception {
-        mockMvc.perform(get("/api/v1/patient/triage-alerts/10"))
-                .andExpect(status().isForbidden());
-        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/messages").with(csrf())
-                        .contentType("application/json").content("{\"content\":\"alo\"}"))
+    @WithMockUser(username = "7", roles = "ADMIN")
+    void adminCannotAnswerOnBehalfOfPatient() throws Exception {
+        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/check-in").with(csrf())
+                        .contentType("application/json").content("{\"response\":\"SAFE\"}"))
                 .andExpect(status().isForbidden());
 
-        verify(conversationService, never()).getForPatient(any(), any());
-        verify(conversationService, never()).replyAsPatient(any(), any(), any());
+        verify(triageAlertService, never()).respondToCheckIn(any(), any(), any());
     }
 
     @Test
     void anonymousIsRejected() throws Exception {
         // SecurityConfig hien tra 403 cho request chua dang nhap.
-        mockMvc.perform(get("/api/v1/patient/triage-alerts/10"))
+        mockMvc.perform(post("/api/v1/patient/triage-alerts/10/check-in").with(csrf())
+                        .contentType("application/json").content("{\"response\":\"SAFE\"}"))
                 .andExpect(status().isForbidden());
-
-        verify(conversationService, never()).getForPatient(any(), any());
     }
 }

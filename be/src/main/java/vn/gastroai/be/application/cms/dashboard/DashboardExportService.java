@@ -42,7 +42,7 @@ public class DashboardExportService {
         });
         summaryRows.add(new String[]{
                 "Tổng số cảnh báo Triage", String.valueOf(stats.summary().totalAlerts()),
-                "Cảnh báo mới (chờ xử lý)", String.valueOf(stats.summary().newAlerts())
+                "Cảnh báo cần can thiệp", String.valueOf(stats.summary().newAlerts())
         });
         summaryRows.add(new String[]{
                 "Đánh giá AI hữu ích", String.valueOf(stats.summary().helpfulRatings()),
@@ -155,8 +155,8 @@ public class DashboardExportService {
                     {5, "Tổng số ca đánh giá triệu chứng", stats.summary().totalAssessments(), "Lượt đánh giá"},
                     {6, "Số ca đánh giá khẩn cấp", stats.summary().emergencyAssessments(), "Lượt khẩn cấp"},
                     {7, "Tổng số cảnh báo Triage kích hoạt", stats.summary().totalAlerts(), "Cảnh báo"},
-                    {8, "Cảnh báo Triage mới (chờ xử lý)", stats.summary().newAlerts(), "Cảnh báo"},
-                    {9, "Cảnh báo Triage đang xử lý", stats.summary().inProgressAlerts(), "Cảnh báo"},
+                    {8, "Cảnh báo Triage cần can thiệp", stats.summary().newAlerts(), "Cảnh báo"},
+                    {9, "Cảnh báo Triage hệ thống đang tự xử lý", stats.summary().inProgressAlerts(), "Cảnh báo"},
                     {10, "Cảnh báo Triage đã xử lý", stats.summary().resolvedAlerts(), "Cảnh báo"},
                     {11, "Đánh giá phản hồi AI hữu ích", stats.summary().helpfulRatings(), "Lượt thích"},
                     {12, "Đánh giá phản hồi AI không hữu ích", stats.summary().unhelpfulRatings(), "Lượt không thích"},
