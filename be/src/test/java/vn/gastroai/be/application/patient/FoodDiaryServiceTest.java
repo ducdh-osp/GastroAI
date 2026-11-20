@@ -6,6 +6,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import vn.gastroai.be.api.patient.DailyCountPoint;
 import vn.gastroai.be.api.patient.FoodDiaryEntryRequest;
 import vn.gastroai.be.api.patient.FoodDiaryEntryResponse;
+import vn.gastroai.be.api.patient.FoodDiaryListResponse;
 import vn.gastroai.be.api.patient.FoodDiaryTrendResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.auth.Patient;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import vn.gastroai.be.api.patient.FoodDiaryTrashPage;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -87,6 +89,39 @@ class FoodDiaryServiceTest {
         assertEquals(7, trend.points().size());
         long totalCount = trend.points().stream().mapToLong(DailyCountPoint::count).sum();
         assertEquals(1, totalCount); // dung 1 entry duy nhat trong toan bo khoang
+    }
+
+    @Test
+    void listFiltersSensitivityKeywordWithoutDependingOnVietnameseDiacritics() {
+        Patient patient = new Patient();
+        patient.setId(1L);
+        FoodDiaryEntry matching = new FoodDiaryEntry(patient, Instant.now(), "Sữa chua", null);
+        matching.setId(10L);
+        FoodDiaryEntry other = new FoodDiaryEntry(patient, Instant.now().minusSeconds(60), "Cơm gà", null);
+        other.setId(11L);
+        when(foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(anyLong(), any(), any()))
+                .thenReturn(List.of(other, matching));
+
+        FoodDiaryListResponse result = service.list(1L, 0, 10, null, "sua", 90);
+
+        assertEquals(1, result.totalElements());
+        assertEquals(10L, result.items().getFirst().id());
+    }
+
+    @Test
+    void listFiltersOneVietnamCalendarDayAtRepository() {
+        when(foodDiaryEntryRepository
+                .findByPatientIdAndEatenAtGreaterThanEqualAndEatenAtLessThanOrderByEatenAtDesc(
+                        anyLong(), any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 0));
+
+        FoodDiaryListResponse result = service.list(
+                1L, 0, 10, LocalDate.of(2026, 11, 20), null, 90);
+
+        assertEquals(0, result.totalElements());
+        verify(foodDiaryEntryRepository)
+                .findByPatientIdAndEatenAtGreaterThanEqualAndEatenAtLessThanOrderByEatenAtDesc(
+                        anyLong(), any(), any(), any(Pageable.class));
     }
 
     // ===== UC0020 - thung rac (soft-delete) =====

@@ -24,11 +24,16 @@ export interface CmsDocumentItem {
   currentVersionNo: number | null
   versionCount: number
   unpublished: boolean
+  /** Bản mới nhất đã được Biên tập xác nhận nội dung chưa (SCR-AD-04 §3.1b). */
+  contentApproved: boolean
 }
 
 export async function listCmsDocuments(params: {
   q?: string
   status?: DocumentStatus
+  /** Ngày cập nhật, dạng YYYY-MM-DD theo giờ Việt Nam. */
+  updatedFrom?: string
+  updatedTo?: string
   page?: number
   size?: number
 } = {}): Promise<CmsDocumentPage> {
@@ -70,6 +75,9 @@ export interface CmsDocumentVersion {
   currentVersion: boolean
   uploadedAt: string
   errorMessage: string | null
+  contentApproved: boolean
+  contentApprovedBy: string | null
+  contentApprovedAt: string | null
 }
 export interface CmsDocumentStats {
   total: number
@@ -86,17 +94,18 @@ export interface CmsDocumentPage {
   stats: CmsDocumentStats
 }
 
+/** UC0055 - 1 tài liệu khớp từ khoá: số đoạn khớp + câu trích quanh chỗ khớp đầu tiên. */
 export interface CmsDocumentSearchHit {
   documentId: number
   title: string
-  chunkIndex: number
+  matchCount: number
   snippet: string
-  content: string
 }
 
+/** Tối đa 20 tài liệu khớp nhiều nhất; totalDocuments lớn hơn items.length là còn tài liệu chưa hiện. */
 export interface CmsDocumentSearchResult {
   items: CmsDocumentSearchHit[]
-  truncated: boolean
+  totalDocuments: number
 }
 
 export async function uploadCmsDocumentVersion(documentId: number, file: File): Promise<void> {
@@ -114,6 +123,37 @@ export async function listCmsDocumentVersions(documentId: number): Promise<CmsDo
 
 export async function activateCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/activate`)
+}
+/** SCR-AD-04 §3.1b - nội dung 1 phiên bản để đối chiếu trước khi xác nhận. */
+export interface CmsDocumentReview {
+  id: number
+  title: string
+  versionNo: number
+  status: DocumentStatus
+  currentVersion: boolean
+  contentApproved: boolean
+  contentApprovedBy: string | null
+  contentApprovedAt: string | null
+  /** PDF xem bằng iframe; DOCX hoặc không có file gốc thì xem fullText. */
+  originalFileType: 'PDF' | 'DOCX' | null
+  fullText: string | null
+  chunks: { chunkIndex: number; content: string }[]
+}
+
+export async function getCmsDocumentReview(documentId: number): Promise<CmsDocumentReview> {
+  const { data } = await cmsApiClient.get<CmsDocumentReview>(`/documents/${documentId}/review`)
+  return data
+}
+
+/** Tải file gốc kèm phiên đăng nhập, trả về Blob để tạo đường dẫn blob: cho iframe. */
+export async function getCmsDocumentFile(documentId: number): Promise<Blob> {
+  const { data } = await cmsApiClient.get<Blob>(`/documents/${documentId}/file`, { responseType: 'blob' })
+  return data
+}
+
+/** SCR-AD-04 §3.1b - chỉ Biên tập gọi được (BE trả 403 với Admin). */
+export async function approveCmsDocumentContent(documentId: number, versionId: number): Promise<void> {
+  await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/approve`)
 }
 export async function deleteCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
   await cmsApiClient.delete(`/documents/${documentId}/versions/${versionId}`)
@@ -134,5 +174,17 @@ export async function unpublishCmsDocument(documentId: number): Promise<void> {
 
 export async function searchCmsDocumentContent(q: string): Promise<CmsDocumentSearchResult> {
   const { data } = await cmsApiClient.get<CmsDocumentSearchResult>('/documents/search', { params: { q } })
+  return data
+}
+
+/** Các đoạn khớp từ khoá trong 1 tài liệu - gọi khi bấm "Xem các đoạn". */
+export async function searchCmsDocumentChunks(
+  documentId: number,
+  q: string,
+): Promise<{ chunkIndex: number; content: string }[]> {
+  const { data } = await cmsApiClient.get<{ chunkIndex: number; content: string }[]>(
+    `/documents/${documentId}/search`,
+    { params: { q } },
+  )
   return data
 }

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import vn.gastroai.be.api.patient.BristolLogRequest;
 import vn.gastroai.be.api.patient.BristolLogResponse;
+import vn.gastroai.be.api.patient.BristolListResponse;
 import org.mockito.ArgumentCaptor;
 import vn.gastroai.be.api.patient.BristolTrendResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
@@ -102,6 +103,22 @@ class BristolLogServiceTest {
         LocalDate today = Instant.now().atZone(vietnam).toLocalDate();
         assertEquals(today.atStartOfDay(vietnam).toInstant(), fromCaptor.getValue());
         assertEquals(today.plusDays(1).atStartOfDay(vietnam).toInstant(), toCaptor.getValue());
+    }
+
+    @Test
+    void listFiltersOneVietnamCalendarDayAtRepository() {
+        when(bristolLogRepository
+                .findByPatientIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThanOrderByLoggedAtDesc(
+                        anyLong(), any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 0));
+
+        BristolListResponse result = service.list(
+                1L, 0, 10, LocalDate.of(2026, 11, 20));
+
+        assertEquals(0, result.totalElements());
+        verify(bristolLogRepository)
+                .findByPatientIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThanOrderByLoggedAtDesc(
+                        anyLong(), any(), any(), any(Pageable.class));
     }
 
     // ===== UC0020 - thung rac (soft-delete) =====

@@ -40,9 +40,13 @@ public class DocumentProcessingWorker {
         this.embeddingStore = embeddingStore;
     }
 
+    /** Bước đang chạy, để báo lỗi theo đúng bước cho người dùng CMS. */
+    enum Step { EXTRACTION, CHUNKING, EMBEDDING }
+
     @Async("documentProcessingExecutor")
     public void processAsync(Long documentId, String source) {
 
+        Step step = Step.EXTRACTION;
         try {
             if (documentRepository.findById(documentId).isEmpty()) {
                 log.warn("Document id={} da bi xoa truoc khi xu ly bat dau - bo qua", documentId);
@@ -67,9 +71,11 @@ public class DocumentProcessingWorker {
             document.setFullText(fullText);
             documentRepository.save(document);
 
+            step = Step.CHUNKING;
             documentStatusService.markChunking(documentId);
             List<Chunk> chunks = documentChunkingService.chunkDocument(documentId);
 
+            step = Step.EMBEDDING;
             documentStatusService.markEmbedding(documentId);
             for (Chunk chunk : chunks) {
                 float[] vector = embeddingClient.embed(chunk.getContent());
@@ -80,18 +86,23 @@ public class DocumentProcessingWorker {
 
         } catch (Exception e) {
             log.error("Loi xu ly document id={}", documentId, e);
-            documentStatusService.markError(
-                    documentId,
-                    getErrorMessage(e));
+            documentStatusService.markError(documentId, userMessage(step, e));
         }
     }
 
-    private String getErrorMessage(Exception e) {
-
-        if (e.getMessage() != null && !e.getMessage().isBlank()) {
+    /**
+     * SCR-AD-04 §3.1 - lý do lỗi phải là câu người dùng hiểu được, không phải mã lỗi kỹ thuật.
+     * Lỗi đọc file đã có câu tiếng Việt riêng nên giữ nguyên; lỗi khác đổi theo bước đang chạy,
+     * còn chi tiết kỹ thuật chỉ ghi vào log ở trên.
+     */
+    static String userMessage(Step step, Exception e) {
+        if (e instanceof ExtractionException && e.getMessage() != null && !e.getMessage().isBlank()) {
             return e.getMessage();
         }
-
-        return "Lỗi không xác định khi xử lý document";
+        return switch (step) {
+            case EXTRACTION -> "Không đọc được nội dung file. Hãy kiểm tra file mở được bình thường rồi tải lên lại.";
+            case CHUNKING -> "Không chia được nội dung tài liệu thành các đoạn. Bấm \"Thử lại\"; nếu vẫn lỗi, báo nhóm kỹ thuật.";
+            case EMBEDDING -> "Dịch vụ AI tạm thời không phản hồi khi tạo dữ liệu tra cứu. Bấm \"Thử lại\" sau ít phút.";
+        };
     }
 }

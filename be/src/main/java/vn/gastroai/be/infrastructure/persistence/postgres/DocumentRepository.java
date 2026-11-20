@@ -91,6 +91,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
                         + "d.status AS status, d.processingStage AS processingStage, "
                         + "d.errorMessage AS errorMessage, d.uploadedAt AS uploadedAt, "
                         + "d.updatedAt AS updatedAt, d.versionNo AS versionNo, "
+                        + "d.contentApprovedAt AS contentApprovedAt, "
                         + "COALESCE(d.rootId, d.id) AS groupId "
                         + "FROM Document d "
                         + "WHERE d.versionNo = (SELECT MAX(x.versionNo) FROM Document x "

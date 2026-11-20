@@ -5,6 +5,7 @@ export type AuditAction =
   | 'DOCUMENT_UPLOAD'
   | 'DOCUMENT_NEW_VERSION'
   | 'DOCUMENT_ACTIVATE_VERSION'
+  | 'DOCUMENT_APPROVE_CONTENT'
   | 'DOCUMENT_UPDATE_INFO'
   | 'DOCUMENT_PUBLISH'
   | 'DOCUMENT_UNPUBLISH'
@@ -15,6 +16,7 @@ export type AuditAction =
   | 'PATIENT_UNLOCK'
   | 'PATIENT_DATA_VIEW'
   | 'PASSWORD_CHANGE'
+  | 'CMS_LOGIN'
   | 'SYSTEM_RESTORE'
   | 'ANOMALY_DETECTED'
   | 'ANOMALY_RULE_UPDATE'
@@ -57,6 +59,7 @@ export interface AuditLog {
   id: number
   occurredAt: string
   actorType: string
+  actorRole: string | null
   actorId: number | null
   actorEmail: string | null
   action: AuditAction

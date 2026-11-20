@@ -2,6 +2,7 @@ package vn.gastroai.be.api.patient;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.patient.FoodDiaryService;
@@ -9,6 +10,7 @@ import vn.gastroai.be.application.patient.FoodSymptomCorrelationService;
 import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.List;
 
 /** UC0011 (CRUD nhat ky an uong) + UC0012 (xem lich su/bieu do) + UC0020 (thung rac)
@@ -37,6 +39,9 @@ public class FoodDiaryController {
     public FoodDiaryListResponse list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "90") int days,
             Principal principal, Authentication authentication) {
         Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         // Cung gioi han nhu MeController.history() - chan client tu gui size cuc lon lam
@@ -44,7 +49,13 @@ public class FoodDiaryController {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
-        return foodDiaryService.list(patientId, page, size);
+        if (keyword != null && keyword.length() > 100) {
+            throw new IllegalArgumentException("keyword toi da 100 ky tu");
+        }
+        if (days < 1 || days > 365) {
+            throw new IllegalArgumentException("days trong khoang 1..365");
+        }
+        return foodDiaryService.list(patientId, page, size, date, keyword, days);
     }
 
     @GetMapping("/trend")

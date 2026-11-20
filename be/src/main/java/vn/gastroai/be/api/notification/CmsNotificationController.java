@@ -87,6 +87,12 @@ public class CmsNotificationController {
         service.markAllRead(NotificationRecipientType.ADMIN, cmsId(authentication));
     }
 
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAll(Authentication authentication) {
+        service.deleteAll(NotificationRecipientType.ADMIN, cmsId(authentication));
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id, Authentication authentication) {

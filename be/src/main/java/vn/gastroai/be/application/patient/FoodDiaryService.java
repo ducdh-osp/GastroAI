@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.application.support.OwnedResourceLoader;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.application.support.VietnamDateRange;
+import vn.gastroai.be.application.support.VietnameseText;
 import vn.gastroai.be.api.patient.DailyCountPoint;
 import vn.gastroai.be.api.patient.FoodDiaryEntryRequest;
 import vn.gastroai.be.api.patient.FoodDiaryEntryResponse;
@@ -23,6 +24,7 @@ import vn.gastroai.be.api.patient.FoodDiaryTrashPage;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -118,12 +120,54 @@ public class FoodDiaryService {
     }
 
     @Transactional(value = "postgresTransactionManager", readOnly = true)
-    public FoodDiaryListResponse list(Long patientId, int page, int size) {
+    public FoodDiaryListResponse list(Long patientId, int page, int size,
+                                      LocalDate date, String keyword, int days) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<FoodDiaryEntry> result = foodDiaryEntryRepository.findByPatientIdOrderByEatenAtDesc(patientId, pageable);
+        String normalizedKeyword = keyword == null ? "" : VietnameseText.normalize(keyword).trim();
+
+        if (!normalizedKeyword.isEmpty()) {
+            VietnamDateRange.Range range = date == null
+                    ? VietnamDateRange.recentDaysIncludingToday(days)
+                    : dayRange(date);
+            List<FoodDiaryEntry> matches = foodDiaryEntryRepository
+                    .findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(
+                            patientId, range.fromInclusive(), range.toExclusive())
+                    .stream()
+                    .filter(entry -> VietnameseText.tokenize(entry.getDescription()).contains(normalizedKeyword))
+                    .sorted(Comparator.comparing(FoodDiaryEntry::getEatenAt).reversed())
+                    .toList();
+            return page(matches, page, size);
+        }
+
+        Page<FoodDiaryEntry> result;
+        if (date == null) {
+            result = foodDiaryEntryRepository.findByPatientIdOrderByEatenAtDesc(patientId, pageable);
+        } else {
+            VietnamDateRange.Range range = dayRange(date);
+            result = foodDiaryEntryRepository
+                    .findByPatientIdAndEatenAtGreaterThanEqualAndEatenAtLessThanOrderByEatenAtDesc(
+                            patientId, range.fromInclusive(), range.toExclusive(), pageable);
+        }
         List<FoodDiaryEntryResponse> items = result.getContent().stream().map(this::toResponse).toList();
         return new FoodDiaryListResponse(items, result.getNumber(), result.getSize(),
                 result.getTotalElements(), result.getTotalPages());
+    }
+
+    private VietnamDateRange.Range dayRange(LocalDate date) {
+        LocalDate endExclusive = date.plusDays(1);
+        return new VietnamDateRange.Range(date, endExclusive,
+                date.atStartOfDay(VietnamDateRange.ZONE).toInstant(),
+                endExclusive.atStartOfDay(VietnamDateRange.ZONE).toInstant());
+    }
+
+    private FoodDiaryListResponse page(List<FoodDiaryEntry> entries, int page, int size) {
+        int fromIndex = (int) Math.min((long) page * size, entries.size());
+        int toIndex = Math.min(fromIndex + size, entries.size());
+        List<FoodDiaryEntryResponse> items = entries.subList(fromIndex, toIndex).stream()
+                .map(this::toResponse)
+                .toList();
+        int totalPages = entries.isEmpty() ? 0 : (entries.size() + size - 1) / size;
+        return new FoodDiaryListResponse(items, page, size, entries.size(), totalPages);
     }
 
     /**

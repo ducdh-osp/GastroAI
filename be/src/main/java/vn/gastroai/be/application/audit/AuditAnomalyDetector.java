@@ -106,10 +106,11 @@ public class AuditAnomalyDetector {
         }
     }
 
-    private void saveAnomalyLog(AuditLog saved, String ruleCode, String detail) {
+        private void saveAnomalyLog(AuditLog saved, String ruleCode, String detail) {
         auditLogRepository.save(new AuditLog(
                 Instant.now(),
                 saved.getActorType(),
+                saved.getActorRole(),
                 saved.getActorId(),
                 saved.getActorEmail(),
                 AuditAction.ANOMALY_DETECTED,

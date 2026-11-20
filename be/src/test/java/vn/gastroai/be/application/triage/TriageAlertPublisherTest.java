@@ -39,7 +39,7 @@ class TriageAlertPublisherTest {
                 3L,
                 "Toi bi dau bung du doi va non ra mau",
                 List.of("XUAT_HUYET_TIEU_HOA"),
-                "NEW",
+                "AUTO_HANDLING",
                 Instant.parse("2026-09-30T00:00:00Z"));
 
         publisher.publish(event);
@@ -62,7 +62,7 @@ class TriageAlertPublisherTest {
                 null,
                 "Dau bung quan quai keo dai",
                 List.of("DAU_BUNG_CAP"),
-                "NEW",
+                "AUTO_HANDLING",
                 Instant.parse("2026-09-30T00:00:00Z"));
 
         publisher.publish(event);
@@ -79,7 +79,7 @@ class TriageAlertPublisherTest {
 
         TriageAlertStatusChangedEvent event = new TriageAlertStatusChangedEvent(
                 10L,
-                "IN_PROGRESS",
+                "NEEDS_INTERVENTION",
                 5L,
                 "ADMIN",
                 null,
@@ -100,7 +100,7 @@ class TriageAlertPublisherTest {
         TriageAlertEvent event = new TriageAlertEvent(
                 10L, 1L, "Nguyen Van A", "0901234567", 2L, 3L,
                 "Toi bi dau bung du doi va non ra mau",
-                List.of("XUAT_HUYET_TIEU_HOA"), "NEW",
+                List.of("XUAT_HUYET_TIEU_HOA"), "AUTO_HANDLING",
                 Instant.parse("2026-09-30T00:00:00Z"));
 
         publisher.publish(event);
@@ -118,7 +118,7 @@ class TriageAlertPublisherTest {
                 messagingTemplate, configServiceWithRealtimeAlerts(false));
 
         TriageAlertStatusChangedEvent event = new TriageAlertStatusChangedEvent(
-                10L, "IN_PROGRESS", 5L, "ADMIN", null, null,
+                10L, "NEEDS_INTERVENTION", 5L, "ADMIN", null, null,
                 Instant.parse("2026-09-30T00:05:00Z"));
 
         publisher.publishStatusChange(event);

@@ -9,12 +9,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.data.domain.PageImpl;
 import vn.gastroai.be.application.audit.AuditLogService;
-import vn.gastroai.be.application.triage.TriageAlertConversationService;
 import vn.gastroai.be.application.triage.TriageAlertDetailResponse;
 import vn.gastroai.be.application.triage.TriageAlertResponse;
 import vn.gastroai.be.application.triage.TriageAlertService;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.domain.triage.TriageContactResult;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
@@ -45,9 +45,6 @@ class TriageAlertAdminControllerTest {
     private TriageAlertService triageAlertService;
 
     @MockitoBean
-    private TriageAlertConversationService conversationService;
-
-    @MockitoBean
     private AuditLogService auditLogService;
 
     @MockitoBean
@@ -69,20 +66,23 @@ class TriageAlertAdminControllerTest {
                 resolvedById == null ? null : Instant.parse("2026-09-30T00:10:00Z"),
                 resolvedById, resolvedByType,
                 Instant.parse("2026-09-30T00:00:00Z"),
-                "RESOLVED".equals(status) ? "HANDLED" : null, null, 0, null, null, 0, 0, 0);
+                "RESOLVED".equals(status) ? "HANDLED" : null, null, 0, null, null, 0, 0, 0,
+                "AUTO_HANDLING".equals(status) ? null : Instant.parse("2026-09-30T00:03:00Z"),
+                claimedById == null ? null : Instant.parse("2026-09-30T00:05:00Z"),
+                null, null, null);
     }
 
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
     void listReturnsOpenPageByDefault() throws Exception {
         when(triageAlertService.list("OPEN", 0, 20))
-                .thenReturn(new PageImpl<>(List.of(alert("NEW", null, null, null, null))));
+                .thenReturn(new PageImpl<>(List.of(alert("AUTO_HANDLING", null, null, null, null))));
 
         mockMvc.perform(get("/api/v1/cms/triage-alerts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(10))
                 .andExpect(jsonPath("$.items[0].patientFullName").value("Nguyen Van A"))
-                .andExpect(jsonPath("$.items[0].status").value("NEW"))
+                .andExpect(jsonPath("$.items[0].status").value("AUTO_HANDLING"))
                 .andExpect(jsonPath("$.totalElements").value(1));
 
         verify(auditLogService, never()).record(any(), any(), any(), any());
@@ -111,7 +111,7 @@ class TriageAlertAdminControllerTest {
     @WithMockUser(username = "9", roles = "DOCTOR")
     void detailReturnsAlertActionsAndMessages() throws Exception {
         when(triageAlertService.getDetail(10L, 9L, "DOCTOR")).thenReturn(new TriageAlertDetailResponse(
-                alert("IN_PROGRESS", 9L, "DOCTOR", null, null),
+                alert("NEEDS_INTERVENTION", 9L, "DOCTOR", null, null),
                 List.of(new TriageAlertDetailResponse.ActionItem(1L, "CREATED", null, null, null,
                         Instant.parse("2026-09-30T00:00:00Z"))),
                 List.of()));
@@ -129,7 +129,7 @@ class TriageAlertAdminControllerTest {
     @WithMockUser(username = "7", roles = "ADMIN")
     void detailPassesAdminAsViewer() throws Exception {
         when(triageAlertService.getDetail(10L, 7L, "ADMIN")).thenReturn(new TriageAlertDetailResponse(
-                alert("IN_PROGRESS", 9L, "DOCTOR", null, null), List.of(), List.of()));
+                alert("NEEDS_INTERVENTION", 9L, "DOCTOR", null, null), List.of(), List.of()));
 
         mockMvc.perform(get("/api/v1/cms/triage-alerts/10"))
                 .andExpect(status().isOk());
@@ -148,31 +148,31 @@ class TriageAlertAdminControllerTest {
     @WithMockUser(username = "7", roles = "ADMIN")
     void claimPassesAuthenticatedAdminIdAndTypeAndIsAudited() throws Exception {
         when(triageAlertService.claim(10L, 7L, "ADMIN"))
-                .thenReturn(alert("IN_PROGRESS", 7L, "ADMIN", null, null));
+                .thenReturn(alert("NEEDS_INTERVENTION", 7L, "ADMIN", null, null));
 
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/claim").with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.status").value("NEEDS_INTERVENTION"))
                 .andExpect(jsonPath("$.claimedById").value(7))
                 .andExpect(jsonPath("$.claimedByType").value("ADMIN"));
 
         verify(triageAlertService).claim(eq(10L), eq(7L), eq("ADMIN"));
         verify(auditLogService).record(AuditAction.TRIAGE_ALERT_CLAIM, "TRIAGE_ALERT", 10L,
-                "Bệnh nhân #1 · Mới → Đang xử lý");
+                "Bệnh nhân #1 · Tôi đang liên hệ");
     }
 
     @Test
     @WithMockUser(username = "9", roles = "DOCTOR")
     void claimResolvesClaimerTypeAsDoctorFromAuthorities() throws Exception {
         when(triageAlertService.claim(10L, 9L, "DOCTOR"))
-                .thenReturn(alert("IN_PROGRESS", 9L, "DOCTOR", null, null));
+                .thenReturn(alert("NEEDS_INTERVENTION", 9L, "DOCTOR", null, null));
 
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/claim").with(csrf()))
                 .andExpect(status().isOk());
 
         verify(triageAlertService).claim(eq(10L), eq(9L), eq("DOCTOR"));
         verify(auditLogService).record(AuditAction.TRIAGE_ALERT_CLAIM, "TRIAGE_ALERT", 10L,
-                "Bệnh nhân #1 · Mới → Đang xử lý");
+                "Bệnh nhân #1 · Tôi đang liên hệ");
     }
 
     @Test
@@ -201,7 +201,7 @@ class TriageAlertAdminControllerTest {
 
         verify(triageAlertService).resolve(eq(10L), eq(7L), eq("ADMIN"), eq(null));
         verify(auditLogService).record(AuditAction.TRIAGE_ALERT_RESOLVE, "TRIAGE_ALERT", 10L,
-                "Bệnh nhân #1 · Đang xử lý → Đã xử lý");
+                "Bệnh nhân #1 · → Đã xử lý");
     }
 
     @Test
@@ -214,7 +214,7 @@ class TriageAlertAdminControllerTest {
                 .andExpect(status().isOk());
 
         verify(auditLogService).record(AuditAction.TRIAGE_ALERT_RESOLVE, "TRIAGE_ALERT", 10L,
-                "Bệnh nhân #1 · Đang xử lý → Đã xử lý (Admin đóng hộ, người tiếp nhận: DOCTOR #9)");
+                "Bệnh nhân #1 · → Đã xử lý (người đang liên hệ: DOCTOR #9)");
     }
 
     @Test
@@ -254,14 +254,14 @@ class TriageAlertAdminControllerTest {
     @Test
     @WithMockUser(username = "9", roles = "DOCTOR")
     void releaseIsAudited() throws Exception {
-        when(triageAlertService.release(10L, 9L, "DOCTOR")).thenReturn(alert("NEW", null, null, null, null));
+        when(triageAlertService.release(10L, 9L, "DOCTOR")).thenReturn(alert("NEEDS_INTERVENTION", null, null, null, null));
 
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/release").with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("NEW"));
+                .andExpect(jsonPath("$.status").value("NEEDS_INTERVENTION"));
 
         verify(auditLogService).record(AuditAction.TRIAGE_ALERT_RELEASE, "TRIAGE_ALERT", 10L,
-                "Bệnh nhân #1 · Đang xử lý → Mới");
+                "Bệnh nhân #1 · Trả lại, failsafe tính lại từ lúc này");
     }
 
     @Test
@@ -272,34 +272,6 @@ class TriageAlertAdminControllerTest {
         mockMvc.perform(post("/api/v1/cms/triage-alerts/10/release").with(csrf()))
                 .andExpect(status().isConflict());
 
-        verify(auditLogService, never()).record(any(), any(), any(), any());
-    }
-
-    @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void sendMessageAuditsLengthButNotContent() throws Exception {
-        when(conversationService.sendStaffMessage(10L, 9L, "DOCTOR", "Ban hay den vien ngay"))
-                .thenReturn(new TriageAlertConversationService.StaffMessageResult(10L, 1L,
-                        new TriageAlertDetailResponse.MessageItem(77L, "DOCTOR", 9L, "Ban hay den vien ngay",
-                                null, Instant.parse("2026-09-30T00:06:00Z"))));
-
-        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/messages").with(csrf())
-                        .contentType("application/json").content("{\"content\":\"Ban hay den vien ngay\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(77));
-
-        verify(auditLogService).record(AuditAction.TRIAGE_ALERT_MESSAGE, "TRIAGE_ALERT", 10L,
-                "Bệnh nhân #1 · 21 ký tự");
-    }
-
-    @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void sendMessageRejectsBlankContent() throws Exception {
-        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/messages").with(csrf())
-                        .contentType("application/json").content("{\"content\":\"  \"}"))
-                .andExpect(status().isBadRequest());
-
-        verify(conversationService, never()).sendStaffMessage(any(), any(), any(), any());
         verify(auditLogService, never()).record(any(), any(), any(), any());
     }
 
@@ -325,13 +297,50 @@ class TriageAlertAdminControllerTest {
                 .andExpect(status().isOk());
 
         verify(auditLogService).record(AuditAction.TRIAGE_ALERT_FALSE_ALARM, "TRIAGE_ALERT", 10L,
-                "Bệnh nhân #1 · Đang xử lý → Báo nhầm/Spam");
+                "Bệnh nhân #1 · → Báo nhầm/Spam");
     }
 
     @Test
     void describeResolveComparesBothIdAndAccountType() {
-        assertEquals("Bệnh nhân #1 · Đang xử lý → Đã xử lý (Admin đóng hộ, người tiếp nhận: DOCTOR #7)",
+        assertEquals("Bệnh nhân #1 · → Đã xử lý (người đang liên hệ: DOCTOR #7)",
                 TriageAlertAdminController.describeResolve(
                         alert("RESOLVED", 7L, "DOCTOR", 7L, "ADMIN"), 7L, "ADMIN"));
+    }
+
+    @Test
+    @WithMockUser(username = "7", roles = "ADMIN")
+    void recordContactPassesResultAndAuditsLabelButNotNote() throws Exception {
+        when(triageAlertService.recordContact(10L, 7L, "ADMIN", TriageContactResult.RELATIVE_REACHED,
+                "Chong 0909xxx se ve ngay"))
+                .thenReturn(alert("NEEDS_INTERVENTION", 7L, "ADMIN", null, null));
+
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/contact").with(csrf())
+                        .contentType("application/json")
+                        .content("{\"result\":\"RELATIVE_REACHED\",\"note\":\"Chong 0909xxx se ve ngay\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NEEDS_INTERVENTION"));
+
+        // Ghi chu co the chua so dien thoai / thong tin y te -> khong vao nhat ky.
+        verify(auditLogService).record(AuditAction.TRIAGE_ALERT_CONTACT, "TRIAGE_ALERT", 10L,
+                "Bệnh nhân #1 · Đã gọi người thân - người thân sẽ kiểm tra");
+    }
+
+    @Test
+    @WithMockUser(username = "7", roles = "ADMIN")
+    void recordContactRequiresResult() throws Exception {
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/contact").with(csrf())
+                        .contentType("application/json").content("{\"note\":\"abc\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(triageAlertService, never()).recordContact(any(), any(), any(), any(), any());
+        verify(auditLogService, never()).record(any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "PATIENT")
+    void patientCannotRecordContact() throws Exception {
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/contact").with(csrf())
+                        .contentType("application/json").content("{\"result\":\"CALLED_EMERGENCY\"}"))
+                .andExpect(status().isForbidden());
     }
 }

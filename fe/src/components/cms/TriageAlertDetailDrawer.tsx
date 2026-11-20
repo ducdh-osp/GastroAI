@@ -1,13 +1,13 @@
-import { CheckOutlined, RollbackOutlined, SendOutlined, StopOutlined } from '@ant-design/icons'
+import { CheckOutlined, PhoneOutlined, RollbackOutlined, StopOutlined } from '@ant-design/icons'
 import {
   Alert,
   Button,
   Descriptions,
   Drawer,
-  Empty,
   Input,
   Modal,
   Popconfirm,
+  Select,
   Space,
   Spin,
   Tag,
@@ -19,40 +19,58 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   claimTriageAlert,
+  CONTACT_RESULT_LABEL,
   extractTriageErrorMessage,
   getTriageAlertDetail,
   markTriageAlertFalseAlarm,
+  recordTriageContact,
   releaseTriageAlert,
   resolveTriageAlert,
-  sendTriageAlertMessage,
   type TriageAlert,
   type TriageAlertActionItem,
   type TriageAlertActionType,
   type TriageAlertDetail,
+  type TriageAlertOutcome,
   type TriageAlertStatus,
+  type TriageContactResult,
 } from '../../api/cmsTriage'
 import { describeMatchedGroups } from '../../api/chat'
 import { useInFlightGuard } from '../../hooks/useInFlightGuard'
+import { useNow } from '../../hooks/useNow'
 import { formatDateTime } from '../../lib/format'
+import { FAILSAFE_AFTER_MS, formatCountdown, INTERVENTION_AFTER_MS, msUntil } from '../../lib/triageTimers'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 const { Text, Paragraph } = Typography
 const { TextArea } = Input
 
+/** SCR-AD-13: 3 trạng thái rõ ràng - Admin chỉ cần quan tâm "Cần can thiệp". */
 export const TRIAGE_STATUS_LABELS: Record<TriageAlertStatus, string> = {
-  NEW: 'Mới',
-  IN_PROGRESS: 'Đang xử lý',
-  RESOLVED: 'Đã đóng',
+  AUTO_HANDLING: 'Hệ thống đang tự xử lý',
+  NEEDS_INTERVENTION: 'Cần can thiệp',
+  RESOLVED: 'Đã xử lý',
 }
 
 export const TRIAGE_STATUS_COLORS: Record<TriageAlertStatus, string> = {
-  NEW: 'red',
-  IN_PROGRESS: 'gold',
+  AUTO_HANDLING: 'blue',
+  NEEDS_INTERVENTION: 'red',
   RESOLVED: 'green',
+}
+
+export const TRIAGE_OUTCOME_LABELS: Record<TriageAlertOutcome, string> = {
+  HANDLED: 'Admin xử lý xong',
+  FALSE_ALARM: 'Báo nhầm/Spam',
+  PATIENT_SAFE: 'Bệnh nhân báo an toàn',
 }
 
 const ACTION_LABELS: Record<TriageAlertActionType, string> = {
   CREATED: 'Cảnh báo được tạo',
+  CHECK_IN_SENT: 'Hỏi bệnh nhân "Bạn có ổn không?"',
+  PATIENT_SAFE: 'Bệnh nhân bấm An toàn',
+  PATIENT_NEEDS_HELP: 'Bệnh nhân bấm Cần hỗ trợ',
+  ESCALATED: 'Chuyển "Cần can thiệp"',
+  FAILSAFE: 'Failsafe - quá hạn chưa Admin nào xử lý',
+  CONTACT_RECORDED: 'Ghi kết quả liên hệ',
   REPEATED: 'Bệnh nhân gửi lặp lại',
   REPEATED_AFTER_FALSE_ALARM: 'Bệnh nhân gửi lại sau khi bị báo nhầm',
   CLAIMED: 'Tiếp nhận',
@@ -66,6 +84,11 @@ const ACTION_LABELS: Record<TriageAlertActionType, string> = {
 
 const ACTION_COLORS: Partial<Record<TriageAlertActionType, string>> = {
   CREATED: 'red',
+  CHECK_IN_SENT: 'gray',
+  PATIENT_SAFE: 'green',
+  PATIENT_NEEDS_HELP: 'red',
+  ESCALATED: 'red',
+  FAILSAFE: 'red',
   REPEATED: 'red',
   REPEATED_AFTER_FALSE_ALARM: 'red',
   CLAIMED: 'orange',
@@ -76,12 +99,25 @@ const ACTION_COLORS: Partial<Record<TriageAlertActionType, string>> = {
 const STAFF_LABELS: Record<string, string> = { ADMIN: 'Admin', DOCTOR: 'Bác sĩ' }
 
 const POLL_INTERVAL_MS = 10000
-const MAX_MESSAGE_LENGTH = 2000
+
+const CONTACT_RESULT_OPTIONS = (Object.keys(CONTACT_RESULT_LABEL) as TriageContactResult[]).map((value) => ({
+  value,
+  label: CONTACT_RESULT_LABEL[value],
+}))
+
+/**
+ * Kịch bản gọi người thân - Admin đọc theo, không cần tự nghĩ lời khi đang gấp. Chỉ nói mức cần thiết,
+ * không đọc nội dung chat của bệnh nhân (riêng tư).
+ */
+function callScript(contactName: string, patientName: string, signs: string | null, occurredAt: string): string {
+  return `Chào anh/chị ${contactName}, tôi gọi từ GastroAI. ${patientName} vừa báo ${signs ? `dấu hiệu "${signs}"` : 'dấu hiệu sức khoẻ cần chú ý'} lúc ${formatDateTime(occurredAt)} và chưa phản hồi chúng tôi. Anh/chị có thể liên lạc hoặc tới kiểm tra ${patientName} ngay được không? Nếu thấy nguy hiểm, hãy gọi 115.`
+}
 const MAX_NOTE_LENGTH = 1000
 
 function describeActor(type: string | null, id: number | null): string | null {
   if (!type) return null
   if (type === 'PATIENT') return 'Bệnh nhân'
+  if (type === 'SYSTEM') return 'Hệ thống'
   return `${STAFF_LABELS[type] ?? type} #${id}`
 }
 
@@ -100,9 +136,10 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
   const [detail, setDetail] = useState<TriageAlertDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [draft, setDraft] = useState('')
   const [dialog, setDialog] = useState<DialogKind | null>(null)
   const [dialogText, setDialogText] = useState('')
+  const [contactResult, setContactResult] = useState<TriageContactResult | null>(null)
+  const [contactNote, setContactNote] = useState('')
   const guard = useInFlightGuard<string>()
   const loadSeq = useRef(0)
   const onAlertChangedRef = useRef(onAlertChanged)
@@ -130,7 +167,8 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
   // Đổi cảnh báo: xoá dữ liệu cũ và tải có spinner.
   useEffect(() => {
     setDetail(null)
-    setDraft('')
+    setContactResult(null)
+    setContactNote('')
     setLoadError(null)
     if (alertId !== null) load(alertId, false)
   }, [alertId, load])
@@ -167,8 +205,21 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
 
   const alert = detail?.alert ?? null
   const isClaimer = alert !== null && user?.userId === alert.claimedById && user?.userType === alert.claimedByType
-  const canHandle = alert?.status === 'IN_PROGRESS' && (isClaimer || user?.userType === 'ADMIN')
+  // SCR-AD-13: 1 Admin bất kỳ xử lý được, không bắt buộc "tiếp nhận" trước.
+  const isOpen = alert !== null && alert.status !== 'RESOLVED'
+  const canHandle = isOpen && (alert.claimedById === null || isClaimer || user?.userType === 'ADMIN')
+  const canRelease = alert?.status === 'NEEDS_INTERVENTION' && alert.claimedById !== null
+    && (isClaimer || user?.userType === 'ADMIN')
+  const contactRecorded = (detail?.actions ?? []).some((action) => action.actionType === 'CONTACT_RECORDED')
+  const canResolve = contactRecorded
   const busy = guard.inFlightId !== null
+  const now = useNow(isOpen)
+  const autoRemaining = alert?.status === 'AUTO_HANDLING'
+    ? msUntil(alert.occurredAt, INTERVENTION_AFTER_MS, now)
+    : null
+  const failsafeRemaining = alert?.status === 'NEEDS_INTERVENTION' && !alert.acknowledgedAt && !alert.failsafeAt
+    ? msUntil(alert.needsInterventionAt, FAILSAFE_AFTER_MS, now)
+    : null
 
   async function runAction(key: string, action: () => Promise<unknown>, success: string, fallbackError: string) {
     if (alertId === null) return false
@@ -186,23 +237,25 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
     return ok === true
   }
 
-  async function handleSend() {
-    const content = draft.trim()
-    if (!content || alertId === null) return
-    const ok = await runAction('send', () => sendTriageAlertMessage(alertId, content),
-      'Đã gửi tin nhắn cho bệnh nhân', 'Không thể gửi tin nhắn.')
-    if (ok) setDraft('')
-  }
-
   async function handleDialogOk() {
     if (alertId === null || dialog === null) return
     const text = dialogText.trim()
     const ok = dialog === 'resolve'
       ? await runAction('resolve', () => resolveTriageAlert(alertId, text),
-        'Đã đánh dấu xử lý xong', 'Không thể đánh dấu xử lý xong.')
+        'Đã đóng ca', 'Không thể đóng ca.')
       : await runAction('falseAlarm', () => markTriageAlertFalseAlarm(alertId, text),
         'Đã đánh dấu báo nhầm/spam', 'Không thể đánh dấu báo nhầm.')
     if (ok) setDialog(null)
+  }
+
+  async function handleRecordContact() {
+    if (alertId === null || contactResult === null) return
+    const ok = await runAction('contact', () => recordTriageContact(alertId, contactResult, contactNote.trim()),
+      'Đã ghi kết quả liên hệ', 'Không thể ghi kết quả liên hệ.')
+    if (ok) {
+      setContactResult(null)
+      setContactNote('')
+    }
   }
 
   function openDialog(kind: DialogKind) {
@@ -241,6 +294,30 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
 
         {alert && (
           <div className="flex flex-col gap-5">
+            {alert.status === 'AUTO_HANDLING' && (
+              <Alert
+                type="info"
+                showIcon
+                title="Hệ thống đang tự xử lý"
+                description={`Đã hỏi bệnh nhân "Bạn có ổn không?". Nếu bệnh nhân im lặng, ca tự chuyển "Cần can thiệp" sau ${formatCountdown(autoRemaining ?? 0)}. Thấy cần gấp thì bấm "Can thiệp ngay".`}
+              />
+            )}
+            {alert.status === 'NEEDS_INTERVENTION' && alert.failsafeAt && !alert.acknowledgedAt && (
+              <Alert
+                type="error"
+                showIcon
+                title="QUÁ HẠN - chưa Admin nào xử lý"
+                description={`Failsafe đã chạy lúc ${formatDateTime(alert.failsafeAt)}: đã báo động lại toàn bộ Admin và nhắc lại bệnh nhân. Hãy liên hệ ngay.`}
+              />
+            )}
+            {failsafeRemaining !== null && (
+              <Alert
+                type="error"
+                showIcon
+                title="Cần can thiệp - chưa Admin nào xử lý"
+                description={`Gọi người thân theo số bên dưới rồi ghi kết quả. Nếu không ai ghi gì, failsafe chạy sau ${formatCountdown(failsafeRemaining)}.`}
+              />
+            )}
             <Descriptions column={1} bordered size="small" styles={{ label: { width: 120, whiteSpace: 'nowrap' }, content: { minWidth: 0 } }}>
               <Descriptions.Item label="Bệnh nhân">
                 <Space wrap size={4}>
@@ -252,21 +329,26 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
                 </Space>
               </Descriptions.Item>
               <Descriptions.Item label="Số điện thoại">{alert.patientPhone ?? '—'}</Descriptions.Item>
-              {detail?.emergencyContact && (
-                <Descriptions.Item label="Liên hệ khẩn cấp">
-                  {detail.emergencyContact.name} ({detail.emergencyContact.relationship}) · {detail.emergencyContact.phone}
-                  <Text type="secondary" className="block text-xs">Chỉ liên hệ khi không gọi được bệnh nhân theo quy trình xử lý cảnh báo.</Text>
-                </Descriptions.Item>
-              )}
               <Descriptions.Item label="Thời điểm">{formatDateTime(alert.occurredAt)}</Descriptions.Item>
+              <Descriptions.Item label="Bệnh nhân trả lời">
+                {alert.patientResponse === 'SAFE' && <Tag color="green">An toàn</Tag>}
+                {alert.patientResponse === 'NEED_HELP' && <Tag color="red">Cần hỗ trợ</Tag>}
+                {alert.patientResponse === null && <Text type="secondary">Chưa trả lời</Text>}
+                {alert.patientRespondedAt && (
+                  <Text type="secondary" className="text-xs"> · {formatDateTime(alert.patientRespondedAt)}</Text>
+                )}
+              </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <Space wrap size={4}>
                   <Tag color={TRIAGE_STATUS_COLORS[alert.status]}>{TRIAGE_STATUS_LABELS[alert.status]}</Tag>
-                  {alert.outcome === 'HANDLED' && <Tag color="green">Xử lý xong</Tag>}
-                  {alert.outcome === 'FALSE_ALARM' && <Tag>Báo nhầm/Spam</Tag>}
-                  {alert.claimedByType && (
+                  {alert.outcome && (
+                    <Tag color={alert.outcome === 'FALSE_ALARM' ? 'default' : 'green'}>
+                      {TRIAGE_OUTCOME_LABELS[alert.outcome]}
+                    </Tag>
+                  )}
+                  {alert.claimedByType && alert.status !== 'RESOLVED' && (
                     <Text type="secondary">
-                      {STAFF_LABELS[alert.claimedByType]} #{alert.claimedById} tiếp nhận
+                      {STAFF_LABELS[alert.claimedByType]} #{alert.claimedById} đang liên hệ
                     </Text>
                   )}
                 </Space>
@@ -297,27 +379,85 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
               )}
             </Descriptions>
 
+            {alert.status === 'NEEDS_INTERVENTION' && (
+              <section className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50/60 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                <Text strong><PhoneOutlined className="mr-2" />Liên hệ khẩn cấp</Text>
+                {detail?.emergencyContact ? (
+                  <>
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <Text strong>{detail.emergencyContact.name}</Text>
+                      <Text type="secondary">({detail.emergencyContact.relationship})</Text>
+                      <a href={`tel:${detail.emergencyContact.phone}`} className="font-semibold tabular-nums">
+                        {detail.emergencyContact.phone}
+                      </a>
+                    </div>
+                    <div>
+                      <Text type="secondary" className="text-xs">Kịch bản gọi</Text>
+                      <Paragraph className="mb-0! text-sm" copyable>
+                        {callScript(detail.emergencyContact.name,
+                          alert.patientFullName ?? `Bệnh nhân #${alert.patientId}`,
+                          describeMatchedGroups(alert.matchedGroups), alert.occurredAt)}
+                      </Paragraph>
+                    </div>
+                  </>
+                ) : (
+                  <Text type="secondary">
+                    Bệnh nhân chưa khai liên hệ khẩn cấp - gọi thẳng số của bệnh nhân
+                    {alert.patientPhone ? ` (${alert.patientPhone})` : ''}, hoặc gọi 115 nếu thấy cần.
+                  </Text>
+                )}
+                {canHandle && (
+                  <div className="flex flex-col gap-2">
+                    <Select<TriageContactResult>
+                      placeholder="Kết quả liên hệ"
+                      options={CONTACT_RESULT_OPTIONS}
+                      value={contactResult ?? undefined}
+                      onChange={setContactResult}
+                      disabled={busy}
+                    />
+                    <TextArea
+                      value={contactNote}
+                      onChange={(event) => setContactNote(event.target.value)}
+                      placeholder="Ghi chú (không bắt buộc)"
+                      autoSize={{ minRows: 1, maxRows: 4 }}
+                      maxLength={MAX_NOTE_LENGTH}
+                      disabled={busy}
+                    />
+                    <Button type="primary" loading={guard.inFlightId === 'contact'}
+                      disabled={busy || contactResult === null} onClick={handleRecordContact}>
+                      Ghi kết quả liên hệ
+                    </Button>
+                  </div>
+                )}
+              </section>
+            )}
+
             <Space wrap>
-              {alert.status === 'NEW' && (
-                <Button type="primary" loading={guard.inFlightId === 'claim'} disabled={busy}
+              {isOpen && alert.claimedById === null && (
+                <Button type={alert.status === 'AUTO_HANDLING' ? 'default' : 'primary'}
+                  loading={guard.inFlightId === 'claim'} disabled={busy}
                   onClick={() => runAction('claim', () => claimTriageAlert(alert.id),
-                    'Đã tiếp nhận cảnh báo', 'Không thể tiếp nhận cảnh báo này.')}>
-                  Tiếp nhận
+                    alert.status === 'AUTO_HANDLING' ? 'Đã chuyển sang Cần can thiệp' : 'Đã đánh dấu bạn đang liên hệ',
+                    'Không thể nhận ca này.')}>
+                  {alert.status === 'AUTO_HANDLING' ? 'Can thiệp ngay' : 'Tôi đang liên hệ'}
                 </Button>
+              )}
+              {canRelease && (
+                <Popconfirm title="Bỏ đánh dấu đang liên hệ?" description="Đồng hồ failsafe sẽ tính lại từ lúc này."
+                  okText="Trả lại" cancelText="Huỷ"
+                  onConfirm={() => runAction('release', () => releaseTriageAlert(alert.id),
+                    'Đã trả lại ca', 'Không thể trả lại ca này.')}>
+                  <Button icon={<RollbackOutlined />} loading={guard.inFlightId === 'release'} disabled={busy}>
+                    Trả lại
+                  </Button>
+                </Popconfirm>
               )}
               {canHandle && (
                 <>
-                  <Popconfirm title="Trả lại cảnh báo này?" okText="Trả lại" cancelText="Huỷ"
-                    onConfirm={() => runAction('release', () => releaseTriageAlert(alert.id),
-                      'Đã trả lại cảnh báo', 'Không thể trả lại cảnh báo.')}>
-                    <Button icon={<RollbackOutlined />} loading={guard.inFlightId === 'release'} disabled={busy}>
-                      Trả lại
-                    </Button>
-                  </Popconfirm>
-                  <Tooltip title={alert.staffMessageCount === 0 ? 'Cần nhắn cho bệnh nhân ít nhất 1 tin' : undefined}>
+                  <Tooltip title={canResolve ? undefined : 'Cần ghi kết quả liên hệ trước khi đóng ca'}>
                     <Button type="primary" icon={<CheckOutlined />}
-                      disabled={busy || alert.staffMessageCount === 0} onClick={() => openDialog('resolve')}>
-                      Xử lý xong
+                      disabled={busy || !canResolve} onClick={() => openDialog('resolve')}>
+                      Đóng ca
                     </Button>
                   </Tooltip>
                   <Button danger icon={<StopOutlined />} disabled={busy} onClick={() => openDialog('falseAlarm')}>
@@ -327,13 +467,12 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
               )}
             </Space>
 
+            {/* Ca khẩn cấp do Admin gọi điện, không nhắn tin trong app. Chỉ còn hiện tin nhắn của các ca cũ. */}
+            {detail && detail.messages.length > 0 && (
             <section className="flex flex-col gap-3">
-              <Text strong>Trao đổi với bệnh nhân</Text>
+              <Text strong>Tin nhắn trước đây (chỉ xem)</Text>
               <div className="flex max-h-80 flex-col gap-2 overflow-y-auto rounded-xl border border-black/5 p-3 dark:border-white/10">
-                {detail && detail.messages.length === 0 && (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có tin nhắn" />
-                )}
-                {detail?.messages.map((item) => {
+                {detail.messages.map((item) => {
                   const fromPatient = item.senderType === 'PATIENT'
                   return (
                     <div key={item.id} className={`flex ${fromPatient ? 'justify-start' : 'justify-end'}`}>
@@ -353,28 +492,8 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
                   )
                 })}
               </div>
-              {canHandle && (
-                <div className="flex flex-col gap-2">
-                  <TextArea
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    placeholder="Nhập tin nhắn cho bệnh nhân"
-                    autoSize={{ minRows: 2, maxRows: 6 }}
-                    maxLength={MAX_MESSAGE_LENGTH}
-                    disabled={busy}
-                  />
-                  <div className="flex items-center justify-between gap-3">
-                    <Text type="secondary" className="text-xs tabular-nums">
-                      {draft.length} / {MAX_MESSAGE_LENGTH}
-                    </Text>
-                    <Button type="primary" icon={<SendOutlined />} loading={guard.inFlightId === 'send'}
-                      disabled={busy || draft.trim().length === 0} onClick={handleSend}>
-                      Gửi
-                    </Button>
-                  </div>
-                </div>
-              )}
             </section>
+            )}
 
             <section className="flex flex-col gap-3">
               <Text strong>Lịch sử xử lý</Text>
@@ -385,7 +504,7 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
       </Spin>
 
       <Modal
-        title={dialog === 'falseAlarm' ? 'Đánh dấu báo nhầm/spam' : 'Xử lý xong'}
+        title={dialog === 'falseAlarm' ? 'Đánh dấu báo nhầm/spam' : 'Đóng ca'}
         open={dialog !== null}
         onCancel={() => setDialog(null)}
         onOk={handleDialogOk}

@@ -21,6 +21,7 @@ import vn.gastroai.be.infrastructure.persistence.postgres.BristolLogRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.api.patient.BristolTrashPage;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -105,9 +106,18 @@ public class BristolLogService {
     }
 
     @Transactional(value = "postgresTransactionManager", readOnly = true)
-    public BristolListResponse list(Long patientId, int page, int size) {
+    public BristolListResponse list(Long patientId, int page, int size, LocalDate date) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<BristolLog> result = bristolLogRepository.findByPatientIdOrderByLoggedAtDesc(patientId, pageable);
+        Page<BristolLog> result;
+        if (date == null) {
+            result = bristolLogRepository.findByPatientIdOrderByLoggedAtDesc(patientId, pageable);
+        } else {
+            Instant from = date.atStartOfDay(VietnamDateRange.ZONE).toInstant();
+            Instant to = date.plusDays(1).atStartOfDay(VietnamDateRange.ZONE).toInstant();
+            result = bristolLogRepository
+                    .findByPatientIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThanOrderByLoggedAtDesc(
+                            patientId, from, to, pageable);
+        }
         List<BristolLogResponse> items = result.getContent().stream().map(this::toResponse).toList();
         return new BristolListResponse(items, result.getNumber(), result.getSize(),
                 result.getTotalElements(), result.getTotalPages());

@@ -30,9 +30,8 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    // CmsAuthController tự kiểm tra "đã đăng nhập chưa" thủ công; MeController cũng giữ một
-    // check phòng vệ, dù SecurityConfig đã bắt buộc ROLE_PATIENT cho /me/**. Không có handler
-    // này, exception rơi về AccessDeniedHandler mặc định của Spring Security — response không
+    // CmsAuthController tự kiểm tra "đã đăng nhập chưa" thủ công. Không có handler này,
+    // exception rơi về AccessDeniedHandler mặc định của Spring Security — response không
     // có field "message" mà FE đang mong đợi, hiện chữ chung chung vô nghĩa (vd session hết
     // hạn do BE restart nhưng FE vẫn tưởng còn đăng nhập).
     @ExceptionHandler(AccessDeniedException.class)

@@ -15,6 +15,7 @@ import { Button, Card, Empty, message, Modal, Pagination, Segmented, Select, Ske
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  deleteAllNotifications,
   deleteNotification,
   getNotifications,
   markAllNotificationsRead,
@@ -25,6 +26,11 @@ import {
   type NotificationPage,
   type NotificationType,
 } from '../../api/notifications'
+import {
+  answerTriageCheckIn,
+  TRIAGE_ANSWERED_EVENT,
+  type TriageCheckInResponse,
+} from '../../api/patientTriageAlerts'
 import { NotificationSettingsModal } from '../../components/notification/NotificationSettingsModal'
 import { extractErrorMessage } from '../../lib/errors'
 
@@ -38,10 +44,14 @@ const TYPE_META: Record<NotificationType, { label: string; color: string }> = {
   TRIAGE_ALERT: { label: 'Cảnh báo triage', color: 'red' },
   SYSTEM: { label: 'Hệ thống', color: 'blue' },
   TRIAGE_DOCTOR_MESSAGE: { label: 'Cập nhật cảnh báo', color: 'volcano' },
+  TRIAGE_CHECK_IN: { label: 'Hỏi thăm sức khỏe', color: 'red' },
+  TRIAGE_INTERVENTION: { label: 'Cần can thiệp', color: 'red' },
 }
 
 function notificationIcon(type: NotificationType) {
-  if (type === 'TRIAGE_ALERT') return <ExclamationCircleOutlined />
+  if (type === 'TRIAGE_ALERT' || type === 'TRIAGE_INTERVENTION' || type === 'TRIAGE_CHECK_IN') {
+    return <ExclamationCircleOutlined />
+  }
   if (type === 'TRIAGE_DOCTOR_MESSAGE') return <MessageOutlined />
   if (type === 'MEDICATION_REMINDER') return <MedicineBoxOutlined />
   if (type === 'SECURITY_ALERT') return <SafetyCertificateOutlined />
@@ -49,11 +59,18 @@ function notificationIcon(type: NotificationType) {
 }
 
 function iconClass(type: NotificationType) {
-  if (type === 'TRIAGE_ALERT') return 'bg-red-100 text-red-600'
+  if (type === 'TRIAGE_ALERT' || type === 'TRIAGE_INTERVENTION' || type === 'TRIAGE_CHECK_IN') {
+    return 'bg-red-100 text-red-600'
+  }
   if (type === 'TRIAGE_DOCTOR_MESSAGE') return 'bg-orange-100 text-orange-700'
   if (type === 'MEDICATION_REMINDER') return 'bg-purple-100 text-purple-700'
   if (type === 'SECURITY_ALERT') return 'bg-amber-100 text-amber-700'
   return 'bg-teal-100 text-teal-700'
+}
+
+/** Trang trao đổi cảnh báo của bệnh nhân đã bỏ - thông báo cũ trỏ về đó thì không hiện nút "Xem chi tiết". */
+function hasActionPage(item: AppNotification) {
+  return Boolean(item.actionUrl) && !item.actionUrl!.startsWith('/triage-alerts')
 }
 
 export function NotificationCenterPage({ audience }: { audience: NotificationAudience }) {
@@ -64,6 +81,8 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
   const [type, setType] = useState<NotificationType | undefined>()
   const [loading, setLoading] = useState(true)
   const [workingId, setWorkingId] = useState<number | null>(null)
+  const [answering, setAnswering] = useState<{ id: number; response: TriageCheckInResponse } | null>(null)
+  const [deletingAll, setDeletingAll] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const load = useCallback(async (targetPage = page) => {
@@ -121,7 +140,29 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
         setWorkingId(null)
       }
     }
-    if (followAction && item.actionUrl) navigate(item.actionUrl)
+    if (followAction && hasActionPage(item)) navigate(item.actionUrl!)
+  }
+
+  /** SCR-AD-13 bước 1 - bệnh nhân lỡ popup thì trả lời "Bạn có ổn không?" ngay tại đây. */
+  async function answerCheckIn(item: AppNotification, response: TriageCheckInResponse) {
+    if (item.sourceId === null) return
+    setAnswering({ id: item.id, response })
+    try {
+      const result = await answerTriageCheckIn(item.sourceId, response)
+      window.dispatchEvent(new CustomEvent(TRIAGE_ANSWERED_EVENT, { detail: item.id }))
+      if (result.alreadyClosed) {
+        message.info('Cảnh báo này đã được xử lý xong, bạn không cần trả lời thêm.')
+      } else if (response === 'SAFE') {
+        message.success('Cảm ơn bạn đã xác nhận. GastroAI sẽ không làm phiền thêm.')
+      } else {
+        message.warning('Đã báo nhân sự GastroAI, chúng tôi sẽ gọi cho bạn hoặc người thân. Nặng hơn hãy gọi 115 ngay.', 8)
+      }
+      await markRead(item)
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : 'Không gửi được câu trả lời. Vui lòng thử lại.')
+    } finally {
+      setAnswering(null)
+    }
   }
 
   async function markUnread(item: AppNotification) {
@@ -181,15 +222,42 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
     })
   }
 
+  function confirmDeleteAll() {
+    Modal.confirm({
+      title: 'Xóa tất cả thông báo?',
+      content: 'Toàn bộ thông báo trong trung tâm thông báo của bạn sẽ bị ẩn. Hành động này không thể hoàn tác.',
+      okText: 'Xóa tất cả',
+      okButtonProps: { danger: true },
+      cancelText: 'Hủy',
+      async onOk() {
+        setDeletingAll(true)
+        try {
+          await deleteAllNotifications(audience)
+          setPage(0)
+          await load(0)
+          window.dispatchEvent(new Event('gastroai:notification-state'))
+          message.success('Đã xóa tất cả thông báo')
+        } catch (error) {
+          message.error(extractErrorMessage(error, 'Không thể xóa tất cả thông báo').message)
+          throw error
+        } finally {
+          setDeletingAll(false)
+        }
+      },
+    })
+  }
+
   const typeOptions = audience === 'patient'
     ? [
         { value: 'JOURNAL_REMINDER', label: 'Nhắc nhật ký' },
         { value: 'MEDICATION_REMINDER', label: 'Nhắc uống thuốc' },
         { value: 'SECURITY_ALERT', label: 'An toàn & bảo mật' },
+        { value: 'TRIAGE_CHECK_IN', label: 'Hỏi thăm sức khỏe' },
         { value: 'TRIAGE_DOCTOR_MESSAGE', label: 'Cập nhật cảnh báo' },
         { value: 'SYSTEM', label: 'Hệ thống' },
       ]
     : [
+        { value: 'TRIAGE_INTERVENTION', label: 'Cần can thiệp' },
         { value: 'TRIAGE_ALERT', label: 'Cảnh báo triage' },
         { value: 'SYSTEM', label: 'Hệ thống' },
       ]
@@ -213,6 +281,15 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
           <Button icon={<ReloadOutlined />} onClick={() => void load(page)} loading={loading}>Làm mới</Button>
           <Button icon={<CheckOutlined />} disabled={!data?.unreadCount} onClick={() => void markAllRead()}>
             Đọc tất cả
+          </Button>
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            loading={deletingAll}
+            disabled={!data || (!unreadOnly && !type && data.totalElements === 0)}
+            onClick={confirmDeleteAll}
+          >
+            Xóa tất cả
           </Button>
         </div>
       </div>
@@ -260,7 +337,29 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
                     {new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.createdAt))}
                   </Text>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {item.actionUrl && (
+                    {audience === 'patient' && item.type === 'TRIAGE_CHECK_IN' && !item.readAt && item.sourceId !== null && (
+                      <>
+                        <Button
+                          size="small"
+                          disabled={answering?.id === item.id}
+                          loading={answering?.id === item.id && answering.response === 'SAFE'}
+                          onClick={() => void answerCheckIn(item, 'SAFE')}
+                        >
+                          Tôi an toàn
+                        </Button>
+                        <Button
+                          size="small"
+                          type="primary"
+                          danger
+                          disabled={answering?.id === item.id}
+                          loading={answering?.id === item.id && answering.response === 'NEED_HELP'}
+                          onClick={() => void answerCheckIn(item, 'NEED_HELP')}
+                        >
+                          Cần hỗ trợ
+                        </Button>
+                      </>
+                    )}
+                    {hasActionPage(item) && (
                       <Button type="primary" ghost size="small" icon={<RightOutlined />} onClick={() => void markRead(item, true)}>
                         Xem chi tiết
                       </Button>

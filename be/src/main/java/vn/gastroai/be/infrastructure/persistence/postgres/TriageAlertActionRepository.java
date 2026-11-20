@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface TriageAlertActionRepository extends JpaRepository<TriageAlertAction, Long> {
     List<TriageAlertAction> findByAlertIdOrderByCreatedAtAscIdAsc(Long alertId);
+
+    long countByAlertIdAndActionType(Long alertId, vn.gastroai.be.domain.triage.TriageAlertActionType actionType);
 }

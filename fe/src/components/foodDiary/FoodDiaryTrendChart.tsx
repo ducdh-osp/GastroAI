@@ -9,7 +9,13 @@ function formatDay(dateStr: string): string {
   return `${day}/${month}`
 }
 
-export function FoodDiaryTrendChart({ points }: { points: DailyCountPoint[] }) {
+export function FoodDiaryTrendChart({
+  points,
+  onDaySelect,
+}: {
+  points: DailyCountPoint[]
+  onDaySelect?: (date: string) => void
+}) {
   const data = points.map((p) => ({ ...p, label: formatDay(p.date) }))
 
   return (
@@ -22,7 +28,17 @@ export function FoodDiaryTrendChart({ points }: { points: DailyCountPoint[] }) {
           formatter={(value) => [`${value} bữa`, 'Số bữa ăn']}
           labelFormatter={(label) => `Ngày ${label}`}
         />
-        <Bar dataKey="count" fill="#0d9488" radius={[4, 4, 0, 0]} />
+        <Bar
+          dataKey="count"
+          fill="#0d9488"
+          radius={[4, 4, 0, 0]}
+          cursor={onDaySelect ? 'pointer' : undefined}
+          onClick={(entry) => {
+            const selected = entry as unknown as { date?: string; payload?: { date?: string } }
+            const date = selected.date ?? selected.payload?.date
+            if (date) onDaySelect?.(date)
+          }}
+        />
       </BarChart>
     </ResponsiveContainer>
   )

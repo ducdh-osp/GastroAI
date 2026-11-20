@@ -4,6 +4,7 @@ public enum AuditAction {
     DOCUMENT_UPLOAD,
     DOCUMENT_NEW_VERSION,
     DOCUMENT_ACTIVATE_VERSION,
+    DOCUMENT_APPROVE_CONTENT,
     DOCUMENT_UPDATE_INFO,
     DOCUMENT_PUBLISH,
     DOCUMENT_UNPUBLISH,
@@ -14,6 +15,7 @@ public enum AuditAction {
     PATIENT_UNLOCK,
     PATIENT_DATA_VIEW,
     PASSWORD_CHANGE,
+    CMS_LOGIN,
     SYSTEM_RESTORE,
     ANOMALY_DETECTED,
     ANOMALY_RULE_UPDATE,
@@ -34,5 +36,13 @@ public enum AuditAction {
     CONTENT_TOGGLE_ACTIVE,
     TRIAGE_ALERT_RELEASE,
     TRIAGE_ALERT_FALSE_ALARM,
-    TRIAGE_ALERT_MESSAGE
+    TRIAGE_ALERT_MESSAGE,
+    /** SCR-AD-13: he thong chuyen "Can can thiep" (benh nhan im lang / bam Can ho tro). */
+    TRIAGE_ALERT_ESCALATE,
+    /** SCR-AD-13 failsafe: khong Admin nao xac nhan trong thoi han. */
+    TRIAGE_ALERT_FAILSAFE,
+    /** Admin ghi ket qua lien he nguoi than / benh nhan / 115. */
+    TRIAGE_ALERT_CONTACT,
+    /** Benh nhan tra loi "Ban co on khong?". */
+    TRIAGE_ALERT_PATIENT_RESPONSE
 }

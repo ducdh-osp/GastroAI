@@ -65,25 +65,27 @@ public class SecurityConfig {
                                 "/api/v1/auth/reset-password",
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/login",
-                                "/api/v1/cms/auth/**",
+                                "/api/v1/cms/auth/login",
+                                "/api/v1/cms/auth/logout",
                                 "/api/v1/faqs/**",
                                 "/error")
                         .permitAll()
                         // Patient endpoints must never accept a CMS HttpSession. MySQL CMS ids
                         // and PostgreSQL patient ids are independent sequences and may collide.
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").hasRole("PATIENT")
-                        .requestMatchers("/api/v1/me/**").hasRole("PATIENT")
                         .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
                         .requestMatchers("/api/v1/chat/**").hasRole("PATIENT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
-                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                      .hasAnyRole("ADMIN", "CONTENT_EDITOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/documents/*/versions/*/approve")
+                        .hasRole("CONTENT_EDITOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/documents/**")
-                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                      .hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         // SockJS cannot attach the Authorization header during its HTTP handshake.
                         // This endpoint validates the JWT query token in
                         // PatientWebSocketHandshakeInterceptor.
                         .requestMatchers("/ws/patient/**").permitAll()
-                        .requestMatchers("/ws/**").hasAnyRole("ADMIN", "DOCTOR")
+                        .requestMatchers("/ws/**").hasAnyRole("ADMIN")
                         .requestMatchers("/api/v1/cms/notifications/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "DOCTOR")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN", "DOCTOR")
@@ -96,9 +98,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/cms/catalogs/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/doctors/**").hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
-                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
-                        .requestMatchers("/api/v1/cms/backup/**")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/dashboard/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/runtime-config/**")
@@ -110,9 +110,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/cms/rbac/**")
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/documents/**")
-                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
-                        .requestMatchers("/api/v1/cms/account/**")
-                        .hasAnyRole("ADMIN", "DOCTOR", "CONTENT_EDITOR")
+                      .hasAnyRole("ADMIN", "CONTENT_EDITOR")
+                        .requestMatchers("/api/v1/cms/auth/**")
+                        .hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/audit-logs/**")
                         .hasRole("ADMIN")
                         // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng

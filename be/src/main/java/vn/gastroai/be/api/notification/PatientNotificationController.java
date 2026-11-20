@@ -70,6 +70,12 @@ public class PatientNotificationController {
         service.markAllRead(NotificationRecipientType.PATIENT, patientId(principal, authentication));
     }
 
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAll(Principal principal, Authentication authentication) {
+        service.deleteAll(NotificationRecipientType.PATIENT, patientId(principal, authentication));
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id, Principal principal, Authentication authentication) {

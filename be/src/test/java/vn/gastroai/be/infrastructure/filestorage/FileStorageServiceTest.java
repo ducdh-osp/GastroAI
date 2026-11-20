@@ -86,4 +86,17 @@ class FileStorageServiceTest {
 
         assertTrue(Files.exists(stored));
     }
+    
+    @Test
+    void findStoredOnlyReturnsFilesInsideStorageDirectory() throws IOException {
+        Path storage = Files.createDirectories(tempDir.resolve("storage"));
+        Path inside = Files.writeString(storage.resolve("a.pdf"), "%PDF-");
+        Path outside = Files.writeString(tempDir.resolve("secret.txt"), "khong duoc doc");
+
+        assertEquals(inside.toAbsolutePath().normalize(), service(storage).findStored(inside.toString()).orElseThrow());
+        assertTrue(service(storage).findStored(outside.toString()).isEmpty());
+        assertTrue(service(storage).findStored(storage.resolve("../secret.txt").toString()).isEmpty());
+        assertTrue(service(storage).findStored(storage.resolve("khong-co.pdf").toString()).isEmpty());
+        assertTrue(service(storage).findStored(null).isEmpty());
+    }
 }

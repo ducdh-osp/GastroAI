@@ -9,12 +9,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import vn.gastroai.be.domain.admin.Admin;
 
+import java.util.List;
 import java.util.Optional;
 
 /** Dùng bởi CmsAuthService để tra cứu Admin theo email khi đăng nhập CMS. */
 public interface AdminRepository extends JpaRepository<Admin, Long> {
 
     Optional<Admin> findByEmail(String email);
+
+    /** Danh sach id moi Admin - dung de danh dau da doc thong bao broadcast cho tung nguoi. */
+    @Query("select a.id from Admin a")
+    List<Long> findAllIds();
 
     @Query("""
             select a from Admin a

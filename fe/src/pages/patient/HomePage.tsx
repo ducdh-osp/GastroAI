@@ -1,6 +1,6 @@
-import { FireOutlined, TrophyOutlined } from '@ant-design/icons'
-import { Button, Card, Modal, Progress, Segmented, Skeleton, Tooltip, Typography } from 'antd'
-import { useEffect, useState, type ReactNode } from 'react'
+import { HeartOutlined } from '@ant-design/icons'
+import { Button, Card, Skeleton, Typography } from 'antd'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bar,
@@ -15,21 +15,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { HealthTrackingProgress } from '../../components/home/HealthTrackingProgress'
 import { AppShell } from '../../components/layout/AppShell'
 import { useAuth } from '../../stores/authStore'
-import { getAdherence, type AdherenceResponse } from '../../api/adherence'
 import { getBristolTrend, type BristolLogPoint } from '../../api/bristol'
 import { getFoodDiaryTrend, type DailyCountPoint } from '../../api/foodDiary'
 import { getFoodSensitivityProfile, type FoodSensitivityProfileResponse } from '../../api/foodSensitivity'
 import { foodSensitivityColor } from '../../lib/foodSensitivityColor'
 
 const TEAL = '#0d9488'
-const TEAL_LIGHT = '#5eead4'
-
-function formatDay(iso: string): string {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
-}
 
 function formatShortDay(iso: string): string {
   const d = new Date(iso)
@@ -50,64 +44,14 @@ function last14Days(): string[] {
 
 const { Title, Paragraph, Text } = Typography
 
-function StatPill({ icon, label, value, hint }: { icon: ReactNode; label: string; value: ReactNode; hint?: string }) {
-  return (
-    <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
-      <div className="flex items-center gap-2 text-white/70">
-        <span className="text-base">{icon}</span>
-        <Text className="text-xs font-medium tracking-wide text-white/70 uppercase">{label}</Text>
-      </div>
-      <div className="mt-1 text-2xl font-bold text-white">{value}</div>
-      {hint ? <Text className="text-xs text-white/60">{hint}</Text> : null}
-    </div>
-  )
-}
-
-function StreakGrid({ days }: { days: AdherenceResponse['days'] }) {
-  return (
-    <div className="grid grid-cols-10 gap-1.5 sm:grid-cols-15">
-      {days.map((point) => (
-        <Tooltip
-          key={point.date}
-          title={`${formatDay(point.date)}: ${point.foodDiaryCount} bữa ăn, ${point.bristolCount} lần Bristol`}
-        >
-          <span
-            aria-label={`${formatDay(point.date)} ${point.logged ? 'đã ghi' : 'chưa ghi'}`}
-            className="block aspect-square w-full rounded"
-            style={{ background: point.logged ? TEAL : '#e5e7eb' }}
-          />
-        </Tooltip>
-      ))}
-    </div>
-  )
-}
-
 export default function HomePage() {
   const { email, fullName } = useAuth()
-  const displayName = fullName ?? email
-  const [adherence, setAdherence] = useState<AdherenceResponse | null>(null)
-  const [loadingAdherence, setLoadingAdherence] = useState(true)
-  const [streakDetailOpen, setStreakDetailOpen] = useState(false)
-  const [modalDays, setModalDays] = useState(30)
-  const [modalAdherence, setModalAdherence] = useState<AdherenceResponse | null>(null)
-  const [loadingModal, setLoadingModal] = useState(false)
-
   const [bristolTrend, setBristolTrend] = useState<BristolLogPoint[] | null>(null)
   const [foodTrend, setFoodTrend] = useState<DailyCountPoint[] | null>(null)
   const [sensitivity, setSensitivity] = useState<FoodSensitivityProfileResponse | null>(null)
 
   useEffect(() => {
     let active = true
-    getAdherence(30)
-      .then((res) => {
-        if (active) setAdherence(res)
-      })
-      .catch(() => {
-        // Trang chủ không nên vỡ vì 1 widget phụ lỗi — chỉ ẩn phần streak nếu tải thất bại.
-      })
-      .finally(() => {
-        if (active) setLoadingAdherence(false)
-      })
     getBristolTrend(14)
       .then((res) => active && setBristolTrend(res))
       .catch(() => active && setBristolTrend([]))
@@ -122,19 +66,6 @@ export default function HomePage() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!streakDetailOpen) return
-    let active = true
-    setLoadingModal(true)
-    getAdherence(modalDays)
-      .then((res) => active && setModalAdherence(res))
-      .catch(() => {})
-      .finally(() => active && setLoadingModal(false))
-    return () => {
-      active = false
-    }
-  }, [streakDetailOpen, modalDays])
-
   const bristolByDay = new Map((bristolTrend ?? []).map((p) => [p.loggedAt.slice(0, 10), p.bristolType]))
   const bristolChartData = last14Days().map((date) => ({
     day: formatShortDay(date),
@@ -145,75 +76,26 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="w-full">
-        {/* Hero — cùng ngôn ngữ thương hiệu với AuthShell (gradient teal + hoạ tiết lưới) để
-            người dùng cảm nhận liền mạch từ lúc đăng nhập tới Trang chủ. */}
-        <div
-          className="relative overflow-hidden rounded-3xl p-6 text-white shadow-lg shadow-teal-900/10 sm:p-8"
-          style={{ background: 'radial-gradient(120% 120% at 15% 0%, #14b8a6 0%, #0d9488 45%, #134e4a 100%)' }}
-        >
-          <div className="bg-brand-grid absolute inset-0 opacity-60" aria-hidden />
-          <div className="grain-overlay absolute inset-0" aria-hidden />
-
-          <div className="relative">
-            <Text className="text-xs tracking-[0.3em] text-white/70 uppercase">Chào mừng trở lại</Text>
-            <Title level={2} className="mt-2 mb-1! text-white!">
-              Chào {displayName} 👋
-            </Title>
-            <Paragraph className="mb-0! max-w-xl text-white/80">
-              Theo dõi tiến trình sức khoẻ tiêu hoá của bạn ngay dưới đây. Dùng menu trên header để trò chuyện cùng
-              AI hoặc ghi nhận thêm dữ liệu mới.
-            </Paragraph>
-
-            <div className="mt-6">
-              {loadingAdherence ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="rounded-2xl border border-white/15 bg-white/10 p-4">
-                      <Skeleton active paragraph={false} title={{ width: '60%' }} className="opacity-70" />
-                    </div>
-                  ))}
-                </div>
-              ) : adherence ? (
-                <>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <StatPill
-                      icon={<FireOutlined />}
-                      label="Streak hiện tại"
-                      value={`${adherence.currentStreak} ngày`}
-                      hint={!adherence.loggedToday && adherence.currentStreak > 0 ? 'Hôm nay chưa ghi — ghi ngay để giữ streak' : undefined}
-                    />
-                    <StatPill icon={<TrophyOutlined />} label="Streak dài nhất" value={`${adherence.longestStreak} ngày`} />
-                    <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
-                      <Text className="text-xs font-medium tracking-wide text-white/70 uppercase">Tỷ lệ tuân thủ (30 ngày)</Text>
-                      <div className="mt-1 text-2xl font-bold text-white">{adherence.adherencePercent.toFixed(0)}%</div>
-                      <Progress
-                        percent={Math.round(adherence.adherencePercent)}
-                        showInfo={false}
-                        strokeColor={TEAL_LIGHT}
-                        railColor="rgba(255,255,255,0.2)"
-                        size="small"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalDays(30)
-                      setStreakDetailOpen(true)
-                    }}
-                    className="mt-3 inline-block cursor-pointer border-0 bg-transparent p-0 text-sm text-white/80 hover:text-white hover:underline"
-                  >
-                    Xem chi tiết streak & tuân thủ →
-                  </button>
-                </>
-              ) : null}
+      <div className="w-full grid gap-10 pb-2">
+        <Card className="overflow-hidden rounded-2xl border border-teal-200/70 bg-gradient-to-br from-white via-teal-50/70 to-emerald-100/60 shadow-[0_10px_30px_rgba(15,118,110,0.08)] dark:border-teal-500/20 dark:from-slate-950 dark:via-teal-950/30 dark:to-emerald-950/30">
+          <div className="flex items-start gap-4 py-2">
+            <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-xl text-white shadow-lg shadow-teal-600/20 sm:flex">
+              <HeartOutlined />
+            </div>
+            <div>
+              <Text type="secondary">Tổng quan hôm nay</Text>
+              <Title level={2} className="mb-2! mt-1!">Xin chào, {fullName ?? email} 👋</Title>
+              <Paragraph type="secondary" className="mb-0! max-w-3xl">
+                Theo dõi đều đặn giúp bạn nhận ra thay đổi trong sức khỏe tiêu hóa và cung cấp thông tin hữu ích
+                hơn khi trao đổi với bác sĩ.
+              </Paragraph>
             </div>
           </div>
-        </div>
+        </Card>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <HealthTrackingProgress />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card className="rounded-2xl border-black/5 shadow-sm" title="Xu hướng Bristol (14 ngày gần nhất)">
             {bristolTrend === null ? (
               <Skeleton active paragraph={{ rows: 3 }} />
@@ -319,66 +201,6 @@ export default function HomePage() {
           )}
         </Card>
       </div>
-
-      <Modal
-        title="Streak & tỷ lệ tuân thủ"
-        open={streakDetailOpen}
-        onCancel={() => setStreakDetailOpen(false)}
-        footer={null}
-      >
-        <div className="mt-2">
-          <div className="flex items-center justify-between gap-3">
-            <Text type="secondary" className="text-sm">
-              Một ngày được tính là "đã ghi" khi có ít nhất 1 mục nhật ký ăn uống hoặc Bristol.
-            </Text>
-            <Segmented
-              size="small"
-              value={modalDays}
-              onChange={(value) => setModalDays(value as number)}
-              options={[
-                { label: '7 ngày', value: 7 },
-                { label: '30 ngày', value: 30 },
-                { label: '90 ngày', value: 90 },
-              ]}
-            />
-          </div>
-
-          {loadingModal || !modalAdherence ? (
-            <Skeleton active className="mt-4" paragraph={{ rows: 4 }} />
-          ) : (
-            <>
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <Card size="small" className="rounded-xl border-black/5 text-center">
-                  <Text type="secondary" className="text-xs"><FireOutlined /> Hiện tại</Text>
-                  <div className="text-xl font-semibold">{modalAdherence.currentStreak} ngày</div>
-                </Card>
-                <Card size="small" className="rounded-xl border-black/5 text-center">
-                  <Text type="secondary" className="text-xs"><TrophyOutlined /> Dài nhất</Text>
-                  <div className="text-xl font-semibold">{modalAdherence.longestStreak} ngày</div>
-                </Card>
-                <Card size="small" className="rounded-xl border-black/5 text-center">
-                  <Text type="secondary" className="text-xs">Tuân thủ</Text>
-                  <div className="text-xl font-semibold">{modalAdherence.adherencePercent.toFixed(0)}%</div>
-                </Card>
-              </div>
-
-              <div className="mt-4">
-                <StreakGrid days={modalAdherence.days} />
-              </div>
-              <div className="mt-3 flex gap-4 text-xs text-gray-500">
-                <span>
-                  <span className="mr-1 inline-block h-3 w-3 rounded align-middle" style={{ background: TEAL }} />
-                  Đã ghi
-                </span>
-                <span>
-                  <span className="mr-1 inline-block h-3 w-3 rounded align-middle" style={{ background: '#e5e7eb' }} />
-                  Chưa ghi
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-      </Modal>
     </AppShell>
   )
 }

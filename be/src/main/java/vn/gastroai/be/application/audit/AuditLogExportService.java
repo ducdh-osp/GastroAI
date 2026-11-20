@@ -30,7 +30,7 @@ public class AuditLogExportService {
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
 
     static final String[] HEADERS = {
-            "Mã log", "Thời gian", "Loại tài khoản", "Mã tài khoản", "Email",
+            "Mã log", "Thời gian", "Vai trò", "Mã tài khoản", "Email",
             "Hành động", "Mã hành động", "Loại đối tượng", "Mã đối tượng",
             "Chi tiết", "Địa chỉ IP", "Thiết bị"
     };
@@ -90,7 +90,7 @@ public class AuditLogExportService {
         return new String[] {
                 String.valueOf(log.id()),
                 TIME_FORMAT.format(log.occurredAt()),
-                actorLabel(log.actorType()),
+                actorLabel(log.actorRole(), log.actorType()),
                 log.actorId() == null ? "" : String.valueOf(log.actorId()),
                 nullToEmpty(log.actorEmail()),
                 actionLabel(log.action()),
@@ -108,6 +108,7 @@ public class AuditLogExportService {
             case DOCUMENT_UPLOAD -> "Tải lên tài liệu";
             case DOCUMENT_NEW_VERSION -> "Tải phiên bản mới";
             case DOCUMENT_ACTIVATE_VERSION -> "Kích hoạt phiên bản";
+            case DOCUMENT_APPROVE_CONTENT -> "Xác nhận nội dung tài liệu";
             case DOCUMENT_UPDATE_INFO -> "Đổi thông tin tài liệu";
             case DOCUMENT_PUBLISH -> "Đăng tài liệu";
             case DOCUMENT_UNPUBLISH -> "Gỡ tài liệu";
@@ -118,6 +119,7 @@ public class AuditLogExportService {
             case PATIENT_UNLOCK -> "Mở khoá bệnh nhân";
             case PATIENT_DATA_VIEW -> "Xem dữ liệu bệnh nhân";
             case PASSWORD_CHANGE -> "Đổi mật khẩu";
+            case CMS_LOGIN -> "Đăng nhập CMS";
             case SYSTEM_RESTORE -> "Khôi phục dữ liệu";
             case ANOMALY_DETECTED -> "Cảnh báo bất thường";
             case ANOMALY_RULE_UPDATE -> "Sửa quy tắc cảnh báo";
@@ -139,18 +141,24 @@ public class AuditLogExportService {
             case TRIAGE_ALERT_RELEASE -> "Trả lại cảnh báo cấp cứu";
             case TRIAGE_ALERT_FALSE_ALARM -> "Đánh dấu báo nhầm/spam";
             case TRIAGE_ALERT_MESSAGE -> "Nhắn tin cho bệnh nhân";
+            case TRIAGE_ALERT_ESCALATE -> "Chuyển cảnh báo sang Cần can thiệp";
+            case TRIAGE_ALERT_FAILSAFE -> "Failsafe cảnh báo khẩn cấp";
+            case TRIAGE_ALERT_CONTACT -> "Ghi kết quả liên hệ khẩn cấp";
+            case TRIAGE_ALERT_PATIENT_RESPONSE -> "Bệnh nhân trả lời hỏi thăm";
         };
     }
 
-    private static String actorLabel(String actorType) {
-        if (actorType == null) {
+    private static String actorLabel(String actorRole, String actorType) {
+        String value = actorRole != null ? actorRole : actorType;
+        if (value == null) {
             return "";
         }
-        return switch (actorType) {
+        return switch (value) {
             case "ADMIN" -> "Admin";
+            case "CONTENT_EDITOR" -> "Biên tập";
             case "DOCTOR" -> "Bác sĩ";
             case "SYSTEM" -> "Hệ thống";
-            default -> actorType;
+            default -> value;
         };
     }
 

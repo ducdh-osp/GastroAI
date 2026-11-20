@@ -1,5 +1,5 @@
 import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Select, Spin, Typography } from 'antd'
-import { FilePdfOutlined, LoadingOutlined } from '@ant-design/icons'
+import { LoadingOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -7,7 +7,7 @@ import { getMedicalProfile, updateMedicalProfile } from '../../api/medicalProfil
 import type { Gender } from '../../api/medicalProfile'
 import { listCatalogItems } from '../../api/catalogs'
 import { AppShell } from '../../components/layout/AppShell'
-import { HealthReportModal } from '../../components/healthReport/HealthReportModal'
+import { HealthReportButton } from '../../components/healthReport/HealthReportButton'
 
 const { Title, Text } = Typography
 
@@ -57,9 +57,6 @@ export default function MedicalProfilePage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [reportOpen, setReportOpen] = useState(false)
-  // exists + updatedAt tach rieng khoi form (khong phai du lieu nguoi dung go) - dung de
-  // hien "Cap nhat lan cuoi" va doi nhan nut Tao/Cap nhat.
   const [exists, setExists] = useState(false)
   const [version, setVersion] = useState<number | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
@@ -176,9 +173,7 @@ export default function MedicalProfilePage() {
               Khai báo thông tin cơ bản, tiền sử bệnh, dị ứng và thuốc không cần lịch nhắc để trợ lý AI tham khảo trong tương lai. Đây là thông tin tham khảo, không thay thế chẩn đoán y tế.
             </Text>
           </div>
-          <Button icon={<FilePdfOutlined />} onClick={() => setReportOpen(true)}>
-            Xuất báo cáo cho bác sĩ
-          </Button>
+          <HealthReportButton />
         </div>
 
         <Card className="rounded-2xl border-black/5 shadow-sm">
@@ -279,7 +274,6 @@ export default function MedicalProfilePage() {
           )}
         </Card>
       </div>
-      <HealthReportModal open={reportOpen} onClose={() => setReportOpen(false)} />
     </AppShell>
   )
 }

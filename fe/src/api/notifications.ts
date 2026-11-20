@@ -31,6 +31,8 @@ export type NotificationType =
   | 'TRIAGE_ALERT'
   | 'SYSTEM'
   | 'TRIAGE_DOCTOR_MESSAGE'
+  | 'TRIAGE_CHECK_IN'
+  | 'TRIAGE_INTERVENTION'
 
 export interface NotificationFilters {
   unreadOnly?: boolean
@@ -78,6 +80,10 @@ export async function markAllNotificationsRead(audience: NotificationAudience) {
 
 export async function deleteNotification(audience: NotificationAudience, id: number) {
   await client(audience).delete(`${basePath(audience)}/${id}`)
+}
+
+export async function deleteAllNotifications(audience: NotificationAudience) {
+  await client(audience).delete(basePath(audience))
 }
 
 export interface NotificationSettings {
