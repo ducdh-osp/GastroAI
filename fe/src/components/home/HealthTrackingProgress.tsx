@@ -20,6 +20,11 @@ const DAYS_OPTIONS = [
   { value: 90, label: '90 ngày qua' },
 ]
 
+const METRIC_CARD_CLASS =
+  'h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.1)] dark:border-white/10 dark:bg-slate-900/80'
+const CONTENT_CARD_CLASS =
+  'overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-slate-900/80'
+
 function formatDay(iso: string): string {
   const [year, month, day] = iso.split('-')
   return `${day}/${month}/${year}`
@@ -52,7 +57,7 @@ export function HealthTrackingProgress() {
 
   return (
     <section aria-labelledby="tracking-progress-title">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <Text type="secondary">Thói quen hằng ngày</Text>
           <Title id="tracking-progress-title" level={3} className="mb-1! mt-1!">
@@ -71,13 +76,13 @@ export function HealthTrackingProgress() {
         />
       </div>
 
-      {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+      {error && <Alert type="error" message={error} showIcon className="mb-6" />}
 
       <Spin spinning={loading}>
         {data && (
-          <div className="space-y-4">
+          <div className="grid gap-6">
             {!data.loggedToday && (
-              <Card className="overflow-hidden rounded-2xl border-teal-200/70 bg-gradient-to-r from-teal-50 to-emerald-50 shadow-sm dark:border-teal-500/20 dark:from-teal-950/30 dark:to-emerald-950/20">
+              <Card className="overflow-hidden rounded-2xl border border-teal-200/80 bg-gradient-to-r from-teal-50 to-emerald-50 shadow-[0_8px_24px_rgba(13,148,136,0.08)] dark:border-teal-500/20 dark:from-teal-950/30 dark:to-emerald-950/20">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <Text strong className="block text-base">Hôm nay bạn chưa ghi nhật ký</Text>
@@ -99,8 +104,8 @@ export function HealthTrackingProgress() {
               </Card>
             )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <Card className="rounded-2xl border-black/5 shadow-sm">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+              <Card className={METRIC_CARD_CLASS}>
                 <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-xl text-orange-600 dark:bg-orange-500/15 dark:text-orange-300">
                   <FireOutlined />
                 </div>
@@ -111,7 +116,7 @@ export function HealthTrackingProgress() {
                 </Text>
               </Card>
 
-              <Card className="rounded-2xl border-black/5 shadow-sm">
+              <Card className={METRIC_CARD_CLASS}>
                 <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-xl text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
                   <TrophyOutlined />
                 </div>
@@ -120,7 +125,7 @@ export function HealthTrackingProgress() {
                 <Text type="secondary" className="text-xs">Tính trong 365 ngày gần nhất.</Text>
               </Card>
 
-              <Card className="rounded-2xl border-black/5 shadow-sm">
+              <Card className={METRIC_CARD_CLASS}>
                 <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-xl text-teal-700 dark:bg-teal-500/15 dark:text-teal-300">
                   <CheckCircleOutlined />
                 </div>
@@ -132,7 +137,7 @@ export function HealthTrackingProgress() {
               </Card>
             </div>
 
-            <Card className="rounded-2xl border-black/5 shadow-sm">
+            <Card className={CONTENT_CARD_CLASS}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <Text strong className="block text-base"><CalendarOutlined /> Lịch ghi nhật ký</Text>
@@ -147,7 +152,7 @@ export function HealthTrackingProgress() {
                 trailColor="rgba(148, 163, 184, 0.2)"
               />
 
-              <div className="mt-5 flex flex-wrap gap-1.5">
+              <div className="mt-6 flex flex-wrap gap-2">
                 {data.days.map((point) => (
                   <Tooltip
                     key={point.date}

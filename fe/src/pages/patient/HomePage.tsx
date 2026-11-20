@@ -11,8 +11,8 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl space-y-8">
-        <Card className="overflow-hidden rounded-2xl border-teal-200/60 bg-gradient-to-br from-white via-teal-50/70 to-emerald-100/60 shadow-sm dark:border-teal-500/20 dark:from-slate-950 dark:via-teal-950/30 dark:to-emerald-950/30">
+      <div className="mx-auto grid max-w-5xl gap-10 pb-2">
+        <Card className="overflow-hidden rounded-2xl border border-teal-200/70 bg-gradient-to-br from-white via-teal-50/70 to-emerald-100/60 shadow-[0_10px_30px_rgba(15,118,110,0.08)] dark:border-teal-500/20 dark:from-slate-950 dark:via-teal-950/30 dark:to-emerald-950/30">
           <div className="flex items-start gap-4 py-2">
             <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-xl text-white shadow-lg shadow-teal-600/20 sm:flex">
               <HeartOutlined />
