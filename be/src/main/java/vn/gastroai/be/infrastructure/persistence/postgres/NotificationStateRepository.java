@@ -35,4 +35,20 @@ public interface NotificationStateRepository extends JpaRepository<NotificationS
     int markAllRead(@Param("recipientType") String recipientType,
                     @Param("recipientId") Long recipientId,
                     @Param("readAt") Instant readAt);
+
+    @Modifying
+    @Query(value = """
+            INSERT INTO notification_states
+                (notification_id, recipient_type, recipient_id, deleted_at)
+            SELECT n.id, :recipientType, :recipientId, :deletedAt
+            FROM notifications n
+            WHERE n.recipient_type = :recipientType
+              AND ((:recipientType = 'PATIENT' AND n.recipient_id = :recipientId)
+                   OR (:recipientType = 'ADMIN' AND n.recipient_id IS NULL))
+            ON CONFLICT (notification_id, recipient_type, recipient_id)
+            DO UPDATE SET deleted_at = COALESCE(notification_states.deleted_at, EXCLUDED.deleted_at)
+            """, nativeQuery = true)
+    int deleteAll(@Param("recipientType") String recipientType,
+                  @Param("recipientId") Long recipientId,
+                  @Param("deletedAt") Instant deletedAt);
 }

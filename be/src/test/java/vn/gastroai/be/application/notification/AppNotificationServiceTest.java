@@ -131,6 +131,16 @@ class AppNotificationServiceTest {
     }
 
     @Test
+    void deleteAllCreatesRecipientSpecificSoftDeleteStates() {
+        service.deleteAll(NotificationRecipientType.PATIENT, 1L);
+
+        verify(stateRepository).deleteAll(
+                org.mockito.ArgumentMatchers.eq("PATIENT"),
+                org.mockito.ArgumentMatchers.eq(1L),
+                any(Instant.class));
+    }
+
+    @Test
     void readNotificationCanBeMarkedUnreadAgain() {
         AppNotification notification = patientNotification(1L);
         NotificationState state = new NotificationState(

@@ -206,6 +206,11 @@ public class AppNotificationService {
         stateRepository.save(state);
     }
 
+    @Transactional("postgresTransactionManager")
+    public void deleteAll(NotificationRecipientType type, Long recipientId) {
+        stateRepository.deleteAll(type.name(), recipientId, Instant.now());
+    }
+
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public long unreadPatient(Long patientId) {
         return notificationRepository.countUnreadForPatient(patientId);
