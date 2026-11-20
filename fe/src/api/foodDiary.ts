@@ -35,6 +35,15 @@ export interface DailyCountPoint {
   count: number
 }
 
+export interface FoodDiaryFilters {
+  /** Calendar day in Vietnam time, formatted as YYYY-MM-DD. */
+  date?: string
+  /** Normalized food keyword returned by the sensitivity analysis. */
+  keyword?: string
+  /** Analysis window used together with keyword. */
+  days?: number
+}
+
 /** UC0020 - 1 muc nhat ky an uong dang nam trong thung rac. */
 export interface FoodDiaryTrashItem {
   entry: FoodDiaryEntry
@@ -50,9 +59,15 @@ export interface FoodDiaryTrashPage {
   totalPages: number
 }
 
-export async function listFoodDiary(page = 0, size = 20): Promise<FoodDiaryListResponse> {
+export async function listFoodDiary(
+  page = 0,
+  size = 20,
+  filters: FoodDiaryFilters = {},
+): Promise<FoodDiaryListResponse> {
   try {
-    const { data } = await apiClient.get<FoodDiaryListResponse>('/patient/food-diary', { params: { page, size } })
+    const { data } = await apiClient.get<FoodDiaryListResponse>('/patient/food-diary', {
+      params: { page, size, ...filters },
+    })
     return data
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể tải nhật ký ăn uống. Vui lòng thử lại.')

@@ -15,8 +15,10 @@ import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository
 import vn.gastroai.be.infrastructure.security.JwtService;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -53,6 +55,23 @@ class FoodDiaryControllerTest {
         void listRejectsSizeAboveHundred() throws Exception {
                 mockMvc.perform(get("/api/v1/patient/food-diary").with(csrf()).param("size", "1000"))
                                 .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void listPassesDateAndSensitivityKeywordFilters() throws Exception {
+                LocalDate date = LocalDate.of(2026, 11, 20);
+                when(foodDiaryService.list(1L, 0, 20, date, "sua", 90))
+                                .thenReturn(new FoodDiaryListResponse(List.of(), 0, 20, 0, 0));
+
+                mockMvc.perform(get("/api/v1/patient/food-diary")
+                                .param("date", "2026-11-20")
+                                .param("keyword", "sua")
+                                .param("days", "90")
+                                .with(csrf()))
+                                .andExpect(status().isOk());
+
+                verify(foodDiaryService).list(1L, 0, 20, date, "sua", 90);
         }
 
         @Test

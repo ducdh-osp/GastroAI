@@ -11,8 +11,6 @@ import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
-import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
-import FoodSensitivityProfilePage from '../pages/patient/FoodSensitivityProfilePage'
 import AdherencePage from '../pages/patient/AdherencePage'
 import BristolPage from '../pages/patient/BristolPage'
 import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
@@ -125,7 +123,7 @@ export const router = createBrowserRouter([
         path: '/food-diary-history',
         element: (
           <ProtectedRoute>
-            <FoodDiaryHistoryPage />
+            <Navigate to="/food-diary?tab=trend" replace />
           </ProtectedRoute>
         ),
       },
@@ -133,7 +131,7 @@ export const router = createBrowserRouter([
         path: '/food-sensitivity',
         element: (
           <ProtectedRoute>
-            <FoodSensitivityProfilePage />
+            <Navigate to="/food-diary?tab=sensitivity" replace />
           </ProtectedRoute>
         ),
       },

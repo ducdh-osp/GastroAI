@@ -16,6 +16,9 @@ public interface FoodDiaryEntryRepository extends JpaRepository<FoodDiaryEntry, 
 
     Page<FoodDiaryEntry> findByPatientIdOrderByEatenAtDesc(Long patientId, Pageable pageable);
 
+    Page<FoodDiaryEntry> findByPatientIdAndEatenAtGreaterThanEqualAndEatenAtLessThanOrderByEatenAtDesc(
+            Long patientId, Instant from, Instant to, Pageable pageable);
+
     List<FoodDiaryEntry> findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(Long patientId, Instant from, Instant to);
 
     boolean existsByPatientIdAndEatenAtGreaterThanEqualAndEatenAtLessThan(
