@@ -1,21 +1,35 @@
+import { HeartOutlined } from '@ant-design/icons'
 import { Card, Typography } from 'antd'
+import { HealthTrackingProgress } from '../../components/home/HealthTrackingProgress'
 import { AppShell } from '../../components/layout/AppShell'
 import { useAuth } from '../../stores/authStore'
 
-const { Title, Paragraph } = Typography
+const { Title, Paragraph, Text } = Typography
 
 export default function HomePage() {
   const { email, fullName } = useAuth()
 
   return (
     <AppShell>
-      <Card className="rounded-2xl border-black/5 shadow-sm">
-        <Title level={3} className="mb-1!">Xin chào, {fullName ?? email} 👋</Title>
-        <Paragraph type="secondary" className="mb-0!">
-          Chào mừng quay lại GastroAI — nền tảng theo dõi và chăm sóc sức khỏe tiêu hóa của bạn. Dùng menu bên trái
-          để xem lịch sử đăng nhập hoặc đổi mật khẩu.
-        </Paragraph>
-      </Card>
+      <div className="mx-auto grid max-w-5xl gap-10 pb-2">
+        <Card className="overflow-hidden rounded-2xl border border-teal-200/70 bg-gradient-to-br from-white via-teal-50/70 to-emerald-100/60 shadow-[0_10px_30px_rgba(15,118,110,0.08)] dark:border-teal-500/20 dark:from-slate-950 dark:via-teal-950/30 dark:to-emerald-950/30">
+          <div className="flex items-start gap-4 py-2">
+            <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-xl text-white shadow-lg shadow-teal-600/20 sm:flex">
+              <HeartOutlined />
+            </div>
+            <div>
+              <Text type="secondary">Tổng quan hôm nay</Text>
+              <Title level={2} className="mb-2! mt-1!">Xin chào, {fullName ?? email} 👋</Title>
+              <Paragraph type="secondary" className="mb-0! max-w-3xl">
+                Theo dõi đều đặn giúp bạn nhận ra thay đổi trong sức khỏe tiêu hóa và cung cấp thông tin hữu ích
+                hơn khi trao đổi với bác sĩ.
+              </Paragraph>
+            </div>
+          </div>
+        </Card>
+
+        <HealthTrackingProgress />
+      </div>
     </AppShell>
   )
 }

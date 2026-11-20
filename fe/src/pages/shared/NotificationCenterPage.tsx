@@ -15,6 +15,7 @@ import { Button, Card, Empty, message, Modal, Pagination, Segmented, Select, Ske
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  deleteAllNotifications,
   deleteNotification,
   getNotifications,
   markAllNotificationsRead,
@@ -81,6 +82,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
   const [loading, setLoading] = useState(true)
   const [workingId, setWorkingId] = useState<number | null>(null)
   const [answering, setAnswering] = useState<{ id: number; response: TriageCheckInResponse } | null>(null)
+  const [deletingAll, setDeletingAll] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const load = useCallback(async (targetPage = page) => {
@@ -220,6 +222,31 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
     })
   }
 
+  function confirmDeleteAll() {
+    Modal.confirm({
+      title: 'Xóa tất cả thông báo?',
+      content: 'Toàn bộ thông báo trong trung tâm thông báo của bạn sẽ bị ẩn. Hành động này không thể hoàn tác.',
+      okText: 'Xóa tất cả',
+      okButtonProps: { danger: true },
+      cancelText: 'Hủy',
+      async onOk() {
+        setDeletingAll(true)
+        try {
+          await deleteAllNotifications(audience)
+          setPage(0)
+          await load(0)
+          window.dispatchEvent(new Event('gastroai:notification-state'))
+          message.success('Đã xóa tất cả thông báo')
+        } catch (error) {
+          message.error(extractErrorMessage(error, 'Không thể xóa tất cả thông báo').message)
+          throw error
+        } finally {
+          setDeletingAll(false)
+        }
+      },
+    })
+  }
+
   const typeOptions = audience === 'patient'
     ? [
         { value: 'JOURNAL_REMINDER', label: 'Nhắc nhật ký' },
@@ -254,6 +281,15 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
           <Button icon={<ReloadOutlined />} onClick={() => void load(page)} loading={loading}>Làm mới</Button>
           <Button icon={<CheckOutlined />} disabled={!data?.unreadCount} onClick={() => void markAllRead()}>
             Đọc tất cả
+          </Button>
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            loading={deletingAll}
+            disabled={!data || (!unreadOnly && !type && data.totalElements === 0)}
+            onClick={confirmDeleteAll}
+          >
+            Xóa tất cả
           </Button>
         </div>
       </div>

@@ -82,6 +82,10 @@ export async function deleteNotification(audience: NotificationAudience, id: num
   await client(audience).delete(`${basePath(audience)}/${id}`)
 }
 
+export async function deleteAllNotifications(audience: NotificationAudience) {
+  await client(audience).delete(basePath(audience))
+}
+
 export interface NotificationSettings {
   medicationReminderEnabled: boolean
   journalReminderEnabled: boolean

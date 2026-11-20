@@ -4,7 +4,7 @@ import vn.gastroai.be.application.readmodel.LoginHistoryItem;
 import java.util.List;
 
 /**
- * UC0007 - response phân trang cho GET /me/login-history (và tương đương bên CMS).
+ * UC0007 - response phân trang cho màn lịch sử đăng nhập của tài khoản CMS.
  * recentFailureCount tính trên TOÀN BỘ lịch sử (7 ngày gần nhất), không phải chỉ số dòng
  * "items" của trang đang xem — FE dùng field này để cảnh báo bảo mật thay vì tự đếm items,
  * tránh bỏ sót lần thất bại nằm ở trang khác.

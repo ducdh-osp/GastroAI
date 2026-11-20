@@ -1,5 +1,4 @@
 import {
-  BarChartOutlined,
   BellOutlined,
   BulbFilled,
   BulbOutlined,
@@ -9,16 +8,12 @@ import {
   ExperimentOutlined,
   FileSearchOutlined,
   FileTextOutlined,
-  FireOutlined,
-  HistoryOutlined,
   HomeOutlined,
   CheckCircleOutlined,
   KeyOutlined,
-  LineChartOutlined,
   LogoutOutlined,
   MedicineBoxOutlined,
   QuestionCircleOutlined,
-  ScanOutlined,
 } from '@ant-design/icons'
 import { Badge, Button, Dropdown, message, notification, Switch } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
@@ -39,14 +34,8 @@ const NAV_ITEMS = [
   { key: 'faq', label: 'Hỏi đáp thường gặp', icon: <QuestionCircleOutlined />, to: '/faq' },
   { key: 'medical-profile', label: 'Hồ sơ bệnh lý', icon: <FileTextOutlined />, to: '/medical-profile' },
   { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
-  { key: 'food-diary-history', label: 'Lịch sử ăn uống', icon: <BarChartOutlined />, to: '/food-diary-history' },
-  { key: 'food-sensitivity', label: 'Nhạy cảm thực phẩm', icon: <BulbOutlined />, to: '/food-sensitivity' },
-  { key: 'food-vision', label: 'Nhận diện món ăn', icon: <ScanOutlined />, to: '/food-vision' },
-  { key: 'adherence', label: 'Streak & tuân thủ', icon: <FireOutlined />, to: '/adherence' },
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
-  { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
   { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
-  { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
 ]
 
 

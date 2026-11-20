@@ -3,9 +3,11 @@
 | Thuộc tính | Giá trị |
 | :--- | :--- |
 | UC | `UC0007` |
-| Actor | Người dùng đang đăng nhập |
-| Mục tiêu nghiệp vụ | Cho người dùng tự kiểm chứng "chỉ mình tôi đang dùng tài khoản này" — xây dựng niềm tin cho một app chứa dữ liệu sức khoẻ |
+| Actor | Nhân sự CMS đang đăng nhập |
+| Mục tiêu nghiệp vụ | Cho nhân sự CMS tự kiểm tra các lần truy cập vào tài khoản nội bộ của chính mình |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
+
+> **Phạm vi:** màn này chỉ còn áp dụng cho tài khoản CMS. Bệnh nhân không có màn xem lịch sử đăng nhập; hệ thống vẫn ghi nhận các lần đăng nhập ở lớp bảo mật và gửi thông báo khi phát hiện lần nhập sai mật khẩu.
 
 ## 1. Vì sao tính năng này đáng làm, dù không ai yêu cầu hằng ngày
 
@@ -41,7 +43,7 @@ Người dùng không mở màn này mỗi ngày — nhưng **biết rằng nó 
 
 ## 4. Phạm vi dữ liệu
 
-Màn hình này **chỉ bao giờ hiện lịch sử của chính người đang xem** — không có cách nào, kể cả qua việc can thiệp vào đường dẫn, để xem được lịch sử đăng nhập của người khác. Đây là nguyên tắc không có ngoại lệ, kể cả với Admin (Admin có góc nhìn khác, ở báo cáo kiểm tra hệ thống tổng hợp `UC0052`, không phải qua màn hình cá nhân này).
+Màn hình này **chỉ bao giờ hiện lịch sử của chính nhân sự CMS đang xem** — không có cách nào, kể cả qua việc can thiệp vào đường dẫn, để xem được lịch sử đăng nhập của người khác. Lịch sử đăng nhập của bệnh nhân không được cung cấp qua giao diện người dùng.
 
 ## 5. Tham chiếu
 

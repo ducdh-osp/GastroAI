@@ -1,200 +1,184 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Tabs, Typography, message, notification } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { BarChartOutlined, BulbOutlined, CoffeeOutlined, PlusOutlined } from '@ant-design/icons'
+import { Alert, Button, Tabs, Typography } from 'antd'
 import { useState } from 'react'
-import {
-  createFoodDiaryEntry,
-  deleteFoodDiaryEntry,
-  listFoodDiary,
-  restoreFoodDiaryEntry,
-  updateFoodDiaryEntry,
-} from '../../api/foodDiary'
+import { useSearchParams } from 'react-router-dom'
+import { createFoodDiaryEntry, updateFoodDiaryEntry } from '../../api/foodDiary'
 import type { FoodDiaryEntry, FoodDiaryEntryRequest } from '../../api/foodDiary'
-import { AppShell } from '../../components/layout/AppShell'
 import { FoodDiaryEntryModal } from '../../components/foodDiary/FoodDiaryEntryModal'
-import { FoodDiaryTrashTable } from '../../components/foodDiary/FoodDiaryTrashTable'
-import { useInFlightGuard } from '../../hooks/useInFlightGuard'
-import { usePagedList } from '../../hooks/usePagedList'
-import { formatDateTime } from '../../lib/format'
+import { FoodDiaryJournalTab } from '../../components/foodDiary/FoodDiaryJournalTab'
+import { FoodDiaryTrendTab } from '../../components/foodDiary/FoodDiaryTrendTab'
+import { FoodSensitivityTab } from '../../components/foodDiary/FoodSensitivityTab'
+import { HealthReportButton } from '../../components/healthReport/HealthReportButton'
+import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
+type MainTab = 'journal' | 'trend' | 'sensitivity'
 
-const MEAL_TYPE_LABELS = {
-  BREAKFAST: 'Bữa sáng', LUNCH: 'Bữa trưa', DINNER: 'Bữa tối', SNACK: 'Bữa phụ', OTHER: 'Khác',
-} as const
+function parseOption<T extends number>(value: string | null, options: readonly T[], fallback: T): T {
+  const parsed = Number(value)
+  return options.includes(parsed as T) ? parsed as T : fallback
+}
 
 export default function FoodDiaryPage() {
-  const {
-    items, loading, error, setError, page, setPage, pageSize, totalElements, reload,
-  } = usePagedList({
-    fetchPage: listFoodDiary,
-    pageSize: 10,
-    loadErrorMessage: 'Không thể tải nhật ký ăn uống.',
-  })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const activeTab: MainTab = requestedTab === 'trend' || requestedTab === 'sensitivity' ? requestedTab : 'journal'
+  const journalView = searchParams.get('view') === 'trash' ? 'trash' : 'list'
+  const date = searchParams.get('date') || undefined
+  const keyword = searchParams.get('keyword') || undefined
+  const keywordDays = parseOption(searchParams.get('keywordDays'), [30, 90, 180] as const, 90)
+  const trendDays = parseOption(searchParams.get('trendDays'), [7, 30, 90] as const, 30)
+  const sensitivityDays = parseOption(searchParams.get('sensitivityDays'), [30, 90, 180] as const, 90)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FoodDiaryEntry | null>(null)
   const [saving, setSaving] = useState(false)
-  const deleteGuard = useInFlightGuard<number>()
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [reloadVersion, setReloadVersion] = useState(0)
+
+  function updateSearch(changes: Record<string, string | number | null>, replace = true) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value === null) next.delete(key)
+        else next.set(key, String(value))
+      })
+      return next
+    }, { replace })
+  }
+
+  function selectTab(tab: MainTab) {
+    updateSearch({ tab: tab === 'journal' ? null : tab })
+  }
 
   function openCreate() {
+    setActionError(null)
     setEditingEntry(null)
     setModalOpen(true)
   }
 
   function openEdit(entry: FoodDiaryEntry) {
+    setActionError(null)
     setEditingEntry(entry)
     setModalOpen(true)
   }
 
   async function handleSubmit(payload: FoodDiaryEntryRequest) {
+    const isEditing = editingEntry !== null
     setSaving(true)
+    setActionError(null)
     try {
-      if (editingEntry) {
-        await updateFoodDiaryEntry(editingEntry.id, payload)
-      } else {
-        await createFoodDiaryEntry(payload)
-      }
+      if (editingEntry) await updateFoodDiaryEntry(editingEntry.id, payload)
+      else await createFoodDiaryEntry(payload)
+
       setModalOpen(false)
-      reload()
+      setEditingEntry(null)
+      setReloadVersion((version) => version + 1)
+      updateSearch({
+        tab: null,
+        view: null,
+        ...(isEditing ? {} : { date: null, keyword: null, keywordDays: null }),
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể lưu nhật ký ăn uống.')
+      setActionError(err instanceof Error ? err.message : 'Không thể lưu nhật ký ăn uống.')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleDelete(id: number) {
-    await deleteGuard.run(id, async () => {
-      try {
-        await deleteFoodDiaryEntry(id)
-        if (items.length === 1 && page > 0) {
-          setPage(page - 1)
-        } else {
-          void reload()
-        }
-        // UC0020 - cho phep "Hoan tac" ngay sau khi xoa, khoi phai mo tab Thung rac.
-        // Tu dong dong sau 6s (duration tinh bang giay cua antd notification).
-        notification.open({
-          key: `food-diary-undo-${id}`,
-          message: 'Đã chuyển vào thùng rác',
-          description: 'Bạn có thể khôi phục trong tab Thùng rác.',
-          duration: 6,
-          actions: (
-            <Button
-              size="small"
-              type="primary"
-              onClick={() => {
-                notification.destroy(`food-diary-undo-${id}`)
-                void handleUndo(id)
-              }}
-            >
-              Hoàn tác
-            </Button>
-          ),
-        })
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Không thể xoá nhật ký ăn uống.')
-      }
+  function showJournalDate(selectedDate: string) {
+    updateSearch({
+      tab: null,
+      view: null,
+      date: selectedDate,
+      keyword: null,
+      keywordDays: null,
     })
   }
 
-  async function handleUndo(id: number) {
-    try {
-      await restoreFoodDiaryEntry(id)
-      void reload()
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Không thể hoàn tác.')
-    }
+  function showSensitivityEvidence(selectedKeyword: string, days: number) {
+    updateSearch({
+      tab: null,
+      view: null,
+      date: null,
+      keyword: selectedKeyword,
+      keywordDays: days,
+    })
   }
-
-  const columns: ColumnsType<FoodDiaryEntry> = [
-    { title: 'Thời điểm ăn', dataIndex: 'eatenAt', key: 'eatenAt', width: 180, render: formatDateTime },
-    { title: 'Loại bữa', dataIndex: 'mealType', key: 'mealType', width: 110, render: (value: keyof typeof MEAL_TYPE_LABELS) => MEAL_TYPE_LABELS[value] },
-    { title: 'Món ăn', dataIndex: 'description', key: 'description' },
-    {
-      title: 'Triệu chứng sau ăn', dataIndex: 'symptomsAfterMeal', key: 'symptomsAfterMeal',
-      render: (value: string | null, record) => value
-        ? `${value}${record.symptomOnsetMinutes !== null ? ` (sau ${record.symptomOnsetMinutes} phút)` : ''}`
-        : <Text type="secondary">—</Text>,
-    },
-    {
-      title: 'Ghi chú', dataIndex: 'notes', key: 'notes',
-      render: (val: string | null) => val || <Text type="secondary">—</Text>,
-    },
-    {
-      title: '', key: 'actions', width: 100,
-      render: (_, record) => (
-        <div className="flex gap-1">
-          <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm
-            title="Chuyển vào thùng rác?"
-            description="Có thể khôi phục lại trong tab Thùng rác."
-            okText="Chuyển vào thùng rác"
-            cancelText="Huỷ"
-            onConfirm={() => handleDelete(record.id)}
-          >
-            <Button
-              size="small"
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              loading={deleteGuard.inFlightId === record.id}
-              disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
-            />
-          </Popconfirm>
-        </div>
-      ),
-    },
-  ]
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhật ký ăn uống</Title>
-            <Text type="secondary">Ghi lại các bữa ăn để đối chiếu với triệu chứng tiêu hóa sau này.</Text>
+            <Text type="secondary">
+              Ghi lại bữa ăn, theo dõi xu hướng và đối chiếu thực phẩm với triệu chứng tại một nơi.
+            </Text>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm mục mới</Button>
+          <div className="flex flex-wrap gap-2">
+            <HealthReportButton />
+            <Button type="primary" size="large" icon={<PlusOutlined />} onClick={openCreate}>
+              Ghi bữa ăn
+            </Button>
+          </div>
         </div>
 
-        {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+        {actionError && (
+          <Alert
+            type="error"
+            message={actionError}
+            showIcon
+            closable
+            className="mb-4"
+            onClose={() => setActionError(null)}
+          />
+        )}
 
         <Tabs
+          activeKey={activeTab}
           destroyOnHidden
+          size="large"
+          onChange={(key) => selectTab(key as MainTab)}
           items={[
             {
-              key: 'list',
-              label: 'Nhật ký',
+              key: 'journal',
+              label: <span><CoffeeOutlined /> Nhật ký</span>,
               children: (
-                <Card className="rounded-2xl border-black/5 shadow-sm">
-                  <Spin spinning={loading}>
-                    <Table<FoodDiaryEntry>
-                      columns={columns}
-                      dataSource={items}
-                      rowKey="id"
-                      size="small"
-                      pagination={false}
-                      locale={{ emptyText: 'Chưa có mục nào trong nhật ký ăn uống' }}
-                    />
-                  </Spin>
-                  {totalElements > pageSize && (
-                    <div className="mt-4 flex justify-end">
-                      <Pagination current={page + 1} pageSize={pageSize} total={totalElements} onChange={(p) => setPage(p - 1)} showSizeChanger={false} />
-                    </div>
-                  )}
-                </Card>
+                <FoodDiaryJournalTab
+                  view={journalView}
+                  date={date}
+                  keyword={keyword}
+                  keywordDays={keywordDays}
+                  reloadVersion={reloadVersion}
+                  onViewChange={(view) => updateSearch({ view: view === 'list' ? null : view })}
+                  onClearFilters={() => updateSearch({ date: null, keyword: null, keywordDays: null })}
+                  onEdit={openEdit}
+                  onMutated={() => setReloadVersion((version) => version + 1)}
+                />
               ),
             },
             {
-              key: 'trash',
-              label: 'Thùng rác',
+              key: 'trend',
+              label: <span><BarChartOutlined /> Xu hướng</span>,
               children: (
-                <Card className="rounded-2xl border-black/5 shadow-sm">
-                  <FoodDiaryTrashTable onRestored={reload} />
-                </Card>
+                <FoodDiaryTrendTab
+                  days={trendDays}
+                  onDaysChange={(days) => updateSearch({ trendDays: days })}
+                  onDaySelect={showJournalDate}
+                />
+              ),
+            },
+            {
+              key: 'sensitivity',
+              label: <span><BulbOutlined /> Nhạy cảm thực phẩm</span>,
+              children: (
+                <FoodSensitivityTab
+                  days={sensitivityDays}
+                  onDaysChange={(days) => updateSearch({ sensitivityDays: days })}
+                  onViewEvidence={showSensitivityEvidence}
+                />
               ),
             },
           ]}
@@ -205,7 +189,10 @@ export default function FoodDiaryPage() {
         open={modalOpen}
         entry={editingEntry}
         saving={saving}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => {
+          setModalOpen(false)
+          setEditingEntry(null)
+        }}
         onSubmit={handleSubmit}
       />
     </AppShell>

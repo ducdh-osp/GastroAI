@@ -14,8 +14,10 @@ import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository
 import vn.gastroai.be.infrastructure.security.JwtService;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -50,6 +52,21 @@ class BristolLogControllerTest {
                                 .contentType("application/json")
                                 .content("{\"loggedAt\":\"2026-01-01T08:00:00Z\",\"bristolType\":9}"))
                                 .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @WithMockUser(username = "1", roles = "PATIENT")
+        void listPassesVietnamCalendarDateFilter() throws Exception {
+                LocalDate date = LocalDate.of(2026, 11, 20);
+                when(bristolLogService.list(1L, 0, 20, date))
+                                .thenReturn(new BristolListResponse(List.of(), 0, 20, 0, 0));
+
+                mockMvc.perform(get("/api/v1/patient/bristol-logs")
+                                .param("date", "2026-11-20")
+                                .with(csrf()))
+                                .andExpect(status().isOk());
+
+                verify(bristolLogService).list(1L, 0, 20, date);
         }
 
         @Test

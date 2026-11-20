@@ -42,9 +42,11 @@ export interface BristolTrashPage {
   totalPages: number
 }
 
-export async function listBristolLogs(page = 0, size = 20): Promise<BristolListResponse> {
+export async function listBristolLogs(page = 0, size = 20, date?: string): Promise<BristolListResponse> {
   try {
-    const { data } = await apiClient.get<BristolListResponse>('/patient/bristol-logs', { params: { page, size } })
+    const { data } = await apiClient.get<BristolListResponse>('/patient/bristol-logs', {
+      params: { page, size, date },
+    })
     return data
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể tải danh sách đã ghi nhận. Vui lòng thử lại.')

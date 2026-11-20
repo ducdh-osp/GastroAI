@@ -25,7 +25,7 @@ Khác với Trang chủ (chỉ là 1 màn cụ thể), header dưới đây xu�
 | :--- | :--- | :--- |
 | Icon/logo GastroAI | Góc trái | Bấm vào → luôn quay về Trang chủ, từ bất kỳ màn nào. Đây là cách duy nhất để "thoát" khỏi 1 chức năng quay lại chọn việc khác, thay cho việc click mục khác trên sidebar như trước |
 | 🔔 Chuông thông báo | Góc phải, trước tên người dùng | Badge số chưa đọc, bấm mở [SCR-NT-01 Trung tâm thông báo](../05-ThongBao-Notification/SCR-NT-01-TrungTamThongBao.md) |
-| Tên người dùng + mũi tên | Ngoài cùng bên phải | Bấm mở dropdown: **Đổi mật khẩu** ([SCR-AUTH-06](../01-XacThuc-TaiKhoan/SCR-AUTH-06-DoiMatKhau.md)), **Lịch sử đăng nhập** ([SCR-AUTH-07](../01-XacThuc-TaiKhoan/SCR-AUTH-07-LichSuDangNhap.md)), **Đăng xuất** (`UC0003`) |
+| Tên người dùng + mũi tên | Ngoài cùng bên phải | Bấm mở dropdown: **Đổi mật khẩu** ([SCR-AUTH-06](../01-XacThuc-TaiKhoan/SCR-AUTH-06-DoiMatKhau.md)), **Đăng xuất** (`UC0003`) |
 
 Không còn khái niệm "menu bên trái" ở bất kỳ đâu trong phân hệ bệnh nhân — mọi điều hướng giữa các chức năng đi qua Trang chủ.
 

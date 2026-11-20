@@ -1,193 +1,157 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Pagination, Popconfirm, Spin, Table, Tabs, Typography, message, notification } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { ExperimentOutlined, LineChartOutlined, PlusOutlined } from '@ant-design/icons'
+import { Alert, Button, Tabs, Typography } from 'antd'
 import { useState } from 'react'
-import {
-  createBristolLog,
-  deleteBristolLog,
-  listBristolLogs,
-  restoreBristolLog,
-  updateBristolLog,
-} from '../../api/bristol'
+import { useSearchParams } from 'react-router-dom'
+import { createBristolLog, updateBristolLog } from '../../api/bristol'
 import type { BristolLog, BristolLogRequest } from '../../api/bristol'
-import { AppShell } from '../../components/layout/AppShell'
+import { BristolJournalTab } from '../../components/bristol/BristolJournalTab'
 import { BristolLogModal } from '../../components/bristol/BristolLogModal'
-import { BristolTrashTable } from '../../components/bristol/BristolTrashTable'
-import { BRISTOL_TYPE_LABELS } from '../../constants/bristol'
-import { useInFlightGuard } from '../../hooks/useInFlightGuard'
-import { usePagedList } from '../../hooks/usePagedList'
-import { formatDateTime } from '../../lib/format'
+import { BristolTrendTab } from '../../components/bristol/BristolTrendTab'
+import { HealthReportButton } from '../../components/healthReport/HealthReportButton'
+import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
+type MainTab = 'journal' | 'trend'
+
+function parseTrendDays(value: string | null): 7 | 30 | 90 {
+  const parsed = Number(value)
+  return parsed === 7 || parsed === 90 ? parsed : 30
+}
+
+function vietnamDateKey(iso: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(iso))
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
 
 export default function BristolPage() {
-  const {
-    items, loading, error, setError, page, setPage, pageSize, totalElements, reload,
-  } = usePagedList({
-    fetchPage: listBristolLogs,
-    pageSize: 10,
-    loadErrorMessage: 'Không thể tải danh sách đã ghi nhận.',
-  })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab: MainTab = searchParams.get('tab') === 'trend' ? 'trend' : 'journal'
+  const journalView = searchParams.get('view') === 'trash' ? 'trash' : 'list'
+  const date = searchParams.get('date') || undefined
+  const trendDays = parseTrendDays(searchParams.get('trendDays'))
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingLog, setEditingLog] = useState<BristolLog | null>(null)
   const [saving, setSaving] = useState(false)
-  const deleteGuard = useInFlightGuard<number>()
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [reloadVersion, setReloadVersion] = useState(0)
+
+  function updateSearch(changes: Record<string, string | number | null>) {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      Object.entries(changes).forEach(([key, value]) => {
+        if (value === null) next.delete(key)
+        else next.set(key, String(value))
+      })
+      return next
+    }, { replace: true })
+  }
 
   function openCreate() {
+    setActionError(null)
     setEditingLog(null)
     setModalOpen(true)
   }
 
   function openEdit(log: BristolLog) {
+    setActionError(null)
     setEditingLog(log)
     setModalOpen(true)
   }
 
   async function handleSubmit(payload: BristolLogRequest) {
+    const isEditing = editingLog !== null
     setSaving(true)
+    setActionError(null)
     try {
-      if (editingLog) {
-        await updateBristolLog(editingLog.id, payload)
-      } else {
-        await createBristolLog(payload)
-      }
+      if (editingLog) await updateBristolLog(editingLog.id, payload)
+      else await createBristolLog(payload)
+
       setModalOpen(false)
-      reload()
+      setEditingLog(null)
+      setReloadVersion((version) => version + 1)
+      updateSearch({
+        tab: null,
+        view: null,
+        ...(isEditing ? {} : { date: null }),
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể lưu.')
+      setActionError(err instanceof Error ? err.message : 'Không thể lưu ghi nhận Bristol.')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleDelete(id: number) {
-    await deleteGuard.run(id, async () => {
-      try {
-        await deleteBristolLog(id)
-        if (items.length === 1 && page > 0) {
-          setPage(page - 1)
-        } else {
-          void reload()
-        }
-        // UC0020 - cho phep "Hoan tac" ngay sau khi xoa, khoi phai mo tab Thung rac.
-        // Tu dong dong sau 6s (duration tinh bang giay cua antd notification).
-        notification.open({
-          key: `bristol-undo-${id}`,
-          message: 'Đã chuyển vào thùng rác',
-          description: 'Bạn có thể khôi phục trong tab Thùng rác.',
-          duration: 6,
-          actions: (
-            <Button
-              size="small"
-              type="primary"
-              onClick={() => {
-                notification.destroy(`bristol-undo-${id}`)
-                void handleUndo(id)
-              }}
-            >
-              Hoàn tác
-            </Button>
-          ),
-        })
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Không thể xoá.')
-      }
-    })
+  function showJournalDay(loggedAt: string) {
+    updateSearch({ tab: null, view: null, date: vietnamDateKey(loggedAt) })
   }
-
-  async function handleUndo(id: number) {
-    try {
-      await restoreBristolLog(id)
-      void reload()
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Không thể hoàn tác.')
-    }
-  }
-
-  const columns: ColumnsType<BristolLog> = [
-    { title: 'Thời điểm', dataIndex: 'loggedAt', key: 'loggedAt', width: 180, render: formatDateTime },
-    {
-      title: 'Phân loại', dataIndex: 'bristolType', key: 'bristolType', width: 320,
-      render: (val: number) => BRISTOL_TYPE_LABELS[val] ?? `Loại ${val}`,
-    },
-    {
-      title: 'Ghi chú', dataIndex: 'notes', key: 'notes',
-      render: (val: string | null) => val || <Text type="secondary">—</Text>,
-    },
-    {
-      title: '', key: 'actions', width: 100,
-      render: (_, record) => (
-        <div className="flex gap-1">
-          <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
-          <Popconfirm
-            title="Chuyển vào thùng rác?"
-            description="Có thể khôi phục lại trong tab Thùng rác."
-            okText="Chuyển vào thùng rác"
-            cancelText="Huỷ"
-            onConfirm={() => handleDelete(record.id)}
-          >
-            <Button
-              size="small"
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              loading={deleteGuard.inFlightId === record.id}
-              disabled={deleteGuard.inFlightId !== null && deleteGuard.inFlightId !== record.id}
-            />
-          </Popconfirm>
-        </div>
-      ),
-    },
-  ]
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhật ký Bristol</Title>
-            <Text type="secondary">Ghi nhận tình trạng tiêu hóa theo thang Bristol Stool Chart (7 mức).</Text>
+            <Text type="secondary">
+              Ghi nhận tình trạng tiêu hóa và theo dõi diễn biến theo thang Bristol tại một nơi.
+            </Text>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Ghi nhận mới</Button>
+          <div className="flex flex-wrap gap-2">
+            <HealthReportButton />
+            <Button type="primary" size="large" icon={<PlusOutlined />} onClick={openCreate}>
+              Ghi nhận mới
+            </Button>
+          </div>
         </div>
 
-        {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+        {actionError && (
+          <Alert
+            type="error"
+            message={actionError}
+            showIcon
+            closable
+            className="mb-4"
+            onClose={() => setActionError(null)}
+          />
+        )}
 
         <Tabs
+          activeKey={activeTab}
           destroyOnHidden
+          size="large"
+          onChange={(key) => updateSearch({ tab: key === 'journal' ? null : key })}
           items={[
             {
-              key: 'list',
-              label: 'Nhật ký',
+              key: 'journal',
+              label: <span><ExperimentOutlined /> Nhật ký</span>,
               children: (
-                <Card className="rounded-2xl border-black/5 shadow-sm">
-                  <Spin spinning={loading}>
-                    <Table<BristolLog>
-                      columns={columns}
-                      dataSource={items}
-                      rowKey="id"
-                      size="small"
-                      pagination={false}
-                      locale={{ emptyText: 'Chưa có mục nào được ghi nhận' }}
-                    />
-                  </Spin>
-                  {totalElements > pageSize && (
-                    <div className="mt-4 flex justify-end">
-                      <Pagination current={page + 1} pageSize={pageSize} total={totalElements} onChange={(p) => setPage(p - 1)} showSizeChanger={false} />
-                    </div>
-                  )}
-                </Card>
+                <BristolJournalTab
+                  view={journalView}
+                  date={date}
+                  reloadVersion={reloadVersion}
+                  onViewChange={(view) => updateSearch({ view: view === 'list' ? null : view })}
+                  onClearFilter={() => updateSearch({ date: null })}
+                  onEdit={openEdit}
+                  onMutated={() => setReloadVersion((version) => version + 1)}
+                />
               ),
             },
             {
-              key: 'trash',
-              label: 'Thùng rác',
+              key: 'trend',
+              label: <span><LineChartOutlined /> Xu hướng</span>,
               children: (
-                <Card className="rounded-2xl border-black/5 shadow-sm">
-                  <BristolTrashTable onRestored={reload} />
-                </Card>
+                <BristolTrendTab
+                  days={trendDays}
+                  onDaysChange={(days) => updateSearch({ trendDays: days })}
+                  onPointSelect={showJournalDay}
+                />
               ),
             },
           ]}
@@ -198,7 +162,10 @@ export default function BristolPage() {
         open={modalOpen}
         log={editingLog}
         saving={saving}
-        onCancel={() => setModalOpen(false)}
+        onCancel={() => {
+          setModalOpen(false)
+          setEditingLog(null)
+        }}
         onSubmit={handleSubmit}
       />
     </AppShell>

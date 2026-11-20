@@ -9,15 +9,9 @@ import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
 import ChangePasswordPage from '../pages/auth/ChangePasswordPage'
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
-import LoginHistoryPage from '../pages/patient/LoginHistoryPage'
 import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
-import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
-import FoodSensitivityProfilePage from '../pages/patient/FoodSensitivityProfilePage'
-import FoodVisionPage from '../pages/patient/FoodVisionPage'
-import AdherencePage from '../pages/patient/AdherencePage'
 import BristolPage from '../pages/patient/BristolPage'
-import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
 import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
 import ChatPage from '../pages/chat/ChatPage'
 import SymptomAssessmentPage from '../pages/chat/SymptomAssessmentPage'
@@ -82,14 +76,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: '/login-history',
-        element: (
-          <ProtectedRoute>
-            <LoginHistoryPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
         path: '/change-password',
         element: (
           <ProtectedRoute>
@@ -117,7 +103,7 @@ export const router = createBrowserRouter([
         path: '/food-diary-history',
         element: (
           <ProtectedRoute>
-            <FoodDiaryHistoryPage />
+            <Navigate to="/food-diary?tab=trend" replace />
           </ProtectedRoute>
         ),
       },
@@ -125,15 +111,7 @@ export const router = createBrowserRouter([
         path: '/food-sensitivity',
         element: (
           <ProtectedRoute>
-            <FoodSensitivityProfilePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/food-vision',
-        element: (
-          <ProtectedRoute>
-            <FoodVisionPage />
+            <Navigate to="/food-diary?tab=sensitivity" replace />
           </ProtectedRoute>
         ),
       },
@@ -141,7 +119,7 @@ export const router = createBrowserRouter([
         path: '/adherence',
         element: (
           <ProtectedRoute>
-            <AdherencePage />
+            <Navigate to="/" replace />
           </ProtectedRoute>
         ),
       },
@@ -157,7 +135,7 @@ export const router = createBrowserRouter([
         path: '/bristol-history',
         element: (
           <ProtectedRoute>
-            <BristolHistoryPage />
+            <Navigate to="/bristol?tab=trend" replace />
           </ProtectedRoute>
         ),
       },
