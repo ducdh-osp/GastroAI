@@ -234,17 +234,21 @@ export function FoodDiaryJournalTab({
                 />
               </Card>
             ) : (
-              <div className="space-y-4">
+              <div className="grid gap-6 pb-2">
                 {groups.map((group) => (
                   <Card
                     key={group.date}
-                    className="overflow-hidden rounded-2xl border-black/5 shadow-sm"
+                    className="overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_12px_32px_rgba(15,23,42,0.09)] dark:border-white/10 [&_.ant-card-head]:bg-slate-50/80 dark:[&_.ant-card-head]:bg-white/[0.025]"
                     styles={{ body: { padding: 0 } }}
                     title={(
-                      <span className="flex items-center gap-2">
-                        <CalendarOutlined className="text-teal-600" />
-                        {dayHeading(group.date)}
-                        <Text type="secondary" className="font-normal">({group.entries.length} bữa)</Text>
+                      <span className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300">
+                          <CalendarOutlined />
+                        </span>
+                        <span>{dayHeading(group.date)}</span>
+                        <Tag bordered={false} className="m-0 ml-1 rounded-full px-2.5 font-normal">
+                          {group.entries.length} bữa
+                        </Tag>
                       </span>
                     )}
                   >
@@ -253,7 +257,7 @@ export function FoodDiaryJournalTab({
                       return (
                         <div
                           key={entry.id}
-                          className="flex flex-col gap-3 border-b border-black/5 px-4 py-4 last:border-b-0 sm:flex-row sm:items-start"
+                          className="flex flex-col gap-3 border-b border-slate-100 px-5 py-5 transition-colors last:border-b-0 hover:bg-teal-50/35 dark:border-white/5 dark:hover:bg-white/[0.025] sm:flex-row sm:items-start"
                         >
                           <div className="flex shrink-0 items-center gap-2 sm:w-32">
                             <Text strong className="text-base">{formatTime(entry.eatenAt)}</Text>
