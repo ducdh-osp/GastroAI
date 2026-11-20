@@ -1,57 +1,32 @@
 import { apiClient } from '../lib/axios'
 import { extractErrorMessage } from '../lib/errors'
 
-export interface TriageConversationMessage {
-  id: number
-  senderLabel: string
-  mine: boolean
-  content: string
-  createdAt: string
+export type TriageCheckInResponse = 'SAFE' | 'NEED_HELP'
+
+export interface TriageCheckInResult {
+  alertId: number
+  response: TriageCheckInResponse
+  /** Ca đã đóng từ trước (bấm lại trên thông báo cũ) - không có gì thay đổi. */
+  alreadyClosed: boolean
 }
 
-export interface TriageConversation {
-  id: number
-  status: 'NEW' | 'IN_PROGRESS' | 'RESOLVED'
-  occurredAt: string
-  messages: TriageConversationMessage[]
-  canReply: boolean
-}
+/** Phát ra khi bệnh nhân đã trả lời ở 1 chỗ (popup hoặc trang Thông báo) để chỗ kia tự đóng. */
+export const TRIAGE_ANSWERED_EVENT = 'gastroai:triage-answered'
 
-export interface TriageConversationSummary {
-  id: number
-  occurredAt: string
-  status: TriageConversation['status']
-  lastMessagePreview: string | null
-  lastMessageAt: string
-  unreadCount: number
-}
-
-/** Các cuộc trao đổi mà bác sĩ/nhân viên đã nhắn, tin mới nhất lên đầu. */
-export async function listTriageConversations(): Promise<TriageConversationSummary[]> {
+/**
+ * SCR-AD-13 bước 1 - trả lời "Bạn có ổn không?". [An toàn] đóng cảnh báo, [Cần hỗ trợ] báo ngay
+ * cho nhân sự GastroAI. Không có trang riêng: trả lời ngay trên popup hoặc trang Thông báo.
+ */
+export async function answerTriageCheckIn(
+  alertId: number,
+  response: TriageCheckInResponse,
+): Promise<TriageCheckInResult> {
   try {
-    const { data } = await apiClient.get<TriageConversationSummary[]>('/patient/triage-alerts')
+    const { data } = await apiClient.post<TriageCheckInResult>(`/patient/triage-alerts/${alertId}/check-in`, {
+      response,
+    })
     return data
   } catch (error) {
-    throw extractErrorMessage(error, 'Không thể tải danh sách trao đổi. Vui lòng thử lại.')
-  }
-}
-
-/** Mở trang trao đổi - BE đồng thời đánh dấu đã xem tin của bác sĩ. */
-export async function getTriageConversation(alertId: number): Promise<TriageConversation> {
-  try {
-    const { data } = await apiClient.get<TriageConversation>(`/patient/triage-alerts/${alertId}`)
-    return data
-  } catch (error) {
-    throw extractErrorMessage(error, 'Không thể tải cuộc trao đổi. Vui lòng thử lại.')
-  }
-}
-
-export async function replyTriageConversation(alertId: number, content: string): Promise<TriageConversationMessage> {
-  try {
-    const { data } = await apiClient.post<TriageConversationMessage>(
-      `/patient/triage-alerts/${alertId}/messages`, { content })
-    return data
-  } catch (error) {
-    throw extractErrorMessage(error, 'Không thể gửi tin nhắn. Vui lòng thử lại.')
+    throw extractErrorMessage(error, 'Không gửi được câu trả lời. Vui lòng thử lại.')
   }
 }

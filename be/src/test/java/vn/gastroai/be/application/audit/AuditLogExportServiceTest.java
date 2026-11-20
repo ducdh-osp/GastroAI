@@ -23,7 +23,7 @@ class AuditLogExportServiceTest {
     private final AuditLogExportService service = new AuditLogExportService();
 
     private AuditLogResponse log(long id, AuditAction action, String detail) {
-        return new AuditLogResponse(id, Instant.parse("2026-10-29T18:02:11Z"), "ADMIN", 1L,
+        return new AuditLogResponse(id, Instant.parse("2026-10-29T18:02:11Z"), "ADMIN", "ADMIN", 1L,
                 "admin@gastroai.vn", action, "DOCUMENT", "42", detail, "10.0.0.1", "Mozilla/5.0");
     }
 
@@ -32,7 +32,7 @@ class AuditLogExportServiceTest {
         String csv = new String(service.toCsv(List.of()), StandardCharsets.UTF_8);
 
         assertTrue(csv.startsWith("\uFEFF"));
-        assertTrue(csv.startsWith("\uFEFFMã log,Thời gian,Loại tài khoản"));
+        assertTrue(csv.startsWith("\uFEFFMã log,Thời gian,Vai trò"));
     }
 
     @Test
@@ -65,7 +65,7 @@ class AuditLogExportServiceTest {
     @Test
     void nullFieldsBecomeEmptyCells() {
         AuditLogResponse systemLog = new AuditLogResponse(9L, Instant.parse("2026-10-29T18:02:11Z"),
-                "SYSTEM", null, null, AuditAction.SYSTEM_RESTORE, null, null, null, "unknown", "unknown");
+                "SYSTEM", null, null, null, AuditAction.SYSTEM_RESTORE, null, null, null, "unknown", "unknown");
 
         String[] row = service.toRow(systemLog);
 

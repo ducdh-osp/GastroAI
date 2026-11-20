@@ -85,7 +85,7 @@ public class AuthService {
      */
     @Transactional("postgresTransactionManager")
     public void register(String email, String password, String name) {
-        PatientPasswordPolicy.validate(password);
+        PasswordPolicy.validate(password);
         String normalizedEmail = normalize(email);
         Instant now = Instant.now();
         Patient existing = patients.findByEmailForUpdate(normalizedEmail).orElse(null);
@@ -177,7 +177,7 @@ public class AuthService {
 
     @Transactional("postgresTransactionManager")
     public void resetPassword(String token, String newPassword) {
-        PatientPasswordPolicy.validate(newPassword);
+        PasswordPolicy.validate(newPassword);
         Patient patient = patients.findByPasswordResetTokenHash(hash(token))
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Token dat lai mat khau khong hop le"));
@@ -299,7 +299,7 @@ public class AuthService {
     public void changePassword(Long id, String oldPassword, String newPassword,
                                ClientRequestInfo requestInfo) {
         validatePasswordLength(oldPassword);
-        PatientPasswordPolicy.validate(newPassword);
+        PasswordPolicy.validate(newPassword);
         Patient patient = patients.findByIdForUpdate(id)
                 .orElseThrow(() -> new BadCredentialsException("Tai khoan khong ton tai"));
         Instant now = Instant.now();

@@ -2,6 +2,9 @@ package vn.gastroai.be.api.document;
 
 import java.util.List;
 
-/** Ket qua tim kiem noi dung (UC0055): toi da 50 dong; truncated = true khi con ket qua chua hien. */
-public record DocumentSearchResult(List<DocumentSearchHit> items, boolean truncated) {
+/**
+ * Kết quả tìm nội dung (UC0055): tối đa 20 tài liệu khớp nhiều nhất; totalDocuments là tổng số
+ * tài liệu khớp, lớn hơn items.size() thì FE nhắc gõ cụ thể hơn.
+ */
+public record DocumentSearchResult(List<DocumentSearchHit> items, long totalDocuments) {
 }

@@ -1,12 +1,12 @@
 import { cmsApiClient } from '../lib/cmsAxios'
 import type { LoginHistoryResponse } from './auth'
 
-export type CmsRole = 'ADMIN' | 'DOCTOR'
+// Vai trò là thuộc tính của tài khoản, BE tự đọc ra và trả về sau khi đăng nhập.
+export type CmsRole = 'ADMIN' | 'CONTENT_EDITOR'
 
 export interface CmsLoginRequest {
   email: string
   password: string
-  role: CmsRole
 }
 
 // Khớp đúng field name JSON mà CmsAuthResult (BE) trả về — KHÔNG phải id/name/role.
@@ -14,7 +14,7 @@ export interface CmsAuthResponse {
   userId: number
   email: string
   fullName: string
-  userType: CmsRole | 'CONTENT_EDITOR'
+  userType: CmsRole
   lockedUntil?: string | null
 }
 
@@ -41,5 +41,5 @@ export async function getCmsLoginHistory(page = 0, size = 20): Promise<LoginHist
 }
 
 export async function changeCmsPassword(payload: { currentPassword: string; newPassword: string }): Promise<void> {
-  await cmsApiClient.post('/cms/account/change-password', payload)
+  await cmsApiClient.post('/cms/auth/change-password', payload)
 }

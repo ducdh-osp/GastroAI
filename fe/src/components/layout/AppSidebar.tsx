@@ -5,7 +5,6 @@ import {
   BulbOutlined,
   CoffeeOutlined,
   CommentOutlined,
-  CustomerServiceOutlined,
   DownOutlined,
   ExperimentOutlined,
   FileSearchOutlined,
@@ -22,14 +21,14 @@ import {
   ScanOutlined,
 } from '@ant-design/icons'
 import { Badge, Button, Dropdown, message, notification, Switch } from 'antd'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
 import { useTheme } from '../../stores/themeStore'
 import { Logo } from '../brand/Logo'
 import { getUnreadNotificationCount, markNotificationRead } from '../../api/notifications'
 import { checkDueMedications, confirmMedicationDose } from '../../api/medication'
-import { listTriageConversations } from '../../api/patientTriageAlerts'
+import { answerTriageCheckIn, TRIAGE_ANSWERED_EVENT } from '../../api/patientTriageAlerts'
 import { useNotificationSocket } from '../../hooks/useNotificationSocket'
 
 const NAV_ITEMS = [
@@ -50,10 +49,6 @@ const NAV_ITEMS = [
   { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
 ]
 
-const TRIAGE_NAV_ITEM = {
-  key: 'triage-alerts', label: 'Cảnh báo & hỗ trợ', icon: <CustomerServiceOutlined />, to: '/triage-alerts',
-}
-
 
 /** Sidebar cố định cho các trang bệnh nhân sau khi đăng nhập — cùng cấu trúc với CmsSidebar
  * (bên admin) và cùng nền tối, nhưng dùng tông xanh ngọc đậm (#0f2926) thay vì slate để 2
@@ -64,40 +59,16 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [unreadCount, setUnreadCount] = useState(0)
-  const [triageSummary, setTriageSummary] = useState({ count: 0, unread: 0 })
 
-  const refreshTriageSummary = useCallback(() => {
-    if (!token) return
-    void listTriageConversations()
-      .then((items) => setTriageSummary({
-        count: items.length,
-        unread: items.reduce((total, item) => total + item.unreadCount, 0),
-      }))
-      .catch(() => {})
-  }, [token])
-
+  // Bệnh nhân trả lời "Bạn có ổn không?" ở trang Thông báo -> đóng popup cùng câu hỏi nếu còn mở.
   useEffect(() => {
-    refreshTriageSummary()
-    window.addEventListener('gastroai:notification', refreshTriageSummary)
-    window.addEventListener('gastroai:notification-state', refreshTriageSummary)
-    return () => {
-      window.removeEventListener('gastroai:notification', refreshTriageSummary)
-      window.removeEventListener('gastroai:notification-state', refreshTriageSummary)
+    const closeAnsweredPopup = (event: Event) => {
+      const notificationId = (event as CustomEvent<number>).detail
+      notification.destroy(`triage-check-in-${notificationId}`)
     }
-  }, [refreshTriageSummary])
-
-  // Rời trang trao đổi -> cập nhật lại số tin chưa đọc.
-  const previousPathname = useRef(location.pathname)
-  useEffect(() => {
-    if (previousPathname.current.startsWith('/triage-alerts/') && previousPathname.current !== location.pathname) {
-      refreshTriageSummary()
-    }
-    previousPathname.current = location.pathname
-  }, [location.pathname, refreshTriageSummary])
-
-  const navItems = triageSummary.count > 0
-    ? [NAV_ITEMS[0], TRIAGE_NAV_ITEM, ...NAV_ITEMS.slice(1)]
-    : NAV_ITEMS
+    window.addEventListener(TRIAGE_ANSWERED_EVENT, closeAnsweredPopup)
+    return () => window.removeEventListener(TRIAGE_ANSWERED_EVENT, closeAnsweredPopup)
+  }, [])
 
   useEffect(() => {
     const refreshUnreadCount = () => {
@@ -179,33 +150,75 @@ export function AppSidebar() {
           placement: 'topRight',
           duration: 0, // Giữ thông báo nhắc thuốc cho tới khi bệnh nhân xác nhận hoặc đóng
         })
-      } else if (item.type === 'TRIAGE_DOCTOR_MESSAGE' && item.actionUrl) {
-        const notifKey = `triage-message-${item.id}`
-        const actionUrl = item.actionUrl
-        notification.open({
-          key: notifKey,
-          message: <span className="font-semibold">{item.title}</span>,
-          description: (
-            <div className="space-y-3 pt-1">
-              <p className="text-sm leading-relaxed">{item.message}</p>
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => {
-                  notification.destroy(notifKey)
-                  void markNotificationRead('patient', item.id)
-                    .then(() => window.dispatchEvent(new Event('gastroai:notification-state')))
-                    .catch(() => undefined)
-                  navigate(actionUrl)
-                }}
-              >
-                Xem
-              </Button>
-            </div>
-          ),
-          placement: 'topRight',
-          duration: 0,
-        })
+      } else if (item.type === 'TRIAGE_CHECK_IN' && item.sourceId !== null) {
+        // SCR-AD-13 bước 1: hỏi "Bạn có ổn không?" ngay trên màn đang dùng (thường là trang chat),
+        // trả lời tại chỗ - KHÔNG chuyển trang, để bệnh nhân không mất mạch đang hỏi AI.
+        const notifKey = `triage-check-in-${item.id}`
+        const alertId = item.sourceId
+
+        // Cùng key -> antd cập nhật đúng popup đang mở (đang gửi / báo lỗi) thay vì mở popup mới.
+        const showCheckIn = (sending: boolean, error: string | null) => {
+          notification.warning({
+            key: notifKey,
+            message: <span className="font-semibold">{item.title}</span>,
+            description: (
+              <div className="space-y-3 pt-1">
+                <p className="text-sm leading-relaxed">{item.message}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="small" disabled={sending} onClick={() => answer('SAFE')}>
+                    Tôi an toàn
+                  </Button>
+                  <Button size="small" type="primary" danger loading={sending} onClick={() => answer('NEED_HELP')}>
+                    Cần hỗ trợ
+                  </Button>
+                </div>
+                {error && <p className="mb-0 text-xs text-red-600">{error} Vui lòng bấm lại.</p>}
+                <p className="mb-0 text-xs text-slate-500">Nếu đang nguy hiểm, hãy gọi 115 ngay.</p>
+              </div>
+            ),
+            placement: 'topRight',
+            duration: 0, // Giữ tới khi bệnh nhân trả lời - đây là kênh duy nhất hệ thống hỏi được.
+          })
+        }
+
+        const answer = (response: 'SAFE' | 'NEED_HELP') => {
+          showCheckIn(true, null)
+          answerTriageCheckIn(alertId, response)
+            .then((result) => {
+              void markNotificationRead('patient', item.id)
+                .then(() => window.dispatchEvent(new Event('gastroai:notification-state')))
+                .catch(() => undefined)
+              if (result.alreadyClosed) {
+                notification.destroy(notifKey)
+                message.info('Cảnh báo này đã được xử lý xong, bạn không cần trả lời thêm.')
+                return
+              }
+              if (response === 'SAFE') {
+                notification.destroy(notifKey)
+                message.success('Cảm ơn bạn đã xác nhận. GastroAI sẽ không làm phiền thêm.')
+                return
+              }
+              // Thay popup câu hỏi bằng xác nhận đỏ, giữ tới khi bệnh nhân tự đóng.
+              notification.error({
+                key: notifKey,
+                message: <span className="font-semibold">Đã báo nhân sự GastroAI</span>,
+                description: (
+                  <p className="mb-0 pt-1 text-sm leading-relaxed">
+                    Chúng tôi sẽ gọi điện cho bạn hoặc người thân bạn đã khai trong hồ sơ. Nếu tình trạng nặng hơn,
+                    hãy gọi 115 ngay, đừng chờ.
+                  </p>
+                ),
+                placement: 'topRight',
+                duration: 0,
+              })
+            })
+            .catch((err: unknown) => {
+              // Lỗi thì giữ nguyên câu hỏi để bấm lại - không chuyển trang, không đoán là đã gửi.
+              showCheckIn(false, err instanceof Error ? err.message : 'Không gửi được câu trả lời.')
+            })
+        }
+
+        showCheckIn(false, null)
       } else {
         notification.info({ message: item.title, description: item.message, placement: 'topRight' })
       }
@@ -225,10 +238,8 @@ export function AppSidebar() {
         </div>
 
         <nav className="mt-2 space-y-0.5 px-3">
-          {navItems.map((item) => {
-            const active = item.key === TRIAGE_NAV_ITEM.key
-              ? location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
-              : item.to === location.pathname
+          {NAV_ITEMS.map((item) => {
+            const active = item.to === location.pathname
             return (
               <Link
                 key={item.key}
@@ -242,9 +253,6 @@ export function AppSidebar() {
                   {item.label}
                   {item.key === 'notifications' && unreadCount > 0 && (
                     <Badge count={unreadCount} overflowCount={99} size="small" />
-                  )}
-                  {item.key === TRIAGE_NAV_ITEM.key && triageSummary.unread > 0 && (
-                    <Badge count={triageSummary.unread} overflowCount={99} size="small" />
                   )}
                 </span>
               </Link>

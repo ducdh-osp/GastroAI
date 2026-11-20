@@ -19,6 +19,7 @@ public record DocumentSummaryResponse(
         int versionNo,
         Integer currentVersionNo,
         int versionCount,
-        boolean unpublished
+        boolean unpublished,
+        boolean contentApproved
 ) {
 }

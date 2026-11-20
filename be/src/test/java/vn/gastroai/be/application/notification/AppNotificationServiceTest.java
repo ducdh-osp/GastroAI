@@ -8,8 +8,8 @@ import vn.gastroai.be.domain.notification.NotificationCreatedEvent;
 import vn.gastroai.be.domain.notification.NotificationRecipientType;
 import vn.gastroai.be.domain.notification.NotificationState;
 import vn.gastroai.be.domain.notification.NotificationType;
-import vn.gastroai.be.domain.triage.TriageAlertEvent;
 import vn.gastroai.be.infrastructure.persistence.postgres.AppNotificationRepository;
+import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.NotificationStateRepository;
 
 import java.time.Instant;
@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,8 +34,9 @@ class AppNotificationServiceTest {
     private final AppNotificationRepository notificationRepository = mock(AppNotificationRepository.class);
     private final NotificationStateRepository stateRepository = mock(NotificationStateRepository.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final AdminRepository adminRepository = mock(AdminRepository.class);
     private final AppNotificationService service = new AppNotificationService(
-            notificationRepository, stateRepository, eventPublisher);
+            notificationRepository, stateRepository, adminRepository, eventPublisher);
 
     @Test
     void dailyReminderIsDeduplicated() {
@@ -147,21 +150,62 @@ class AppNotificationServiceTest {
     }
 
     @Test
-    void triageEventCreatesAdminAuditNotification() {
-        when(notificationRepository.findByDedupeKey("TRIAGE_ALERT:9")).thenReturn(Optional.empty());
-        when(notificationRepository.save(any(AppNotification.class))).thenAnswer(invocation -> {
-            AppNotification notification = invocation.getArgument(0);
-            notification.setId(10L);
-            return notification;
-        });
-        TriageAlertEvent event = new TriageAlertEvent(
-                9L, 1L, "Nguyen Van A", "0901234567", null, null,
-                "Đau bụng dữ dội", List.of("DAU_BUNG_CAP_TINH"), "NEW", Instant.now());
+    void closedTriageAlertMarksItsNotificationsReadForPatientAndEveryAdmin() {
+        when(adminRepository.findAllIds()).thenReturn(List.of(1L, 2L));
 
-        assertTrue(service.recordTriageAlert(event).isPresent());
+        service.markTriageAlertNotificationsRead(9L);
 
-        verify(notificationRepository).save(any(AppNotification.class));
-        verify(eventPublisher).publishEvent(any(NotificationCreatedEvent.class));
+        verify(stateRepository).markTriageAlertPatientNotificationsRead(eq(9L), any(Instant.class));
+        verify(stateRepository).markTriageAlertAdminNotificationsRead(eq(9L), eq(1L), any(Instant.class));
+        verify(stateRepository).markTriageAlertAdminNotificationsRead(eq(9L), eq(2L), any(Instant.class));
+    }
+
+    @Test
+    void triageCheckInGoesToPatientWithoutPageLinkAndIsDeduplicated() {
+        when(notificationRepository.findByDedupeKey("TRIAGE_CHECK_IN:9")).thenReturn(Optional.empty());
+        when(notificationRepository.save(any(AppNotification.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertTrue(service.recordTriageCheckIn(1L, 9L, false).isPresent());
+
+        verify(notificationRepository).save(argThat(notification ->
+                notification.getNotificationType() == NotificationType.TRIAGE_CHECK_IN
+                        && notification.getRecipientType() == NotificationRecipientType.PATIENT
+                        && notification.getRecipientId().equals(1L)
+                        && notification.getTitle().equals("Bạn có ổn không?")
+                        && notification.getActionUrl() == null
+                        && notification.getSourceId().equals(9L)
+                        && notification.getDedupeKey().equals("TRIAGE_CHECK_IN:9")));
+
+        when(notificationRepository.findByDedupeKey("TRIAGE_CHECK_IN:9")).thenReturn(Optional.of(patientNotification(1L)));
+        assertTrue(service.recordTriageCheckIn(1L, 9L, false).isEmpty());
+    }
+
+    @Test
+    void triageCheckInReminderUsesItsOwnKey() {
+        when(notificationRepository.findByDedupeKey("TRIAGE_CHECK_IN_REMINDER:9")).thenReturn(Optional.empty());
+        when(notificationRepository.save(any(AppNotification.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.recordTriageCheckIn(1L, 9L, true);
+
+        verify(notificationRepository).save(argThat(notification ->
+                notification.getTitle().equals("Nhắc lại: Bạn có ổn không?")
+                        && notification.getDedupeKey().equals("TRIAGE_CHECK_IN_REMINDER:9")));
+    }
+
+    @Test
+    void interventionIsBroadcastToAllAdminsOnceButRealertsAlwaysGoOut() {
+        when(notificationRepository.findByDedupeKey("TRIAGE_INTERVENTION:9")).thenReturn(Optional.of(patientNotification(1L)));
+        when(notificationRepository.save(any(AppNotification.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertTrue(service.recordTriageNeedsIntervention(9L, "Nguyen Van A", "Không phản hồi", false).isEmpty());
+        assertTrue(service.recordTriageNeedsIntervention(9L, "Nguyen Van A", "QUÁ HẠN", true).isPresent());
+
+        verify(notificationRepository).save(argThat(notification ->
+                notification.getNotificationType() == NotificationType.TRIAGE_INTERVENTION
+                        && notification.getRecipientType() == NotificationRecipientType.ADMIN
+                        && notification.getRecipientId() == null
+                        && notification.getTitle().equals("Cần can thiệp: Nguyen Van A")
+                        && notification.getDedupeKey() == null));
     }
 
     private AppNotification patientNotification(Long patientId) {

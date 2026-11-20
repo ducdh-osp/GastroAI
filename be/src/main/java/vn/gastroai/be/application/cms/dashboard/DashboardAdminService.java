@@ -70,8 +70,10 @@ public class DashboardAdminService {
         long todayMessages = chatMessageRepository.countByCreatedAtGreaterThanEqual(startOfToday);
 
         long totalAlerts = triageAlertRepository.count();
-        long newAlerts = triageAlertRepository.countByStatus(TriageAlertStatus.NEW);
-        long inProgressAlerts = triageAlertRepository.countByStatus(TriageAlertStatus.IN_PROGRESS);
+        // SCR-AD-13: giu ten truong cu cho FE/xuat file, doi nghia theo 3 trang thai moi -
+        // newAlerts = ca can can thiep (viec Admin phai lam), inProgressAlerts = he thong dang tu xu ly.
+        long newAlerts = triageAlertRepository.countByStatus(TriageAlertStatus.NEEDS_INTERVENTION);
+        long inProgressAlerts = triageAlertRepository.countByStatus(TriageAlertStatus.AUTO_HANDLING);
         long resolvedAlerts = triageAlertRepository.countByStatus(TriageAlertStatus.RESOLVED);
 
         long totalAssessments = symptomAssessmentRecordRepository.count();
@@ -238,8 +240,8 @@ public class DashboardAdminService {
     private String mapStatusLabel(String status) {
         if (status == null) return "Không xác định";
         return switch (status.toUpperCase()) {
-            case "NEW" -> "Mới phát sinh";
-            case "IN_PROGRESS" -> "Đang xử lý";
+            case "AUTO_HANDLING" -> "Hệ thống đang tự xử lý";
+            case "NEEDS_INTERVENTION" -> "Cần can thiệp";
             case "RESOLVED" -> "Đã xử lý";
             default -> status;
         };

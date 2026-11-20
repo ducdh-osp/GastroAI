@@ -31,6 +31,8 @@ export type NotificationType =
   | 'TRIAGE_ALERT'
   | 'SYSTEM'
   | 'TRIAGE_DOCTOR_MESSAGE'
+  | 'TRIAGE_CHECK_IN'
+  | 'TRIAGE_INTERVENTION'
 
 export interface NotificationFilters {
   unreadOnly?: boolean

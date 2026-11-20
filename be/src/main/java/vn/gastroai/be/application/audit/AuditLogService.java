@@ -1,7 +1,6 @@
 package vn.gastroai.be.application.audit;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -17,17 +16,17 @@ import vn.gastroai.be.api.cms.audit.AuditLogResponse;
 import vn.gastroai.be.application.auth.ClientRequestInfo;
 import vn.gastroai.be.application.auth.ClientRequestInfoResolver;
 import vn.gastroai.be.application.auth.CmsAuthService;
-import vn.gastroai.be.domain.admin.CmsAccountType;
+import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.domain.audit.AuditLog;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 import vn.gastroai.be.infrastructure.persistence.mysql.AuditLogRepository;
-import vn.gastroai.be.infrastructure.persistence.mysql.DoctorRepository;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 /** UC0052, UC0053, UC0064 - ghi, loc va lay du lieu xuat audit log cua tai khoan CMS. */
 @Service
@@ -39,21 +38,20 @@ public class AuditLogService {
     private static final int MAX_DETAIL = 1000;
     private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Direction.DESC, "occurredAt");
+    /** Mọi tài khoản CMS nằm trong bảng admins, nên người thực hiện từ phiên CMS luôn là loại ADMIN. */
+    private static final String CMS_ACTOR_TYPE = "ADMIN";
 
     private final AuditLogRepository auditLogRepository;
     private final AdminRepository adminRepository;
-    private final DoctorRepository doctorRepository;
     private final ClientRequestInfoResolver requestInfoResolver;
     private final AuditAnomalyDetector anomalyDetector;
 
     public AuditLogService(AuditLogRepository auditLogRepository,
             AdminRepository adminRepository,
-            DoctorRepository doctorRepository,
             ClientRequestInfoResolver requestInfoResolver,
             AuditAnomalyDetector anomalyDetector) {
         this.auditLogRepository = auditLogRepository;
         this.adminRepository = adminRepository;
-        this.doctorRepository = doctorRepository;
         this.requestInfoResolver = requestInfoResolver;
         this.anomalyDetector = anomalyDetector;
     }
@@ -62,6 +60,7 @@ public class AuditLogService {
         try {
             HttpServletRequest request = currentRequest();
             String actorType = "SYSTEM";
+            String actorRole = null;
             Long actorId = null;
             String actorEmail = null;
             String ip = "unknown";
@@ -72,20 +71,20 @@ public class AuditLogService {
                 ip = info.ipAddress();
                 userAgent = info.userAgent();
 
-                HttpSession session = request.getSession(false);
-                if (session != null) {
-                    Object id = session.getAttribute(CmsAuthService.AUTH_USER_ID);
-                    Object type = session.getAttribute(CmsAuthService.AUTH_ACCOUNT_TYPE);
-                    if (id != null && type != null) {
-                        actorId = Long.valueOf(id.toString());
-                        actorType = type.toString();
-                        actorEmail = findEmail(actorType, actorId);
-                    }
+                Long accountId = CmsAuthService.sessionUserId(request.getSession(false));
+                if (accountId != null) {
+                    actorId = accountId;
+                    actorType = CMS_ACTOR_TYPE;
+                    // Email và vai trò chép tại thời điểm thao tác: sau này tài khoản đổi email,
+                    // đổi vai trò hay bị xoá thì nhật ký vẫn đúng với lúc đó.
+                    Optional<Admin> account = adminRepository.findById(accountId);
+                    actorEmail = account.map(Admin::getEmail).orElse(null);
+                    actorRole = account.map(admin -> admin.getRole().name()).orElse(null);
                 }
             }
 
             AuditLog saved = auditLogRepository.save(new AuditLog(
-                    Instant.now(), actorType, actorId, actorEmail, action,
+                    Instant.now(), actorType, actorRole, actorId, actorEmail, action,
                     targetType, targetId == null ? null : targetId.toString(),
                     truncate(detail), ip, truncate(userAgent)));
             anomalyDetector.check(saved);
@@ -100,16 +99,9 @@ public class AuditLogService {
         if (request == null) {
             return null;
         }
-        HttpSession session = request.getSession(false);
-        if (session == null) {
-            return null;
-        }
-        Object id = session.getAttribute(CmsAuthService.AUTH_USER_ID);
-        Object type = session.getAttribute(CmsAuthService.AUTH_ACCOUNT_TYPE);
-        if (id == null || type == null) {
-            return null;
-        }
-        return findEmail(type.toString(), Long.valueOf(id.toString()));
+        Long accountId = CmsAuthService.sessionUserId(request.getSession(false));
+        return accountId == null ? null
+                : adminRepository.findById(accountId).map(Admin::getEmail).orElse(null);
     }
 
     @Transactional(value = "mysqlTransactionManager", readOnly = true)
@@ -162,16 +154,6 @@ public class AuditLogService {
             return null;
         }
         return value.trim();
-    }
-
-    private String findEmail(String actorType, Long actorId) {
-        if (CmsAccountType.ADMIN.name().equals(actorType)) {
-            return adminRepository.findById(actorId).map(a -> a.getEmail()).orElse(null);
-        }
-        if (CmsAccountType.DOCTOR.name().equals(actorType)) {
-            return doctorRepository.findById(actorId).map(d -> d.getEmail()).orElse(null);
-        }
-        return null;
     }
 
     private HttpServletRequest currentRequest() {

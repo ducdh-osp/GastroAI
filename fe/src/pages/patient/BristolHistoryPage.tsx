@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useState } from 'react'
 import { getBristolTrend, listBristolLogs } from '../../api/bristol'
 import type { BristolLog, BristolLogPoint } from '../../api/bristol'
+import { HealthReportButton } from '../../components/healthReport/HealthReportButton'
 import { AppShell } from '../../components/layout/AppShell'
 import { BristolTrendChart } from '../../components/bristol/BristolTrendChart'
 import { BRISTOL_TYPE_LABELS } from '../../constants/bristol'
@@ -49,10 +50,13 @@ export default function BristolHistoryPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl">
-        <div className="mb-6">
-          <Text type="secondary">Theo dõi sức khỏe</Text>
-          <Title level={2} className="mb-1! mt-1!">Xu hướng Bristol</Title>
-          <Text type="secondary">Xem riêng biểu đồ 30 ngày và lịch sử chi tiết theo thang Bristol Stool Chart.</Text>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <Text type="secondary">Theo dõi sức khỏe</Text>
+            <Title level={2} className="mb-1! mt-1!">Xu hướng Bristol</Title>
+            <Text type="secondary">Xem riêng biểu đồ 30 ngày và lịch sử chi tiết theo thang Bristol Stool Chart.</Text>
+          </div>
+          <HealthReportButton />
         </div>
 
         <Tabs

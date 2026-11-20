@@ -16,5 +16,6 @@ public class LoginHistoryCleanupScheduler {
     @Scheduled(cron = "${app.security.login.cleanup-cron:0 15 3 * * *}", zone = "UTC")
     public void cleanup() {
         service.cleanupPatients();
+        service.cleanupAdmins();
     }
 }

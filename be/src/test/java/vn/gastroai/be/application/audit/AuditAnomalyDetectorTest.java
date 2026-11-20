@@ -50,7 +50,7 @@ class AuditAnomalyDetectorTest {
     }
 
     private AuditLog log(AuditAction action, Long actorId) {
-        AuditLog log = new AuditLog(Instant.now(), "ADMIN", actorId, "admin@gastroai.vn", action,
+            AuditLog log = new AuditLog(Instant.now(), "ADMIN", "ADMIN", actorId, "admin@gastroai.vn", action,
                 "PATIENT", "7", null, "10.0.0.1", "JUnit");
         ReflectionTestUtils.setField(log, "id", 99L);
         return log;
@@ -168,5 +168,44 @@ class AuditAnomalyDetectorTest {
         when(ruleRepository.findByEnabledTrue()).thenThrow(new RuntimeException("MySQL down"));
 
         assertDoesNotThrow(() -> detector.check(log(AuditAction.PATIENT_LOCK, 1L)));
+    }
+    
+    private AuditAnomalyRule multiIpRule() {
+        AuditAnomalyRule rule = mock(AuditAnomalyRule.class, withSettings().strictness(Strictness.LENIENT));
+        when(rule.getCode()).thenReturn("MULTI_IP");
+        when(rule.getName()).thenReturn("Đăng nhập/thao tác từ nhiều địa chỉ IP");
+        when(rule.getMetric()).thenReturn(AuditAnomalyRule.Metric.DISTINCT_IPS);
+        when(rule.getThreshold()).thenReturn(4);
+        when(rule.getWindowMinutes()).thenReturn(1440);
+        when(rule.appliesTo(any())).thenReturn(true);
+        return rule;
+    }
+
+    @Test
+    void cmsLoginFromFourthAddressInOneDayRaisesAlert() {
+        AuditAnomalyRule rule = multiIpRule();
+        when(ruleRepository.findByEnabledTrue()).thenReturn(List.of(rule));
+        when(auditLogRepository.countDistinctIps(eq("ADMIN"), eq(1L), any())).thenReturn(4L);
+        when(notificationService.createAuditAnomalyAlert(anyString(), anyString(), anyString()))
+                .thenReturn(Optional.of(mock(NotificationResponse.class)));
+
+        detector.check(log(AuditAction.CMS_LOGIN, 1L));
+
+        ArgumentCaptor<AuditLog> saved = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(saved.capture());
+        assertEquals(AuditAction.ANOMALY_DETECTED, saved.getValue().getAction());
+        assertEquals("MULTI_IP", saved.getValue().getTargetId());
+    }
+
+    @Test
+    void cmsLoginFromThreeAddressesInOneDayIsNormal() {
+        AuditAnomalyRule rule = multiIpRule();
+        when(ruleRepository.findByEnabledTrue()).thenReturn(List.of(rule));
+        when(auditLogRepository.countDistinctIps(eq("ADMIN"), eq(1L), any())).thenReturn(3L);
+
+        detector.check(log(AuditAction.CMS_LOGIN, 1L));
+
+        verify(notificationService, never()).createAuditAnomalyAlert(anyString(), anyString(), anyString());
+        verify(auditLogRepository, never()).save(any());
     }
 }

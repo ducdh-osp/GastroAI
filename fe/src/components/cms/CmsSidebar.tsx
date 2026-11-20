@@ -23,10 +23,12 @@ import {
   TeamOutlined,
 } from '@ant-design/icons'
 import { Badge, Dropdown, notification, Switch, Tag } from 'antd'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Logo } from '../brand/Logo'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
+import { listTriageAlerts } from '../../api/cmsTriage'
+import { useTriageAlertSocket, type TriageAlertStatusChangedSocketEvent } from '../../hooks/useTriageAlertSocket'
 import { useTheme } from '../../stores/themeStore'
 import { getUnreadNotificationCount } from '../../api/notifications'
 import { useNotificationSocket } from '../../hooks/useNotificationSocket'
@@ -93,6 +95,9 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   },
 ]
 
+/** Phòng khi mất kết nối socket: vẫn tự cập nhật số ca cần can thiệp sau mỗi khoảng này. */
+const TRIAGE_COUNT_POLL_MS = 60_000
+
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Admin',
   DOCTOR: 'Bác sĩ',
@@ -121,14 +126,77 @@ export function CmsSidebar() {
     return () => window.removeEventListener('gastroai:notification-state', refreshUnreadCount)
   }, [user?.userType])
 
+  // Số ca "Cần can thiệp" (SCR-AD-13) hiện cạnh mục "Cảnh báo khẩn cấp" - chỉ đếm, không tải danh sách.
+  const canSeeTriage = user?.userType === 'ADMIN'
+  const [interventionCount, setInterventionCount] = useState(0)
+  const countSeq = useRef(0)
+  const refreshInterventionCount = useCallback(() => {
+    if (!canSeeTriage) return
+    const mySeq = ++countSeq.current
+    listTriageAlerts('INTERVENTION', 0, 1)
+      .then((result) => {
+        // Nhiều sự kiện tới dồn dập -> chỉ lấy kết quả của lần gọi mới nhất.
+        if (mySeq === countSeq.current) setInterventionCount(result.totalElements)
+      })
+      .catch(() => undefined)
+  }, [canSeeTriage])
+
+  useEffect(() => {
+    if (!canSeeTriage) return
+    refreshInterventionCount()
+    const timer = window.setInterval(refreshInterventionCount, TRIAGE_COUNT_POLL_MS)
+    return () => window.clearInterval(timer)
+  }, [canSeeTriage, refreshInterventionCount])
+
+  // Bộ hẹn giờ chuyển ca, Admin nhận/đóng ca, bệnh nhân bấm An toàn... đều phát sự kiện đổi trạng thái.
+  useTriageAlertSocket({
+    enabled: canSeeTriage,
+    onAlert: refreshInterventionCount,
+    onStatusChange: useCallback((event: TriageAlertStatusChangedSocketEvent) => {
+      refreshInterventionCount()
+      if (event.status === 'RESOLVED') {
+        // BE đã đánh dấu đã đọc mọi thông báo của ca vừa đóng -> đóng popup đỏ, cập nhật số chưa đọc.
+        notification.destroy(`triage-intervention-${event.id}`)
+        window.dispatchEvent(new Event('gastroai:notification-state'))
+        window.dispatchEvent(new Event('gastroai:notification'))
+      }
+    }, [refreshInterventionCount]),
+    onConnected: refreshInterventionCount,
+  })
+
   useNotificationSocket({
     audience: 'admin',
     enabled: user?.userType === 'ADMIN',
     onNotification: useCallback((item) => {
       setUnreadCount((count) => count + 1)
-      notification.warning({ message: item.title, description: item.message, placement: 'topRight' })
+      if (item.type === 'TRIAGE_INTERVENTION') {
+        // SCR-AD-13 bước 3/4: báo mọi Admin đang trực, giữ trên màn tới khi có người bấm vào/đóng.
+        // Key theo ca (không theo thông báo): báo động lại cùng ca thì cập nhật popup cũ, đóng ca thì gỡ được.
+        const key = `triage-intervention-${item.sourceId ?? item.id}`
+        notification.error({
+          key,
+          message: item.title,
+          description: (
+            <div className="space-y-2">
+              <p className="mb-0 text-sm">{item.message}</p>
+              <a
+                onClick={() => {
+                  notification.destroy(key)
+                  navigate('/cms/triage-alerts')
+                }}
+              >
+                Mở danh sách cần can thiệp
+              </a>
+            </div>
+          ),
+          placement: 'topRight',
+          duration: 0,
+        })
+      } else {
+        notification.warning({ message: item.title, description: item.message, placement: 'topRight' })
+      }
       window.dispatchEvent(new Event('gastroai:notification'))
-    }, []),
+    }, [navigate]),
   })
 
   const visibleSections = NAV_SECTIONS.map((section) => ({
@@ -191,7 +259,13 @@ export function CmsSidebar() {
                         }`}
                     >
                       {item.icon}
-                      {item.label}
+                      <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                        {item.label}
+                        {item.key === 'triage-alerts' && interventionCount > 0 && (
+                          <Badge count={interventionCount} overflowCount={99} size="small"
+                            title={`${interventionCount} ca cần can thiệp`} />
+                        )}
+                      </span>
                     </Link>
                   )
                 })}

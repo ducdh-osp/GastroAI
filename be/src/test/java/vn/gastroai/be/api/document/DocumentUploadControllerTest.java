@@ -51,6 +51,13 @@ class DocumentUploadControllerTest {
         private AuditLogService auditLogService;
 
         @MockitoBean
+        private vn.gastroai.be.application.document.DocumentReviewService documentReviewService;
+
+        
+        @MockitoBean
+        private vn.gastroai.be.application.document.DocumentContentSearchService documentContentSearchService;
+
+        @MockitoBean
         private JwtService jwtService;
 
         @MockitoBean
@@ -91,8 +98,8 @@ class DocumentUploadControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "DOCTOR")
-        void doctorsCanReadDocumentStatus() throws Exception {
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorsCanReadDocumentStatus() throws Exception {
                 when(documentStatusService.findDocument(42L))
                                 .thenReturn(Optional.of(
                                                 document(DocumentStatus.PROCESSING, DocumentProcessingStage.CHUNKING)));
@@ -126,8 +133,8 @@ class DocumentUploadControllerTest {
                                 42L, "IBS guide", "/path", "https://example.com",
                                 DocumentStatus.DONE, DocumentProcessingStage.DONE,
                                 null, 10L, java.time.Instant.now(), java.time.Instant.now(),
-                                1, 1, 1, false);
-                when(documentStatusService.list(null, null, 0, 15))
+                                                               1, 1, 1, false, true);
+                when(documentStatusService.list(null, null, null, null, 0, 15))
                                 .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15,
                                                 new DocumentStats(1, 1, 0, 0)));
 
@@ -139,7 +146,7 @@ class DocumentUploadControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "DOCTOR")
+        @WithMockUser(roles = "CONTENT_EDITOR")
         void retryDelegatesToStatusService() throws Exception {
                 Document retried = document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING);
                 when(documentStatusService.retry(42L)).thenReturn(retried);
@@ -174,6 +181,18 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isOk());
         }
 
+         @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCanListMatchingChunksOfADocument() throws Exception {
+                when(documentContentSearchService.searchInDocument(42L, "da day")).thenReturn(
+                                java.util.List.of(new DocumentReviewResponse.Chunk(3, "Viêm dạ dày")));
+
+                mockMvc.perform(get("/api/v1/documents/42/search").param("q", "da day"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0].chunkIndex").value(3))
+                                .andExpect(jsonPath("$[0].content").value("Viêm dạ dày"));
+        }
+        
         private Document document(DocumentStatus status, DocumentProcessingStage stage) {
                 Document document = new Document();
                 document.setId(42L);
@@ -214,6 +233,33 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isNoContent());
 
                 verify(documentStatusService).activateVersion(42L, 7L);
+        }
+
+        // SCR-AD-04 §3.1b - chi Bien tap duoc xac nhan noi dung, ghi lai ai xac nhan.
+        @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCanApproveDocumentContent() throws Exception {
+                when(auditLogService.currentActorEmail()).thenReturn("bientap@gastroai.vn");
+
+                mockMvc.perform(post("/api/v1/documents/42/versions/7/approve"))
+                                .andExpect(status().isNoContent());
+
+                verify(documentStatusService).approveContent(42L, 7L, "bientap@gastroai.vn");
+                verify(auditLogService).record(eq(AuditAction.DOCUMENT_APPROVE_CONTENT), eq("DOCUMENT"), eq(42L), any());
+        }
+
+        // Admin tai len va xu ly ky thuat, nhung khong tu duyet noi dung y khoa.
+        @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCanOpenReviewOfAVersion() throws Exception {
+                when(documentReviewService.review(42L)).thenReturn(new DocumentReviewResponse(
+                                42L, "Phác đồ HP", 2, DocumentStatus.DONE, false, false, null, null,
+                                "PDF", null, java.util.List.of(new DocumentReviewResponse.Chunk(0, "Đoạn 1"))));
+
+                mockMvc.perform(get("/api/v1/documents/42/review"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.originalFileType").value("PDF"))
+                                .andExpect(jsonPath("$.chunks[0].content").value("Đoạn 1"));
         }
 
         @Test

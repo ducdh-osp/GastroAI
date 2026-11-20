@@ -16,12 +16,11 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import vn.gastroai.be.application.auth.ClientRequestInfoResolver;
 import vn.gastroai.be.application.auth.CmsAuthService;
 import vn.gastroai.be.domain.admin.Admin;
-import vn.gastroai.be.domain.admin.Doctor;
+import vn.gastroai.be.domain.admin.CmsRole;
 import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.domain.audit.AuditLog;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 import vn.gastroai.be.infrastructure.persistence.mysql.AuditLogRepository;
-import vn.gastroai.be.infrastructure.persistence.mysql.DoctorRepository;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -46,14 +45,13 @@ class AuditLogServiceTest {
 
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private AdminRepository adminRepository;
-    @Mock private DoctorRepository doctorRepository;
     @Mock private AuditAnomalyDetector anomalyDetector;
 
     private AuditLogService service;
 
     @BeforeEach
     void setUp() {
-        service = new AuditLogService(auditLogRepository, adminRepository, doctorRepository,
+        service = new AuditLogService(auditLogRepository, adminRepository,
                 new ClientRequestInfoResolver(""), anomalyDetector);
     }
 
@@ -62,13 +60,12 @@ class AuditLogServiceTest {
         RequestContextHolder.resetRequestAttributes();
     }
 
-    private void loginAs(String accountType, Long id) {
+    private void loginAs(Long id) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("10.0.0.5");
         request.addHeader("User-Agent", "JUnit-Browser");
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(CmsAuthService.AUTH_USER_ID, id);
-        session.setAttribute(CmsAuthService.AUTH_ACCOUNT_TYPE, accountType);
         request.setSession(session);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
     }
@@ -84,7 +81,7 @@ class AuditLogServiceTest {
         Admin admin = new Admin();
         admin.setId(1L);
         admin.setEmail("admin@gastroai.vn");
-        loginAs("ADMIN", 1L);
+        loginAs(1L);
         when(adminRepository.findById(1L)).thenReturn(Optional.of(admin));
         when(auditLogRepository.save(any(AuditLog.class))).then(returnsFirstArg());
 
@@ -92,6 +89,7 @@ class AuditLogServiceTest {
 
         AuditLog saved = captureSaved();
         assertEquals("ADMIN", saved.getActorType());
+        assertEquals("ADMIN", saved.getActorRole());
         assertEquals(1L, saved.getActorId());
         assertEquals("admin@gastroai.vn", saved.getActorEmail());
         assertEquals(AuditAction.PATIENT_LOCK, saved.getAction());
@@ -103,18 +101,22 @@ class AuditLogServiceTest {
     }
 
     @Test
-    void recordLooksUpDoctorEmailForDoctorAccounts() {
-        Doctor doctor = new Doctor();
-        doctor.setId(2L);
-        doctor.setEmail("bacsi@gastroai.vn");
-        loginAs("DOCTOR", 2L);
-        when(doctorRepository.findById(2L)).thenReturn(Optional.of(doctor));
+    void contentEditorIsRecordedAsCmsAccountWithItsRole() {
+        Admin editor = new Admin();
+        editor.setId(2L);
+        editor.setEmail("bientap@gastroai.vn");
+        editor.setRole(CmsRole.CONTENT_EDITOR);
+        loginAs(2L);
+        when(adminRepository.findById(2L)).thenReturn(Optional.of(editor));
         when(auditLogRepository.save(any(AuditLog.class))).then(returnsFirstArg());
 
         service.record(AuditAction.PATIENT_DATA_VIEW, "PATIENT", 3L, "Xem lịch sử");
 
-        assertEquals("bacsi@gastroai.vn", captureSaved().getActorEmail());
-        verify(adminRepository, never()).findById(any());
+        AuditLog saved = captureSaved();
+        assertEquals("ADMIN", saved.getActorType());
+        assertEquals("CONTENT_EDITOR", saved.getActorRole());
+        assertEquals(2L, saved.getActorId());
+        assertEquals("bientap@gastroai.vn", saved.getActorEmail());
     }
 
     @Test
@@ -127,6 +129,7 @@ class AuditLogServiceTest {
         assertEquals("SYSTEM", saved.getActorType());
         assertNull(saved.getActorId());
         assertNull(saved.getActorEmail());
+        assertNull(saved.getActorRole());
         assertNull(saved.getTargetId());
         assertEquals("unknown", saved.getIpAddress());
     }
@@ -154,7 +157,7 @@ class AuditLogServiceTest {
 
         Admin admin = new Admin();
         admin.setEmail("admin@gastroai.vn");
-        loginAs("ADMIN", 1L);
+        loginAs(1L);
         when(adminRepository.findById(1L)).thenReturn(Optional.of(admin));
 
         assertEquals("admin@gastroai.vn", service.currentActorEmail());

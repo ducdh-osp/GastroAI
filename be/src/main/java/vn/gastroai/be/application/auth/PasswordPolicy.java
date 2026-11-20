@@ -2,13 +2,13 @@ package vn.gastroai.be.application.auth;
 
 import java.nio.charset.StandardCharsets;
 
-/** Quy tắc độ mạnh áp dụng cho mật khẩu mới của tài khoản bệnh nhân. */
-public final class PatientPasswordPolicy {
+/** Quy tắc độ mạnh áp dụng cho mật khẩu mới. */
+public final class PasswordPolicy {
 
     public static final String REQUIREMENTS_MESSAGE =
             "Mật khẩu cần tối thiểu 8 ký tự, ít nhất 1 chữ in hoa, 1 chữ số và 1 ký tự đặc biệt";
 
-    private PatientPasswordPolicy() {
+    private PasswordPolicy() {
     }
 
     public static void validate(String password) {

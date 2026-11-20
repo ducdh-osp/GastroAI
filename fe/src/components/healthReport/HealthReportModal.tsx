@@ -61,7 +61,7 @@ export function HealthReportModal({ open, onClose }: HealthReportModalProps) {
 
   return (
     <Modal
-      title="Xuất báo cáo cho bác sĩ"
+      title="Xuất báo cáo sức khỏe"
       open={open}
       onOk={handleDownload}
       onCancel={handleClose}
