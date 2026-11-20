@@ -9,7 +9,7 @@ export interface AdherenceDayPoint {
   logged: boolean
 }
 
-/** UC0025 - streak và tỷ lệ tuân thủ ghi nhật ký. */
+/** UC0025 - tiến độ và mức độ duy trì thói quen ghi nhật ký. */
 export interface AdherenceResponse {
   windowDays: number
   currentStreak: number
@@ -26,6 +26,6 @@ export async function getAdherence(days = 30): Promise<AdherenceResponse> {
     const { data } = await apiClient.get<AdherenceResponse>('/patient/adherence', { params: { days } })
     return data
   } catch (error) {
-    throw extractErrorMessage(error, 'Không thể tải streak và tỷ lệ tuân thủ. Vui lòng thử lại.')
+    throw extractErrorMessage(error, 'Không thể tải tiến độ theo dõi sức khỏe. Vui lòng thử lại.')
   }
 }

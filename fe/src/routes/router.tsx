@@ -11,7 +11,6 @@ import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
-import AdherencePage from '../pages/patient/AdherencePage'
 import BristolPage from '../pages/patient/BristolPage'
 import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
 import ChatPage from '../pages/chat/ChatPage'
@@ -138,7 +137,7 @@ export const router = createBrowserRouter([
         path: '/adherence',
         element: (
           <ProtectedRoute>
-            <AdherencePage />
+            <Navigate to="/" replace />
           </ProtectedRoute>
         ),
       },

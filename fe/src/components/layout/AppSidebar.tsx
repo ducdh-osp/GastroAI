@@ -9,7 +9,6 @@ import {
   ExperimentOutlined,
   FileSearchOutlined,
   FileTextOutlined,
-  FireOutlined,
   HomeOutlined,
   CheckCircleOutlined,
   KeyOutlined,
@@ -36,7 +35,6 @@ const NAV_ITEMS = [
   { key: 'faq', label: 'Hỏi đáp thường gặp', icon: <QuestionCircleOutlined />, to: '/faq' },
   { key: 'medical-profile', label: 'Hồ sơ bệnh lý', icon: <FileTextOutlined />, to: '/medical-profile' },
   { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
-  { key: 'adherence', label: 'Streak & tuân thủ', icon: <FireOutlined />, to: '/adherence' },
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
   { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
 ]
