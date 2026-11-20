@@ -13,7 +13,6 @@ import {
   HomeOutlined,
   CheckCircleOutlined,
   KeyOutlined,
-  LineChartOutlined,
   LogoutOutlined,
   MedicineBoxOutlined,
   QuestionCircleOutlined,
@@ -39,7 +38,6 @@ const NAV_ITEMS = [
   { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
   { key: 'adherence', label: 'Streak & tuân thủ', icon: <FireOutlined />, to: '/adherence' },
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
-  { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
   { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
 ]
 

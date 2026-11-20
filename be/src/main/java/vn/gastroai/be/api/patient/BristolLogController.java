@@ -1,6 +1,7 @@
 package vn.gastroai.be.api.patient;
 
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -8,6 +9,7 @@ import vn.gastroai.be.application.patient.BristolLogService;
 import vn.gastroai.be.api.support.AuthenticatedRequest;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -35,12 +37,13 @@ public class BristolLogController {
     public BristolListResponse list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             Principal principal, Authentication authentication) {
         Long patientId = AuthenticatedRequest.patientId(principal, authentication);
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
-        return bristolLogService.list(patientId, page, size);
+        return bristolLogService.list(patientId, page, size, date);
     }
 
     @GetMapping("/trend")

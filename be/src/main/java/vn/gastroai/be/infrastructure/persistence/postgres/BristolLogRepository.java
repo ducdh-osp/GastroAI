@@ -16,6 +16,9 @@ public interface BristolLogRepository extends JpaRepository<BristolLog, Long> {
 
     Page<BristolLog> findByPatientIdOrderByLoggedAtDesc(Long patientId, Pageable pageable);
 
+    Page<BristolLog> findByPatientIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThanOrderByLoggedAtDesc(
+            Long patientId, Instant from, Instant to, Pageable pageable);
+
     List<BristolLog> findByPatientIdAndLoggedAtBetweenOrderByLoggedAtAsc(Long patientId, Instant from, Instant to);
 
     boolean existsByPatientIdAndLoggedAtGreaterThanEqualAndLoggedAtLessThan(

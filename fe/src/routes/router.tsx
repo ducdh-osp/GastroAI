@@ -13,7 +13,6 @@ import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
 import AdherencePage from '../pages/patient/AdherencePage'
 import BristolPage from '../pages/patient/BristolPage'
-import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
 import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
 import ChatPage from '../pages/chat/ChatPage'
 import SymptomAssessmentPage from '../pages/chat/SymptomAssessmentPage'
@@ -155,7 +154,7 @@ export const router = createBrowserRouter([
         path: '/bristol-history',
         element: (
           <ProtectedRoute>
-            <BristolHistoryPage />
+            <Navigate to="/bristol?tab=trend" replace />
           </ProtectedRoute>
         ),
       },
