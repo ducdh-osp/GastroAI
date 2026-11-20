@@ -115,7 +115,7 @@ export async function changePassword(payload: { currentPassword: string; newPass
   await apiClient.post('/auth/change-password', payload)
 }
 
-// --- Login History ---
+// --- Login History types used by the CMS account history screen ---
 
 export interface LoginHistoryItem {
   id: number
@@ -137,11 +137,4 @@ export interface LoginHistoryResponse {
   // dùng field này để cảnh báo bảo mật, không tự đếm items (sẽ bỏ sót nếu lần thất bại nằm
   // ở trang khác).
   recentFailureCount: number
-}
-
-export async function getLoginHistory(page = 0, size = 20): Promise<LoginHistoryResponse> {
-  const { data } = await apiClient.get<LoginHistoryResponse>('/me/login-history', {
-    params: { page, size },
-  })
-  return data
 }

@@ -9,9 +9,8 @@ import { useNavigate } from 'react-router-dom'
 const { Title, Text } = Typography
 
 function pageSizeForViewport(height: number): number {
-  // Reserve space for the page heading, card padding and pager - giong cach
-  // LoginHistoryPage (patient) tinh, de bang chiem vua du chieu cao con lai thay vi
-  // de trong mot khoang lon ben duoi khi it du lieu hon 1 trang co dinh 20 dong.
+  // Reserve space for the page heading, card padding and pager so the table uses
+  // the available height instead of leaving a large blank area below a fixed page.
   return Math.max(4, Math.min(20, Math.floor((height - 400) / 50)))
 }
 

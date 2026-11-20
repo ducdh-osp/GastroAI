@@ -2,8 +2,6 @@ package vn.gastroai.be.application.auth;
 
 import io.jsonwebtoken.Claims;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,7 +34,7 @@ import java.util.UUID;
 
 /**
  * Nghiệp vụ xác thực cho Bệnh nhân (UC0001-0008): đăng ký, xác thực email,
- * quên/đổi mật khẩu, đăng nhập, đăng xuất, lịch sử đăng nhập.
+ * quên/đổi mật khẩu, đăng nhập và đăng xuất.
  * Chỉ thao tác trên PostgreSQL (bảng patients) — không liên quan Admin/Bác sĩ,
  * 2 nhóm đó dùng CmsAuthService riêng trên MySQL.
  */
@@ -340,22 +338,6 @@ public class AuthService {
     public void changePassword(Long id, String oldPassword, String newPassword) {
         changePassword(id, oldPassword, newPassword,
                 new ClientRequestInfo("unknown", "unknown", "unknown"));
-    }
-
-    /** UC0007 - Xem lịch sử đăng nhập của chính mình, phân trang theo thời gian gần nhất. */
-    public Page<PatientLoginHistory> history(Long patientId, Pageable pageable) {
-        return history.findByPatientId(patientId, pageable);
-    }
-
-    /**
-     * Số lần đăng nhập KHÔNG thành công trong 7 ngày gần nhất, tính trên toàn bộ lịch sử —
-     * dùng cho cảnh báo bảo mật ở MeController, không bị giới hạn bởi trang đang xem như khi
-     * tự đếm trên danh sách items() ở FE.
-     */
-    public long recentFailureCount(Long patientId) {
-        Instant sevenDaysAgo = Instant.now().minus(7, ChronoUnit.DAYS);
-        return history.countByPatientIdAndOutcomeNotAndAttemptedAtAfter(
-                patientId, LoginOutcome.SUCCESS, sevenDaysAgo);
     }
 
     private void record(Patient patient, LoginOutcome outcome, String reason,

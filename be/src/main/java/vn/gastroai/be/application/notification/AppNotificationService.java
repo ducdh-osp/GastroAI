@@ -80,7 +80,7 @@ public class AppNotificationService {
     /**
      * Lưu cảnh báo bảo mật cho từng lần nhập sai mật khẩu của bệnh nhân. Không dùng
      * dedupeKey vì mỗi lần thử là một sự kiện độc lập cần được giữ lại để chủ tài khoản
-     * có thể đối chiếu với lịch sử đăng nhập.
+     * nhận được cảnh báo bảo mật riêng cho từng sự kiện.
      */
     @Transactional("postgresTransactionManager")
     public NotificationResponse createFailedLoginAlert(Long patientId, String deviceLabel,
@@ -95,7 +95,7 @@ public class AppNotificationService {
                         .formatted(deviceLabel, ipAddress);
         AppNotification notification = new AppNotification(
                 NotificationRecipientType.PATIENT, patientId, NotificationType.SECURITY_ALERT,
-                title, message, "LOGIN_SECURITY", null, "/login-history", null);
+                title, message, "LOGIN_SECURITY", null, "/change-password", null);
         notification = notificationRepository.save(notification);
         NotificationResponse response = toResponse(notification, null);
         eventPublisher.publishEvent(new NotificationCreatedEvent(

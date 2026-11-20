@@ -11,7 +11,6 @@ import {
   FileSearchOutlined,
   FileTextOutlined,
   FireOutlined,
-  HistoryOutlined,
   HomeOutlined,
   CheckCircleOutlined,
   KeyOutlined,
@@ -45,7 +44,6 @@ const NAV_ITEMS = [
   { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
   { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
   { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
-  { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
 ]
 
 const TRIAGE_NAV_ITEM = {

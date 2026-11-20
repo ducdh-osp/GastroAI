@@ -81,7 +81,7 @@ export async function deleteNotification(audience: NotificationAudience, id: num
 }
 
 export async function deleteAllNotifications(audience: NotificationAudience) {
-  await client(audience).delete(`${basePath(audience)}/all`)
+  await client(audience).delete(basePath(audience))
 }
 
 export interface NotificationSettings {

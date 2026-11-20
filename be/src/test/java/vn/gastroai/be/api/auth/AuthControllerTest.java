@@ -143,12 +143,6 @@ class AuthControllerTest {
     }
 
     @Test
-    void adminSessionCannotReadPatientLoginHistory() throws Exception {
-        mockMvc.perform(get("/api/v1/me/login-history").session(cmsSession("ADMIN", 1L)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     void doctorSessionCannotChangePatientPassword() throws Exception {
         mockMvc.perform(post("/api/v1/auth/change-password")
                         .session(cmsSession("DOCTOR", 1L))

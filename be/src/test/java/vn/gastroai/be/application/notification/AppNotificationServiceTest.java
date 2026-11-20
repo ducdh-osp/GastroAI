@@ -98,7 +98,7 @@ class AppNotificationServiceTest {
         assertEquals(1L, saved.getRecipientId());
         assertEquals(NotificationType.SECURITY_ALERT, saved.getNotificationType());
         assertEquals("LOGIN_SECURITY", saved.getSourceType());
-        assertEquals("/login-history", saved.getActionUrl());
+        assertEquals("/change-password", saved.getActionUrl());
         assertTrue(saved.getMessage().contains("Chrome on Windows"));
         assertTrue(saved.getMessage().contains("203.0.113.10"));
         verify(eventPublisher).publishEvent(any(NotificationCreatedEvent.class));

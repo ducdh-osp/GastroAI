@@ -24,7 +24,7 @@
 | `SCR-AUTH-04` | [SCR-AUTH-04-QuenMatKhau.md](SCR-AUTH-04-QuenMatKhau.md) | Quên mật khẩu — nhập email | `UC0004` (bước 1) |
 | `SCR-AUTH-05` | [SCR-AUTH-05-DatLaiMatKhau.md](SCR-AUTH-05-DatLaiMatKhau.md) | Đặt lại mật khẩu | `UC0004` (bước 2) |
 | `SCR-AUTH-06` | [SCR-AUTH-06-DoiMatKhau.md](SCR-AUTH-06-DoiMatKhau.md) | Đổi mật khẩu | `UC0005` |
-| `SCR-AUTH-07` | [SCR-AUTH-07-LichSuDangNhap.md](SCR-AUTH-07-LichSuDangNhap.md) | Lịch sử đăng nhập | `UC0007` |
+| `SCR-AUTH-07` | [SCR-AUTH-07-LichSuDangNhap.md](SCR-AUTH-07-LichSuDangNhap.md) | Lịch sử đăng nhập CMS | `UC0007` |
 
 **UC không nên có màn hình riêng** (gộp vào trải nghiệm của màn khác, vì tách ra sẽ chỉ làm phức tạp hoá hành trình người dùng mà không mang lại giá trị gì):
 
@@ -77,8 +77,8 @@
                    (Mọi lúc, từ dropdown tài khoản trên header)
                           ┌──────────────┼──────────────┐
                           ▼              ▼               ▼
-                   "Đổi mật khẩu"  "Ai từng đăng    "Thoát ra"
-                    khi cần          nhập vào tài        │
+                   "Đổi mật khẩu"  "CMS: ai từng   "Thoát ra"
+                    khi cần          đăng nhập vào       │
                           │          khoản của tôi?"      ▼
                           ▼              │           Xác nhận nhẹ
                    [SCR-AUTH-06]   [SCR-AUTH-07]     rồi về SCR-AUTH-03
@@ -94,7 +94,7 @@
 6. **Quên mật khẩu bước 1 (`UC0004` → `SCR-AUTH-04`)**: với một app sức khoẻ, việc để lộ "email này có tồn tại trong hệ thống hay không" là rò rỉ thông tin riêng tư (ai đó có thể đang dùng GastroAI để theo dõi bệnh lý tiêu hoá — một thông tin tế nhị). Vì vậy màn hình này **luôn phản hồi như nhau**, bất kể email có tồn tại hay không.
 7. **Quên mật khẩu bước 2 (`UC0004` → `SCR-AUTH-05`)**: đặt mật khẩu mới xong nên **tự động đưa thẳng tới màn đăng nhập** với thông báo rõ ràng "đặt lại thành công, đăng nhập bằng mật khẩu mới" — tránh người dùng hoang mang không biết bước tiếp theo là gì.
 8. **Đổi mật khẩu (`UC0005` → `SCR-AUTH-06`)`**: khác bước 7 ở chỗ người dùng **đang đăng nhập**, nên cần xác nhận lại mật khẩu hiện tại trước khi cho đổi — đây là bước xác thực lại danh tính (re-authentication) cho một thao tác nhạy cảm, phòng trường hợp ai đó dùng chung máy/thiết bị chưa đăng xuất.
-9. **Lịch sử đăng nhập (`UC0007` → `SCR-AUTH-07`)**: tính năng **tạo niềm tin** — với dữ liệu sức khoẻ, người dùng cần cảm thấy họ có thể tự kiểm tra "có ai khác đang vào tài khoản của tôi không" bất cứ lúc nào, không phải chờ liên hệ hỗ trợ.
+9. **Lịch sử đăng nhập (`UC0007` → `SCR-AUTH-07`)**: chỉ cung cấp cho nhân sự CMS tự kiểm tra tài khoản nội bộ. Bệnh nhân nhận cảnh báo bảo mật tại Trung tâm thông báo và được dẫn tới đổi mật khẩu khi có lần đăng nhập sai đáng ngờ; không có màn lịch sử đăng nhập riêng.
 10. **Phân quyền (`UC0006`)**: không phải một hành trình người dùng trải nghiệm trực tiếp — là quy tắc nền để các phân hệ khác biết "ai được thấy gì".
 11. **Kết thúc hành trình Auth**: ngay khi đăng nhập thành công, người dùng vào thẳng **Trang chủ** (`SCR-PT-00` cho bệnh nhân, `SCR-AD-00` cho nhân sự CMS) — nơi duy nhất để chọn chức năng tiếp theo, không còn menu cố định liệt kê sẵn mọi thứ. Đây là bàn giao sang `02-NguoiDung-BenhNhan/` hoặc `04-QuanTri-AdminCMS/`.
 
@@ -126,7 +126,7 @@ Link xác thực tài khoản có thể "sống" lâu hơn (người dùng có t
 ### 4.5 Những yêu cầu không được bỏ sót (góc nhìn `ba-bigtech-10yr`)
 
 - **Quyền riêng tư dữ liệu y tế**: tài khoản là cửa vào dữ liệu sức khoẻ cá nhân — thuộc nhóm dữ liệu cá nhân nhạy cảm theo Nghị định 13/2023/NĐ-CP. Mọi thông tin xác thực (mật khẩu, token) không bao giờ được hiển thị/ghi lại ở bất kỳ đâu ngoài đúng mục đích xác thực.
-- **Nhật ký kiểm tra (Audit)**: mọi lần đăng nhập — kể cả thất bại — cần được ghi nhận, vì đây là cơ sở để vừa phục vụ người dùng tự kiểm tra (`UC0007`), vừa phục vụ điều tra sự cố bảo mật về sau.
+- **Nhật ký kiểm tra (Audit)**: mọi lần đăng nhập — kể cả thất bại — vẫn cần được ghi nhận ở lớp hệ thống để phát cảnh báo bảo mật và phục vụ điều tra sự cố; việc bỏ màn xem của bệnh nhân không đồng nghĩa ngừng ghi nhật ký.
 - **Trải nghiệm ổn định dù hệ thống phụ tải cao**: đăng nhập là chức năng được gọi nhiều nhất — không được phép chậm hơn cảm nhận "tức thì" của người dùng, kể cả khi hệ thống đang xử lý nhiều yêu cầu AI nặng cùng lúc.
 - **Không để lộ thông tin qua sự khác biệt nhỏ**: tốc độ phản hồi, nội dung lỗi... giữa "email không tồn tại" và "email tồn tại nhưng sai mật khẩu" phải giống nhau, nếu không sẽ trở thành công cụ dò xem ai đang là người dùng của GastroAI.
 
@@ -139,10 +139,10 @@ Link xác thực tài khoản có thể "sống" lâu hơn (người dùng có t
 | Đăng ký/Đăng nhập/Quên mật khẩu | ✓ | — | ✓ (lối vào riêng, tách biệt khỏi cổng bệnh nhân) |
 | Xác thực email | ✓ | ✓ | N/A |
 | Đổi mật khẩu của chính mình | — | ✓ | ✓ |
-| Xem lịch sử đăng nhập của chính mình | — | ✓ | ✓ |
+| Xem lịch sử đăng nhập của chính mình | — | ✕ | ✓ |
 | Xem lịch sử đăng nhập của **người khác** | — | ✕ | ✕ (chỉ qua báo cáo kiểm tra hệ thống tổng hợp, `UC0052`) |
 
-**Nguyên tắc phạm vi dữ liệu**: không ai — kể cả Admin thao tác nhầm URL/tham số — có thể nhìn thấy lịch sử đăng nhập của người khác qua màn `UC0007`; đây là dữ liệu tuyệt đối riêng tư của từng cá nhân.
+**Nguyên tắc phạm vi dữ liệu**: màn `UC0007` chỉ dành cho nhân sự CMS xem lịch sử của chính mình. Không cung cấp endpoint hoặc màn hình để bệnh nhân xem lịch sử đăng nhập.
 
 ---
 
@@ -156,7 +156,7 @@ Link xác thực tài khoản có thể "sống" lâu hơn (người dùng có t
 | `UC0004` | `SCR-AUTH-04`, `SCR-AUTH-05` | Quên mật khẩu là 1 hành trình 2 bước |
 | `UC0005` | `SCR-AUTH-06` | |
 | `UC0006` | *(quy tắc nền, không có màn)* | UI gán vai trò → `UC0047` |
-| `UC0007` | `SCR-AUTH-07` | |
+| `UC0007` | `SCR-AUTH-07` | Chỉ áp dụng cho tài khoản CMS; đã bỏ khỏi giao diện Patient |
 | `UC0008` | `SCR-AUTH-03` | Biểu hiện như 1 trạng thái lỗi trên màn đăng nhập |
 
 ---
@@ -176,3 +176,4 @@ Link xác thực tài khoản có thể "sống" lâu hơn (người dùng có t
 | v2.0 | 2026-11-14 | Viết lại hoàn toàn theo trải nghiệm người dùng thực tế thay vì mô tả theo code |
 | v2.1 | 2026-11-17 | Bỏ vai trò "Bác sĩ" khỏi cổng CMS (xem lý do ở `04-QuanTri-AdminCMS/00-TongQuan.md`) — chỉ còn "Admin" ở ma trận phân quyền §5 | BA |
 | v2.2 | 2026-11-19 | Điểm đến sau đăng nhập đổi thành Trang chủ (`SCR-PT-00`/`SCR-AD-00`) thay vì "vào thẳng app" — đổi mật khẩu/đăng xuất/lịch sử đăng nhập giờ truy cập qua dropdown tài khoản trên header, không còn sidebar | BA |
+| v2.3 | 2026-11-20 | Bỏ chức năng xem lịch sử đăng nhập khỏi Patient; tiếp tục ghi log nội bộ và giữ màn lịch sử cho CMS | BA |

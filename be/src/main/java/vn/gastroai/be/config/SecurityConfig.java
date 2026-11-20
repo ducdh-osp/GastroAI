@@ -72,7 +72,6 @@ public class SecurityConfig {
                         // Patient endpoints must never accept a CMS HttpSession. MySQL CMS ids
                         // and PostgreSQL patient ids are independent sequences and may collide.
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").hasRole("PATIENT")
-                        .requestMatchers("/api/v1/me/**").hasRole("PATIENT")
                         .requestMatchers("/api/v1/patient/**").hasRole("PATIENT")
                         .requestMatchers("/api/v1/chat/**").hasRole("PATIENT")
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/**")
