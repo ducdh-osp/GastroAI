@@ -53,7 +53,7 @@ export default function FoodDiaryHistoryPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl">
+      <div className="w-full">
         <div className="mb-6">
           <Text type="secondary">Theo dõi sức khỏe</Text>
           <Title level={2} className="mb-1! mt-1!">Lịch sử ăn uống</Title>

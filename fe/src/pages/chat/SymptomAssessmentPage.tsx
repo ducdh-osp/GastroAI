@@ -253,7 +253,7 @@ export default function SymptomAssessmentPage() {
 
   return (
     <AppShell fixedViewport>
-      <div ref={containerRef} className="mx-auto flex h-full min-h-0 max-w-4xl flex-col overflow-y-auto overscroll-contain pr-1">
+      <div ref={containerRef} className="flex h-full min-h-0 w-full flex-col overflow-y-auto overscroll-contain pr-1">
         <div className="mb-6 flex shrink-0 items-center justify-between gap-4">
           <div>
             <Text type="secondary">Sàng lọc triệu chứng</Text>

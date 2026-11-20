@@ -131,7 +131,7 @@ export default function CmsTriageKeywordsPage() {
 
   return (
     <CmsAppShell>
-      <div className="mx-auto max-w-5xl">
+      <div className="w-full">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <Text type="secondary">Cấu hình</Text>

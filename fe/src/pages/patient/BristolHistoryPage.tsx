@@ -48,7 +48,7 @@ export default function BristolHistoryPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-5xl">
+      <div className="w-full">
         <div className="mb-6">
           <Text type="secondary">Theo dõi sức khỏe</Text>
           <Title level={2} className="mb-1! mt-1!">Xu hướng Bristol</Title>

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
-import { AppSidebar } from './AppSidebar'
+import { AppHeader } from './AppHeader'
 
-/** Khung chung cho các trang bệnh nhân sau khi đăng nhập: sidebar cố định + vùng nội dung. */
+/** Khung chung cho các trang bệnh nhân sau khi đăng nhập: header cố định + vùng nội dung.
+ * Không còn sidebar liệt kê sẵn mọi chức năng (xem 00-General/02-NguoiDung-BenhNhan/
+ * SCR-PT-00-TrangChu.md) — điều hướng giữa các chức năng đi qua Trang chủ (HomePage). */
 export function AppShell({
   children,
   fixedViewport = false,
@@ -12,8 +14,8 @@ export function AppShell({
   noPadding?: boolean
 }) {
   return (
-    <div className="flex h-svh overflow-hidden bg-[#f7faf9] dark:bg-[#0a0a0a]">
-      <AppSidebar />
+    <div className="flex h-svh flex-col overflow-hidden bg-[#f7faf9] dark:bg-[#0a0a0a]">
+      <AppHeader />
       <main
         className={`min-h-0 min-w-0 flex-1 ${noPadding ? '' : 'p-6 sm:p-8'} ${
           fixedViewport ? 'overflow-hidden' : 'overflow-y-auto overflow-x-auto overscroll-contain'

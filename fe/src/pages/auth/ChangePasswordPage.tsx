@@ -55,7 +55,7 @@ export default function ChangePasswordPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-md">
+      <div className="max-w-md">
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
           <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>

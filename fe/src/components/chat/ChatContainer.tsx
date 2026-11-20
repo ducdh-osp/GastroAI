@@ -2,7 +2,6 @@ import {
   FilePdfOutlined,
   FormOutlined,
   HeartOutlined,
-  HistoryOutlined,
   LoadingOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -13,7 +12,7 @@ import {
   SearchOutlined,
   WarningFilled,
 } from '@ant-design/icons'
-import { Alert, Button, Drawer, Input, Spin, Tooltip, Typography, message } from 'antd'
+import { Alert, Button, Input, Spin, Tooltip, Typography, message } from 'antd'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChatInput } from './ChatInput'
@@ -58,7 +57,6 @@ export function ChatContainer() {
   const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
   const [exportingSessionId, setExportingSessionId] = useState<number | null>(null)
   const [historyCollapsed, setHistoryCollapsed] = useState(false)
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   // ── Phiên chat hiện tại ──
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(resumeSessionId)
@@ -151,7 +149,6 @@ export function ChatContainer() {
 
   function handleSelectSession(session: ChatSessionSummary) {
     if (session.id === currentSessionId && messages.length > 0 && !networkError) {
-      setMobileDrawerOpen(false)
       return
     }
     abortControllerRef.current?.abort()
@@ -159,7 +156,6 @@ export function ChatContainer() {
     setCurrentSessionId(session.id)
     setActiveSessionTitle(session.title)
     setMessages([])
-    setMobileDrawerOpen(false)
     void loadSessionMessages(session.id)
   }
 
@@ -172,7 +168,6 @@ export function ChatContainer() {
     setActiveSessionTitle(null)
     setMessages([])
     setNetworkError(null)
-    setMobileDrawerOpen(false)
     if (resumeSessionId !== null || initialQuestion) {
       navigate('/chat', { replace: true, state: null })
     }
@@ -445,18 +440,6 @@ export function ChatContainer() {
         </aside>
       )}
 
-      {/* Ngăn kéo lịch sử cho màn hình nhỏ (< lg) */}
-      <Drawer
-        title="Lịch sử trò chuyện"
-        placement="left"
-        width={300}
-        open={mobileDrawerOpen}
-        onClose={() => setMobileDrawerOpen(false)}
-        styles={{ body: { padding: 0 } }}
-      >
-        {renderHistoryContent(false)}
-      </Drawer>
-
       {/* Vùng tư vấn AI chính bên phải */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#f7faf9] dark:bg-[#0a0a0a]">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 dark:border-white/10 dark:bg-neutral-900">
@@ -472,13 +455,6 @@ export function ChatContainer() {
                 />
               </Tooltip>
             )}
-            <Button
-              type="text"
-              icon={<HistoryOutlined />}
-              aria-label="Mở lịch sử trò chuyện"
-              className="lg:hidden"
-              onClick={() => setMobileDrawerOpen(true)}
-            />
             <span
               className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-base text-white shadow-sm shadow-teal-700/20"
               aria-hidden="true"

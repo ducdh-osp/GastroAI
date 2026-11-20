@@ -14,7 +14,6 @@ import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
 import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
 import FoodSensitivityProfilePage from '../pages/patient/FoodSensitivityProfilePage'
-import FoodVisionPage from '../pages/patient/FoodVisionPage'
 import AdherencePage from '../pages/patient/AdherencePage'
 import BristolPage from '../pages/patient/BristolPage'
 import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
@@ -144,14 +143,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FoodSensitivityProfilePage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: '/food-vision',
-        element: (
-          <ProtectedRoute>
-            <FoodVisionPage />
           </ProtectedRoute>
         ),
       },

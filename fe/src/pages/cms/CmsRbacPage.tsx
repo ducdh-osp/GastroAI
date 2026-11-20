@@ -110,7 +110,7 @@ export default function CmsRbacPage() {
     { title: 'Ngày tạo', dataIndex: 'createdAt', key: 'createdAt', render: formatDateTime },
   ]
 
-  return <CmsAppShell><div className="mx-auto max-w-6xl">
+  return <CmsAppShell><div className="w-full">
     <div className="mb-6"><Text type="secondary">Người dùng</Text><Title level={2} className="mb-1! mt-1!"><SafetyCertificateOutlined className="mr-2" />Phân quyền RBAC</Title><Text type="secondary">Tài khoản Admin có thể mang vai trò Admin hoặc Biên tập nội dung; tài khoản Bác sĩ luôn giữ vai trò Bác sĩ. Thay đổi có hiệu lực ngay ở request kế tiếp.</Text></div>
     {error && <Alert type="error" message={error} showIcon className="mb-4" closable onClose={() => setError(null)} />}
     <Card className="rounded-2xl border-black/5 shadow-sm">

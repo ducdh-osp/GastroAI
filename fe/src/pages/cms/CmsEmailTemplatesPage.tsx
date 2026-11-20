@@ -123,7 +123,7 @@ export default function CmsEmailTemplatesPage() {
 
   return (
     <CmsAppShell>
-      <div className="mx-auto max-w-5xl">
+      <div className="w-full">
         <div className="mb-6">
           <Text type="secondary">Cấu hình</Text>
           <Title level={2} className="mb-1! mt-1!">

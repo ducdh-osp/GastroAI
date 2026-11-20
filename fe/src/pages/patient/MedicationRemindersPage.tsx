@@ -289,7 +289,7 @@ export default function MedicationRemindersPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl">
+      <div className="w-full">
         <div className="mb-6">
           <div className="min-w-0">
             <Text type="secondary">Theo dõi sức khỏe</Text>

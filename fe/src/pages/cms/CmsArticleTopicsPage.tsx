@@ -239,7 +239,7 @@ export default function CmsArticleTopicsPage() {
 
   return (
     <CmsAppShell>
-      <div className="mx-auto max-w-4xl">
+      <div className="w-full">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <Text type="secondary">Kho tri thức</Text>

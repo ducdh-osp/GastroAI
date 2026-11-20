@@ -798,7 +798,7 @@ export default function CmsCatalogsPage() {
 
   return (
     <CmsAppShell>
-      <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="w-full px-4 py-6">
         {/* Header section */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>

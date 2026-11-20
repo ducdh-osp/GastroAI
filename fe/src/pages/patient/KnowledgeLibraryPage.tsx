@@ -137,7 +137,7 @@ function ArticleDetail({ slug }: { slug: string }) {
   }, [slug])
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="max-w-4xl">
       <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/articles')} className="mb-4 px-0 text-teal-700">
         Quay lại thư viện
       </Button>
@@ -233,7 +233,7 @@ export default function KnowledgeLibraryPage() {
   return (
     <AppShell>
       {slug ? <ArticleDetail slug={slug} /> : (
-        <div className="mx-auto max-w-6xl">
+        <div className="w-full">
           <div className="mb-6">
             <Text type="secondary">Góc kiến thức tiêu hoá</Text>
             <Title level={2} className="mb-1! mt-1!">Thư viện bài viết</Title>

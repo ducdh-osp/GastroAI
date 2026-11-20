@@ -1,0 +1,21 @@
+# File MẪU - copy thành "application-local.yml" (cùng thư mục be/, KHÔNG đổi tên khác) rồi
+# điền giá trị THẬT của riêng bạn vào. "application-local.yml" đã nằm trong be/.gitignore -
+# đừng bao giờ `git add -f` nó, kể cả vô tình (xem issue #94 - đúng lỗi này đã làm lộ secret
+# thật của 1 thành viên lên repo public). Chỉ file .example này (toàn giá trị giả) được commit.
+spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-gmail@gmail.com
+    password: "your-16-char-gmail-app-password"
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.ssl.enable: false
+
+app:
+  mail:
+    from: your-gmail@gmail.com
+  gemini:
+    # Lấy free tại https://aistudio.google.com -> icon chìa khóa -> Create API key
+    api-key: "AIzaSy-your-real-gemini-api-key-here"

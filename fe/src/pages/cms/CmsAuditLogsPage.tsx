@@ -289,7 +289,7 @@ export default function CmsAuditLogsPage() {
     },
   ]
 
-  return <CmsAppShell><div className="mx-auto max-w-7xl">
+  return <CmsAppShell><div className="w-full">
     <div className="mb-6">
       <Text type="secondary">Hệ thống</Text>
       <Title level={2} className="mb-1! mt-1!"><AuditOutlined className="mr-2" />Nhật ký hoạt động</Title>

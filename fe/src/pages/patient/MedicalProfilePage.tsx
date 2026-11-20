@@ -167,7 +167,7 @@ export default function MedicalProfilePage() {
 
   return (
     <AppShell fixedViewport>
-      <div className="mx-auto h-full max-w-4xl overflow-y-auto overscroll-contain pr-2">
+      <div className="h-full w-full overflow-y-auto overscroll-contain pr-2">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <Text type="secondary">Thông tin sức khỏe</Text>

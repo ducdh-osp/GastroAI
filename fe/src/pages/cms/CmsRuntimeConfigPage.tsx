@@ -62,7 +62,7 @@ export default function CmsRuntimeConfigPage() {
 
   return (
     <CmsAppShell>
-      <div className="mx-auto max-w-2xl">
+      <div className="max-w-2xl">
         <div className="mb-6">
           <Text type="secondary">Cấu hình</Text>
           <Title level={2} className="mb-1! mt-1!">

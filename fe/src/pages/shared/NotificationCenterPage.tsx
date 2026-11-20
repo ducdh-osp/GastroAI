@@ -195,7 +195,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
       ]
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="w-full">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">

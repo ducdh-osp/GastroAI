@@ -57,7 +57,7 @@ export default function CmsChangePasswordPage() {
 
   return (
     <CmsAppShell>
-      <div className="mx-auto max-w-md">
+      <div className="max-w-md">
         <div className="mb-6">
           <Text type="secondary">Bảo mật tài khoản</Text>
           <Title level={2} className="mb-1! mt-1!">

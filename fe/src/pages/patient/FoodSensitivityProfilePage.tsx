@@ -7,6 +7,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer,
 import { getFoodSensitivityProfile } from '../../api/foodSensitivity'
 import type { FoodCorrelationItem, FoodSensitivityProfileResponse } from '../../api/foodSensitivity'
 import { AppShell } from '../../components/layout/AppShell'
+import { foodSensitivityColor } from '../../lib/foodSensitivityColor'
 
 const { Title, Text } = Typography
 
@@ -16,16 +17,7 @@ const DAYS_OPTIONS = [
   { value: 180, label: '180 ngày qua' },
 ]
 
-/** Cao hơn tỷ lệ nền bao nhiêu điểm % thì coi là "đáng chú ý" - chỉ để tô màu gợi ý, không
- * phải ngưỡng thống kê chặt chẽ (UC0022 là phân tích đơn giản, không phải chẩn đoán). */
-const NOTABLE_GAP_POINTS = 20
-
-function colorFor(item: FoodCorrelationItem, baseline: number): string {
-  const gap = item.correlationPercent - baseline
-  if (gap >= NOTABLE_GAP_POINTS) return '#cf1322' // đỏ - cao hơn hẳn mức nền
-  if (gap > 0) return '#d48806' // vàng cam - hơi cao hơn mức nền
-  return '#8c8c8c' // xám - không cao hơn mức nền
-}
+const colorFor = foodSensitivityColor
 
 export default function FoodSensitivityProfilePage() {
   const [days, setDays] = useState(90)
@@ -68,7 +60,7 @@ export default function FoodSensitivityProfilePage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl">
+      <div className="w-full">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <Text type="secondary">Theo dõi sức khỏe</Text>
@@ -129,11 +121,11 @@ export default function FoodSensitivityProfilePage() {
                   <BarChart
                     data={profile.topCorrelations}
                     layout="vertical"
-                    margin={{ top: 8, right: 24, left: 0, bottom: 0 }}
+                    margin={{ top: 24, right: 24, left: 0, bottom: 0 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="foodKeyword" width={110} tick={{ fontSize: 12 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                    <YAxis type="category" dataKey="foodKeyword" width={110} tick={{ fontSize: 12 }} stroke="#94a3b8" />
                     <Tooltip
                       formatter={(value, _name, item) => {
                         const percent = typeof value === 'number' ? value : Number(value)
@@ -144,9 +136,16 @@ export default function FoodSensitivityProfilePage() {
                     />
                     <ReferenceLine
                       x={profile.baselineSymptomRatePercent}
-                      stroke="#595959"
+                      stroke="#e2e8f0"
+                      strokeWidth={1.5}
                       strokeDasharray="4 4"
-                      label={{ value: 'Mức nền', position: 'insideTopRight', fontSize: 11, fill: '#595959' }}
+                      label={{
+                        value: 'Mức nền',
+                        position: 'top',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fill: '#f8fafc',
+                      }}
                     />
                     <Bar dataKey="correlationPercent" radius={[0, 4, 4, 0]}>
                       {profile.topCorrelations.map((item) => (

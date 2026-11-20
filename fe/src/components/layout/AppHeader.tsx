@@ -1,103 +1,42 @@
 import {
-  BarChartOutlined,
-  BellOutlined,
   BulbFilled,
   BulbOutlined,
-  CoffeeOutlined,
-  CommentOutlined,
-  CustomerServiceOutlined,
+  CheckCircleOutlined,
   DownOutlined,
-  ExperimentOutlined,
-  FileSearchOutlined,
-  FileTextOutlined,
-  FireOutlined,
   HistoryOutlined,
   HomeOutlined,
-  CheckCircleOutlined,
   KeyOutlined,
-  LineChartOutlined,
   LogoutOutlined,
   MedicineBoxOutlined,
-  QuestionCircleOutlined,
-  ScanOutlined,
 } from '@ant-design/icons'
-import { Badge, Button, Dropdown, message, notification, Switch } from 'antd'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Button, Dropdown, message, notification, Switch } from 'antd'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../stores/authStore'
 import { useTheme } from '../../stores/themeStore'
 import { Logo } from '../brand/Logo'
+import { NotificationBell } from './NotificationBell'
+import { PATIENT_NAV_GROUPS } from './patientNav'
 import { getUnreadNotificationCount, markNotificationRead } from '../../api/notifications'
 import { checkDueMedications, confirmMedicationDose } from '../../api/medication'
-import { listTriageConversations } from '../../api/patientTriageAlerts'
 import { useNotificationSocket } from '../../hooks/useNotificationSocket'
 
-const NAV_ITEMS = [
-  { key: 'notifications', label: 'Thông báo', icon: <BellOutlined />, to: '/notifications' },
-  { key: 'home', label: 'Trang chủ', icon: <HomeOutlined />, to: '/' },
-  { key: 'chat', label: 'Tư vấn sức khỏe', icon: <CommentOutlined />, to: '/chat' },
-  { key: 'articles', label: 'Bài viết tiêu hoá', icon: <FileSearchOutlined />, to: '/articles' },
-  { key: 'faq', label: 'Hỏi đáp thường gặp', icon: <QuestionCircleOutlined />, to: '/faq' },
-  { key: 'medical-profile', label: 'Hồ sơ bệnh lý', icon: <FileTextOutlined />, to: '/medical-profile' },
-  { key: 'food-diary', label: 'Nhật ký ăn uống', icon: <CoffeeOutlined />, to: '/food-diary' },
-  { key: 'food-diary-history', label: 'Lịch sử ăn uống', icon: <BarChartOutlined />, to: '/food-diary-history' },
-  { key: 'food-sensitivity', label: 'Nhạy cảm thực phẩm', icon: <BulbOutlined />, to: '/food-sensitivity' },
-  { key: 'food-vision', label: 'Nhận diện món ăn', icon: <ScanOutlined />, to: '/food-vision' },
-  { key: 'adherence', label: 'Streak & tuân thủ', icon: <FireOutlined />, to: '/adherence' },
-  { key: 'bristol', label: 'Nhật ký Bristol', icon: <ExperimentOutlined />, to: '/bristol' },
-  { key: 'bristol-history', label: 'Xu hướng Bristol', icon: <LineChartOutlined />, to: '/bristol-history' },
-  { key: 'medications', label: 'Nhắc uống thuốc', icon: <MedicineBoxOutlined />, to: '/medications' },
-  { key: 'login-history', label: 'Lịch sử đăng nhập', icon: <HistoryOutlined />, to: '/login-history' },
-]
-
-const TRIAGE_NAV_ITEM = {
-  key: 'triage-alerts', label: 'Cảnh báo & hỗ trợ', icon: <CustomerServiceOutlined />, to: '/triage-alerts',
+// So khớp "đường dẫn hiện tại thuộc mục nav nào" — phải so bằng hoặc có dấu "/" ngay sau, vì
+// startsWith đơn thuần sẽ nhận nhầm "/food-diary-history" thuộc về mục "/food-diary".
+function isActivePath(pathname: string, to: string): boolean {
+  return pathname === to || pathname.startsWith(`${to}/`)
 }
 
-
-/** Sidebar cố định cho các trang bệnh nhân sau khi đăng nhập — cùng cấu trúc với CmsSidebar
- * (bên admin) và cùng nền tối, nhưng dùng tông xanh ngọc đậm (#0f2926) thay vì slate để 2
- * cổng vẫn phân biệt được bằng mắt dù cùng kiểu "dashboard tối". */
-export function AppSidebar() {
+/** Header cố định cho mọi trang bệnh nhân sau đăng nhập — thay cho AppSidebar cũ (xem
+ * 00-General/02-NguoiDung-BenhNhan/SCR-PT-00-TrangChu.md). Điều hướng giữa các chức năng giờ
+ * đi qua Trang chủ (HomePage), không còn menu liệt kê sẵn ở đây — header chỉ giữ thương hiệu
+ * (bấm về Trang chủ), thông báo và tài khoản. */
+export function AppHeader() {
   const { email, fullName, logout, token } = useAuth()
   const { mode, toggle: toggleTheme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
   const [unreadCount, setUnreadCount] = useState(0)
-  const [triageSummary, setTriageSummary] = useState({ count: 0, unread: 0 })
-
-  const refreshTriageSummary = useCallback(() => {
-    if (!token) return
-    void listTriageConversations()
-      .then((items) => setTriageSummary({
-        count: items.length,
-        unread: items.reduce((total, item) => total + item.unreadCount, 0),
-      }))
-      .catch(() => {})
-  }, [token])
-
-  useEffect(() => {
-    refreshTriageSummary()
-    window.addEventListener('gastroai:notification', refreshTriageSummary)
-    window.addEventListener('gastroai:notification-state', refreshTriageSummary)
-    return () => {
-      window.removeEventListener('gastroai:notification', refreshTriageSummary)
-      window.removeEventListener('gastroai:notification-state', refreshTriageSummary)
-    }
-  }, [refreshTriageSummary])
-
-  // Rời trang trao đổi -> cập nhật lại số tin chưa đọc.
-  const previousPathname = useRef(location.pathname)
-  useEffect(() => {
-    if (previousPathname.current.startsWith('/triage-alerts/') && previousPathname.current !== location.pathname) {
-      refreshTriageSummary()
-    }
-    previousPathname.current = location.pathname
-  }, [location.pathname, refreshTriageSummary])
-
-  const navItems = triageSummary.count > 0
-    ? [NAV_ITEMS[0], TRIAGE_NAV_ITEM, ...NAV_ITEMS.slice(1)]
-    : NAV_ITEMS
 
   useEffect(() => {
     const refreshUnreadCount = () => {
@@ -218,52 +157,95 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="flex h-svh w-64 shrink-0 flex-col justify-between border-r border-white/10 bg-[#0f2926] text-white">
-      <div>
-        <div className="p-5">
-          <Logo variant="light" />
-        </div>
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-white/10 bg-[#0f2926] px-4 text-white sm:px-6">
+      <span className="flex shrink-0 items-center">
+        <Logo variant="light" />
+      </span>
 
-        <nav className="mt-2 space-y-0.5 px-3">
-          {navItems.map((item) => {
-            const active = item.key === TRIAGE_NAV_ITEM.key
-              ? location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
-              : item.to === location.pathname
-            return (
-              <Link
-                key={item.key}
-                to={item.to}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  active ? 'bg-teal-500/15 text-teal-300' : 'text-white/80 hover:bg-white/5'
+      <nav className="hidden min-w-0 flex-1 items-center gap-1 md:flex">
+        <Link
+          to="/"
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+            location.pathname === '/' ? 'bg-white/10 text-white' : 'text-white/75 hover:bg-white/5 hover:text-white'
+          }`}
+        >
+          <HomeOutlined />
+          Trang chủ
+        </Link>
+
+        {PATIENT_NAV_GROUPS.map((group) => {
+          const active = group.items.some((item) => isActivePath(location.pathname, item.to))
+          return (
+            <Dropdown
+              key={group.key}
+              trigger={['hover', 'click']}
+              menu={{
+                items: group.items.map((item) => ({
+                  key: item.to,
+                  icon: <item.icon />,
+                  label: item.title,
+                  onClick: () => navigate(item.to),
+                })),
+              }}
+            >
+              <button
+                type="button"
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                  active ? 'bg-white/10 text-white' : 'text-white/75 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                {item.icon}
-                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                  {item.label}
-                  {item.key === 'notifications' && unreadCount > 0 && (
-                    <Badge count={unreadCount} overflowCount={99} size="small" />
-                  )}
-                  {item.key === TRIAGE_NAV_ITEM.key && triageSummary.unread > 0 && (
-                    <Badge count={triageSummary.unread} overflowCount={99} size="small" />
-                  )}
-                </span>
-              </Link>
-            )
-          })}
-        </nav>
+                {group.title}
+                <DownOutlined className="text-[0.6rem]" />
+              </button>
+            </Dropdown>
+          )
+        })}
+      </nav>
+
+      {/* Menu rút gọn cho màn hình nhỏ — cùng 5 mục, gộp vào 1 dropdown duy nhất thay vì ẩn hẳn. */}
+      <div className="flex-1 md:hidden">
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: [
+              { key: '/', icon: <HomeOutlined />, label: <Link to="/">Trang chủ</Link> },
+              ...PATIENT_NAV_GROUPS.map((group) => ({
+                key: group.key,
+                label: group.title,
+                children: group.items.map((item) => ({
+                  key: item.to,
+                  icon: <item.icon />,
+                  label: item.title,
+                  onClick: () => navigate(item.to),
+                })),
+              })),
+            ],
+          }}
+        >
+          <button type="button" className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white/80 hover:bg-white/10">
+            Chức năng
+            <DownOutlined className="text-[0.6rem]" />
+          </button>
+        </Dropdown>
       </div>
 
-      <div className="border-t border-white/10 p-3">
-        <div className="mb-1 flex items-center justify-between gap-2.5 rounded-lg px-2 py-2 text-sm text-white/80">
-          <span className="flex items-center gap-2.5">
-            {mode === 'dark' ? <BulbFilled /> : <BulbOutlined />}
-            Chế độ tối
-          </span>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="hidden items-center gap-2 sm:flex">
+          {mode === 'dark' ? <BulbFilled className="text-white/70" /> : <BulbOutlined className="text-white/70" />}
           <Switch size="small" checked={mode === 'dark'} onChange={toggleTheme} />
         </div>
+
+        <NotificationBell
+          audience="patient"
+          unreadCount={unreadCount}
+          onUnreadChange={setUnreadCount}
+          allUrl="/notifications"
+        />
+
         <Dropdown
           menu={{
             items: [
+              { key: 'login-history', icon: <HistoryOutlined />, label: 'Lịch sử đăng nhập', onClick: () => navigate('/login-history') },
               { key: 'change-password', icon: <KeyOutlined />, label: 'Đổi mật khẩu', onClick: () => navigate('/change-password') },
               { type: 'divider' },
               { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true, onClick: handleLogout },
@@ -271,17 +253,17 @@ export function AppSidebar() {
           }}
           trigger={['click']}
         >
-          <button className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-white/5">
+          <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/10">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-500/20 text-sm font-semibold text-teal-300">
               {(fullName ?? email ?? '?').charAt(0).toUpperCase()}
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-white">{fullName ?? email}</span>
+            <span className="hidden max-w-[10rem] truncate text-sm font-medium text-white sm:block">
+              {fullName ?? email}
             </span>
             <DownOutlined className="text-xs text-white/40" />
           </button>
         </Dropdown>
       </div>
-    </aside>
+    </header>
   )
 }

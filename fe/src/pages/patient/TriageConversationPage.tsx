@@ -57,7 +57,7 @@ export default function TriageConversationPage() {
 
   useEffect(() => { load(false) }, [load])
 
-  // Thông báo realtime (AppSidebar phát 'gastroai:notification') -> tải lại tin mới.
+  // Thông báo realtime (AppHeader phát 'gastroai:notification') -> tải lại tin mới.
   useEffect(() => {
     const refresh = () => load(true)
     window.addEventListener('gastroai:notification', refresh)

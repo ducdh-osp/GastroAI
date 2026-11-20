@@ -120,7 +120,7 @@ export default function ChatHistoryPage() {
 
   return (
     <AppShell fixedViewport>
-      <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col">
+      <div className="flex h-full min-h-0 w-full flex-col">
         <div className="mb-6 shrink-0">
           <Text type="secondary">Lịch sử tư vấn</Text>
           <Title level={2} className="mb-1! mt-1!">

@@ -143,7 +143,7 @@ export default function BristolPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl">
+      <div className="w-full">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <Text type="secondary">Theo dõi sức khỏe</Text>

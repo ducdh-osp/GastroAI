@@ -147,7 +147,7 @@ export default function CmsArticleEditorPage() {
 
   return (
     <CmsAppShell>
-      <div className="mx-auto max-w-5xl">
+      <div className="w-full">
         <div className="mb-4 flex items-center justify-between">
           <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/cms/articles')}>
             Quay lại danh sách bài viết
