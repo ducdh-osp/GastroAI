@@ -6,6 +6,11 @@ import { FoodDiaryTrendChart } from './FoodDiaryTrendChart'
 
 const { Text, Title } = Typography
 
+const METRIC_CARD_CLASS =
+  'h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.1)] dark:border-white/10 dark:bg-slate-900/80'
+const CONTENT_CARD_CLASS =
+  'overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.07)] [&_.ant-card-head]:border-slate-100 [&_.ant-card-head]:bg-slate-50/80 [&_.ant-card-head-title]:py-4 dark:border-white/10 dark:bg-slate-900/80 dark:[&_.ant-card-head]:border-white/10 dark:[&_.ant-card-head]:bg-white/[0.03]'
+
 interface FoodDiaryTrendTabProps {
   days: 7 | 30 | 90
   onDaysChange: (days: 7 | 30 | 90) => void
@@ -41,7 +46,7 @@ export function FoodDiaryTrendTab({ days, onDaysChange, onDaySelect }: FoodDiary
   const averagePerRecordedDay = recordedDays === 0 ? 0 : totalMeals / recordedDays
 
   return (
-    <div className="space-y-4">
+    <div className="grid gap-6 pb-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Title level={4} className="mb-1!">Xu hướng ghi nhận bữa ăn</Title>
@@ -61,39 +66,41 @@ export function FoodDiaryTrendTab({ days, onDaysChange, onDaySelect }: FoodDiary
       {error && <Alert type="error" message={error} showIcon />}
 
       <Spin spinning={loading}>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={8}>
-            <Card className="h-full rounded-2xl border-black/5 shadow-sm">
-              <Statistic title={`Tổng bữa trong ${days} ngày`} value={totalMeals} suffix="bữa" />
-            </Card>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Card className="h-full rounded-2xl border-black/5 shadow-sm">
-              <Statistic title="Số ngày có ghi nhật ký" value={recordedDays} suffix={`/ ${days}`} />
-            </Card>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Card className="h-full rounded-2xl border-black/5 shadow-sm">
-              <Statistic
-                title="Trung bình mỗi ngày có ghi"
-                value={averagePerRecordedDay}
-                precision={1}
-                suffix="bữa"
-              />
-            </Card>
-          </Col>
-        </Row>
+        <div className="grid gap-6">
+          <Row gutter={[24, 24]}>
+            <Col xs={24} sm={8}>
+              <Card className={METRIC_CARD_CLASS}>
+                <Statistic title={`Tổng bữa trong ${days} ngày`} value={totalMeals} suffix="bữa" />
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card className={METRIC_CARD_CLASS}>
+                <Statistic title="Số ngày có ghi nhật ký" value={recordedDays} suffix={`/ ${days}`} />
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card className={METRIC_CARD_CLASS}>
+                <Statistic
+                  title="Trung bình mỗi ngày có ghi"
+                  value={averagePerRecordedDay}
+                  precision={1}
+                  suffix="bữa"
+                />
+              </Card>
+            </Col>
+          </Row>
 
-        <Card
-          className="mt-4 rounded-2xl border-black/5 shadow-sm"
-          title={`Số bữa ăn trong ${days} ngày gần nhất`}
-        >
-          {!loading && totalMeals === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có dữ liệu trong khoảng thời gian này" />
-          ) : (
-            <FoodDiaryTrendChart points={points} onDaySelect={onDaySelect} />
-          )}
-        </Card>
+          <Card
+            className={CONTENT_CARD_CLASS}
+            title={`Số bữa ăn trong ${days} ngày gần nhất`}
+          >
+            {!loading && totalMeals === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có dữ liệu trong khoảng thời gian này" />
+            ) : (
+              <FoodDiaryTrendChart points={points} onDaySelect={onDaySelect} />
+            )}
+          </Card>
+        </div>
       </Spin>
     </div>
   )
