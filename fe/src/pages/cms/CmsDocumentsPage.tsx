@@ -33,11 +33,11 @@ import {
   Modal,
   Popconfirm,
   Row,
+  Segmented,
   Select,
   Space,
   Statistic,
   Table,
-  Tabs,
   Tag,
   Tooltip,
   Typography,
@@ -148,6 +148,19 @@ export default function CmsDocumentsPage() {
   const [historyItem, setHistoryItem] = useState<CmsDocumentItem | null>(null)
   // SCR-AD-04 §3.1b - phiên bản đang mở trong ngăn kéo "Xem & xác nhận nội dung".
   const [reviewId, setReviewId] = useState<number | null>(null)
+  // Từ khoá khi mở ngăn kéo từ ô "Tìm theo nội dung" - để ngăn kéo tô vàng và lọc các đoạn khớp.
+  const [reviewQuery, setReviewQuery] = useState<string | null>(null)
+  // Đoạn vừa bấm trong kết quả tìm - ngăn kéo cuộn thẳng tới đó.
+  const [reviewChunkIndex, setReviewChunkIndex] = useState<number | null>(null)
+
+  function openReview(documentId: number, query: string | null = null, chunkIndex: number | null = null) {
+    setReviewId(documentId)
+    setReviewQuery(query)
+    setReviewChunkIndex(chunkIndex)
+  }
+  // UC0055 - 2 kiểu tìm chung 1 chỗ (BA: cùng 1 màn): theo tên/nguồn lọc ngay trên bảng, theo nội dung
+  // thì thay bảng bằng danh sách tài liệu có từ khoá.
+  const [searchMode, setSearchMode] = useState<'name' | 'content'>('name')
   const [versions, setVersions] = useState<CmsDocumentVersion[]>([])
   const [versionsLoading, setVersionsLoading] = useState(false)
 
@@ -527,7 +540,7 @@ export default function CmsDocumentsPage() {
         { key: 'delete', icon: <DeleteOutlined />, label: 'Xóa tài liệu', danger: true },
       ],
       onClick: ({ key }: { key: string }) => {
-        if (key === 'review') setReviewId(record.id)
+        if (key === 'review') openReview(record.id)
         if (key === 'retry') void handleRetry(record)
         if (key === 'version') openUploadVersion(record)
         if (key === 'history') void openHistory(record)
@@ -537,6 +550,17 @@ export default function CmsDocumentsPage() {
       },
     }
   }
+
+  const searchModeSwitch = (
+    <Segmented
+      value={searchMode}
+      onChange={(value) => setSearchMode(value as 'name' | 'content')}
+      options={[
+        { label: 'Tên / nguồn', value: 'name' },
+        { label: 'Nội dung', value: 'content' },
+      ]}
+    />
+  )
 
   const columns: ColumnsType<CmsDocumentItem> = [
     {
@@ -627,140 +651,137 @@ export default function CmsDocumentsPage() {
           </div>
         </div>
 
-        <Tabs
-          defaultActiveKey="list"
-          items={[
-            {
-              key: 'list',
-              label: 'Danh sách tài liệu',
-              children: (
-                <div className="space-y-6">
-                  {/* KPI Stats */}
-                  <Row gutter={[16, 16]}>
-                    <Col xs={12} sm={6}>
-                      <Card className="rounded-xl shadow-xs">
-                        <Statistic title="Tổng số tài liệu" value={stats.total} />
-                      </Card>
-                    </Col>
-                    <Col xs={12} sm={6}>
-                      <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20 dark:border-green-900 dark:bg-green-900/20">
-                        <Statistic
-                          title="Sẵn sàng cho RAG"
-                          value={stats.ready}
-                          styles={{ content: { color: '#16a34a' } }}
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={12} sm={6}>
-                      <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20 dark:border-blue-900 dark:bg-blue-900/20">
-                        <Statistic
-                          title="Đang trong tiến trình"
-                          value={stats.processing}
-                          styles={{ content: { color: '#2563eb' } }}
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={12} sm={6}>
-                      <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20 dark:border-red-900 dark:bg-red-900/20">
-                        <Statistic
-                          title="Lỗi cần xử lý lại"
-                          value={stats.error}
-                          styles={{ content: { color: '#dc2626' } }}
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
+        <div className="space-y-6">
+          {/* KPI Stats */}
+          <Row gutter={[16, 16]}>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-xl shadow-xs">
+                <Statistic title="Tổng số tài liệu" value={stats.total} />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20 dark:border-green-900 dark:bg-green-900/20">
+                <Statistic
+                  title="Sẵn sàng cho RAG"
+                  value={stats.ready}
+                  styles={{ content: { color: '#16a34a' } }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20 dark:border-blue-900 dark:bg-blue-900/20">
+                <Statistic
+                  title="Đang trong tiến trình"
+                  value={stats.processing}
+                  styles={{ content: { color: '#2563eb' } }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={6}>
+              <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20 dark:border-red-900 dark:bg-red-900/20">
+                <Statistic
+                  title="Lỗi cần xử lý lại"
+                  value={stats.error}
+                  styles={{ content: { color: '#dc2626' } }}
+                />
+              </Card>
+            </Col>
+          </Row>
 
-                  {/* Filter bar */}
-                  <Card styles={{ body: { padding: 16 } }}>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Input
-                        placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
-                        prefix={<SearchOutlined className="text-slate-400 dark:text-white" />}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        allowClear
-                        style={{ flex: 1, minWidth: 240 }}
-                      />
-                      <Select
-                        placeholder="Tất cả trạng thái"
-                        value={selectedStatus}
-                        onChange={setSelectedStatus}
-                        allowClear
-                        style={{ width: 180 }}
-                        options={[
-                          { label: 'Sẵn sàng (RAG)', value: 'DONE' },
-                          { label: 'Đang xử lý', value: 'PROCESSING' },
-                          { label: 'Chờ xử lý', value: 'PENDING' },
-                          { label: 'Lỗi', value: 'ERROR' },
-                        ]}
-                      />
-                      <DatePicker.RangePicker
-                        format="DD/MM/YYYY"
-                        placeholder={['Cập nhật từ ngày', 'Đến ngày']}
-                        value={updatedRange}
-                        onChange={(range) => {
-                          setUpdatedRange(range && range[0] && range[1] ? [range[0], range[1]] : null)
-                          setPage(0)
-                        }}
-                        disabledDate={(date) => date.isAfter(dayjs(), 'day')}
-                      />
-                      {(search || selectedStatus !== undefined || updatedRange) && (
-                        <Button
-                          type="link"
-                          onClick={() => {
-                            setSearch('')
-                            setSelectedStatus(undefined)
-                            setUpdatedRange(null)
-                          }}
-                        >
-                          Đặt lại bộ lọc
-                        </Button>
-                      )}
-                    </div>
-                  </Card>
-
-                  {/* Table */}
-                  <Card styles={{ body: { padding: 0 } }}>
-                    <Table
-                      rowKey="id"
-                      columns={columns}
-                      dataSource={items}
-                      loading={loading}
-                      pagination={{
-                        current: page + 1,
-                        pageSize: PAGE_SIZE,
-                        total,
-                        showSizeChanger: false,
-                        showTotal: (totalCount) => `Tổng cộng ${totalCount} tài liệu`,
-                        onChange: (p) => setPage(p - 1),
+          {searchMode === 'content' ? (
+            <DocumentContentSearch modeSwitch={searchModeSwitch} onOpenDocument={openReview} />
+          ) : (
+            <>
+              {/* Filter bar */}
+              <Card styles={{ body: { padding: 16 } }}>
+                <div className="flex flex-wrap items-center gap-3">
+                  {searchModeSwitch}
+                  <Input
+                    placeholder="Tìm kiếm tài liệu hoặc URL nguồn..."
+                    prefix={<SearchOutlined className="text-slate-400 dark:text-white" />}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    allowClear
+                    style={{ flex: 1, minWidth: 240 }}
+                  />
+                  <Select
+                    placeholder="Tất cả trạng thái"
+                    value={selectedStatus}
+                    onChange={setSelectedStatus}
+                    allowClear
+                    style={{ width: 180 }}
+                    options={[
+                      { label: 'Sẵn sàng (RAG)', value: 'DONE' },
+                      { label: 'Đang xử lý', value: 'PROCESSING' },
+                      { label: 'Chờ xử lý', value: 'PENDING' },
+                      { label: 'Lỗi', value: 'ERROR' },
+                    ]}
+                  />
+                  <DatePicker.RangePicker
+                    format="DD/MM/YYYY"
+                    placeholder={['Cập nhật từ ngày', 'Đến ngày']}
+                    value={updatedRange}
+                    onChange={(range) => {
+                      setUpdatedRange(range && range[0] && range[1] ? [range[0], range[1]] : null)
+                      setPage(0)
+                    }}
+                    disabledDate={(date) => date.isAfter(dayjs(), 'day')}
+                  />
+                  {(search || selectedStatus !== undefined || updatedRange) && (
+                    <Button
+                      type="link"
+                      onClick={() => {
+                        setSearch('')
+                        setSelectedStatus(undefined)
+                        setUpdatedRange(null)
                       }}
-                      locale={{
-                        emptyText: (
-                          <Empty
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            description="Chưa có tài liệu y khoa nào được tải lên"
-                          />
-                        ),
-                      }}
-                    />
-                  </Card>
+                    >
+                      Đặt lại bộ lọc
+                    </Button>
+                  )}
                 </div>
-              ),
-            },
-            {
-              key: 'search',
-              label: 'Tìm kiếm nội dung tài liệu',
-              children: <DocumentContentSearch />,
-            },
-          ]}
-        />
+              </Card>
+
+              {/* Table */}
+              <Card styles={{ body: { padding: 0 } }}>
+                <Table
+                  rowKey="id"
+                  columns={columns}
+                  dataSource={items}
+                  loading={loading}
+                  pagination={{
+                    current: page + 1,
+                    pageSize: PAGE_SIZE,
+                    total,
+                    showSizeChanger: false,
+                    showTotal: (totalCount) => `Tổng cộng ${totalCount} tài liệu`,
+                    onChange: (p) => setPage(p - 1),
+                  }}
+                  locale={{
+                    emptyText: (
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="Chưa có tài liệu y khoa nào được tải lên"
+                      />
+                    ),
+                  }}
+                />
+              </Card>
+            </>
+          )}
+        </div>
 
         {/* SCR-AD-04 §3.1b - Xem file gốc cạnh các đoạn chatbot sẽ trích, rồi xác nhận */}
         <DocumentReviewDrawer
           documentId={reviewId}
           canApprove={canApproveContent}
-          onClose={() => setReviewId(null)}
+          highlightQuery={reviewQuery}
+          focusChunkIndex={reviewChunkIndex}
+          onClose={() => {
+            setReviewId(null)
+            setReviewQuery(null)
+            setReviewChunkIndex(null)
+          }}
           onApproved={() => {
             loadData()
             if (historyItem) void openHistory(historyItem)
@@ -812,7 +833,7 @@ export default function CmsDocumentsPage() {
                   return (
                     <Space size={4}>
                       {v.status === 'DONE' && !v.contentApproved ? (
-                        <Button size="small" type={canApproveContent ? 'primary' : 'default'} onClick={() => setReviewId(v.id)}>
+                        <Button size="small" type={canApproveContent ? 'primary' : 'default'} onClick={() => openReview(v.id)}>
                           {canApproveContent ? 'Xem & xác nhận' : 'Xem nội dung'}
                         </Button>
                       ) : v.currentVersion ? (

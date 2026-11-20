@@ -16,7 +16,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import vn.gastroai.be.infrastructure.persistence.postgres.ChunkSearchRow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -350,53 +349,6 @@ class DocumentStatusServiceTest {
     }
 
     @Test
-    void searchContentRejectsShortQuery() {
-        assertThrows(IllegalArgumentException.class,
-                () -> documentStatusService.searchContent(" a "));
-
-        verify(chunkRepository, never()).searchContent(any());
-    }
-
-    // % va _ la ky tu dai dien cua LIKE; neu khong escape thi "50%_x" khop gan nhu
-    // moi thu.
-    // Trong Java, chuoi "50\\%\\_x" chinh la 50\%\_x.
-    @Test
-    void searchContentEscapesLikeWildcards() {
-        when(chunkRepository.searchContent(any())).thenReturn(List.of());
-
-        documentStatusService.searchContent("50%_x");
-
-        verify(chunkRepository).searchContent("50\\%\\_x");
-    }
-
-    // Doan trich bi cat o ca 2 dau -> co dau "…" o dau va cuoi; chu hoa van duoc
-    // giu vi chi
-    // dung chu thuong de tim vi tri.
-    @Test
-    void snippetAddsEllipsisWhenCut() {
-        String content = "a".repeat(300) + " Helicobacter " + "b".repeat(300);
-
-        String result = DocumentStatusService.snippet(content, "helicobacter");
-
-        assertTrue(result.startsWith("…"));
-        assertTrue(result.endsWith("…"));
-        assertTrue(result.contains("Helicobacter"));
-    }
-
-    // Noi dung ngan, khong can cat -> giu nguyen, khong them "…".
-    @Test
-    void snippetWithoutCutHasNoEllipsis() {
-        String result = DocumentStatusService.snippet("Điều trị HP", "HP");
-
-        assertEquals("Điều trị HP", result);
-    }
-
-    // ===== C1 - go co chu dich + chi ban DONE moi duoc dung =====
-
-    // Go: dong goc duoc danh dau unpublishedAt, co "hien hanh" cua dong goc tat
-    // trong bo nho
-    // (tranh save(root) ghi de is_current = true tro lai).
-    @Test
     void unpublishMarksRootAsUnpublished() {
         Document root = version(1L, null, 1, true, DocumentStatus.DONE);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(root));
@@ -450,88 +402,6 @@ class DocumentStatusServiceTest {
         verify(documentRepository, never()).clearCurrent(any());
         verify(documentRepository, never()).save(any());
         assertNull(v1.getUnpublishedAt());
-    }
-
-    // ===== C4 - tim kiem: bao bi cat + gioi han do dai =====
-
-    // Dong ket qua gia: chi can chunkIndex khac nhau, cac truong khac co dinh.
-    private ChunkSearchRow searchRow(int chunkIndex) {
-        return new ChunkSearchRow() {
-            @Override
-            public Long getDocumentId() {
-                return 1L;
-            }
-
-            @Override
-            public String getTitle() {
-                return "Phac do HP";
-            }
-
-            @Override
-            public Integer getChunkIndex() {
-                return chunkIndex;
-            }
-
-            @Override
-            public String getContent() {
-                return "Noi dung HP doan " + chunkIndex;
-            }
-        };
-    }
-
-    private List<ChunkSearchRow> searchRows(int count) {
-        List<ChunkSearchRow> rows = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            rows.add(searchRow(i));
-        }
-        return rows;
-    }
-
-    // Tu khoa 201 ky tu -> 400 (IllegalArgumentException), khong cham toi DB.
-    @Test
-    void searchContentRejectsTooLongQuery() {
-        String tooLong = "a".repeat(201);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> documentStatusService.searchContent(tooLong));
-
-        verify(chunkRepository, never()).searchContent(any());
-    }
-
-    // Dung 200 ky tu van duoc chap nhan (ranh gioi).
-    @Test
-    void searchContentAcceptsQueryOfMaxLength() {
-        when(chunkRepository.searchContent(any())).thenReturn(List.of());
-
-        var result = documentStatusService.searchContent("a".repeat(200));
-
-        assertTrue(result.items().isEmpty());
-        assertFalse(result.truncated());
-    }
-
-    // Repository tra 51 dong (dong thu 51 chi de biet con ket qua) -> chi giu 50,
-    // truncated = true.
-    @Test
-    void searchContentMarksTruncatedWhenMoreThan50Rows() {
-        when(chunkRepository.searchContent(any())).thenReturn(searchRows(51));
-
-        var result = documentStatusService.searchContent("hp");
-
-        assertEquals(50, result.items().size());
-        assertEquals(49, result.items().get(49).chunkIndex());
-        assertEquals("Noi dung HP doan 0", result.items().get(0).content());
-        assertTrue(result.truncated());
-    }
-
-    // Dung 50 dong -> khong co gi bi cat, khong duoc bao "con nua".
-    @Test
-    void searchContentNotTruncatedWhenExactly50Rows() {
-        when(chunkRepository.searchContent(any())).thenReturn(searchRows(50));
-
-        var result = documentStatusService.searchContent("hp");
-
-        assertEquals(50, result.items().size());
-        assertFalse(result.truncated());
     }
 
     // ===== C6 - danh sach tai lieu: truy van nhe, dem chunk theo trang =====

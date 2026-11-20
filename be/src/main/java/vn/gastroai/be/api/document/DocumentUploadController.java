@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import vn.gastroai.be.application.document.DocumentContentSearchService;
 import vn.gastroai.be.application.document.DocumentReviewService;
 import vn.gastroai.be.application.document.DocumentStatusService;
 import vn.gastroai.be.application.document.DocumentUploadService;
@@ -30,16 +30,19 @@ public class DocumentUploadController {
     private final DocumentStatusService documentStatusService;
     private final AuditLogService auditLogService;
     private final DocumentReviewService documentReviewService;
+    private final DocumentContentSearchService documentContentSearchService;
 
     public DocumentUploadController(
             DocumentUploadService documentUploadService,
             DocumentStatusService documentStatusService,
             AuditLogService auditLogService,
-            DocumentReviewService documentReviewService) {
+            DocumentReviewService documentReviewService,
+            DocumentContentSearchService documentContentSearchService) {
         this.documentUploadService = documentUploadService;
         this.documentStatusService = documentStatusService;
         this.auditLogService = auditLogService;
         this.documentReviewService = documentReviewService;
+        this.documentContentSearchService = documentContentSearchService;
     }
 
     @PostMapping
@@ -197,11 +200,19 @@ public class DocumentUploadController {
                 document.getErrorMessage());
     }
 
+        /** UC0055 - tìm trong nội dung: mỗi tài liệu 1 dòng, khớp nhiều nhất lên đầu. */
     @GetMapping("/search")
     public ResponseEntity<DocumentSearchResult> search(@RequestParam("q") String q) {
-        return ResponseEntity.ok(documentStatusService.searchContent(q));
+        return ResponseEntity.ok(documentContentSearchService.searchDocuments(q));
     }
 
+    /** Các đoạn khớp từ khoá trong 1 tài liệu - FE gọi khi bấm "Xem các đoạn". */
+    @GetMapping("/{documentId}/search")
+    public ResponseEntity<List<DocumentReviewResponse.Chunk>> searchInDocument(
+            @PathVariable Long documentId, @RequestParam("q") String q) {
+        return ResponseEntity.ok(documentContentSearchService.searchInDocument(documentId, q));
+    }
+    
     public record DocumentStatusResponse(
             Long documentId,
             String title,

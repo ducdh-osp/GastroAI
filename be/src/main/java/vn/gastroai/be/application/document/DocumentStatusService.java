@@ -10,16 +10,13 @@ import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
-import vn.gastroai.be.api.document.DocumentSearchHit;
 import vn.gastroai.be.api.document.DocumentVersionResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import java.time.Instant;
-import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import vn.gastroai.be.api.document.DocumentSearchResult;
 import vn.gastroai.be.api.document.DocumentStats;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentGroupRow;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentListRow;
@@ -31,9 +28,6 @@ public class DocumentStatusService {
 
     private final DocumentRepository documentRepository;
     private final ChunkRepository chunkRepository;
-    private static final int SNIPPET_RADIUS = 120;
-    private static final int MAX_QUERY_LENGTH = 200;
-    private static final int MAX_SEARCH_RESULTS = 50;
 
     public DocumentStatusService(DocumentRepository documentRepository, ChunkRepository chunkRepository) {
         this.documentRepository = documentRepository;
@@ -353,45 +347,6 @@ public class DocumentStatusService {
         String title = DocumentTitle.normalize(rawTitle);
         String sourceUrl = DocumentUploadService.normalizeSourceUrl(rawSourceUrl);
         documentRepository.updateGroupInfo(document.groupId(), title, sourceUrl, Instant.now());
-    }
-
-    /**
-     * UC0055 - tim cum tu trong noi dung tai lieu dang dung, tra doan trich quanh
-     * cho khop.
-     */
-    @Transactional(readOnly = true)
-    public DocumentSearchResult searchContent(String query) {
-        String q = query == null ? "" : query.trim();
-        if (q.length() < 2) {
-            throw new IllegalArgumentException("Nhập ít nhất 2 ký tự để tìm kiếm");
-        }
-        if (q.length() > MAX_QUERY_LENGTH) {
-            throw new IllegalArgumentException("Từ khóa quá dài (tối đa " + MAX_QUERY_LENGTH + " ký tự)");
-        }
-        String escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-
-        // SQL lay toi da 51 dong: du 51 nghia la con ket qua chua hien -> truncated.
-        var rows = chunkRepository.searchContent(escaped);
-        boolean truncated = rows.size() > MAX_SEARCH_RESULTS;
-
-        List<DocumentSearchHit> items = rows.stream()
-                .limit(MAX_SEARCH_RESULTS)
-                .map(row -> new DocumentSearchHit(row.getDocumentId(), row.getTitle(),
-                        row.getChunkIndex(), snippet(row.getContent(), q), row.getContent()))
-                .toList();
-        return new DocumentSearchResult(items, truncated);
-    }
-
-    /** Cat ~120 ky tu truoc va sau vi tri khop dau tien, them "…" neu bi cat. */
-    static String snippet(String content, String q) {
-        String text = content.replaceAll("\\s+", " ").trim();
-        int index = text.toLowerCase(Locale.ROOT).indexOf(q.toLowerCase(Locale.ROOT));
-        if (index < 0) {
-            index = 0;
-        }
-        int start = Math.max(0, index - SNIPPET_RADIUS);
-        int end = Math.min(text.length(), index + q.length() + SNIPPET_RADIUS);
-        return (start > 0 ? "…" : "") + text.substring(start, end) + (end < text.length() ? "…" : "");
     }
 
     /** Phiên bản versionId phải thuộc cùng tài liệu với documentId, nếu không coi như không tìm thấy. */

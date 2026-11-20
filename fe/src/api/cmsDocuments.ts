@@ -94,17 +94,18 @@ export interface CmsDocumentPage {
   stats: CmsDocumentStats
 }
 
+/** UC0055 - 1 tài liệu khớp từ khoá: số đoạn khớp + câu trích quanh chỗ khớp đầu tiên. */
 export interface CmsDocumentSearchHit {
   documentId: number
   title: string
-  chunkIndex: number
+  matchCount: number
   snippet: string
-  content: string
 }
 
+/** Tối đa 20 tài liệu khớp nhiều nhất; totalDocuments lớn hơn items.length là còn tài liệu chưa hiện. */
 export interface CmsDocumentSearchResult {
   items: CmsDocumentSearchHit[]
-  truncated: boolean
+  totalDocuments: number
 }
 
 export async function uploadCmsDocumentVersion(documentId: number, file: File): Promise<void> {
@@ -173,5 +174,17 @@ export async function unpublishCmsDocument(documentId: number): Promise<void> {
 
 export async function searchCmsDocumentContent(q: string): Promise<CmsDocumentSearchResult> {
   const { data } = await cmsApiClient.get<CmsDocumentSearchResult>('/documents/search', { params: { q } })
+  return data
+}
+
+/** Các đoạn khớp từ khoá trong 1 tài liệu - gọi khi bấm "Xem các đoạn". */
+export async function searchCmsDocumentChunks(
+  documentId: number,
+  q: string,
+): Promise<{ chunkIndex: number; content: string }[]> {
+  const { data } = await cmsApiClient.get<{ chunkIndex: number; content: string }[]>(
+    `/documents/${documentId}/search`,
+    { params: { q } },
+  )
   return data
 }

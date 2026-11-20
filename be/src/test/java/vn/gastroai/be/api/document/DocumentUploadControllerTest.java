@@ -53,6 +53,10 @@ class DocumentUploadControllerTest {
         @MockitoBean
         private vn.gastroai.be.application.document.DocumentReviewService documentReviewService;
 
+        
+        @MockitoBean
+        private vn.gastroai.be.application.document.DocumentContentSearchService documentContentSearchService;
+
         @MockitoBean
         private JwtService jwtService;
 
@@ -177,6 +181,18 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isOk());
         }
 
+         @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCanListMatchingChunksOfADocument() throws Exception {
+                when(documentContentSearchService.searchInDocument(42L, "da day")).thenReturn(
+                                java.util.List.of(new DocumentReviewResponse.Chunk(3, "Viêm dạ dày")));
+
+                mockMvc.perform(get("/api/v1/documents/42/search").param("q", "da day"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$[0].chunkIndex").value(3))
+                                .andExpect(jsonPath("$[0].content").value("Viêm dạ dày"));
+        }
+        
         private Document document(DocumentStatus status, DocumentProcessingStage stage) {
                 Document document = new Document();
                 document.setId(42L);
