@@ -77,15 +77,6 @@ class TriageKeywordAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void listIsAllowedForDoctorToo() throws Exception {
-        when(triageKeywordService.list()).thenReturn(List.of(response()));
-
-        mockMvc.perform(get("/api/v1/cms/triage-keywords"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void listRejectsPatientRole() throws Exception {
         mockMvc.perform(get("/api/v1/cms/triage-keywords"))

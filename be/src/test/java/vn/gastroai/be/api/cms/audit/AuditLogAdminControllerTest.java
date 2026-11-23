@@ -136,9 +136,14 @@ class AuditLogAdminControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "DOCTOR")
-        void doctorCannotReadLogsOrRules() throws Exception {
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCannotReadLogs() throws Exception {
                 mockMvc.perform(get("/api/v1/cms/audit-logs")).andExpect(status().isForbidden());
+        }
+
+        @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCannotReadOrUpdateRules() throws Exception {
                 mockMvc.perform(get("/api/v1/cms/audit-logs/rules")).andExpect(status().isForbidden());
                 mockMvc.perform(put("/api/v1/cms/audit-logs/rules/MASS_PATIENT_VIEW")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -146,12 +151,6 @@ class AuditLogAdminControllerTest {
                                 .andExpect(status().isForbidden());
 
                 verify(ruleService, never()).update(any(), any());
-        }
-
-        @Test
-        @WithMockUser(roles = "CONTENT_EDITOR")
-        void contentEditorCannotReadLogs() throws Exception {
-                mockMvc.perform(get("/api/v1/cms/audit-logs")).andExpect(status().isForbidden());
         }
 
         @Test
@@ -217,8 +216,8 @@ class AuditLogAdminControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "DOCTOR")
-        void doctorCannotExportLogs() throws Exception {
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCannotExportLogs() throws Exception {
                 mockMvc.perform(get("/api/v1/cms/audit-logs/export"))
                                 .andExpect(status().isForbidden());
 

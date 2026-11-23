@@ -48,9 +48,9 @@ class CmsRbacAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "DOCTOR")
-    void doctorCannotAssignRoles() throws Exception {
-        mockMvc.perform(put("/api/v1/cms/rbac/accounts/DOCTOR/9/role")
+    @WithMockUser(roles = "CONTENT_EDITOR")
+    void contentEditorCannotAssignRoles() throws Exception {
+        mockMvc.perform(put("/api/v1/cms/rbac/accounts/ADMIN/9/role")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"role\":\"CONTENT_EDITOR\"}"))
                 .andExpect(status().isForbidden());

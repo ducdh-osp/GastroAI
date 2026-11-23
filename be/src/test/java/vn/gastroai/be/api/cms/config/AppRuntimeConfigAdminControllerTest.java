@@ -65,8 +65,8 @@ class AppRuntimeConfigAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void getRejectsDoctorRole() throws Exception {
+    @WithMockUser(username = "9", roles = "CONTENT_EDITOR")
+    void getRejectsContentEditor() throws Exception {
         mockMvc.perform(get("/api/v1/cms/runtime-config"))
                 .andExpect(status().isForbidden());
     }
@@ -102,8 +102,8 @@ class AppRuntimeConfigAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void doctorCannotUpdateAndNothingIsAudited() throws Exception {
+    @WithMockUser(username = "9", roles = "CONTENT_EDITOR")
+    void contentEditorCannotUpdateAndNothingIsAudited() throws Exception {
         mockMvc.perform(put("/api/v1/cms/runtime-config")
                         .with(csrf())
                         .contentType("application/json")
