@@ -2,6 +2,7 @@ package vn.gastroai.be.domain.audit;
 
 public enum AuditAction {
     DOCUMENT_UPLOAD,
+    DOCUMENT_REPLACE,
     DOCUMENT_NEW_VERSION,
     DOCUMENT_ACTIVATE_VERSION,
     DOCUMENT_APPROVE_CONTENT,

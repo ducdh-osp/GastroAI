@@ -55,7 +55,7 @@ public class EmbeddingStore {
                 FROM embeddings e
                 JOIN chunks c ON c.id = e.chunk_id
                 JOIN documents d ON d.id = c.document_id
-                WHERE d.status = 'DONE' AND d.is_current = TRUE
+                WHERE d.content_approved_at IS NOT NULL AND d.unpublished_at IS NULL
                 ORDER BY e.embedding <=> ?::vector
                 LIMIT ?
                 """,

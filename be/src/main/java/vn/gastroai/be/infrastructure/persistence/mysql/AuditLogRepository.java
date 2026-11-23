@@ -19,6 +19,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
               AND (:toTime IS NULL OR a.occurredAt < :toTime)
               AND (:action IS NULL OR a.action = :action)
               AND (:targetType IS NULL OR a.targetType = :targetType)
+              AND (:actorId IS NULL OR (a.actorType = :actorType AND a.actorId = :actorId))
               AND (:keyword IS NULL
                    OR LOWER(a.actorEmail) LIKE :keyword
                    OR LOWER(a.detail) LIKE :keyword
@@ -28,6 +29,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
                           @Param("toTime") Instant toTime,
                           @Param("action") AuditAction action,
                           @Param("targetType") String targetType,
+                          @Param("actorType") String actorType,
+                          @Param("actorId") Long actorId,
                           @Param("keyword") String keyword,
                           @Param("rawKeyword") String rawKeyword,
                           Pageable pageable);

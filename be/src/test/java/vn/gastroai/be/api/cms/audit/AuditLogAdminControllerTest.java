@@ -64,19 +64,20 @@ class AuditLogAdminControllerTest {
         @Test
         @WithMockUser(roles = "ADMIN")
         void adminCanSearchLogsWithFilters() throws Exception {
-                when(auditLogService.search(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+                when(auditLogService.search(any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
                                 .thenReturn(new AuditLogPageResponse(List.of(), 0, 20, 0, 0));
 
                 mockMvc.perform(get("/api/v1/cms/audit-logs")
                                 .param("from", "2026-10-01")
                                 .param("to", "2026-10-30")
                                 .param("action", "PATIENT_LOCK")
+                                .param("actorId", "3")
                                 .param("q", "admin"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.totalElements").value(0));
 
                 verify(auditLogService).search(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 30),
-                                AuditAction.PATIENT_LOCK, null, "admin", 0, 20);
+                                AuditAction.PATIENT_LOCK, null, 3L, "admin", 0, 20);
         }
 
         @Test
@@ -87,7 +88,7 @@ class AuditLogAdminControllerTest {
                 mockMvc.perform(get("/api/v1/cms/audit-logs").param("action", "KHONG_CO"))
                                 .andExpect(status().isBadRequest());
 
-                verify(auditLogService, never()).search(any(), any(), any(), any(), any(), anyInt(), anyInt());
+                verify(auditLogService, never()).search(any(), any(), any(), any(), any(), any(), anyInt(), anyInt());
         }
 
         @Test
@@ -135,9 +136,14 @@ class AuditLogAdminControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "DOCTOR")
-        void doctorCannotReadLogsOrRules() throws Exception {
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCannotReadLogs() throws Exception {
                 mockMvc.perform(get("/api/v1/cms/audit-logs")).andExpect(status().isForbidden());
+        }
+
+        @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCannotReadOrUpdateRules() throws Exception {
                 mockMvc.perform(get("/api/v1/cms/audit-logs/rules")).andExpect(status().isForbidden());
                 mockMvc.perform(put("/api/v1/cms/audit-logs/rules/MASS_PATIENT_VIEW")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -148,15 +154,9 @@ class AuditLogAdminControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "CONTENT_EDITOR")
-        void contentEditorCannotReadLogs() throws Exception {
-                mockMvc.perform(get("/api/v1/cms/audit-logs")).andExpect(status().isForbidden());
-        }
-
-        @Test
         @WithMockUser(roles = "ADMIN")
         void adminCanExportExcelAndExportIsAudited() throws Exception {
-                when(auditLogService.findForExport(any(), any(), any(), any(), any())).thenReturn(List.of());
+                when(auditLogService.findForExport(any(), any(), any(), any(), any(), any())).thenReturn(List.of());
                 when(exportService.toExcel(any())).thenReturn(new byte[] { 1, 2, 3 });
 
                 mockMvc.perform(get("/api/v1/cms/audit-logs/export")
@@ -167,7 +167,7 @@ class AuditLogAdminControllerTest {
                                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString(".xlsx")))
                                 .andExpect(header().string(HttpHeaders.CONTENT_TYPE, containsString("spreadsheetml")));
 
-                verify(auditLogService).findForExport(null, null, AuditAction.PATIENT_DATA_VIEW, null, null);
+                verify(auditLogService).findForExport(null, null, AuditAction.PATIENT_DATA_VIEW, null, null, null);
                 verify(auditLogService).record(eq(AuditAction.AUDIT_LOG_EXPORT), eq("SYSTEM"), isNull(),
                                 eq("Xuất EXCEL 0 dòng | hành động PATIENT_DATA_VIEW"));
         }
@@ -175,7 +175,7 @@ class AuditLogAdminControllerTest {
         @Test
         @WithMockUser(roles = "ADMIN")
         void adminCanExportCsv() throws Exception {
-                when(auditLogService.findForExport(any(), any(), any(), any(), any())).thenReturn(List.of());
+                when(auditLogService.findForExport(any(), any(), any(), any(), any(), any())).thenReturn(List.of());
                 when(exportService.toCsv(any())).thenReturn(new byte[] { 1 });
 
                 mockMvc.perform(get("/api/v1/cms/audit-logs/export")
@@ -198,13 +198,13 @@ class AuditLogAdminControllerTest {
                 mockMvc.perform(get("/api/v1/cms/audit-logs/export").param("format", "PDF"))
                                 .andExpect(status().isBadRequest());
 
-                verify(auditLogService, never()).findForExport(any(), any(), any(), any(), any());
+                verify(auditLogService, never()).findForExport(any(), any(), any(), any(), any(), any());
         }
 
         @Test
         @WithMockUser(roles = "ADMIN")
         void tooManyRowsReturnsBadRequestAndIsNotAudited() throws Exception {
-                when(auditLogService.findForExport(any(), any(), any(), any(), any()))
+                when(auditLogService.findForExport(any(), any(), any(), any(), any(), any()))
                                 .thenThrow(new IllegalArgumentException(
                                                 "Có 12000 bản ghi khớp bộ lọc, vượt quá giới hạn xuất"));
 
@@ -216,11 +216,11 @@ class AuditLogAdminControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "DOCTOR")
-        void doctorCannotExportLogs() throws Exception {
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void contentEditorCannotExportLogs() throws Exception {
                 mockMvc.perform(get("/api/v1/cms/audit-logs/export"))
                                 .andExpect(status().isForbidden());
 
-                verify(auditLogService, never()).findForExport(any(), any(), any(), any(), any());
+                verify(auditLogService, never()).findForExport(any(), any(), any(), any(), any(), any());
         }
 }

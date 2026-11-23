@@ -68,8 +68,8 @@ class EmailTemplateAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void doctorCannotReadTemplates() throws Exception {
+    @WithMockUser(username = "9", roles = "CONTENT_EDITOR")
+    void contentEditorCannotReadTemplates() throws Exception {
         mockMvc.perform(get("/api/v1/cms/email-templates"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(templateService);
@@ -101,8 +101,8 @@ class EmailTemplateAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void doctorCannotUpdateTemplateAndNothingIsAudited() throws Exception {
+    @WithMockUser(username = "9", roles = "CONTENT_EDITOR")
+    void contentEditorCannotUpdateTemplateAndNothingIsAudited() throws Exception {
         mockMvc.perform(put("/api/v1/cms/email-templates/ACCOUNT_VERIFICATION")
                         .contentType("application/json")
                         .content("""

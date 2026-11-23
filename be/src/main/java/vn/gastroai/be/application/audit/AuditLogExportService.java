@@ -106,6 +106,7 @@ public class AuditLogExportService {
     static String actionLabel(AuditAction action) {
         return switch (action) {
             case DOCUMENT_UPLOAD -> "Tải lên tài liệu";
+            case DOCUMENT_REPLACE -> "Tải bản thay thế";
             case DOCUMENT_NEW_VERSION -> "Tải phiên bản mới";
             case DOCUMENT_ACTIVATE_VERSION -> "Kích hoạt phiên bản";
             case DOCUMENT_APPROVE_CONTENT -> "Xác nhận nội dung tài liệu";

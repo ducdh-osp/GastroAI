@@ -67,7 +67,7 @@ class CmsCatalogAdminControllerTest {
             """;
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void listIsNotAudited() throws Exception {
         when(service.list(null, null, null)).thenReturn(List.of(item("Đau bụng", null, true)));
 
@@ -107,7 +107,7 @@ class CmsCatalogAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void updateAuditsTriageCodeChange() throws Exception {
         when(service.getById(4L)).thenReturn(item("Đau bụng", null, true));
         when(service.update(eq(4L), any(CmsCatalogItemRequest.class)))

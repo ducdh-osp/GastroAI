@@ -5,7 +5,7 @@ import vn.gastroai.be.domain.rag.DocumentStatus;
 
 import java.time.Instant;
 
-/** 1 dong nhe cua danh sach tai lieu (phien ban moi nhat cua moi nhom) - KHONG co full_text. */
+/** 1 dong nhe cua danh sach tai lieu (ban thay the neu co, khong thi dong chinh) - KHONG co full_text. */
 public interface DocumentListRow {
     Long getId();
     String getTitle();
@@ -16,7 +16,6 @@ public interface DocumentListRow {
     String getErrorMessage();
     Instant getUploadedAt();
     Instant getUpdatedAt();
-    Integer getVersionNo();
     Long getGroupId();
     Instant getContentApprovedAt();
 }

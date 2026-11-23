@@ -3,6 +3,7 @@ import { extractErrorMessage } from '../lib/errors'
 
 export type AuditAction =
   | 'DOCUMENT_UPLOAD'
+  | 'DOCUMENT_REPLACE'
   | 'DOCUMENT_NEW_VERSION'
   | 'DOCUMENT_ACTIVATE_VERSION'
   | 'DOCUMENT_APPROVE_CONTENT'
@@ -83,6 +84,8 @@ export interface AuditLogFilter {
   to?: string
   action?: AuditAction
   targetType?: AuditTargetType
+  /** id tài khoản CMS đã thực hiện thao tác (SCR-AD-06 bộ lọc "Người dùng"). */
+  actorId?: number
   q?: string
 }
 

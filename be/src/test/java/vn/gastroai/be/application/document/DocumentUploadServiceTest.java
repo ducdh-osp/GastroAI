@@ -1,6 +1,5 @@
 package vn.gastroai.be.application.document;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -8,8 +7,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.rag.Document;
@@ -24,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -46,15 +44,11 @@ class DocumentUploadServiceTest {
     @Mock
     private MultipartFile file;
 
+    @Mock
+    private DocumentGroupPruner groupPruner;
+
     @InjectMocks
     private DocumentUploadService service;
-
-    @AfterEach
-    void clearTransactionSynchronization() {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
-    }
 
     private Document document(Long id, DocumentStatus status) {
         Document document = new Document();
@@ -65,7 +59,14 @@ class DocumentUploadServiceTest {
         return document;
     }
 
-    // ===== B1 / B6 - xoa tai lieu (xoa ca nhom phien ban) =====
+    // Ban dang dung cho AI: da xu ly xong VA da duoc Bien tap xac nhan noi dung.
+    private Document live(Long id) {
+        Document document = document(id, DocumentStatus.DONE);
+        document.setContentApprovedAt(java.time.Instant.now());
+        return document;
+    }
+
+    // ===== B1 / B6 - xoa tai lieu (dong chinh + ban thay the) =====
 
     @Test
     void deleteThrowsNotFoundWhenDocumentDoesNotExist() {
@@ -82,89 +83,49 @@ class DocumentUploadServiceTest {
         when(documentRepository.findGroup(1L)).thenReturn(List.of(document));
 
         assertThrows(IllegalStateException.class, () -> service.delete(1L));
-        verify(documentRepository, never()).deleteGroup(any());
-        verify(fileStorageService, never()).delete(any());
+        verify(groupPruner, never()).deleteAll(any());
     }
 
+    // Goi delete bang id cua ban thay the -> xoa ca tai lieu: dong chinh + ban thay the.
     @Test
-    void deleteRemovesRowAndFileImmediatelyWhenNoTransaction() {
-        Document document = document(1L, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(document));
-
-        service.delete(1L);
-
-        verify(documentRepository).deleteGroup(1L);
-        verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
-    }
-
-    @Test
-    void deleteWaitsForCommitBeforeRemovingFile() {
-        TransactionSynchronizationManager.initSynchronization();
-        Document document = document(1L, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(document));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(document));
-
-        service.delete(1L);
-
-        verify(fileStorageService, never()).delete(any());
-
-        for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
-            synchronization.afterCommit();
-        }
-        verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
-    }
-
-    // Goi delete bang id cua 1 ban con -> xoa ca nhom va file cua MOI phien ban.
-    @Test
-    void deleteRemovesFilesOfAllVersions() {
+    void deleteRemovesMainRowAndReplacement() {
         Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setSource("uploads/v1.pdf");
         Document v2 = document(2L, DocumentStatus.DONE);
-        v2.setRootId(1L);
-        v2.setSource("uploads/v2.pdf");
-
+        v2.setReplacesId(1L);
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
 
         service.delete(2L);
 
-        verify(documentRepository).deleteGroup(1L);
-        verify(fileStorageService).delete(Path.of("uploads/v1.pdf"));
-        verify(fileStorageService).delete(Path.of("uploads/v2.pdf"));
+        verify(groupPruner).deleteAll(List.of(v2, v1));
     }
 
-    // Chi can 1 phien ban dang xu ly la khong cho xoa ca nhom (worker dang ghi
-    // chunk/embedding).
+    // Ban thay the dang xu ly thi chua cho xoa tai lieu (worker dang ghi chunk/embedding).
     @Test
-    void deleteRejectsWhenAnyVersionProcessing() {
+    void deleteRejectsWhileReplacementProcessing() {
         Document v1 = document(1L, DocumentStatus.DONE);
         Document v2 = document(2L, DocumentStatus.PROCESSING);
-        v2.setRootId(1L);
-
+        v2.setReplacesId(1L);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
 
         assertThrows(IllegalStateException.class, () -> service.delete(1L));
 
-        verify(documentRepository, never()).deleteGroup(any());
-        verify(fileStorageService, never()).delete(any());
+        verify(groupPruner, never()).deleteAll(any());
     }
 
-    // ===== UC0049 - tai phien ban moi =====
+    // ===== UC0049 / SCR-AD-04 §3.2 - tai ban thay the =====
 
-    // Ban moi nhat cua nhom dang PENDING/PROCESSING thi chua cho tai ban moi len
-    // (IllegalStateException -> 409). Phai chan TRUOC khi luu file, tranh file mo
-    // coi.
+    // Tai lieu dang co dong PENDING/PROCESSING thi chua cho tai ban thay the
+    // (IllegalStateException -> 409). Phai chan TRUOC khi luu file, tranh file mo coi.
     @Test
-    void uploadNewVersionRejectsWhenPreviousVersionStillProcessing() {
+    void uploadReplacementRejectsWhilePreviousUploadStillProcessing() {
         Document v1 = document(1L, DocumentStatus.PROCESSING);
-        v1.setVersionNo(1);
 
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
 
-        assertThrows(IllegalStateException.class, () -> service.uploadNewVersion(1L, file));
+        assertThrows(IllegalStateException.class, () -> service.uploadReplacement(1L, file));
 
         verify(fileStorageService, never()).store(any());
         verify(documentRepository, never()).saveAndFlush(any());
@@ -173,127 +134,16 @@ class DocumentUploadServiceTest {
     // Tai lieu goc khong ton tai -> ResourceNotFoundException (404), khong luu gi
     // ca.
     @Test
-    void uploadNewVersionThrowsWhenDocumentNotFound() {
+    void uploadReplacementThrowsWhenDocumentNotFound() {
         when(documentRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> service.uploadNewVersion(99L, file));
+        assertThrows(ResourceNotFoundException.class, () -> service.uploadReplacement(99L, file));
 
         verify(fileStorageService, never()).store(any());
         verify(documentRepository, never()).saveAndFlush(any());
     }
 
-    // ===== C2 - xoa rieng mot phien ban =====
-
-    // Phien ban thuoc nhom khac -> coi nhu khong tim thay (404), khong xoa gi ca.
-    @Test
-    void deleteVersionRejectsVersionFromDifferentGroup() {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        Document other = document(20L, DocumentStatus.DONE);
-        other.setRootId(10L);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findById(20L)).thenReturn(Optional.of(other));
-
-        assertThrows(ResourceNotFoundException.class, () -> service.deleteVersion(1L, 20L));
-
-        verify(documentRepository, never()).delete(any());
-        verify(documentRepository, never()).deleteGroup(any());
-        verify(fileStorageService, never()).delete(any());
-    }
-
-    // Ban dang xu ly -> 409, worker dang ghi du lieu cho ban nay.
-    @Test
-    void deleteVersionRejectsVersionStillProcessing() {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setCurrentVersion(true);
-        Document v2 = document(2L, DocumentStatus.PROCESSING);
-        v2.setRootId(1L);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
-
-        assertThrows(IllegalStateException.class, () -> service.deleteVersion(1L, 2L));
-
-        verify(documentRepository, never()).delete(any());
-        verify(fileStorageService, never()).delete(any());
-    }
-
-    // Ban dang dung -> 409, tranh chatbot mat tai lieu ma admin khong hay.
-    @Test
-    void deleteVersionRejectsCurrentVersion() {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setCurrentVersion(false);
-        Document v2 = document(2L, DocumentStatus.DONE);
-        v2.setRootId(1L);
-        v2.setCurrentVersion(true);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
-
-        assertThrows(IllegalStateException.class, () -> service.deleteVersion(1L, 2L));
-
-        verify(documentRepository, never()).delete(any());
-        verify(fileStorageService, never()).delete(any());
-    }
-
-    // Ban goc khi nhom con ban khac -> 409, vi ON DELETE CASCADE se xoa ca nhom.
-    @Test
-    void deleteVersionRejectsRootWhileOtherVersionsExist() {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setCurrentVersion(false);
-        Document v2 = document(2L, DocumentStatus.DONE);
-        v2.setRootId(1L);
-        v2.setCurrentVersion(true);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
-
-        assertThrows(IllegalStateException.class, () -> service.deleteVersion(1L, 1L));
-
-        verify(documentRepository, never()).delete(any());
-        verify(fileStorageService, never()).delete(any());
-    }
-
-    // Xoa ban le thanh cong: chi xoa dung 1 dong va dung 1 file, khong dong den
-    // nhom.
-    @Test
-    void deleteVersionRemovesOnlyThatVersion() {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setSource("uploads/v1.pdf");
-        Document v2 = document(2L, DocumentStatus.DONE);
-        v2.setRootId(1L);
-        v2.setCurrentVersion(true);
-        v2.setSource("uploads/v2.pdf");
-        Document v3 = document(3L, DocumentStatus.DONE);
-        v3.setRootId(1L);
-        v3.setCurrentVersion(false);
-        v3.setSource("uploads/v3.pdf");
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findById(3L)).thenReturn(Optional.of(v3));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v3, v2, v1));
-
-        service.deleteVersion(1L, 3L);
-
-        verify(documentRepository).delete(v3);
-        verify(documentRepository, never()).deleteGroup(any());
-        verify(fileStorageService).delete(Path.of("uploads/v3.pdf"));
-        verify(fileStorageService, never()).delete(Path.of("uploads/v1.pdf"));
-        verify(fileStorageService, never()).delete(Path.of("uploads/v2.pdf"));
-    }
-
-    // Nhom chi con 1 ban -> xoa luon ca tai lieu (khong de lai nhom rong).
-    @Test
-    void deleteVersionOfLastRemainingVersionDeletesWholeDocument() {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setCurrentVersion(true);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
-
-        service.deleteVersion(1L, 1L);
-
-        verify(documentRepository).deleteGroup(1L);
-        verify(fileStorageService).delete(Path.of("uploads/phac-do.pdf"));
-    }
-
-    // ===== C3 - chan trung noi dung theo nhom phien ban =====
+    // ===== C3 - chan trung noi dung =====
 
     @TempDir
     Path tempDir;
@@ -312,8 +162,7 @@ class DocumentUploadServiceTest {
         Path stored = storedFile("noi dung trung");
         when(fileStorageService.store(file)).thenReturn(stored);
         Document existing = document(71L, DocumentStatus.DONE);
-        existing.setRootId(7L);
-        existing.setVersionNo(2);
+        existing.setReplacesId(7L);
         existing.setTitle("ibs.pdf");
         when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
                 .thenReturn(List.of(existing));
@@ -328,12 +177,10 @@ class DocumentUploadServiceTest {
         verify(documentRepository, never()).saveAndFlush(any());
     }
 
-    // Phien ban moi trung voi 1 phien ban trong CHINH nhom -> chan, bao so phien
-    // ban.
+    // Ban thay the trung noi dung voi ban dang dung cua CHINH tai lieu -> chan.
     @Test
-    void uploadNewVersionRejectsContentDuplicatingSameGroup() throws IOException {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setVersionNo(1);
+    void uploadReplacementRejectsContentSameAsRowInUse() throws IOException {
+        Document v1 = live(1L);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
         Path stored = storedFile("noi dung trung");
@@ -342,18 +189,17 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of(v1));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.uploadNewVersion(1L, file));
+                () -> service.uploadReplacement(1L, file));
 
-        assertTrue(ex.getMessage().contains("v1"));
+        assertTrue(ex.getMessage().contains("trùng với bản đang dùng"));
         verify(fileStorageService).delete(stored);
         verify(documentRepository, never()).saveAndFlush(any());
     }
 
-    // Phien ban moi trung voi tai lieu o NHOM KHAC -> van cho tai len.
+    // Ban thay the trung voi 1 tai lieu KHAC -> van cho tai len.
     @Test
-    void uploadNewVersionAllowsContentDuplicatingOtherGroup() throws IOException {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setVersionNo(1);
+    void uploadReplacementAllowsContentOfAnotherDocument() throws IOException {
+        Document v1 = live(1L);
         Document other = document(50L, DocumentStatus.DONE);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
@@ -362,39 +208,32 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of(other));
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Document saved = service.uploadNewVersion(1L, file);
-
-        assertEquals(2, saved.getVersionNo());
-        assertEquals(1L, saved.getRootId());
-        assertFalse(saved.isCurrentVersion());
+        Document saved = service.uploadReplacement(1L, file);
+        assertEquals(1L, saved.getReplacesId());
+        assertFalse(saved.isInUse());
         verify(fileStorageService, never()).delete(any());
     }
 
-    // Tai lieu moi khong trung gi -> luu thanh v1, CHUA la ban dang dung (cho
-    // markDone bat).
+    // Tai lieu moi khong trung gi -> luu PENDING, chatbot CHUA dung (cho Bien tap xac nhan).
     @Test
-    void uploadCreatesNonCurrentFirstVersionWhenNoDuplicate() throws IOException {
+    void uploadCreatesDocumentNotYetInUse() throws IOException {
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
         when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Document saved = service.upload(file, null, "Tài liệu test");
-
-        assertEquals(1, saved.getVersionNo());
-        assertFalse(saved.isCurrentVersion());
+        assertFalse(saved.isInUse());
         assertEquals(DocumentStatus.PENDING, saved.getStatus());
     }
 
     // ===== C5 - hai nguoi cung tai ban moi: bao loi 409 de hieu =====
 
-    // saveAndFlush bi rang buoc (nhom, versionNo) tu choi -> doi thanh cau than
-    // thien,
-    // va file vua luu van bi xoa (khong de file mo coi).
+    // saveAndFlush bi rang buoc uk_documents_one_replacement tu choi -> doi thanh cau than
+    // thien, va file vua luu van bi xoa (khong de file mo coi).
     @Test
-    void uploadNewVersionReportsFriendlyConflictWhenAnotherVersionWasJustUploaded() throws IOException {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setVersionNo(1);
+    void uploadReplacementReportsFriendlyConflictWhenSomeoneJustUploadedOne() throws IOException {
+        Document v1 = live(1L);
         Path stored = storedFile("noi dung ban 2");
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
@@ -405,9 +244,9 @@ class DocumentUploadServiceTest {
                 .thenThrow(new DataIntegrityViolationException("uk_documents_group_version"));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.uploadNewVersion(1L, file));
+                () -> service.uploadReplacement(1L, file));
 
-        assertTrue(ex.getMessage().contains("Vừa có người khác tải phiên bản mới"));
+        assertTrue(ex.getMessage().contains("Vừa có người khác tải bản thay thế"));
         verify(fileStorageService).delete(stored);
     }
 
@@ -427,18 +266,16 @@ class DocumentUploadServiceTest {
         verify(fileStorageService).delete(stored);
     }
 
-    // ===== C8 - tai phien ban moi thanh cong =====
+    // ===== C8 - tai ban thay the thanh cong =====
 
-    // Goi bang id cua BAN CON (id 2): ban moi phai la v3 va thuoc nhom 1 (rootId =
-    // id cua dong goc),
-    // chua la ban dang dung, tro dung file vua luu.
+    // Goi bang id cua ban thay the cu (id 2): ban moi tro ve dong chinh (id 1), chua duoc
+    // chatbot dung, tro dung file vua luu; ban thay the cu chua xac nhan bi bo.
     @Test
-    void uploadNewVersionCreatesNextVersionOfSameGroup() throws IOException {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setVersionNo(1);
+    void uploadReplacementPointsToRowInUseAndDropsOldReplacement() throws IOException {
+        Document v1 = live(1L);
+        // Ban thay the truoc chua duoc xac nhan -> bi bo, chi giu ban dang dung + ban moi.
         Document v2 = document(2L, DocumentStatus.DONE);
-        v2.setRootId(1L);
-        v2.setVersionNo(2);
+        v2.setReplacesId(1L);
         Path stored = storedFile("noi dung ban 3");
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
@@ -447,14 +284,37 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Document saved = service.uploadNewVersion(2L, file);
-
-        assertEquals(3, saved.getVersionNo());
-        assertEquals(1L, saved.getRootId());
-        assertFalse(saved.isCurrentVersion());
+        Document saved = service.uploadReplacement(2L, file);
+        assertEquals(1L, saved.getReplacesId());
+        assertFalse(saved.isInUse());
         assertEquals(DocumentStatus.PENDING, saved.getStatus());
         assertEquals(stored.toString(), saved.getSource());
+        verify(groupPruner).keepOnly(v1, List.of(v2, v1));
+        verify(groupPruner, never()).deleteAll(any());
         verify(fileStorageService, never()).delete(any());
+    }
+
+    // SCR-AD-04 §3.2: tai lieu chua tung duoc dung cho AI (vd loi xu ly) -> thay luon:
+    // xoa ban cu, ban moi thanh tai lieu doc lap (dong goc), van giu ten + URL.
+    @Test
+    void replacingDocumentNeverUsedByAiDeletesOldRowRightAway() throws IOException {
+        Document v1 = document(1L, DocumentStatus.ERROR);
+        v1.setTitle("Trào ngược dạ dày");
+        v1.setSourceUrl("https://moh.gov.vn/gerd");
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+        when(fileStorageService.store(file)).thenReturn(storedFile("noi dung sua loi"));
+        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+                .thenReturn(List.of());
+        when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Document saved = service.uploadReplacement(1L, file);
+
+        verify(groupPruner).deleteAll(List.of(v1));
+        verify(groupPruner, never()).keepOnly(any(), any());
+        assertNull(saved.getReplacesId());
+        assertEquals("Trào ngược dạ dày", saved.getTitle());
+        assertEquals("https://moh.gov.vn/gerd", saved.getSourceUrl());
     }
 
     @Test
@@ -495,9 +355,8 @@ class DocumentUploadServiceTest {
 
     // Phien ban moi giu ten hien tai cua tai lieu, khong lay ten file moi.
     @Test
-    void uploadNewVersionKeepsDocumentTitle() throws IOException {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setVersionNo(1);
+    void uploadReplacementKeepsDocumentTitle() throws IOException {
+        Document v1 = live(1L);
         v1.setTitle("Trào ngược dạ dày");
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
@@ -506,16 +365,14 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Document saved = service.uploadNewVersion(1L, file);
+        Document saved = service.uploadReplacement(1L, file);
 
         assertEquals("Trào ngược dạ dày", saved.getTitle());
-        assertEquals(2, saved.getVersionNo());
     }
 
     @Test
-    void uploadNewVersionKeepsDocumentSourceUrl() throws IOException {
-        Document v1 = document(1L, DocumentStatus.DONE);
-        v1.setVersionNo(1);
+    void uploadReplacementKeepsDocumentSourceUrl() throws IOException {
+        Document v1 = live(1L);
         v1.setSourceUrl("https://moh.gov.vn/gerd");
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
@@ -524,7 +381,7 @@ class DocumentUploadServiceTest {
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Document saved = service.uploadNewVersion(1L, file);
+        Document saved = service.uploadReplacement(1L, file);
 
         assertEquals("https://moh.gov.vn/gerd", saved.getSourceUrl());
     }

@@ -106,8 +106,8 @@ class KnowledgeArticleAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
-    void listReturnsPagedArticlesForDoctor() throws Exception {
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
+    void listReturnsPagedArticlesForContentEditor() throws Exception {
         CmsArticleSummaryResponse item = new CmsArticleSummaryResponse(
                 1L, "trao-nguoc", "Trào ngược", "Tóm tắt", "Dạ dày", true, "BS. A", Instant.now(), 10, Instant.now(), 0L
         );
@@ -141,8 +141,8 @@ class KnowledgeArticleAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
-    void createReturnsCreatedForDoctorAndIsAudited() throws Exception {
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
+    void createReturnsCreatedForContentEditorAndIsAudited() throws Exception {
         CmsArticleRequest req = new CmsArticleRequest(
                 "Tiêu đề bài viết", null, "Tóm tắt bài viết", "Dạ dày",
                 "Nội dung bài viết", "Nguồn", "https://example.com/guide", null, false, null, 10, null
@@ -161,7 +161,7 @@ class KnowledgeArticleAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void createRejectsBlankTitleWithBadRequest() throws Exception {
         CmsArticleRequest invalid = new CmsArticleRequest(
                 "", null, "Tóm tắt", "Dạ dày",
@@ -178,7 +178,7 @@ class KnowledgeArticleAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void createRejectsInvalidSourceUrlWithBadRequest() throws Exception {
         CmsArticleRequest invalid = new CmsArticleRequest(
                 "Tiêu đề", null, "Tóm tắt", "Dạ dày",
@@ -193,7 +193,7 @@ class KnowledgeArticleAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void createRejectsNegativeSortOrderWithBadRequest() throws Exception {
         CmsArticleRequest invalid = new CmsArticleRequest(
                 "Tiêu đề", null, "Tóm tắt", "Dạ dày",
@@ -226,7 +226,7 @@ class KnowledgeArticleAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void unpublishIsAuditedAsUnpublish() throws Exception {
         CmsArticlePublishRequest unpublishReq = new CmsArticlePublishRequest(false, null, 0L);
         when(service.setPublished(eq(1L), any(CmsArticlePublishRequest.class)))
@@ -243,7 +243,7 @@ class KnowledgeArticleAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void publishIsAuditedWithMedicalReviewer() throws Exception {
         CmsArticlePublishRequest publishReq = new CmsArticlePublishRequest(true, "BS. Nguyễn Văn A", 0L);
         when(service.setPublished(eq(1L), any(CmsArticlePublishRequest.class))).thenReturn(sampleDetail(1L));

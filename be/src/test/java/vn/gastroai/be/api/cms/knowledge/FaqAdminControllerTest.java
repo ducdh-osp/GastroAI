@@ -94,8 +94,8 @@ class FaqAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
-    void listReturnsPageForDoctor() throws Exception {
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
+    void listReturnsPageForContentEditor() throws Exception {
         when(service.list(isNull(), isNull(), eq(true), eq(0), eq(20)))
                 .thenReturn(new CmsFaqPageResponse(List.of(response(1L, true, "BS. CKII Trần B", 3L)), 1, 0, 20));
 
@@ -196,7 +196,7 @@ class FaqAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void updateReturnsOkAndAuditsQuestionChange() throws Exception {
         CmsFaqRequest request = new CmsFaqRequest("Câu hỏi mới", "Câu trả lời mới", "Dạ dày", 10, false, null, 2L);
         when(service.get(5L)).thenReturn(response(5L, "Câu hỏi cũ", false, null, 2L));
@@ -215,7 +215,7 @@ class FaqAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void updateWithStaleVersionReturnsConflictAndIsNotAudited() throws Exception {
         CmsFaqRequest request = new CmsFaqRequest("Câu hỏi", "Câu trả lời", "Dạ dày", 10, false, null, 1L);
         when(service.get(5L)).thenReturn(response(5L, false, null, 2L));
@@ -324,7 +324,7 @@ class FaqAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void listRejectsInvalidPageSizeWithBadRequest() throws Exception {
         when(service.list(any(), any(), any(), anyInt(), eq(500)))
                 .thenThrow(new IllegalArgumentException("page >= 0 va size trong khoang 1..100"));
