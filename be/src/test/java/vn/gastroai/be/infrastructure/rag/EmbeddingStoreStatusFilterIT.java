@@ -48,14 +48,14 @@ class EmbeddingStoreStatusFilterIT {
         jdbcTemplate = new JdbcTemplate(postgresDataSource);
 
         Long doneDocumentId = jdbcTemplate.queryForObject(
-                "INSERT INTO documents (title, status, content_approved_at) VALUES (?, 'DONE', now()) RETURNING id",
+                "INSERT INTO documents (title, processing_stage, content_approved_at) VALUES (?, 'DONE', now()) RETURNING id",
                 Long.class, TITLE_PREFIX + "DONE");
         doneChunkId = jdbcTemplate.queryForObject(
                 "INSERT INTO chunks (document_id, chunk_index, content) VALUES (?, 0, ?) RETURNING id",
                 Long.class, doneDocumentId, "Noi dung chunk DONE");
 
         Long errorDocumentId = jdbcTemplate.queryForObject(
-                "INSERT INTO documents (title, status) VALUES (?, 'ERROR') RETURNING id",
+                "INSERT INTO documents (title, processing_stage) VALUES (?, 'ERROR') RETURNING id",
                 Long.class, TITLE_PREFIX + "ERROR");
         errorChunkId = jdbcTemplate.queryForObject(
                 "INSERT INTO chunks (document_id, chunk_index, content) VALUES (?, 0, ?) RETURNING id",
@@ -63,7 +63,7 @@ class EmbeddingStoreStatusFilterIT {
 
         // SCR-AD-04 - ban DONE nhung chatbot khong dung vi chua duoc Bien tap xac nhan.
         Long notApprovedDocumentId = jdbcTemplate.queryForObject(
-                "INSERT INTO documents (title, status) VALUES (?, 'DONE') RETURNING id",
+                "INSERT INTO documents (title, processing_stage) VALUES (?, 'DONE') RETURNING id",
                 Long.class, TITLE_PREFIX + "NOT_APPROVED");
         notApprovedChunkId = jdbcTemplate.queryForObject(
                 "INSERT INTO chunks (document_id, chunk_index, content) VALUES (?, 0, ?) RETURNING id",
@@ -71,7 +71,7 @@ class EmbeddingStoreStatusFilterIT {
 
         // UC0050 - tai lieu da xac nhan nhung Admin da go khoi chatbot.
         Long unpublishedDocumentId = jdbcTemplate.queryForObject(
-                "INSERT INTO documents (title, status, content_approved_at, unpublished_at) "
+                "INSERT INTO documents (title, processing_stage, content_approved_at, unpublished_at) "
                         + "VALUES (?, 'DONE', now(), now()) RETURNING id",
                 Long.class, TITLE_PREFIX + "UNPUBLISHED");
         unpublishedChunkId = jdbcTemplate.queryForObject(

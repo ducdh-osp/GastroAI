@@ -11,8 +11,12 @@ public interface DocumentListRow {
     String getTitle();
     String getSource();
     String getSourceUrl();
-    DocumentStatus getStatus();
     DocumentProcessingStage getProcessingStage();
+
+    /** Suy ra từ bước xử lý - không còn cột status riêng (3NF). */
+    default DocumentStatus getStatus() {
+        return getProcessingStage().status();
+    }
     String getErrorMessage();
     Instant getUploadedAt();
     Instant getUpdatedAt();

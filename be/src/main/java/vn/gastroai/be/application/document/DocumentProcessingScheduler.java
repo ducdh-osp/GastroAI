@@ -6,7 +6,7 @@ import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import vn.gastroai.be.domain.rag.Document;
-import vn.gastroai.be.domain.rag.DocumentStatus;
+import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
 import java.util.List;
@@ -40,8 +40,8 @@ public class DocumentProcessingScheduler {
             recovered = true;
         }
 
-        List<Document> pendingDocuments = documentRepository.findByStatusIn(
-                List.of(DocumentStatus.PENDING));
+        List<Document> pendingDocuments = documentRepository.findByProcessingStage(
+                DocumentProcessingStage.PENDING);
 
         for (Document document : pendingDocuments) {
             int claimedRows = documentRepository.claimForProcessing(document.getId());

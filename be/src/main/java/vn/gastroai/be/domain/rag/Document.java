@@ -34,10 +34,7 @@ public class Document {
     @Column(length = 500)
     private String source;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private DocumentStatus status = DocumentStatus.PENDING;
-
+    /** Bước xử lý - nguồn duy nhất cho trạng thái; getStatus() suy ra từ đây (3NF). */
     @Enumerated(EnumType.STRING)
     @Column(name = "processing_stage", nullable = false, length = 20)
     private DocumentProcessingStage processingStage = DocumentProcessingStage.PENDING;
@@ -93,5 +90,10 @@ public class Document {
     @PreUpdate
     void touch() {
         updatedAt = Instant.now();
+    }
+
+    /** Trạng thái tổng quát (PENDING / PROCESSING / DONE / ERROR), suy ra từ bước xử lý. */
+    public DocumentStatus getStatus() {
+        return processingStage.status();
     }
 }

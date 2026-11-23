@@ -70,7 +70,7 @@ class DocumentUploadControllerTest {
         @WithMockUser(roles = "ADMIN")
         void uploadResponseIncludesInitialStatusAndStage() throws Exception {
                 when(documentUploadService.upload(any(), any(), any()))
-                                .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
+                                .thenReturn(document(DocumentProcessingStage.PENDING));
                 MockMultipartFile file = new MockMultipartFile(
                                 "file", "ibs.pdf", "application/pdf", new byte[] { 1 });
 
@@ -84,7 +84,7 @@ class DocumentUploadControllerTest {
         @Test
         @WithMockUser(roles = "ADMIN")
         void getStatusReturnsLifecycleStageAndErrorDetails() throws Exception {
-                Document document = document(DocumentStatus.ERROR, DocumentProcessingStage.ERROR);
+                Document document = document(DocumentProcessingStage.ERROR);
                 document.setErrorMessage("Embedding failed");
                 when(documentStatusService.findDocument(42L)).thenReturn(Optional.of(document));
 
@@ -102,7 +102,7 @@ class DocumentUploadControllerTest {
         void contentEditorsCanReadDocumentStatus() throws Exception {
                 when(documentStatusService.findDocument(42L))
                                 .thenReturn(Optional.of(
-                                                document(DocumentStatus.PROCESSING, DocumentProcessingStage.CHUNKING)));
+                                                document(DocumentProcessingStage.CHUNKING)));
 
                 mockMvc.perform(get("/api/v1/documents/42"))
                                 .andExpect(status().isOk())
@@ -150,7 +150,7 @@ class DocumentUploadControllerTest {
         @Test
         @WithMockUser(roles = "CONTENT_EDITOR")
         void retryDelegatesToStatusService() throws Exception {
-                Document retried = document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING);
+                Document retried = document(DocumentProcessingStage.PENDING);
                 when(documentStatusService.retry(42L)).thenReturn(retried);
 
                 mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -195,11 +195,11 @@ class DocumentUploadControllerTest {
                                 .andExpect(jsonPath("$[0].content").value("Viêm dạ dày"));
         }
         
-        private Document document(DocumentStatus status, DocumentProcessingStage stage) {
+        // Chỉ đặt bước xử lý - trạng thái (status) trong response suy ra từ bước này.
+        private Document document(DocumentProcessingStage stage) {
                 Document document = new Document();
                 document.setId(42L);
                 document.setTitle("IBS guide");
-                document.setStatus(status);
                 document.setProcessingStage(stage);
                 return document;
         }
@@ -208,7 +208,7 @@ class DocumentUploadControllerTest {
         @WithMockUser(roles = "ADMIN")
         void uploadReplacementAcceptedForAdmin() throws Exception {
                 when(documentUploadService.uploadReplacement(eq(42L), any()))
-                                .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
+                                .thenReturn(document(DocumentProcessingStage.PENDING));
                 MockMultipartFile file = new MockMultipartFile(
                                 "file", "ibs-v2.pdf", "application/pdf", new byte[] { 1 });
 

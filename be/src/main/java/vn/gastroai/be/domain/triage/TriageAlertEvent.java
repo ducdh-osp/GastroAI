@@ -8,7 +8,6 @@ public record TriageAlertEvent(
         Long patientId,
         String patientFullName,
         String patientPhone,
-        Long sessionId,
         Long messageId,
         String messageContent,
         List<String> matchedGroups,

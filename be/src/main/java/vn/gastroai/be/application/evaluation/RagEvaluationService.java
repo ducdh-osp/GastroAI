@@ -407,7 +407,7 @@ public class RagEvaluationService {
     boolean hasRealChunksInDb() {
         try {
             Integer count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM chunks c JOIN documents d ON d.id = c.document_id WHERE d.status = 'DONE'",
+                    "SELECT COUNT(*) FROM chunks c JOIN documents d ON d.id = c.document_id WHERE d.processing_stage = 'DONE'",
                     Integer.class);
             return count != null && count > 0;
         } catch (Exception e) {
@@ -423,7 +423,7 @@ public class RagEvaluationService {
                        CASE WHEN lower(d.title) LIKE ? THEN 0.15 ELSE 0.45 END AS distance
                 FROM chunks c
                 JOIN documents d ON d.id = c.document_id
-                WHERE d.status = 'DONE'
+                WHERE d.processing_stage = 'DONE'
                   AND (lower(d.title) LIKE ? OR lower(c.content) LIKE ?)
                 ORDER BY distance ASC, c.chunk_index ASC
                 LIMIT ?

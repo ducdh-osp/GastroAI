@@ -1,12 +1,17 @@
 package vn.gastroai.be.domain.audit;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -33,8 +38,17 @@ public class AuditAnomalyRule {
     @Column(nullable = false)
     private String name;
 
-    @Column(length = 500)
-    private String actions;
+    /**
+     * Các hành động quy tắc này theo dõi - bảng con audit_anomaly_rule_actions, mỗi dòng 1 hành động
+     * (1NF: không gộp nhiều giá trị vào 1 ô). Rỗng với quy tắc đếm theo IP (MULTI_IP).
+     * EAGER vì quy tắc nào cũng chỉ có vài hành động và luôn cần ngay khi kiểm tra bất thường.
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "audit_anomaly_rule_actions", joinColumns = @JoinColumn(name = "rule_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "action", nullable = false, length = 50)
+    @OrderBy
+    private List<AuditAction> actions = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -59,14 +73,7 @@ public class AuditAnomalyRule {
     }
 
     public List<AuditAction> getActionList() {
-        List<AuditAction> result = new ArrayList<>();
-        if (actions == null || actions.isBlank()) {
-            return result;
-        }
-        for (String part : actions.split(",")) {
-            result.add(AuditAction.valueOf(part.trim()));
-        }
-        return result;
+        return List.copyOf(actions);
     }
 
     public boolean appliesTo(AuditAction action) {
@@ -87,7 +94,6 @@ public class AuditAnomalyRule {
     public Long getId() { return id; }
     public String getCode() { return code; }
     public String getName() { return name; }
-    public String getActions() { return actions; }
     public Metric getMetric() { return metric; }
     public int getThreshold() { return threshold; }
     public int getWindowMinutes() { return windowMinutes; }
