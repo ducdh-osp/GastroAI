@@ -4,26 +4,26 @@
 | :--- | :--- |
 | UC | Phía nhận của `UC0036` ("Gửi cảnh báo Triage tới admin") — không có mã UC riêng trong đề cương, nhưng là màn hình thật sự cần thiết để UC0036 có ý nghĩa |
 | Actor | Hệ thống (tự động hoá phần lớn — xem §1), Admin (chỉ 1 bước xác nhận cuối — xem §2 Bước 3) |
-| Mục tiêu nghiệp vụ | Lớp bảo vệ thứ hai cho bệnh nhân gặp dấu hiệu nguy hiểm, **tự động hoá tối đa** — chỉ dừng lại ở 1 điểm cần người xác nhận trước khi làm phiền bên thứ 3 |
+| Mục tiêu nghiệp vụ | Lớp bảo vệ thứ hai cho bệnh nhân gặp dấu hiệu nguy hiểm — hệ thống tự động phần hỏi thăm/nhắc nhở trong app, mọi liên hệ thật (người thân/bệnh nhân/115) luôn do Admin trực tiếp thực hiện bằng điện thoại cá nhân |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
 
-## 1. AI-first: tự động hoá tới đâu là an toàn, dừng ở đâu là bắt buộc
+## 1. Tự động hoá tới đâu là thật, dừng ở đâu là bắt buộc
 
-v1 của màn này từng bắt Admin tự cầm điện thoại gọi theo kịch bản — đúng về an toàn nhưng sai về tinh thần sản phẩm ("AI làm chủ hầu hết chức năng"). Viết lại theo nguyên tắc: **mọi hành động chỉ là xác nhận/nhắc nhở thì AI tự làm 100%; hành động nào không thể thu hồi và ảnh hưởng tới người thứ 3 thì bắt buộc 1 người xác nhận trước.**
+v1 của màn này từng bắt Admin tự cầm điện thoại gọi theo kịch bản — đúng về an toàn nhưng sai về tinh thần sản phẩm ("AI làm chủ hầu hết chức năng"). v2 định hướng gọi điện tự động đọc kịch bản (TTS qua Twilio hoặc dịch vụ tương đương) — nhưng **tính năng này cuối cùng không được xây dựng** (không có trong code, không có cả dạng stub/feature-flag). Dưới đây là tình trạng THẬT, không phải dự định:
 
-| Hành động | AI tự làm được không? | Vì sao |
+| Hành động | Hệ thống hiện tại có tự làm được không? | Vì sao |
 | :--- | :--- | :--- |
-| Gửi push trong ứng dụng hỏi "bạn có ổn không" | ✅ Có | Chỉ là tin nhắn, không hành động không hồi được — nhưng **chỉ tới được bệnh nhân nếu họ đang mở app** (xem cảnh báo về SMS dưới đây) |
-| Gọi điện tự động đọc kịch bản cố định (TTS) | ✅ Có (nếu kịp tích hợp — xem ghi chú dưới) | Nội dung đã cố định sẵn, máy đọc hay người đọc không đổi thông tin truyền tải, không cần phán đoán y khoa |
-| Lặp nhắc tăng dần nếu im lặng | ✅ Có | Chỉ là logic retry |
-| **Báo cho người liên hệ khẩn cấp (bên thứ 3)** | ❌ Không — cần người xác nhận trước | Báo "người nhà bạn có thể đang nguy hiểm" lúc nửa đêm là hành động xã hội **không thu hồi được** — nếu là báo động giả (lỗi nhận diện, hoặc bệnh nhân chỉ tắt máy đi ngủ), gây hoảng loạn vô cớ cho người vô can. Cần 1 người chịu trách nhiệm quyết định, nhưng có failsafe timeout để không treo vô hạn nếu không ai xác nhận (xem Bước 4) |
-| AI tự gọi 115 thay mặt bệnh nhân | ❌ Không bao giờ | Gọi 115 tiêu tốn nguồn lực cấp cứu thật — AI hiểu nhầm ngữ cảnh (vd "hồi xưa em từng nôn ra máu") thành cấp cứu hiện tại là rủi ro có hậu quả ngoài đời thật. AI chỉ **nhắc bệnh nhân tự gọi** (đã làm ở `SCR-PT-08-ChatAI.md`); quyết định gọi hộ (nếu có) là của Admin ở Bước 3, không phải của hệ thống |
+| Gửi push trong ứng dụng hỏi "Bạn có ổn không? [An toàn] [Cần hỗ trợ]" | ✅ Có, ngay lập tức | Chỉ là tin nhắn hiển thị trong app, không phải hành động không thể thu hồi — nhưng **chỉ tới được bệnh nhân nếu họ đang mở app/nhận push**, không có SMS dự phòng (đã cắt `UC0072`) |
+| Lặp nhắc bệnh nhân + báo động lại Admin khi quá hạn (failsafe, Bước 4) | ✅ Có | Chỉ là gửi lại 2 thông báo đã có ở trên, không phải liên hệ ai mới |
+| Gọi điện tự động đọc kịch bản cố định (TTS) | ❌ Không — **chưa từng được xây**, không phải "có nhưng tắt" | Cần tích hợp dịch vụ gọi điện bên thứ 3 (Twilio hoặc tương đương), đăng ký brandname số Việt Nam, tốn phí theo cuộc gọi — không kịp trong phạm vi đồ án, quyết định bỏ hẳn, không để lại cấu hình tắt/mở |
+| Gọi điện cho người liên hệ khẩn cấp / gọi trực tiếp cho bệnh nhân / gọi 115 | ❌ Không — **luôn luôn là Admin tự thực hiện bằng điện thoại cá nhân** | Hành động không thể thu hồi, ảnh hưởng người thứ 3 (báo "người nhà bạn có thể đang nguy hiểm" mà là báo động giả thì gây hoảng loạn vô cớ) — không có kênh tự động để làm việc này dù muốn, nên **bắt buộc** là người thật, không phải lựa chọn thiết kế có thể đổi sau. Hệ thống chỉ hỗ trợ: hiển thị số liên hệ khẩn cấp đã khai (`MedicalProfile.emergencyContactPhone`) và ghi log kết quả Admin chọn (`POST /api/v1/cms/triage-alerts/{id}/contact`) |
+| AI tự gọi 115 thay mặt bệnh nhân | ❌ Không bao giờ | Gọi 115 tiêu tốn nguồn lực cấp cứu thật — AI hiểu nhầm ngữ cảnh (vd "hồi xưa em từng nôn ra máu") thành cấp cứu hiện tại là rủi ro có hậu quả ngoài đời thật. AI chỉ **nhắc bệnh nhân tự gọi** (đã làm ở `SCR-PT-08-ChatAI.md`); quyết định gọi hộ (nếu có) luôn là của Admin ở Bước 3 |
 
-> ⚠️ **Đã cắt SMS khỏi phạm vi đồ án (`UC0072`, quyết định 2026-11-19)** — luồng này vì vậy **mất lớp đệm quan trọng nhất** để tiếp cận bệnh nhân khi họ không mở app. Kênh tự động còn lại chỉ có: push trong ứng dụng (vô dụng nếu app đóng) và gọi tự động TTS (vẫn chỉ "nên có, có thể cắt" — xem ghi chú tính khả thi dưới). Vì độ tin cậy của lớp tự động giảm hẳn, luồng ở §2 **rút ngắn mốc chuyển "Cần can thiệp"** so với thiết kế có SMS trước đó (10 phút → 5 phút) — thà phiền Admin sớm hơn còn hơn chờ 1 kênh có thể không bao giờ tới được bệnh nhân.
+> ⚠️ **Đã cắt SMS (`UC0072`, quyết định 2026-11-19) và đã quyết định không xây gọi tự động TTS** — luồng này chỉ còn **1 kênh tự động duy nhất tiếp cận bệnh nhân**: push trong ứng dụng (vô dụng nếu app đóng/không nhận push). Mọi liên hệ thật với người thân, bệnh nhân hoặc 115 đều do Admin tự cầm điện thoại cá nhân thực hiện. Vì độ tin cậy kênh tự động thấp, mốc chuyển "Cần can thiệp" rút ngắn xuống **3 phút** (không phải 5 hay 10 phút như các bản trước — khớp đúng mặc định thật trong code, `TriageEscalationScheduler`).
 
-> **Ghi chú tính khả thi (`ba-bigtech-10yr`)**: gọi điện tự động (TTS qua dịch vụ như Twilio) cần tích hợp bên thứ 3, đăng ký brandname gọi số Việt Nam, tốn chi phí theo cuộc gọi — **đánh dấu "Nên có, có thể cắt nếu không kịp trong phạm vi đồ án"**, dùng MoSCoW giống các UC khác trong `docs/masterplan-phan-he-usecase.xlsx`. **Nếu cắt luôn cả gọi tự động** (cùng với SMS đã cắt), kênh tự động tiếp cận bệnh nhân chỉ còn push trong app — lúc đó nên rút ngắn mốc "Cần can thiệp" hơn nữa (vd 3 phút) vì gần như không còn gì đảm bảo chắc chắn tiếp cận được bệnh nhân ngoài chính cảnh báo đã hiện sẵn trên màn Chat (`SCR-PT-08`).
+> **Lưu ý vận hành (`ba-gastro-10yr`)**: với từ khoá nặng nhất (nôn ra máu, đi cầu phân đen/máu), lớp phản hồi tức thời thật là tin AI khuyên bệnh nhân tự gọi 115 ngay trong cùng lượt chat (`SCR-PT-08`) — luồng Triage ở màn này là lớp **an toàn thứ hai**, cho trường hợp bệnh nhân không tự hành động được. 3 phút hợp lý cho vai trò này, nhưng chỉ đúng nếu Admin thực sự theo dõi real-time — nếu đồ án không cam kết trực 24/7, nên hiểu rõ giới hạn này, tránh tạo cảm giác an toàn giả.
 
-## 2. Luồng xử lý — Admin chỉ xuất hiện ở đúng 1 bước
+## 2. Luồng xử lý — Admin chỉ xuất hiện ở đúng 1 bước (và đó là bước "cầm điện thoại thật")
 
 ```text
 ┌───────────────────────────────────────────────────────────┐
@@ -32,39 +32,57 @@ v1 của màn này từng bắt Admin tự cầm điện thoại gọi theo kị
 │ ┌─────────────────────────────────────────────────────────┐ │
 │ │ 🟢 14:32 · Nguyễn Văn A — Hệ thống đang tự xử lý            │ │
 │ │    "...nôn ra máu từ sáng..."                               │ │
-│ │    Đã gửi push (14:32) → đang gọi tự động lần 1 (14:34)      │ │
+│ │    Đã gửi push "Bạn có ổn không?" (14:32) — tự chuyển "Cần  │ │
+│ │    can thiệp" sau 3 phút nếu bệnh nhân vẫn im lặng           │ │
 │ │                                               [Xem timeline →]│ │
 │ ├─────────────────────────────────────────────────────────┤ │
-│ │ 🔴 13:10 · Trần Thị B — CẦN CAN THIỆP                       │ │
-│ │    Đã thử hết các kênh tự động, không phản hồi trong 5'     │ │
-│ │    [  Xem toàn bộ timeline & Xác nhận escalate  ]           │ │
+│ │ 🔴 13:10 · Trần Thị B — CẦN CAN THIỆP · Admin Lan đang liên hệ│ │
+│ │    Không phản hồi push sau 3 phút                           │ │
+│ │    [  Xem timeline & ghi kết quả liên hệ  ]                  │ │
 │ └─────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────┘
 
-— Bước 3: màn "Cần can thiệp" (bắt buộc người xác nhận) —
+— Bước 3: màn "Cần can thiệp" (bắt buộc Admin cầm điện thoại thật) —
 ┌───────────────────────────────────────────────────────────┐
-│  Trần Thị B — hệ thống đã thử hết các kênh tự động            │
-│  Timeline: 13:10 push → 13:12 gọi tự động lần 1 → 13:14 gọi    │
-│  tự động lần 2 → không phản hồi bất kỳ kênh nào                 │
+│  Trần Thị B — không phản hồi push "Bạn có ổn không?" sau 3'   │
+│  Timeline: 13:10 gửi push → 13:13 chuyển "Cần can thiệp"      │
+│  (bệnh nhân im lặng)                                           │
 │                                                                 │
-│  Bấm xác nhận để hệ thống liên hệ người thân đã khai trong hồ   │
-│  sơ (Nguyễn Văn C — Chồng — 09xx xxx xxx):                      │
-│  [  Xác nhận escalate tới liên hệ khẩn cấp  ]                   │
-│  ⚠ Nếu không có Admin nào xác nhận trong 5 phút, hệ thống sẽ    │
-│    TỰ ĐỘNG escalate (failsafe — xem §3) để ca thật không bị bỏ sót.│
+│  Liên hệ khẩn cấp đã khai: Nguyễn Văn C — Chồng — 09xx xxx xxx │
+│  ⚠ Hệ thống KHÔNG tự gọi — Admin tự dùng điện thoại cá nhân   │
+│                                                                 │
+│  [ Tôi đang liên hệ ]  ← tự nguyện, tránh 2 Admin gọi trùng,   │
+│    Admin khác vẫn xem/xử lý được, chỉ không claim trùng        │
+│                                                                 │
+│  Sau khi gọi xong (có thể gọi nhiều lần/nhiều người), ghi kết  │
+│  quả mỗi lần:                                                  │
+│  [Đã gọi người thân] [Người thân không nghe máy]               │
+│  [Người thân xác nhận BN an toàn] [Đã gọi được cho BN]         │
+│  [Đã gọi 115]                                                  │
+│                                                                 │
+│  [   Đóng ca   ]  (cần ≥1 kết quả liên hệ đã ghi)               │
+│  [ Báo nhầm / Spam ]  (cần nhập lý do, huỷ toàn bộ ca)          │
+│                                                                 │
+│  ⚠ Không Admin nào "Tôi đang liên hệ" hoặc ghi kết quả trong   │
+│    5 phút kể từ khi chuyển "Cần can thiệp" → hệ thống tự báo   │
+│    động lại TOÀN BỘ Admin + nhắc lại bệnh nhân (failsafe,      │
+│    Bước 4). Hệ thống vẫn KHÔNG tự gọi cho ai.                  │
 └───────────────────────────────────────────────────────────┘
 ```
 
-**4 bước cụ thể:**
+**Các bước cụ thể** (giữ đúng số 1/3/4 như trong code thật — `TriageEscalationScheduler`, `TriageAlertService`, `TriageAlertAdminController` đều gọi các mốc này là "bước 1"/"bước 3"/"bước 4"; **không có "Bước 2"** — đây là khoảng dành cho gọi tự động TTS đã quyết định không xây, xem §1):
 
 | Bước | Thời điểm | Ai làm | Hành động |
 | :--- | :--- | :--- | :--- |
-| 1 | Ngay khi cảnh báo kích hoạt | Hệ thống (AI, tự động) | Gửi push "Bạn có ổn không? [An toàn] [Cần hỗ trợ]" trong ứng dụng tới bệnh nhân |
-| 2 | +2 phút nếu chưa phản hồi | Hệ thống (AI, tự động) | Gọi tự động đọc kịch bản cố định nếu đã tích hợp (xem ghi chú tính khả thi) — **không còn bước SMS** (đã cắt `UC0072`) |
-| 3 | +5 phút nếu vẫn hoàn toàn im lặng (rút ngắn từ 10' — không còn SMS làm lớp đệm, xem §1) | **1 Admin bất kỳ trong số đang trực** | Case chuyển "Cần can thiệp", đẩy real-time + thông báo tới **toàn bộ Admin trực cùng lúc** (không chỉ 1 người, tránh single point of failure). Admin xem lại toàn bộ timeline, bấm xác nhận escalate tới liên hệ khẩn cấp — hoặc tự gọi lại/gọi 115 nếu thấy cần theo đúng tình huống |
-| 4 (failsafe) | +5 phút sau Bước 3 nếu **không Admin nào** xác nhận | Hệ thống (AI, tự động) | Tự động escalate tới liên hệ khẩn cấp dù không ai xác nhận, ghi log rõ "tự động do không có Admin xác nhận trong 5 phút" | 
+| 1 | Ngay khi cảnh báo kích hoạt | Hệ thống (tự động) | Gửi push "Bạn có ổn không? [An toàn] [Cần hỗ trợ]" tới bệnh nhân |
+| 3 | +3 phút nếu bệnh nhân vẫn hoàn toàn im lặng | Hệ thống (tự động) chuyển trạng thái → sau đó 1 Admin bất kỳ trong số đang trực | Case chuyển "Cần can thiệp", báo tới **toàn bộ Admin đang trực cùng lúc**. Admin xem timeline, có thể bấm "Tôi đang liên hệ" (`claim`, tự nguyện) rồi **tự dùng điện thoại cá nhân** gọi người thân/bệnh nhân/115 theo tình huống, ghi lại kết quả (`recordContact`, 1 trong 5 outcome). Có thể `release` (trả lại) nếu không xử lý tiếp — ca mở lại cho Admin khác, đồng hồ failsafe tính lại từ lúc trả |
+| 4 (failsafe) | +5 phút sau khi chuyển "Cần can thiệp" ở Bước 3, nếu **chưa Admin nào `claim` hoặc ghi kết quả liên hệ** | Hệ thống (tự động) | Báo động lại **toàn bộ Admin** (thông báo mới) và nhắc lại bệnh nhân qua push, ghi log "tự động do không có Admin xác nhận trong 5 phút". **Hệ thống không có khả năng tự liên hệ người thân/bệnh nhân/115** — failsafe chỉ lặp lại 2 cảnh báo đã có, không thay được việc 1 người thật cầm điện thoại gọi. Ca vẫn ở "Cần can thiệp" tới khi có Admin xử lý |
 
-Bước 4 đảm bảo 1 ca cấp cứu thật không rơi vào khoảng trống nếu toàn bộ Admin cũng vắng mặt — nhưng vẫn ưu tiên có người xác nhận trước (Bước 3) vì đây là lựa chọn an toàn hơn khi có thể. **Nếu nhóm cũng không kịp tích hợp gọi tự động** (Bước 2 trống hoàn toàn), nên rút ngắn mốc Bước 3 xuống còn ~3 phút — xem ghi chú tính khả thi ở §1.
+> ⚠️ **Hạn chế đã phát hiện khi rà soát code** (`TriageAlertRepository.claimIfOpen`): bấm "Tôi đang liên hệ" set `acknowledgedAt` ngay, nghĩa là **failsafe dừng vĩnh viễn cho ca đó ngay khi có Admin claim — kể cả khi Admin đó sau đó không quay lại ghi bất kỳ kết quả liên hệ nào**. Chưa có timeout phụ bắt lại trường hợp "đã claim nhưng bỏ quên" (chỉ tự hồi phục nếu chính Admin đó chủ động bấm "Trả lại"/`release`). Khuyến nghị: failsafe nên tiếp tục đếm nếu ca đã claim quá X phút mà chưa có kết quả liên hệ nào được ghi, không chỉ dựa vào đã claim hay chưa. *(Việc sửa thuộc về code, không phải tài liệu — nêu ở đây để tài liệu không hứa một mức an toàn cao hơn thực tế.)*
+
+> **Khuyến nghị bổ sung outcome (chưa triển khai)**: 5 kết quả hiện có (`TriageContactResult`) bất đối xứng — có "Người thân không nghe máy" nhưng không có outcome tương ứng cho bệnh nhân, và không có outcome "đã thử hết người thân + bệnh nhân, không ai bắt máy, chưa gọi 115". Đề xuất bổ sung `PATIENT_NO_ANSWER` và `UNREACHABLE_ALL` — trường hợp thứ hai là tín hiệu nên đẩy Admin tới quyết định gọi 115 chủ động, cần tách biệt khỏi 1 lần gọi nhỡ đơn lẻ.
+
+> **Hạn chế khác đã phát hiện**: màn chi tiết ca chỉ trả số liên hệ khẩn cấp cho viewer có vai trò Admin (`TriageAlertService.getDetail`) — nếu sau này có vai trò khác (vd Bác sĩ trực) cũng được phép `claim`/xử lý ca, vai trò đó sẽ không thấy số để gọi. Cần đồng bộ điều kiện này với bất kỳ thay đổi vai trò nào ở `SCR-AD-03-PhanQuyenRBAC.md`.
 
 ## 3. Nguyên tắc
 
@@ -75,7 +93,8 @@ Bước 4 đảm bảo 1 ca cấp cứu thật không rơi vào khoảng trống
 | Timeline tự động phải hiện đầy đủ, không phải "hộp đen" | Mọi bước hệ thống đã làm (push lúc nào, gọi tự động lúc nào, có phản hồi hay không) hiện rõ trong màn "Cần can thiệp" | Admin cần đủ bối cảnh để quyết định đúng ở bước duy nhất cần quyết định — không thể quyết định tốt nếu không biết hệ thống đã thử gì |
 | Failsafe tự động nếu không Admin nào xác nhận (Bước 4) | Đếm ngược độc lập với việc Admin có đang xem màn hay không | Nguyên tắc tối cao của toàn hệ thống Triage (`03-AIChatbot-RAG/00-TongQuan.md` §3.1): thà hành động nhầm còn hơn bỏ sót — nếu Admin cũng không phản hồi, hệ thống vẫn phải tự lo, không được để ca "treo" vô thời hạn |
 | Sắp xếp ca "Cần can thiệp" lên đầu, trước cả "Hệ thống đang tự xử lý" | Không chỉ sắp theo thời gian, còn theo mức độ (nếu có từ `UC0040`) | Đây là tab duy nhất đòi hỏi hành động người thật — phải là thứ đầu tiên Admin nhìn thấy khi mở màn |
-| Mọi ca đã xử lý vẫn lưu lại, xem được lịch sử đầy đủ (cả phần tự động lẫn phần Admin) | Tab "Đã xử lý" riêng | Phục vụ rà soát sau này — hệ thống có đang phản ứng đủ nhanh không, failsafe có kích hoạt đúng không; cũng là cơ sở cải thiện ngưỡng thời gian (2'/10'/5') nếu thực tế cho thấy chưa hợp lý |
+| Admin "nhận" ca (claim) để tránh 2 người cùng gọi 1 gia đình đang hoảng loạn | Nút "Tôi đang liên hệ" / "Trả lại" — tự nguyện, Admin khác vẫn xem/xử lý được | Nhiều Admin cùng trực có thể cùng mở 1 ca; nếu không đánh dấu, 2 người gọi trùng 1 gia đình đúng lúc họ cần bình tĩnh nhất là phiền phức không cần thiết |
+| Mọi ca đã xử lý vẫn lưu lại, xem được lịch sử đầy đủ (cả phần tự động lẫn phần Admin) | Tab "Đã xử lý" riêng | Phục vụ rà soát sau này — hệ thống có đang phản ứng đủ nhanh không, failsafe có kích hoạt đúng không; cũng là cơ sở cải thiện ngưỡng thời gian (3 phút chuyển "Cần can thiệp" / 5 phút failsafe) nếu thực tế cho thấy chưa hợp lý |
 
 ## 4. Tham chiếu
 

@@ -2,14 +2,14 @@
 
 | Thuộc tính | Giá trị |
 | :--- | :--- |
-| UC | `UC0048` (tải lên), `UC0049` (quản lý phiên bản), `UC0050` (xoá), `UC0055` (tìm kiếm), `UC0061` (theo dõi trạng thái xử lý) |
+| UC | `UC0048` (tải lên), `UC0049` (thay thế tài liệu), `UC0050` (xoá), `UC0055` (tìm kiếm), `UC0061` (theo dõi trạng thái xử lý) |
 | Actor | Admin (tải lên, xử lý kỹ thuật), Biên tập chuyên môn y khoa (xác nhận nội dung trước khi AI dùng — xem §3.1b) |
 | Mục tiêu nghiệp vụ | Đây là nơi "nạp kiến thức" cho AI — chất lượng và độ mới của tài liệu ở đây quyết định trực tiếp chất lượng câu trả lời AI đưa ra cho bệnh nhân |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
 
 ## 1. Vì sao màn hình này gộp 5 UC — và vì sao điều đó đúng
 
-Người quản lý tài liệu làm việc với **cùng 1 danh sách tài liệu**, chỉ khác hành động: tải mới, xem lịch sử phiên bản, xoá, tìm lại, xem đang xử lý tới đâu. Tách thành 5 màn riêng sẽ buộc họ liên tục nhảy qua lại cho cùng 1 công việc duy nhất ("quản lý kho tài liệu"). Đây là ví dụ rõ nhất trong toàn bộ tài liệu này về nguyên tắc "cùng 1 màn hình nếu người dùng thực sự trải nghiệm chúng như 1 việc".
+Người quản lý tài liệu làm việc với **cùng 1 danh sách tài liệu**, chỉ khác hành động: tải mới, thay bằng bản mới, xoá, tìm lại, xem đang xử lý tới đâu. Tách thành 5 màn riêng sẽ buộc họ liên tục nhảy qua lại cho cùng 1 công việc duy nhất ("quản lý kho tài liệu"). Đây là ví dụ rõ nhất trong toàn bộ tài liệu này về nguyên tắc "cùng 1 màn hình nếu người dùng thực sự trải nghiệm chúng như 1 việc".
 
 ## 2. Thiết kế màn hình
 
@@ -28,14 +28,14 @@ Người quản lý tài liệu làm việc với **cùng 1 danh sách tài li�
 │ └─────────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────┘
 
-— Menu [···] mở ra —          — Ngăn kéo lịch sử phiên bản —
-┌─────────────────────┐      ┌─────────────────────────────┐
-│ Tải phiên bản mới      │      │ Phác đồ H. pylori                │
-│ Xem lịch sử phiên bản  │      │ v3 (hiện tại) · 14/11 · Đang xử lý │
-│ Xoá tài liệu           │      │ v2 · 02/10 · Đang dùng cho AI       │
-└─────────────────────┘      │ v1 · 15/08 · Đã thay thế            │
-                                └─────────────────────────────┘
+— Menu [···] mở ra —
+┌─────────────────────────┐
+│ Tải bản thay thế          │
+│ Xoá tài liệu               │
+└─────────────────────────┘
 ```
+
+Không còn "lịch sử phiên bản" — mỗi chủ đề tài liệu chỉ có đúng 1 bản ghi hiển thị, đại diện cho nội dung đang dùng (hoặc sắp dùng) cho AI. Tải bản thay thế là hành động duy nhất để cập nhật nội dung, không tạo thêm dòng mới trong danh sách.
 
 ## 3. Nguyên tắc cho từng nhóm thao tác
 
@@ -53,19 +53,25 @@ Xử lý kỹ thuật xong (trích xuất, chia đoạn, tạo vector) **không 
 
 Vì vậy, sau khi xử lý kỹ thuật xong, tài liệu vào trạng thái **"Chờ xác nhận nội dung"** — **Biên tập chuyên môn y khoa** đối chiếu với nguồn y khoa đã công bố (phác đồ, hướng dẫn điều trị chính thức) rồi mới bấm "Xác nhận dùng cho AI". Chỉ sau bước này tài liệu mới chuyển "Đang dùng cho AI". Đây không cần một bác sĩ hành nghề thật — nhưng bắt buộc là một bước đối chiếu nguồn có ý thức, không phải "xử lý xong kỹ thuật là coi như xong".
 
-### 3.2 Quản lý phiên bản (`UC0049`)
+Nếu đây là bản **thay thế** cho 1 tài liệu đã có (không phải tài liệu hoàn toàn mới), thao tác "Xác nhận dùng cho AI" còn làm thêm 1 việc: xoá vĩnh viễn bản cũ (xem nguyên tắc ở §3.2) — nên trước khi bấm, Biên tập cần chắc chắn bản mới đã đúng, vì sau bước này không còn đường lùi.
+
+### 3.2 Thay thế tài liệu (`UC0049`)
+
+Có chủ ý **không làm theo kiểu "lưu lịch sử phiên bản"** (kiểu Google Docs — giữ lại mọi bản v1, v2, v3...). Mỗi chủ đề tài liệu chỉ có đúng 1 nội dung "thật" tại 1 thời điểm — tải bản mới là **thay thế**, không phải cộng thêm.
 
 | Nguyên tắc | Vì sao |
 | :--- | :--- |
-| Tải phiên bản mới cho tài liệu đã có, thay vì tạo bản ghi tài liệu hoàn toàn mới | Tài liệu y khoa được cập nhật định kỳ (phác đồ điều trị thay đổi theo thời gian) — giữ chung 1 "lịch sử" cho 1 chủ đề tài liệu giúp dễ theo dõi tiến hoá nội dung, thay vì rải rác thành nhiều tài liệu rời rạc trùng chủ đề |
-| Phiên bản cũ **không biến mất** khi có phiên bản mới | AI vẫn cần trả lời được trong lúc phiên bản mới đang xử lý — chuyển đổi "êm", không có khoảng trống thiếu dữ liệu |
-| Hiện rõ phiên bản nào đang thực sự được AI dùng | Người quản lý cần phân biệt "phiên bản mới nhất" và "phiên bản đang hoạt động" — có thể khác nhau trong lúc phiên bản mới còn đang xử lý |
+| Tải bản mới cho tài liệu đã có = thay thế, không giữ song song nhiều bản | Đơn giản hoá cho người quản lý: không cần nhớ/phân biệt nhiều bản của cùng 1 chủ đề, thao tác luôn là "sửa cái hiện tại" |
+| Trong lúc bản mới đang xử lý/chờ xác nhận nội dung, bản cũ **vẫn tiếp tục được AI dùng bình thường** | AI không được phép mất kiến thức về chủ đề đó dù chỉ tạm thời — tránh khoảng trống dữ liệu trong lúc chờ xử lý bản mới (có thể mất vài phút tới vài giờ) |
+| Bản cũ chỉ bị xoá đúng thời điểm Biên tập chuyên môn y khoa bấm "Xác nhận dùng cho AI" cho bản mới (xem §3.1b) | Đây là thời điểm duy nhất hệ thống chắc chắn bản mới đã sẵn sàng thay thế — xoá sớm hơn (ngay lúc tải lên) có thể xoá nhầm trong khi bản mới còn lỗi hoặc chưa xử lý xong |
+| Xoá bản cũ nghĩa là xoá **vĩnh viễn** toàn bộ document + chunk + embedding liên quan, không chỉ ẩn/đổi trạng thái | Không giữ lịch sử phiên bản nên phải dọn sạch — tránh chunk/embedding "mồ côi" còn sót trong kho vector, có thể vô tình vẫn bị RAG truy xuất trúng |
+| Không có chức năng khôi phục bản cũ sau khi đã thay thế | Đánh đổi thật của việc bỏ lịch sử phiên bản: thao tác đơn giản hơn, nhưng mất khả năng rollback — màn hình cần cảnh báo rõ đây là hành động không thể hoàn tác trước khi Biên tập xác nhận |
 
 ### 3.3 Xoá tài liệu (`UC0050`)
 
 | Nguyên tắc | Vì sao |
 | :--- | :--- |
-| Cảnh báo rõ hậu quả trước khi xoá (AI sẽ không còn trích dẫn được tài liệu này) | Đây là thao tác ảnh hưởng trực tiếp chất lượng trả lời AI cho mọi bệnh nhân sau đó — không nên dễ xoá nhầm như xoá 1 dòng dữ liệu thông thường |
+| Cảnh báo rõ hậu quả trước khi xoá (AI sẽ không còn trích dẫn được tài liệu này) **và nêu rõ không thể khôi phục** | Đây là thao tác ảnh hưởng trực tiếp chất lượng trả lời AI cho mọi bệnh nhân sau đó. Vì không còn giữ lịch sử phiên bản (§3.2), xoá ở đây là vĩnh viễn — cảnh báo cần mạnh hơn 1 dialog Có/Không thông thường (vd bắt gõ lại tên tài liệu để xác nhận) |
 
 ### 3.4 Tìm kiếm (`UC0055`)
 

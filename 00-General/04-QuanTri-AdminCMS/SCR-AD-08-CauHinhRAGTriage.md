@@ -21,16 +21,23 @@ Khác với cấu hình nội dung (từ khoá, FAQ, bài viết — sai thì s�
 │  Số đoạn tài liệu tham khảo mỗi câu trả lời     [ 5 ▾ ]        │
 │  ⓘ Nhiều hơn → câu trả lời đầy đủ hơn nhưng chậm hơn            │
 │                                                                 │
-│  Ngưỡng mức độ liên quan tối thiểu              [ 0.7 ▾ ]      │
-│  ⓘ Thấp hơn → tìm được nhiều hơn nhưng dễ lẫn nội dung không   │
-│    liên quan                                                    │
+│  ☐ Bật lọc ngưỡng khoảng cách (mặc định TẮT)                   │
+│  Ngưỡng khoảng cách tối đa                      [ 0.6 ▾ ]      │
+│  ⓘ 0 = chỉ lấy đoạn giống hệt câu hỏi, 2 = không lọc gì (lấy   │
+│    cả đoạn không liên quan) — thấp hơn = CHẶT hơn (ít kết quả  │
+│    nhưng liên quan hơn), cao hơn = LỎNG hơn (nhiều nhiễu hơn)   │
 │                                                                 │
-│  Kênh thông báo khi có cảnh báo Triage                         │
-│  ☑ Trong ứng dụng    ☑ Email cho Admin trực                    │
+│  ☑ Thông báo cảnh báo khẩn cấp realtime (WebSocket)            │
+│  ⓘ Tắt tạm thời khi bảo trì/debug — cảnh báo vẫn được tạo và   │
+│    lưu lại, chỉ không đẩy ngay qua WebSocket cho CMS            │
 │                                                                 │
 │                              [     Lưu thay đổi     ]          │
 └───────────────────────────────────────────────────────────┘
 ```
+
+Lưu ý 2 chỗ khác với bản nháp ban đầu, đã sửa cho khớp code thật:
+- Đơn vị thật là **khoảng cách cosine** (0 = giống hệt, 2 = đối lập hoàn toàn), không phải độ tương đồng — nên chiều tác động **ngược lại** trực giác "ngưỡng tối thiểu" thông thường: số **thấp hơn** = lọc **chặt** hơn, số **cao hơn** = lọc **lỏng** hơn. Mặc định thật là **tắt hẳn bộ lọc này** (không áp dụng ngưỡng nào) — 0.6 chỉ là giá trị gợi ý điền sẵn khi Admin bật công tắc lên lần đầu, không phải giá trị đang áp dụng mặc định.
+- "Kênh thông báo" thật ra chỉ là **1 công tắc bật/tắt** (đẩy thời gian thực qua WebSocket hay không) — không có lựa chọn kênh "Email cho Admin trực" nào tồn tại trong hệ thống.
 
 ## 3. Nguyên tắc
 

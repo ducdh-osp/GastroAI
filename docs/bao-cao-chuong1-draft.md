@@ -261,8 +261,8 @@ Tính đến commit `ca1625e` (19/11/2026, 337 commit):
 | SW-02 | Kiểm thử tự động backend (JUnit) | `be/src/test/java` | 110 file test |
 | SW-03 | Kiểm thử tự động frontend | `fe/` | **Chưa có** — cần bổ sung trước khi nộp |
 | SW-04 | Đặc tả API | Swagger UI (springdoc) | Đã có, sinh tự động |
-| DA-01 | Dữ liệu seed/kiểm thử (PostgreSQL) | `be/.../db/migration/postgres/` | 57 migration |
-| DA-02 | Dữ liệu seed/kiểm thử (MySQL, CMS) | `be/.../db/migration/mysql/` | 13 migration |
+| DA-01 | Dữ liệu seed/kiểm thử (PostgreSQL) | `be/.../db/migration/postgres/` | 60 migration |
+| DA-02 | Dữ liệu seed/kiểm thử (MySQL, CMS) | `be/.../db/migration/mysql/` | 16 migration |
 | AI-01 | Kho tri thức RAG đã số hóa | PostgreSQL + pgvector | Đã nạp tài liệu mẫu, đang mở rộng |
 | RS-01 | Tài liệu nghiệp vụ, đề cương, báo cáo | `docs/` | Đang hoàn thiện theo mẫu E4 |
 
@@ -551,7 +551,7 @@ Google Docs — mô tả khối dưới đây chỉ để đối chiếu nội d
 | UC0068 | FR | Bệnh nhân | Nhắc uống thuốc in-app | Gửi nhắc qua in-app/WebSocket đúng khung giờ khi đang online |
 | NFR-01 | NFR | — | Hiệu năng | Trả lời qua streaming SSE giảm cảm giác chờ; TTFT/latency tổng chưa đo đầy đủ (xem TODO) |
 | NFR-02 | NFR | — | Bảo mật | RBAC (2 vai trò: Admin, Biên tập chuyên môn y khoa) + audit log thao tác nhạy cảm; tách CSDL bệnh nhân/CMS vật lý; route CMS không session → 403 (đã xác nhận qua curl) |
-| NFR-03 | NFR | — | Độ tin cậy | Flyway migration kiểm soát phiên bản (57 Postgres + 13 MySQL); soft-delete cho phép khôi phục nhật ký ghi nhầm (UC0020) |
+| NFR-03 | NFR | — | Độ tin cậy | Flyway migration kiểm soát phiên bản (60 Postgres + 16 MySQL); soft-delete cho phép khôi phục nhật ký ghi nhầm (UC0020) |
 | NFR-04 | NFR | — | Usability | Chuẩn hoá UI CMS bằng AntD; chưa có kiểm thử usability với người dùng ngoài nhóm — hạn chế cần nêu khi bảo vệ |
 | NFR-05 | NFR | — | Khả năng kiểm thử/tái lập | Bộ đánh giá RAG/Triage chạy trực tiếp qua API CMS, số liệu sinh từ dữ liệu thật, không hardcode |
 
@@ -858,7 +858,7 @@ băng ổn định 21 ngày tính đến lúc viết báo cáo (20/11/2026).
 5. **Gemini API (Google)**: dịch vụ ngoài — sinh embedding + sinh câu trả lời — **thành phần duy
    nhất nằm ngoài trust boundary nhóm kiểm soát**.
 
-**Hình 4. Kiến trúc tổng thể** — *(chèn ảnh `architecture_diagram.png`)*
+**Hình 4. Kiến trúc tổng thể** — *(chèn ảnh `architecture_diagram_vp.png`)*
 
 **Trust boundary (4 ranh giới đáng chú ý):**
 
@@ -884,12 +884,12 @@ băng ổn định 21 ngày tính đến lúc viết báo cáo (20/11/2026).
 
 | Thành phần | Cách chạy | Ghi chú |
 |---|---|---|
-| Backend | 1 JVM process (`./gradlew bootRun` hoặc chạy jar) | Đọc cấu hình từ `application-local.yml` |
+| Backend | 1 JVM process (`./mvnw spring-boot:run` hoặc chạy jar) | Đọc cấu hình từ `application-local.yml` |
 | Frontend | 1 Vite dev server (`npm run dev`) hoặc build tĩnh | Không phải 2 app riêng (xem component 1) |
-| PostgreSQL | Instance local trên máy dev (cổng tùy máy, vd 5433 nếu 5432 đã bị chiếm) | 57 migration Flyway |
-| MySQL | Instance local trên máy dev, cổng mặc định | 13 migration Flyway |
+| PostgreSQL | Instance local trên máy dev (cổng tùy máy, vd 5433 nếu 5432 đã bị chiếm) | 60 migration Flyway |
+| MySQL | Instance local trên máy dev, cổng mặc định | 16 migration Flyway |
 
-**Hình 5. Sơ đồ triển khai (Deployment)** — *(chèn ảnh `deployment_diagram.png`)*
+**Hình 5. Sơ đồ triển khai (Deployment)** — *(chèn ảnh `deployment_diagram_vp.png`)*
 
 *Hạn chế thật:* mỗi thành viên chạy trên máy riêng, chưa có môi trường triển khai chung
 (staging/cloud) hay container hóa — nên "deployment diagram" ở đây đơn giản hơn nhiều so với một

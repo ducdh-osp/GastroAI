@@ -35,8 +35,11 @@ function formatError(msg: string): string {
     : msg.trim() + '.'
 }
 
+// Hiện số phút còn lại tính tại thời điểm lỗi trả về (không tự đếm ngược live) - đủ để người
+// dùng biết "còn bao lâu" như SCR-AUTH-03 §3 yêu cầu, thay vì mốc giờ tuyệt đối phải tự trừ nhẩm.
 function formatLockedUntil(value: string): string {
-  return new Date(value).toLocaleString('vi-VN', { dateStyle: 'medium', timeStyle: 'short' })
+  const minutesLeft = Math.max(1, Math.ceil((new Date(value).getTime() - Date.now()) / 60000))
+  return `${minutesLeft} phút`
 }
 
 export default function LoginPage() {
@@ -95,7 +98,7 @@ export default function LoginPage() {
         <Alert
           type={lockedUntil ? 'warning' : 'error'}
           message={error}
-          description={lockedUntil ? `Tài khoản bị khóa đến ${formatLockedUntil(lockedUntil)}.` : undefined}
+          description={lockedUntil ? `Tài khoản tạm khoá để bảo vệ bạn, thử lại sau ${formatLockedUntil(lockedUntil)}.` : undefined}
           showIcon
           className="mb-4"
         />
