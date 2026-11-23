@@ -3,6 +3,7 @@ package vn.gastroai.be.domain.audit;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuditAnomalyRuleTest {
 
-    private AuditAnomalyRule rule(String actions, AuditAnomalyRule.Metric metric) {
+    private AuditAnomalyRule rule(List<AuditAction> actions, AuditAnomalyRule.Metric metric) {
         AuditAnomalyRule rule = new AuditAnomalyRule();
         ReflectionTestUtils.setField(rule, "code", "TEST_RULE");
-        ReflectionTestUtils.setField(rule, "actions", actions);
+        ReflectionTestUtils.setField(rule, "actions", new ArrayList<>(actions));
         ReflectionTestUtils.setField(rule, "metric", metric);
         ReflectionTestUtils.setField(rule, "threshold", 5);
         ReflectionTestUtils.setField(rule, "windowMinutes", 10);
@@ -24,23 +25,24 @@ class AuditAnomalyRuleTest {
     }
 
     @Test
-    void parsesCommaSeparatedActionsAndTrimsSpaces() {
-        AuditAnomalyRule rule = rule("DOCUMENT_DELETE, DOCUMENT_DELETE_VERSION", AuditAnomalyRule.Metric.ACTIONS);
+    void returnsConfiguredActions() {
+        AuditAnomalyRule rule = rule(List.of(AuditAction.DOCUMENT_DELETE, AuditAction.DOCUMENT_UNPUBLISH),
+                AuditAnomalyRule.Metric.ACTIONS);
 
-        assertEquals(List.of(AuditAction.DOCUMENT_DELETE, AuditAction.DOCUMENT_DELETE_VERSION),
-                rule.getActionList());
+        assertEquals(List.of(AuditAction.DOCUMENT_DELETE, AuditAction.DOCUMENT_UNPUBLISH), rule.getActionList());
     }
 
     @Test
-    void nullActionsGiveEmptyList() {
-        AuditAnomalyRule rule = rule(null, AuditAnomalyRule.Metric.DISTINCT_IPS);
+    void ruleWithoutActionsGivesEmptyList() {
+        AuditAnomalyRule rule = rule(List.of(), AuditAnomalyRule.Metric.DISTINCT_IPS);
 
         assertTrue(rule.getActionList().isEmpty());
     }
 
     @Test
     void appliesOnlyToConfiguredActions() {
-        AuditAnomalyRule rule = rule("PATIENT_LOCK,PATIENT_UNLOCK", AuditAnomalyRule.Metric.DISTINCT_TARGETS);
+        AuditAnomalyRule rule = rule(List.of(AuditAction.PATIENT_LOCK, AuditAction.PATIENT_UNLOCK),
+                AuditAnomalyRule.Metric.DISTINCT_TARGETS);
 
         assertTrue(rule.appliesTo(AuditAction.PATIENT_LOCK));
         assertTrue(rule.appliesTo(AuditAction.PATIENT_UNLOCK));
@@ -49,7 +51,7 @@ class AuditAnomalyRuleTest {
 
     @Test
     void multiIpRuleAppliesToEveryAction() {
-        AuditAnomalyRule rule = rule(null, AuditAnomalyRule.Metric.DISTINCT_IPS);
+        AuditAnomalyRule rule = rule(List.of(), AuditAnomalyRule.Metric.DISTINCT_IPS);
 
         assertTrue(rule.appliesTo(AuditAction.DOCUMENT_DELETE));
         assertTrue(rule.appliesTo(AuditAction.PATIENT_DATA_VIEW));
@@ -57,7 +59,7 @@ class AuditAnomalyRuleTest {
 
     @Test
     void updateChangesEditableFieldsAndStampsAuthor() {
-        AuditAnomalyRule rule = rule("RBAC_ROLE_CHANGE", AuditAnomalyRule.Metric.DISTINCT_TARGETS);
+        AuditAnomalyRule rule = rule(List.of(AuditAction.RBAC_ROLE_CHANGE), AuditAnomalyRule.Metric.DISTINCT_TARGETS);
 
         rule.update(15, 30, false, "admin@gastroai.vn");
 

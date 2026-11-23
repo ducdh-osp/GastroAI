@@ -1,5 +1,6 @@
 package vn.gastroai.be.application.admin;
 
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
@@ -130,7 +131,7 @@ class CmsRbacServiceTest {
     void unlocksAccountWithoutChangingSessionVersion() {
         Admin admin = new Admin();
         admin.setId(5L);
-        admin.setAdminLocked(true);
+        admin.setAdminLockedAt(Instant.now());
         admin.setSessionVersion(4);
         when(admins.findByIdForUpdate(5L)).thenReturn(Optional.of(admin));
 

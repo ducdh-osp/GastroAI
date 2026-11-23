@@ -45,7 +45,6 @@ public class DocumentStatusService {
     public void markProcessing(Long documentId) {
         Document document = getDocument(documentId);
 
-        document.setStatus(DocumentStatus.PROCESSING);
         document.setProcessingStage(DocumentProcessingStage.EXTRACTION);
         document.setErrorMessage(null);
         // Xu ly lai thi noi dung co the khac, phai xac nhan lai.
@@ -73,7 +72,6 @@ public class DocumentStatusService {
     public void markDone(Long documentId) {
         Document document = getDocument(documentId);
 
-        document.setStatus(DocumentStatus.DONE);
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
         // SCR-AD-04 §3.1b - xu ly ky thuat xong chua phai la xong: cho Bien tap xac nhan noi dung
@@ -93,7 +91,6 @@ public class DocumentStatusService {
 
         Document document = maybeDocument.get();
 
-        document.setStatus(DocumentStatus.ERROR);
         document.setProcessingStage(DocumentProcessingStage.ERROR);
         document.setErrorMessage(errorMessage);
 
@@ -226,7 +223,6 @@ public class DocumentStatusService {
         if (document.getStatus() != DocumentStatus.ERROR) {
             throw new IllegalStateException("Chỉ có thể thử lại các tài liệu đang ở trạng thái lỗi (ERROR)");
         }
-        document.setStatus(DocumentStatus.PENDING);
         document.setProcessingStage(DocumentProcessingStage.PENDING);
         document.setErrorMessage(null);
         return documentRepository.save(document);

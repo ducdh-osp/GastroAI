@@ -39,10 +39,10 @@ public class Admin {
     @Column(name = "session_version", nullable = false)
     private int sessionVersion = 0;
 
-    /** Admin khoa thu cong (khac voi lockedUntil - tu khoa tam do sai mat khau nhieu lan). */
-    @Column(name = "admin_locked", nullable = false)
-    private boolean adminLocked;
-
+    /**
+     * Thời điểm Admin khoá thủ công (khác lockedUntil - tự khoá tạm do sai mật khẩu nhiều lần).
+     * null = không bị khoá. Không lưu thêm cột true/false vì suy ra được từ cột này (3NF).
+     */
     @Column(name = "admin_locked_at")
     private Instant adminLockedAt;
 
@@ -60,5 +60,10 @@ public class Admin {
     @PreUpdate
     void onUpdate() {
         this.updatedAt = Instant.now();
+    }
+
+    /** Đang bị Admin khoá thủ công. */
+    public boolean isAdminLocked() {
+        return adminLockedAt != null;
     }
 }

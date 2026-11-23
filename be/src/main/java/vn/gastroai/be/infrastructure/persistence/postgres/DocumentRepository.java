@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.rag.Document;
-import vn.gastroai.be.domain.rag.DocumentStatus;
+import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 
 import java.util.List;
 
@@ -18,9 +18,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          * Tim cac document dang do o nhung trang thai chua hoan tat - dung de phuc hoi
          * sau khi server khoi dong lai.
          */
-        List<Document> findByStatusIn(List<DocumentStatus> statuses);
+        List<Document> findByProcessingStage(DocumentProcessingStage stage);
 
-        List<Document> findByContentHashAndStatusNot(String contentHash, DocumentStatus status);
+        List<Document> findByContentHashAndProcessingStageNot(String contentHash, DocumentProcessingStage stage);
 
         /**
          * Gianh quyen xu ly 1 document bang UPDATE nguyen tu - chi doi duoc neu con
@@ -31,9 +31,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          */
         @Modifying
         @Transactional
-        @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PROCESSING, "
+        @Query("UPDATE Document d SET d.processingStage = vn.gastroai.be.domain.rag.DocumentProcessingStage.EXTRACTION, "
                         + "d.updatedAt = CURRENT_TIMESTAMP "
-                        + "WHERE d.id = :id AND d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING")
+                        + "WHERE d.id = :id AND d.processingStage = vn.gastroai.be.domain.rag.DocumentProcessingStage.PENDING")
         int claimForProcessing(@Param("id") Long id);
 
         /**
@@ -42,7 +42,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          */
         @Modifying
         @Transactional
-        @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING, "
+        @Query("UPDATE Document d SET d.processingStage = vn.gastroai.be.domain.rag.DocumentProcessingStage.PENDING, "
                         + "d.updatedAt = CURRENT_TIMESTAMP "
                         + "WHERE d.id = :id")
         int revertToPending(@Param("id") Long id);
@@ -54,9 +54,11 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          */
         @Modifying
         @Transactional
-        @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING, "
+        @Query("UPDATE Document d SET d.processingStage = vn.gastroai.be.domain.rag.DocumentProcessingStage.PENDING, "
                         + "d.updatedAt = CURRENT_TIMESTAMP "
-                        + "WHERE d.status = vn.gastroai.be.domain.rag.DocumentStatus.PROCESSING")
+                        + "WHERE d.processingStage IN (vn.gastroai.be.domain.rag.DocumentProcessingStage.EXTRACTION, "
+                        + "vn.gastroai.be.domain.rag.DocumentProcessingStage.CHUNKING, "
+                        + "vn.gastroai.be.domain.rag.DocumentProcessingStage.EMBEDDING)")
         int requeueStuckProcessing();
 
         /**
@@ -71,7 +73,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          * KHONG lay full_text (cot nay chua toan bo chu cua tai lieu, rat nang).
          */
         @Query("SELECT d.id AS id, d.title AS title, d.source AS source, d.sourceUrl AS sourceUrl, "
-                        + "d.status AS status, d.processingStage AS processingStage, "
+                        + "d.processingStage AS processingStage, "
                         + "d.errorMessage AS errorMessage, d.uploadedAt AS uploadedAt, "
                         + "d.updatedAt AS updatedAt, "
                         + "d.contentApprovedAt AS contentApprovedAt, "

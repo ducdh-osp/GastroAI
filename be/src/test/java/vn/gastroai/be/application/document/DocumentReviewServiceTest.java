@@ -9,6 +9,7 @@ import vn.gastroai.be.api.document.DocumentReviewResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.rag.Chunk;
 import vn.gastroai.be.domain.rag.Document;
+import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
@@ -36,7 +37,7 @@ class DocumentReviewServiceTest {
         Document document = new Document();
         document.setId(7L);
         document.setTitle("Phác đồ HP");
-        document.setStatus(DocumentStatus.DONE);
+        document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setSource(source);
         document.setFullText("Toàn bộ chữ đã trích");
         return document;

@@ -68,7 +68,7 @@ class TriageAlertServiceTest {
 
     /** Ca id=10 cua benh nhan #1 o trang thai cho truoc; findById luon tra ve chinh doi tuong nay. */
     private TriageAlert alertIn(TriageAlertStatus status) {
-        TriageAlert alert = new TriageAlert(patient(1L, "Nguyen Van A", "0901234567"), null, null,
+        TriageAlert alert = new TriageAlert(patient(1L, "Nguyen Van A", "0901234567"), null,
                 "Cau hoi khan cap", null, Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
         alert.setStatus(status);
@@ -115,7 +115,7 @@ class TriageAlertServiceTest {
         });
 
         Long alertId = service.createAndPublish(
-                1L, null, null,
+                1L, null,
                 "Toi bi dau bung du doi va non ra mau",
                 List.of("XUAT_HUYET_TIEU_HOA"));
 
@@ -143,7 +143,7 @@ class TriageAlertServiceTest {
         when(patientRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class, () -> service.createAndPublish(
-                99L, null, null, "Cau hoi", List.of()));
+                99L, null, "Cau hoi", List.of()));
 
         verify(triageAlertRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any(TriageAlertEvent.class));
@@ -153,7 +153,7 @@ class TriageAlertServiceTest {
     void createAndPublishMergesIntoOpenAlertKeepingOriginalMessageAndDoesNotPopNewAlert() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
         when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
-        TriageAlert existing = new TriageAlert(patient, 7L, 9L, "Non ra mau",
+        TriageAlert existing = new TriageAlert(patient, 9L, "Non ra mau",
                 "[\"XUAT_HUYET_TIEU_HOA\"]", Instant.now().minusSeconds(60));
         existing.setId(50L);
         when(triageAlertRepository.findLatestOpenForPatient(eq(1L), any()))
@@ -161,14 +161,14 @@ class TriageAlertServiceTest {
         when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         Long alertId = service.createAndPublish(
-                1L, null, null, "Dau bung du doi hon nhieu roi", List.of("DAU_BUNG_CAP_TINH"));
+                1L, null, "Dau bung du doi hon nhieu roi", List.of("DAU_BUNG_CAP_TINH"));
 
         assertEquals(50L, alertId);
         assertEquals("Non ra mau", existing.getMessageContent());
         assertEquals("Dau bung du doi hon nhieu roi", existing.getLastMessageContent());
         assertEquals(1, existing.getRepeatCount());
         assertEquals("[\"XUAT_HUYET_TIEU_HOA\",\"DAU_BUNG_CAP_TINH\"]", existing.getMatchedGroups());
-        assertEquals(7L, existing.getSessionId());
+        assertEquals(9L, existing.getMessageId());
         verifyAction(TriageAlertActionType.REPEATED);
         verify(eventPublisher).publishEvent(argThat((TriageAlertActivityEvent event) ->
                 event.alertId().equals(50L) && event.type().equals("REPEATED")));
@@ -181,7 +181,7 @@ class TriageAlertServiceTest {
     void createAndPublishMergesIntoInterventionAlertEvenAfter10Minutes() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
         when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
-        TriageAlert existing = new TriageAlert(patient, 7L, 9L, "Non ra mau",
+        TriageAlert existing = new TriageAlert(patient, 9L, "Non ra mau",
                 null, Instant.now().minus(Duration.ofMinutes(10)));
         existing.setId(50L);
         existing.setStatus(TriageAlertStatus.NEEDS_INTERVENTION);
@@ -191,7 +191,7 @@ class TriageAlertServiceTest {
                 .thenReturn(List.of(existing));
         when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Long alertId = service.createAndPublish(1L, null, null, "Van con non ra mau", List.of());
+        Long alertId = service.createAndPublish(1L, null, "Van con non ra mau", List.of());
 
         assertEquals(50L, alertId);
         assertEquals(TriageAlertStatus.NEEDS_INTERVENTION, existing.getStatus());
@@ -205,7 +205,7 @@ class TriageAlertServiceTest {
     void createAndPublishMergesIntoFalseAlarmWithin30MinutesAndKeepsItResolved() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
         when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
-        TriageAlert falseAlarm = new TriageAlert(patient, null, null, "Non ra mau",
+        TriageAlert falseAlarm = new TriageAlert(patient, null, "Non ra mau",
                 null, Instant.now().minus(Duration.ofMinutes(40)));
         falseAlarm.setId(60L);
         falseAlarm.setStatus(TriageAlertStatus.RESOLVED);
@@ -215,7 +215,7 @@ class TriageAlertServiceTest {
                 .thenReturn(Optional.of(falseAlarm));
         when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Long alertId = service.createAndPublish(1L, null, null, "Lai non ra mau", List.of("XUAT_HUYET_TIEU_HOA"));
+        Long alertId = service.createAndPublish(1L, null, "Lai non ra mau", List.of("XUAT_HUYET_TIEU_HOA"));
 
         assertEquals(60L, alertId);
         assertEquals(TriageAlertStatus.RESOLVED, falseAlarm.getStatus());
@@ -231,7 +231,7 @@ class TriageAlertServiceTest {
     void createAndPublishCreatesNewAlertWhenFalseAlarmOlderThan30Minutes() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
         when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
-        TriageAlert falseAlarm = new TriageAlert(patient, null, null, "Non ra mau",
+        TriageAlert falseAlarm = new TriageAlert(patient, null, "Non ra mau",
                 null, Instant.now().minus(Duration.ofHours(2)));
         falseAlarm.setId(60L);
         falseAlarm.setStatus(TriageAlertStatus.RESOLVED);
@@ -245,7 +245,7 @@ class TriageAlertServiceTest {
             return saved;
         });
 
-        Long alertId = service.createAndPublish(1L, null, null, "Lai non ra mau", List.of());
+        Long alertId = service.createAndPublish(1L, null, "Lai non ra mau", List.of());
 
         assertEquals(100L, alertId);
         assertEquals(0, falseAlarm.getRepeatCount());
@@ -257,7 +257,7 @@ class TriageAlertServiceTest {
     void createAndPublishCreatesNewAlertWhenLatestAlertWasHandledNormally() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
         when(patientRepository.findById(1L)).thenReturn(Optional.of(patient));
-        TriageAlert handled = new TriageAlert(patient, null, null, "Non ra mau", null, Instant.now());
+        TriageAlert handled = new TriageAlert(patient, null, "Non ra mau", null, Instant.now());
         handled.setId(60L);
         handled.setStatus(TriageAlertStatus.RESOLVED);
         handled.setOutcome(TriageAlertOutcome.HANDLED);
@@ -270,7 +270,7 @@ class TriageAlertServiceTest {
             return saved;
         });
 
-        assertEquals(100L, service.createAndPublish(1L, null, null, "Lai non ra mau", List.of()));
+        assertEquals(100L, service.createAndPublish(1L, null, "Lai non ra mau", List.of()));
     }
 
     // ---------- linkConversation ----------
@@ -278,34 +278,32 @@ class TriageAlertServiceTest {
     @Test
     void linkConversationSetsRealIdsAndRepublishesEvent() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
-        TriageAlert alert = new TriageAlert(patient, null, null, "Toi bi dau bung du doi qua",
+        TriageAlert alert = new TriageAlert(patient, null, "Toi bi dau bung du doi qua",
                 "[\"DAU_BUNG_CAP_TINH\"]", Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(100L);
         when(triageAlertRepository.findById(100L)).thenReturn(Optional.of(alert));
         when(triageAlertRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.linkConversation(100L, 7L, 9L);
+        service.linkConversation(100L, 9L);
 
         verify(triageAlertRepository).save(argThat(saved ->
-                saved.getSessionId().equals(7L) && saved.getMessageId().equals(9L)));
+                saved.getMessageId().equals(9L)));
         verify(eventPublisher).publishEvent(argThat((TriageAlertEvent event) ->
                 event.id().equals(100L)
-                        && event.sessionId().equals(7L)
                         && event.messageId().equals(9L)
                         && event.messageContent().equals("Toi bi dau bung du doi qua")));
     }
 
     @Test
-    void linkConversationKeepsExistingSessionOfMergedAlert() {
+    void linkConversationKeepsExistingMessageOfMergedAlert() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
-        TriageAlert alert = new TriageAlert(patient, 3L, 4L, "Non ra mau", null, Instant.now());
+        TriageAlert alert = new TriageAlert(patient, 4L, "Non ra mau", null, Instant.now());
         alert.setId(100L);
         alert.setRepeatCount(2);
         when(triageAlertRepository.findById(100L)).thenReturn(Optional.of(alert));
 
-        service.linkConversation(100L, 7L, 9L);
+        service.linkConversation(100L, 9L);
 
-        assertEquals(3L, alert.getSessionId());
         assertEquals(4L, alert.getMessageId());
         verify(triageAlertRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any(TriageAlertEvent.class));
@@ -315,7 +313,7 @@ class TriageAlertServiceTest {
     void linkConversationDoesNothingWhenAlertNoLongerExists() {
         when(triageAlertRepository.findById(999L)).thenReturn(Optional.empty());
 
-        service.linkConversation(999L, 7L, 9L);
+            service.linkConversation(999L, 9L);
 
         verify(triageAlertRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any(TriageAlertEvent.class));
@@ -518,7 +516,7 @@ class TriageAlertServiceTest {
     @Test
     void claimOnAutoAlertIsEarlyInterventionAndBroadcastsSameTimestampUsedInDb() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
-        TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
+        TriageAlert alert = new TriageAlert(patient, null, "Cau hoi khan cap",
                 "[\"DAU_BUNG_CAP_TINH\"]", Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
@@ -751,7 +749,7 @@ class TriageAlertServiceTest {
     @Test
     void listOpenQueriesBothOpenStatusesAndFillsCounters() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
-        TriageAlert alert = new TriageAlert(patient, 2L, 3L, "Cau hoi khan cap",
+        TriageAlert alert = new TriageAlert(patient, 3L, "Cau hoi khan cap",
                 "[\"XUAT_HUYET_TIEU_HOA\",\"DAU_BUNG_CAP_TINH\"]",
                 Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);

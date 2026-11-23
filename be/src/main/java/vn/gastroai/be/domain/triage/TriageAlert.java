@@ -35,9 +35,9 @@ public class TriageAlert {
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
 
-    @Column(name = "session_id")
-    private Long sessionId;
-
+    // Tin nhắn chat sinh ra cảnh báo. Không lưu thêm session_id: tin nhắn nào cũng thuộc đúng 1 phiên
+    // chat (chat_messages.session_id) nên suy ra được (3NF). Bệnh nhân xoá phiên chat thì cột này về
+    // NULL (khoá ngoại ON DELETE SET NULL); nội dung vẫn còn ở message_content.
     @Column(name = "message_id")
     private Long messageId;
 
@@ -117,10 +117,9 @@ public class TriageAlert {
         updatedAt = Instant.now();
     }
 
-    public TriageAlert(Patient patient, Long sessionId, Long messageId, String messageContent,
+    public TriageAlert(Patient patient, Long messageId, String messageContent,
             String matchedGroups, Instant occurredAt) {
         this.patient = patient;
-        this.sessionId = sessionId;
         this.messageId = messageId;
         this.messageContent = messageContent;
         this.matchedGroups = matchedGroups;

@@ -58,7 +58,7 @@ class RagQueryServiceIT {
         jdbcTemplate = new JdbcTemplate(postgresDataSource);
 
         Long documentId = jdbcTemplate.queryForObject(
-                "INSERT INTO documents (title, status, content_approved_at) VALUES (?, 'DONE', now()) RETURNING id",
+                "INSERT INTO documents (title, processing_stage, content_approved_at) VALUES (?, 'DONE', now()) RETURNING id",
                 Long.class, TEST_DOCUMENT_TITLE);
         testChunkId = jdbcTemplate.queryForObject(
                 "INSERT INTO chunks (document_id, chunk_index, content) VALUES (?, 0, ?) RETURNING id",

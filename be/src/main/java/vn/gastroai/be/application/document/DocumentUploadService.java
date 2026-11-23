@@ -3,6 +3,7 @@ package vn.gastroai.be.application.document;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.gastroai.be.domain.rag.Document;
+import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
@@ -97,8 +98,8 @@ public class DocumentUploadService {
             // upload lại (thường là thử lại sau khi sửa lỗi nguồn).
             String contentHash = computeContentHash(storedPath);
 
-            List<Document> duplicates = documentRepository.findByContentHashAndStatusNot(contentHash,
-                    DocumentStatus.ERROR);
+            List<Document> duplicates = documentRepository.findByContentHashAndProcessingStageNot(contentHash,
+                    DocumentProcessingStage.ERROR);
 
             if (replacesId == null) {
                 // Tai lieu moi: trung voi bat ky tai lieu nao (chua ERROR) deu bi chan.
@@ -125,7 +126,6 @@ public class DocumentUploadService {
             document.setTitle(title);
             document.setSource(storedPath.toString());
             document.setSourceUrl(normalizedSourceUrl);
-            document.setStatus(DocumentStatus.PENDING);
             document.setContentHash(contentHash);
             document.setReplacesId(replacesId);
             // 3. Lưu document vào database với trạng thái PENDING - không tự gọi

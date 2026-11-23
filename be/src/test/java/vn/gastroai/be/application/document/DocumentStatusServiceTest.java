@@ -80,7 +80,7 @@ class DocumentStatusServiceTest {
     void retryResetsErrorDocumentToPending() {
         Document document = new Document();
         document.setId(42L);
-        document.setStatus(DocumentStatus.ERROR);
+        document.setProcessingStage(DocumentProcessingStage.ERROR);
         document.setProcessingStage(DocumentProcessingStage.ERROR);
         document.setErrorMessage("Lỗi");
 
@@ -97,7 +97,7 @@ class DocumentStatusServiceTest {
     void retryThrowsWhenNotError() {
         Document document = new Document();
         document.setId(42L);
-        document.setStatus(DocumentStatus.DONE);
+        document.setProcessingStage(DocumentProcessingStage.DONE);
 
         when(documentRepository.findById(42L)).thenReturn(Optional.of(document));
 
@@ -115,7 +115,7 @@ class DocumentStatusServiceTest {
         Document document = new Document();
         document.setId(id);
         document.setReplacesId(replacesId);
-        document.setStatus(status);
+        document.setProcessingStage(stageOf(status));
         if (status == DocumentStatus.DONE && replacesId == null) {
             document.setContentApprovedAt(Instant.now());
         }
@@ -318,6 +318,16 @@ class DocumentStatusServiceTest {
 
     // ===== C6 - danh sach tai lieu: truy van nhe, dem chunk theo trang =====
 
+    /** Bước xử lý đại diện cho 1 trạng thái - Document chỉ lưu bước, trạng thái suy ra từ đó. */
+    private static DocumentProcessingStage stageOf(DocumentStatus status) {
+        return switch (status) {
+            case PENDING -> DocumentProcessingStage.PENDING;
+            case PROCESSING -> DocumentProcessingStage.EXTRACTION;
+            case DONE -> DocumentProcessingStage.DONE;
+            case ERROR -> DocumentProcessingStage.ERROR;
+        };
+    }
+
     // Dong nhe cua danh sach (khong co full_text).
     private DocumentListRow listRow(long id, String title, DocumentStatus status, long groupId) {
         return new DocumentListRow() {
@@ -342,13 +352,8 @@ class DocumentStatusServiceTest {
             }
 
             @Override
-            public DocumentStatus getStatus() {
-                return status;
-            }
-
-            @Override
             public DocumentProcessingStage getProcessingStage() {
-                return DocumentProcessingStage.DONE;
+                return stageOf(status);
             }
 
             @Override

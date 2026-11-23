@@ -1,5 +1,6 @@
 package vn.gastroai.be.infrastructure.security;
 
+import java.time.Instant;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.Test;
@@ -86,7 +87,7 @@ class PatientWebSocketHandshakeInterceptorTest {
         Patient patient = new Patient();
         patient.setId(7L);
         patient.setTokenVersion(3);
-        patient.setAdminLocked(true);
+        patient.setAdminLockedAt(Instant.now());
         when(patientRepository.findById(7L)).thenReturn(Optional.of(patient));
         when(revokedTokenRepository.existsById("jti-locked")).thenReturn(false);
 

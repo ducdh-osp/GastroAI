@@ -67,7 +67,7 @@ class ArticleTopicAdminControllerTest {
 
     @Test
     @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
-    void listReturnsTopicsForContentEditor() throws Exception {
+    void listReturnsTopicsWithArticleCount() throws Exception {
         when(service.list()).thenReturn(List.of(
                 new ArticleTopicResponse(1L, "Dạ dày", 10, 5L, 0L)
         ));

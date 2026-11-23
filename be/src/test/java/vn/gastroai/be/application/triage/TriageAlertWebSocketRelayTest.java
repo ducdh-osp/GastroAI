@@ -18,7 +18,7 @@ class TriageAlertWebSocketRelayTest {
     @Test
     void onAlertForwardsEventToPublisher() {
         TriageAlertEvent event = new TriageAlertEvent(
-                100L, 1L, "Nguyen Van A", "0901234567", null, null,
+                100L, 1L, "Nguyen Van A", "0901234567", null,
                 "Toi bi dau bung du doi", List.of("DAU_BUNG_CAP_TINH"), "AUTO_HANDLING",
                 Instant.parse("2026-09-30T00:00:00Z"));
 

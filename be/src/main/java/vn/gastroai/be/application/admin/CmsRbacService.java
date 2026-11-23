@@ -108,7 +108,6 @@ public class CmsRbacService {
         Admin admin = admins.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tai khoan CMS"));
         if (!admin.isAdminLocked()) {
-            admin.setAdminLocked(true);
             admin.setAdminLockedAt(Instant.now());
             // Thu hoi ngay phien dang nhap hien tai, giong het AdminPatientManagementService.lock().
             admin.setSessionVersion(admin.getSessionVersion() + 1);
@@ -121,7 +120,6 @@ public class CmsRbacService {
     public CmsAccountResponse unlock(Long accountId) {
         Admin admin = admins.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay tai khoan CMS"));
-        admin.setAdminLocked(false);
         admin.setAdminLockedAt(null);
         admins.save(admin);
         return from(admin);

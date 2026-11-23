@@ -30,7 +30,7 @@ class TriageEscalationSchedulerTest {
             new TriageEscalationScheduler(repository, service, auditLogService, 3, 5);
 
     private static TriageAlertResponse alert(Long id, Long patientId) {
-        return new TriageAlertResponse(id, patientId, "Nguyen Van A", null, null, null, "Non ra mau",
+        return new TriageAlertResponse(id, patientId, "Nguyen Van A", null, null, "Non ra mau",
                 List.of(), "NEEDS_INTERVENTION", null, null, null, null, null, null, NOW,
                 null, null, 0, null, null, 0, 0, 0, NOW, null, null, null, null);
     }

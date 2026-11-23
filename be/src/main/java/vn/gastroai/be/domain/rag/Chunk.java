@@ -38,9 +38,6 @@ public class Chunk {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "token_count")
-    private Integer tokenCount;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 }

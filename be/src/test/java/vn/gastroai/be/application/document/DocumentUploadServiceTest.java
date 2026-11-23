@@ -10,6 +10,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.multipart.MultipartFile;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.rag.Document;
+import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
@@ -55,8 +56,18 @@ class DocumentUploadServiceTest {
         document.setId(id);
         document.setTitle("phac-do.pdf");
         document.setSource("uploads/phac-do.pdf");
-        document.setStatus(status);
+        document.setProcessingStage(stageOf(status));
         return document;
+    }
+
+    /** Bước xử lý đại diện cho 1 trạng thái - Document chỉ lưu bước, trạng thái suy ra từ đó. */
+    private static DocumentProcessingStage stageOf(DocumentStatus status) {
+        return switch (status) {
+            case PENDING -> DocumentProcessingStage.PENDING;
+            case PROCESSING -> DocumentProcessingStage.EXTRACTION;
+            case DONE -> DocumentProcessingStage.DONE;
+            case ERROR -> DocumentProcessingStage.ERROR;
+        };
     }
 
     // Ban dang dung cho AI: da xu ly xong VA da duoc Bien tap xac nhan noi dung.
@@ -164,7 +175,7 @@ class DocumentUploadServiceTest {
         Document existing = document(71L, DocumentStatus.DONE);
         existing.setReplacesId(7L);
         existing.setTitle("ibs.pdf");
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of(existing));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
@@ -185,7 +196,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
         Path stored = storedFile("noi dung trung");
         when(fileStorageService.store(file)).thenReturn(stored);
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of(v1));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
@@ -204,7 +215,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung giong tai lieu khac"));
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of(other));
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -218,7 +229,7 @@ class DocumentUploadServiceTest {
     @Test
     void uploadCreatesDocumentNotYetInUse() throws IOException {
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -238,7 +249,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
         when(fileStorageService.store(file)).thenReturn(stored);
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class)))
                 .thenThrow(new DataIntegrityViolationException("uk_documents_group_version"));
@@ -256,7 +267,7 @@ class DocumentUploadServiceTest {
     void uploadKeepsOriginalExceptionForNewDocument() throws IOException {
         Path stored = storedFile("noi dung moi");
         when(fileStorageService.store(file)).thenReturn(stored);
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class)))
                 .thenThrow(new DataIntegrityViolationException("loi rang buoc"));
@@ -280,7 +291,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
         when(fileStorageService.store(file)).thenReturn(stored);
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -304,7 +315,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung sua loi"));
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -320,7 +331,7 @@ class DocumentUploadServiceTest {
     @Test
     void uploadUsesGivenTitleInsteadOfFileName() throws IOException {
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -334,7 +345,7 @@ class DocumentUploadServiceTest {
     void uploadFallsBackToFileNameWhenTitleBlank() throws IOException {
         when(file.getOriginalFilename()).thenReturn("trao-nguoc.pdf");
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung moi"));
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -361,7 +372,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung ban 2"));
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -377,7 +388,7 @@ class DocumentUploadServiceTest {
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
         when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
         when(fileStorageService.store(file)).thenReturn(storedFile("noi dung ban 2"));
-        when(documentRepository.findByContentHashAndStatusNot(anyString(), eq(DocumentStatus.ERROR)))
+        when(documentRepository.findByContentHashAndProcessingStageNot(anyString(), eq(DocumentProcessingStage.ERROR)))
                 .thenReturn(List.of());
         when(documentRepository.saveAndFlush(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 

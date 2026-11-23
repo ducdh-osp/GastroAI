@@ -9,7 +9,6 @@ export interface TriageAlertSocketEvent {
   patientId: number
   patientFullName: string | null
   patientPhone: string | null
-  sessionId: number | null
   messageId: number | null
   messageContent: string
   matchedGroups: string[]

@@ -10,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.gastroai.be.domain.rag.Document;
-import vn.gastroai.be.domain.rag.DocumentStatus;
+import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.infrastructure.filestorage.FileStorageService;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
 
@@ -51,7 +51,7 @@ class DocumentGroupPrunerTest {
         document.setId(id);
         document.setReplacesId(replacesId);
         document.setSource(source);
-        document.setStatus(DocumentStatus.DONE);
+        document.setProcessingStage(DocumentProcessingStage.DONE);
         return document;
     }
 

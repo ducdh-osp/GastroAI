@@ -3,6 +3,7 @@ package vn.gastroai.be.application.auth;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import vn.gastroai.be.domain.auth.DeviceLabel;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -47,22 +48,6 @@ public class ClientRequestInfoResolver {
         if (userAgent.length() > 1024) {
             userAgent = userAgent.substring(0, 1024);
         }
-        return new ClientRequestInfo(ip, userAgent, deviceLabel(userAgent));
-    }
-
-    /** Suy ra tên trình duyệt + hệ điều hành từ User-Agent để hiển thị thân thiện ở UC0007. */
-    private String deviceLabel(String userAgent) {
-        String browser = userAgent.contains("Edg/") ? "Edge"
-                : userAgent.contains("Chrome/") ? "Chrome"
-                : userAgent.contains("Firefox/") ? "Firefox"
-                : userAgent.contains("Safari/") ? "Safari"
-                : "Other browser";
-        String operatingSystem = userAgent.contains("Windows") ? "Windows"
-                : userAgent.contains("Mac OS") ? "macOS"
-                : userAgent.contains("Android") ? "Android"
-                : userAgent.contains("iPhone") ? "iPhone"
-                : userAgent.contains("Linux") ? "Linux"
-                : "Other device";
-        return browser + " on " + operatingSystem;
+        return new ClientRequestInfo(ip, userAgent, DeviceLabel.of(userAgent));
     }
 }

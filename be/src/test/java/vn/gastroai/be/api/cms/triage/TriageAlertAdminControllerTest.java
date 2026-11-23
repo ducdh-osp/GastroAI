@@ -59,7 +59,7 @@ class TriageAlertAdminControllerTest {
     private static TriageAlertResponse alert(String status, Long claimedById, String claimedByType,
                                              Long resolvedById, String resolvedByType) {
         return new TriageAlertResponse(
-                10L, 1L, "Nguyen Van A", "0901234567", null, null,
+                10L, 1L, "Nguyen Van A", "0901234567", null,
                 "Toi bi dau bung du doi", List.of("DAU_BUNG_CAP_TINH"), status,
                 claimedById, claimedByType,
                 claimedById == null ? null : Instant.parse("2026-09-30T00:05:00Z"),
