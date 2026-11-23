@@ -5,6 +5,7 @@ import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import vn.gastroai.be.domain.knowledge.ArticleStatus;
 
 import java.time.LocalDate;
 
@@ -25,14 +26,24 @@ public record CmsArticleRequest(
         Boolean published,
         @Size(max = 200, message = "Tên bác sĩ kiểm duyệt tối đa 200 ký tự") String medicalReviewer,
         @PositiveOrZero(message = "Thứ tự sắp xếp phải lớn hơn hoặc bằng 0") Integer sortOrder,
-        Long version
+        Long version,
+        ArticleStatus status
 ) {
+    public CmsArticleRequest(
+            String title, String slug, String summary, String category,
+            String content, String sourceName,
+            String sourceUrl, LocalDate sourceCheckedAt, Boolean published,
+            String medicalReviewer, Integer sortOrder, Long version
+    ) {
+        this(title, slug, summary, category, content, sourceName, sourceUrl, sourceCheckedAt, published, medicalReviewer, sortOrder, version, null);
+    }
+
     public CmsArticleRequest(
             String title, String slug, String summary, String category,
             String content, String sourceName,
             String sourceUrl, LocalDate sourceCheckedAt, Boolean published,
             String medicalReviewer, Integer sortOrder
     ) {
-        this(title, slug, summary, category, content, sourceName, sourceUrl, sourceCheckedAt, published, medicalReviewer, sortOrder, null);
+        this(title, slug, summary, category, content, sourceName, sourceUrl, sourceCheckedAt, published, medicalReviewer, sortOrder, null, null);
     }
 }

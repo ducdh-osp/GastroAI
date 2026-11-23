@@ -367,11 +367,13 @@ export async function streamMessage(
 
 // ─────────────────────────── Chat History API ────────────────────────────────
 
-/** Danh sách phiên chat của bệnh nhân đang đăng nhập, mới nhất trước. */
-export async function listChatSessions(page = 0, size = 20): Promise<ChatSessionListResponse> {
-  const { data } = await apiClient.get<ChatSessionListResponse>('/chat/sessions', {
-    params: { page, size },
-  })
+/** Danh sách phiên chat của bệnh nhân đang đăng nhập, mới nhất trước (hỗ trợ tìm theo nội dung hỏi/đáp). */
+export async function listChatSessions(page = 0, size = 20, q?: string): Promise<ChatSessionListResponse> {
+  const params: Record<string, string | number> = { page, size }
+  if (q && q.trim()) {
+    params.q = q.trim()
+  }
+  const { data } = await apiClient.get<ChatSessionListResponse>('/chat/sessions', { params })
   return data
 }
 

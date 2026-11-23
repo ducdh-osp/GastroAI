@@ -82,15 +82,10 @@ class FaqAdminServiceTest {
     }
 
     @Test
-    void createPublishedWithReviewerStampsReviewTime() {
-        when(faqRepository.saveAndFlush(any(Faq.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        CmsFaqRequest req = new CmsFaqRequest("Q", "A", "Cat", 10, true, "  BS. CKII Trần B  ", null);
-        CmsFaqResponse res = service.create(req);
-
-        assertTrue(res.published());
-        assertEquals("BS. CKII Trần B", res.medicalReviewer());
-        assertNotNull(res.medicalReviewedAt());
+    void createPublishedEvenWithReviewerIsRejectedToEnforceSeparateReviewStep() {
+        CmsFaqRequest req = new CmsFaqRequest("Q", "A", "Cat", 10, true, "BS. CKII Trần B", null);
+        assertThrows(IllegalArgumentException.class, () -> service.create(req));
+        verify(faqRepository, never()).saveAndFlush(any());
     }
 
     @Test

@@ -66,6 +66,7 @@ public class ChatHistoryController {
     public ChatSessionListResponse listSessions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q,
             Principal principal, Authentication authentication) {
         // Cung gioi han nhu FoodDiaryController/MeController - endpoint nay truoc day thieu
         // check, size=0 roi ve loi tieng Anh cua Spring, size=Integer.MAX_VALUE tra ve het.
@@ -73,7 +74,9 @@ public class ChatHistoryController {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
         Long patientId = AuthenticatedRequest.patientId(principal, authentication);
-        Page<ChatSession> result = chatHistoryService.listSessions(patientId, page, size);
+        Page<ChatSession> result = (q == null || q.isBlank())
+                ? chatHistoryService.listSessions(patientId, page, size)
+                : chatHistoryService.listSessions(patientId, q, page, size);
         List<ChatSessionSummary> summaries = result.getContent().stream()
                 .map(s -> new ChatSessionSummary(s.getId(), s.getTitle(), s.getCreatedAt(), s.getUpdatedAt()))
                 .toList();

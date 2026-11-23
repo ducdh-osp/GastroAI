@@ -78,11 +78,26 @@ public class CmsCatalogAdminController {
         return result;
     }
 
+    @PostMapping("/merge")
+    public CmsCatalogItemResponse merge(@Valid @RequestBody CmsCatalogMergeRequest request) {
+        CmsCatalogItemResponse source = catalogAdminService.getById(request.sourceId());
+        CmsCatalogItemResponse target = catalogAdminService.merge(request.sourceId(), request.targetId());
+        auditLogService.record(AuditAction.CONTENT_UPDATE, TARGET, target.id(),
+                "Gộp " + label(source) + " → " + label(target));
+        return target;
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public void delete(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean force) {
         CmsCatalogItemResponse before = catalogAdminService.getById(id);
-        catalogAdminService.delete(id);
+        if (force) {
+            catalogAdminService.delete(id, true);
+        } else {
+            catalogAdminService.delete(id);
+        }
         auditLogService.record(AuditAction.CONTENT_DELETE, TARGET, id, label(before));
     }
 

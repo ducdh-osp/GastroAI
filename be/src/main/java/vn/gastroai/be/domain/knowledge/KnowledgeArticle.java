@@ -55,6 +55,10 @@ public class KnowledgeArticle {
     @Column(nullable = false)
     private boolean published;
 
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ArticleStatus status = ArticleStatus.DRAFT;
+
     @Column(name = "medical_reviewer", length = 200)
     private String medicalReviewer;
 

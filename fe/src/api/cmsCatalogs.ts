@@ -11,6 +11,7 @@ export interface CmsCatalogItem {
   triageCode: string | null
   sortOrder: number
   active: boolean
+  usageCount?: number
 }
 
 export interface CmsCatalogItemRequest {
@@ -78,9 +79,21 @@ export async function toggleCmsCatalogActive(id: number): Promise<CmsCatalogItem
   }
 }
 
-export async function deleteCmsCatalog(id: number): Promise<void> {
+export async function mergeCmsCatalogs(sourceId: number, targetId: number): Promise<CmsCatalogItem> {
   try {
-    await cmsApiClient.delete(`/cms/catalogs/${id}`)
+    const { data } = await cmsApiClient.post<CmsCatalogItem>('/cms/catalogs/merge', {
+      sourceId,
+      targetId,
+    })
+    return data
+  } catch (error) {
+    throw extractErrorMessage(error, 'Không thể gộp danh mục chuẩn hóa.')
+  }
+}
+
+export async function deleteCmsCatalog(id: number, force = false): Promise<void> {
+  try {
+    await cmsApiClient.delete(`/cms/catalogs/${id}`, { params: force ? { force: true } : undefined })
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể xóa danh mục chuẩn hóa này.')
   }

@@ -14,6 +14,7 @@ export interface KnowledgeArticleDetail extends KnowledgeArticleSummary {
   sourceName: string
   sourceUrl: string
   sourceCheckedAt: string
+  updatedAt?: string | null
 }
 
 export interface KnowledgeArticlePage {

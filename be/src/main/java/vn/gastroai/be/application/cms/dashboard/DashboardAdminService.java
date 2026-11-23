@@ -63,24 +63,31 @@ public class DashboardAdminService {
 
         Instant startOfToday = today.atStartOfDay(VIETNAM_ZONE).toInstant();
 
-        // 1. Summary
-        long totalPatients = patientRepository.count();
-        long totalSessions = chatSessionRepository.count();
-        long totalMessages = chatMessageRepository.count();
+        // 1. Summary - loc theo dung khoang ngay [startDate, endDate) da chon tren dashboard
+        long totalPatients = patientRepository.countActivePatientsBetween(startDate, endDate);
+        long totalSessions = chatSessionRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate);
+        long totalMessages = chatMessageRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate);
         long todayMessages = chatMessageRepository.countByCreatedAtGreaterThanEqual(startOfToday);
 
-        long totalAlerts = triageAlertRepository.count();
+        long totalAlerts = triageAlertRepository.countByOccurredAtGreaterThanEqualAndOccurredAtLessThan(startDate, endDate);
         // SCR-AD-13: giu ten truong cu cho FE/xuat file, doi nghia theo 3 trang thai moi -
         // newAlerts = ca can can thiep (viec Admin phai lam), inProgressAlerts = he thong dang tu xu ly.
-        long newAlerts = triageAlertRepository.countByStatus(TriageAlertStatus.NEEDS_INTERVENTION);
-        long inProgressAlerts = triageAlertRepository.countByStatus(TriageAlertStatus.AUTO_HANDLING);
-        long resolvedAlerts = triageAlertRepository.countByStatus(TriageAlertStatus.RESOLVED);
+        long newAlerts = triageAlertRepository.countByStatusAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                TriageAlertStatus.NEEDS_INTERVENTION, startDate, endDate);
+        long inProgressAlerts = triageAlertRepository.countByStatusAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                TriageAlertStatus.AUTO_HANDLING, startDate, endDate);
+        long resolvedAlerts = triageAlertRepository.countByStatusAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                TriageAlertStatus.RESOLVED, startDate, endDate);
 
-        long totalAssessments = symptomAssessmentRecordRepository.count();
-        long emergencyAssessments = symptomAssessmentRecordRepository.countByEmergencyTrue();
+        long totalAssessments = symptomAssessmentRecordRepository.countByAssessedAtGreaterThanEqualAndAssessedAtLessThan(
+                startDate, endDate);
+        long emergencyAssessments = symptomAssessmentRecordRepository.countByEmergencyTrueAndAssessedAtGreaterThanEqualAndAssessedAtLessThan(
+                startDate, endDate);
 
-        long helpfulRatings = messageRatingRepository.countByRating("HELPFUL");
-        long unhelpfulRatings = messageRatingRepository.countByRating("UNHELPFUL");
+        long helpfulRatings = messageRatingRepository.countByRatingAndRatedAtGreaterThanEqualAndRatedAtLessThan(
+                "HELPFUL", startDate, endDate);
+        long unhelpfulRatings = messageRatingRepository.countByRatingAndRatedAtGreaterThanEqualAndRatedAtLessThan(
+                "UNHELPFUL", startDate, endDate);
         double satisfactionRate = (helpfulRatings + unhelpfulRatings > 0)
                 ? Math.round(((double) helpfulRatings / (helpfulRatings + unhelpfulRatings) * 100.0) * 10.0) / 10.0
                 : 0.0;

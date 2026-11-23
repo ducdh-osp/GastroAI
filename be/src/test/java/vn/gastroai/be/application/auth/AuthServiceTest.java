@@ -127,7 +127,7 @@ class AuthServiceTest {
         verified.setVerificationTokenExpiresAt(Instant.now().minusSeconds(1));
         when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(verified));
 
-        assertEquals("Email da duoc su dung", assertThrows(IllegalStateException.class,
+        assertEquals("Email đã được sử dụng", assertThrows(IllegalStateException.class,
                 () -> service.register("user@example.com", "Password1!", "User")).getMessage());
 
         verify(patients, never()).delete(any(Patient.class));
@@ -142,7 +142,7 @@ class AuthServiceTest {
         unverified.setVerificationTokenExpiresAt(Instant.now().plusSeconds(60));
         when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(unverified));
 
-        assertEquals("Email da duoc su dung", assertThrows(IllegalStateException.class,
+        assertEquals("Email đã được sử dụng", assertThrows(IllegalStateException.class,
                 () -> service.register("user@example.com", "Password1!", "User")).getMessage());
 
         verify(patients, never()).delete(any(Patient.class));

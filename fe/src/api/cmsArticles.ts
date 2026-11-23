@@ -1,5 +1,8 @@
 import { cmsApiClient } from '../lib/cmsAxios'
 
+/** SCR-AD-11 - Trạng thái quy trình biên tập & duyệt bài viết. */
+export type ArticleStatus = 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'HIDDEN'
+
 /** UC0065 - Tóm tắt bài viết cho bảng quản trị CMS. */
 export interface CmsArticleSummary {
   id: number
@@ -8,6 +11,7 @@ export interface CmsArticleSummary {
   summary: string
   category: string
   published: boolean
+  status?: ArticleStatus
   medicalReviewer: string | null
   medicalReviewedAt: string | null
   sortOrder: number
@@ -42,6 +46,7 @@ export interface CmsArticleInput {
   sourceUrl: string
   sourceCheckedAt?: string | null
   published?: boolean
+  status?: ArticleStatus
   medicalReviewer?: string | null
   sortOrder?: number | null
   version?: number | null
@@ -57,6 +62,7 @@ export async function listCmsArticles(params: {
   q?: string
   category?: string
   published?: boolean
+  status?: ArticleStatus
   page?: number
   size?: number
 } = {}): Promise<CmsArticlePage> {
@@ -76,6 +82,11 @@ export async function createCmsArticle(input: CmsArticleInput): Promise<CmsArtic
 
 export async function updateCmsArticle(id: number, input: CmsArticleInput): Promise<CmsArticleDetail> {
   const { data } = await cmsApiClient.put<CmsArticleDetail>(`/cms/articles/${id}`, input)
+  return data
+}
+
+export async function submitCmsArticleForReview(id: number): Promise<CmsArticleDetail> {
+  const { data } = await cmsApiClient.patch<CmsArticleDetail>(`/cms/articles/${id}/submit-review`)
   return data
 }
 

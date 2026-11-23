@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined, EyeOutlined, FormOutlined, SaveOutlined, SendOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, EyeOutlined, FormOutlined, PictureOutlined, SaveOutlined, SendOutlined } from '@ant-design/icons'
 import {
   Alert,
   Button,
@@ -13,6 +13,7 @@ import {
   Spin,
   Tabs,
   Typography,
+  Upload,
   message,
 } from 'antd'
 import dayjs from 'dayjs'
@@ -99,6 +100,30 @@ export default function CmsArticleEditorPage() {
     setContentWatch(val)
   }
 
+  function handleIllustrationUpload(file: File) {
+    if (!file.type.startsWith('image/')) {
+      message.error('Vui lòng chọn tệp hình ảnh hợp lệ.')
+      return false
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      message.error('Ảnh minh họa tối đa 2MB.')
+      return false
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : ''
+      if (!dataUrl) return
+      const current = form.getFieldValue('content') || ''
+      const markdownImage = `![${file.name.replace(/\.[^.]+$/, '')}](${dataUrl})\n\n`
+      const next = markdownImage + current
+      form.setFieldsValue({ content: next })
+      setContentWatch(next)
+      message.success('Đã chèn ảnh minh họa vào đầu bài viết.')
+    }
+    reader.readAsDataURL(file)
+    return false
+  }
+
   function triggerSubmit(mode: 'draft' | 'review') {
     setSubmitMode(mode)
     form.submit()
@@ -121,6 +146,7 @@ export default function CmsArticleEditorPage() {
         sourceCheckedAt: values.sourceCheckedAt ? values.sourceCheckedAt.format('YYYY-MM-DD') : undefined,
         medicalReviewer: undefined,
         published: false,
+        status: submitMode === 'review' ? 'PENDING_REVIEW' : 'DRAFT',
         sortOrder: values.sortOrder,
         version: isEdit ? articleVersion : undefined,
       }
@@ -228,6 +254,19 @@ export default function CmsArticleEditorPage() {
                   >
                     <Input.TextArea rows={3} maxLength={500} placeholder="Tóm tắt 2-3 câu về nội dung bài viết..." />
                   </Form.Item>
+
+                  <Form.Item
+                    label="Ảnh minh họa (khuyến khích, không bắt buộc)"
+                    extra="Tải ảnh minh họa để chèn trực tiếp vào nội dung bài viết."
+                  >
+                    <Upload
+                      accept="image/*"
+                      showUploadList={false}
+                      beforeUpload={handleIllustrationUpload}
+                    >
+                      <Button icon={<PictureOutlined />}>Tải ảnh lên</Button>
+                    </Upload>
+                  </Form.Item>
                 </Card>
 
                 <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Nội dung chi tiết (Markdown)">
@@ -288,7 +327,7 @@ export default function CmsArticleEditorPage() {
                     showIcon
                     className="mb-4 text-xs"
                     message="Tách biệt soạn thảo và duyệt đăng"
-                    description="Bài viết sau khi Lưu nháp hoặc Gửi duyệt sẽ ở trạng thái Chờ duyệt, không tự công khai ngay. Biên tập chuyên môn y khoa cần đối chiếu với tài liệu y khoa đã công bố và bấm Duyệt riêng ở danh sách bài viết."
+                    description="Lưu nháp sẽ giữ bài viết ở trạng thái Bản nháp; Gửi duyệt sẽ chuyển sang trạng thái Chờ duyệt để Biên tập chuyên môn y khoa đối chiếu nguồn và bấm Duyệt riêng ở danh sách bài viết."
                   />
 
                   <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn sẽ hiển thị trước.">

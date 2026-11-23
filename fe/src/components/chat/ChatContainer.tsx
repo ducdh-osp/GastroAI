@@ -69,6 +69,7 @@ export function ChatContainer() {
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const historyRequestSeqRef = useRef(0)
+  const hasLoadedSessionsRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -77,22 +78,26 @@ export function ChatContainer() {
     }
   }, [])
 
-  const fetchSessions = useCallback(async (showSpinner = false) => {
+  const fetchSessions = useCallback(async (showSpinner = false, query?: string) => {
     if (showSpinner) setLoadingSessions(true)
     setSessionsError(null)
     try {
-      const res = await listChatSessions(0, 50)
+      const res = await listChatSessions(0, 50, query)
       setSessions(res.sessions)
     } catch {
       setSessionsError('Không thể tải danh sách phiên chat.')
     } finally {
+      hasLoadedSessionsRef.current = true
       if (showSpinner) setLoadingSessions(false)
     }
   }, [])
 
   useEffect(() => {
-    void fetchSessions(true)
-  }, [fetchSessions])
+    const timer = window.setTimeout(() => {
+      void fetchSessions(!hasLoadedSessionsRef.current, searchQuery)
+    }, searchQuery.trim() ? 250 : 0)
+    return () => window.clearTimeout(timer)
+  }, [fetchSessions, searchQuery])
 
   const loadSessionMessages = useCallback(async (sessionId: number) => {
     const seq = ++historyRequestSeqRef.current
@@ -327,17 +332,15 @@ export function ChatContainer() {
   }
 
   const groupedSessions = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    const filtered = q ? sessions.filter((s) => s.title.toLowerCase().includes(q)) : sessions
     const groups = new Map<string, ChatSessionSummary[]>()
-    for (const s of filtered) {
+    for (const s of sessions) {
       const label = getSessionTimeGroup(s.updatedAt)
       const list = groups.get(label) ?? []
       list.push(s)
       groups.set(label, list)
     }
     return Array.from(groups.entries())
-  }, [sessions, searchQuery])
+  }, [sessions])
 
   function renderHistoryContent(showCollapseButton: boolean) {
     return (

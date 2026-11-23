@@ -6,6 +6,7 @@ export interface ArticleTopic {
   name: string
   sortOrder: number
   articleCount: number
+  faqCount?: number
   version?: number
 }
 

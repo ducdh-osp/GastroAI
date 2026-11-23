@@ -12,6 +12,7 @@ import {
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
+  SwapOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons'
 import {
@@ -41,6 +42,7 @@ import {
   createCmsCatalog,
   deleteCmsCatalog,
   listCmsCatalogs,
+  mergeCmsCatalogs,
   toggleCmsCatalogActive,
   updateCmsCatalog,
   type CatalogType,
@@ -203,7 +205,7 @@ export default function CmsCatalogsPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Filters
-  const [selectedTypeTab, setSelectedTypeTab] = useState<string>('ALL')
+  const [selectedTypeTab, setSelectedTypeTab] = useState<string>('CONDITION_SYMPTOM')
   const [searchText, setSearchText] = useState('')
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
 
@@ -213,6 +215,9 @@ export default function CmsCatalogsPage() {
   const [defineCodeModalOpen, setDefineCodeModalOpen] = useState(false)
   const [customMetas, setCustomMetas] = useState<Record<string, StandardCatalogCodeMeta & { type: CatalogType }>>(() => loadCustomCodeMetas())
   const [editingItem, setEditingItem] = useState<CmsCatalogItem | null>(null)
+  const [mergeSourceItem, setMergeSourceItem] = useState<CmsCatalogItem | null>(null)
+  const [mergeTargetId, setMergeTargetId] = useState<number | undefined>(undefined)
+  const [mergeSubmitting, setMergeSubmitting] = useState(false)
   const [modalSubmitting, setModalSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [form] = Form.useForm<CmsCatalogItemRequest>()
@@ -240,7 +245,7 @@ export default function CmsCatalogsPage() {
   const defineWatchedScope = Form.useWatch('scope', defineCodeForm)
 
   const activeModalType: CatalogType = (watchedType ||
-    (selectedTypeTab === 'ALL' ? 'SYMPTOM' : selectedTypeTab)) as CatalogType
+    (selectedTypeTab === 'MEDICATION' ? 'MEDICATION' : 'CONDITION')) as CatalogType
 
   const selectedCodeMeta = useMemo(() => {
     if (!watchedCode) return null
@@ -434,8 +439,11 @@ export default function CmsCatalogsPage() {
   // Filtered items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      // Type tab filter
-      if (selectedTypeTab !== 'ALL' && item.type !== selectedTypeTab) {
+      // Type tab filter (SCR-AD-09: gộp Bệnh lý / Triệu chứng và Thuốc thường dùng)
+      if (selectedTypeTab === 'CONDITION_SYMPTOM' && item.type !== 'CONDITION' && item.type !== 'SYMPTOM') {
+        return false
+      }
+      if (selectedTypeTab === 'MEDICATION' && item.type !== 'MEDICATION') {
         return false
       }
       // Active filter
@@ -463,7 +471,7 @@ export default function CmsCatalogsPage() {
     setModalError(null)
     setCodeSearchText('')
     setTriageSearchText('')
-    const currentTabType = selectedTypeTab !== 'ALL' ? (selectedTypeTab as CatalogType) : 'SYMPTOM'
+    const currentTabType: CatalogType = selectedTypeTab === 'MEDICATION' ? 'MEDICATION' : 'CONDITION'
     // Default next sortOrder based on selected type
     const maxSort = items
       .filter((i) => i.type === currentTabType)
@@ -626,10 +634,38 @@ export default function CmsCatalogsPage() {
     })
   }
 
+  function handleOpenMerge(record: CmsCatalogItem) {
+    setMergeSourceItem(record)
+    setMergeTargetId(undefined)
+  }
+
+  async function handleMergeSubmit() {
+    if (!mergeSourceItem || !mergeTargetId) return
+    setMergeSubmitting(true)
+    try {
+      const target = await mergeCmsCatalogs(mergeSourceItem.id, mergeTargetId)
+      notification.success({
+        message: 'Gộp danh mục thành công',
+        description: `Đã gộp "${mergeSourceItem.name}" vào "${target.name}" và cập nhật các hồ sơ liên quan.`,
+      })
+      setMergeSourceItem(null)
+      setMergeTargetId(undefined)
+      loadData()
+    } catch (err) {
+      notification.error({
+        message: 'Gộp danh mục thất bại',
+        description: err instanceof Error ? err.message : 'Không thể gộp 2 mục danh mục.',
+      })
+    } finally {
+      setMergeSubmitting(false)
+    }
+  }
+
   async function handleDelete(record: CmsCatalogItem) {
+    const isInUse = (record.usageCount ?? 0) > 0
     await deleteGuard.run(record.id, async () => {
       try {
-        await deleteCmsCatalog(record.id)
+        await deleteCmsCatalog(record.id, isInUse)
         setItems((prev) => prev.filter((item) => item.id !== record.id))
         notification.success({
           message: 'Xóa thành công',
@@ -724,6 +760,22 @@ export default function CmsCatalogsPage() {
       },
     },
     {
+      title: 'Đang dùng',
+      dataIndex: 'usageCount',
+      key: 'usageCount',
+      width: 115,
+      align: 'center',
+      sorter: (a, b) => (a.usageCount ?? 0) - (b.usageCount ?? 0),
+      render: (usageCount?: number) => {
+        const count = usageCount ?? 0
+        return (
+          <Tag color={count > 0 ? 'blue' : 'default'} className="m-0 font-mono text-xs">
+            {count} hồ sơ
+          </Tag>
+        )
+      },
+    },
+    {
       title: 'Thứ tự',
       dataIndex: 'sortOrder',
       key: 'sortOrder',
@@ -756,43 +808,61 @@ export default function CmsCatalogsPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 110,
+      width: 140,
       align: 'center',
-      render: (_val, record) => (
-        <Space size="small">
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              size="small"
-              type="text"
-              icon={<EditOutlined className="text-blue-500" />}
-              onClick={() => handleOpenEdit(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Xác nhận xóa danh mục?"
-            description={
-              <div className="max-w-xs text-xs">
-                Mục <strong className="font-semibold">{record.name}</strong> ({record.code}) sẽ bị xóa vĩnh viễn khỏi
-                hệ thống. Nếu chỉ muốn tạm ẩn trong dropdown bệnh nhân, hãy chọn Tắt trạng thái.
-              </div>
-            }
-            okText="Xóa vĩnh viễn"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true, loading: deleteGuard.inFlightId === record.id }}
-            onConfirm={() => handleDelete(record)}
-          >
-            <Tooltip title="Xóa">
+      render: (_val, record) => {
+        const usageCount = record.usageCount ?? 0
+        return (
+          <Space size="small">
+            <Tooltip title="Chỉnh sửa">
               <Button
                 size="small"
                 type="text"
-                danger
-                icon={<DeleteOutlined />}
-                loading={deleteGuard.inFlightId === record.id}
+                icon={<EditOutlined className="text-blue-500" />}
+                onClick={() => handleOpenEdit(record)}
               />
             </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
+            <Tooltip title="Gộp vào mục khác cùng loại">
+              <Button
+                size="small"
+                type="text"
+                icon={<SwapOutlined className="text-teal-600" />}
+                onClick={() => handleOpenMerge(record)}
+              />
+            </Tooltip>
+            <Popconfirm
+              title="Xác nhận xóa danh mục?"
+              description={
+                <div className="max-w-xs text-xs space-y-1">
+                  {usageCount > 0 && (
+                    <div className="font-semibold text-red-600">
+                      Cảnh báo: Mục này đang được dùng ở {usageCount} hồ sơ/bản ghi. Nên dùng "Gộp" hoặc tắt trạng thái để tránh ảnh hưởng dữ liệu cũ.
+                    </div>
+                  )}
+                  <div>
+                    Mục <strong className="font-semibold">{record.name}</strong> ({record.code}) sẽ bị xóa vĩnh viễn khỏi
+                    hệ thống.
+                  </div>
+                </div>
+              }
+              okText={usageCount > 0 ? 'Vẫn xóa' : 'Xóa vĩnh viễn'}
+              cancelText="Hủy"
+              okButtonProps={{ danger: true, loading: deleteGuard.inFlightId === record.id }}
+              onConfirm={() => handleDelete(record)}
+            >
+              <Tooltip title="Xóa">
+                <Button
+                  size="small"
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  loading={deleteGuard.inFlightId === record.id}
+                />
+              </Tooltip>
+            </Popconfirm>
+          </Space>
+        )
+      },
     },
   ]
 
@@ -911,26 +981,11 @@ export default function CmsCatalogsPage() {
               className="!mb-0"
               items={[
                 {
-                  key: 'ALL',
+                  key: 'CONDITION_SYMPTOM',
                   label: (
                     <span className="flex items-center gap-1.5 font-medium">
-                      Tất cả <Badge count={stats.total} overflowCount={999} color="#64748b" />
-                    </span>
-                  ),
-                },
-                {
-                  key: 'SYMPTOM',
-                  label: (
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <ExperimentOutlined /> Triệu chứng <Badge count={stats.symptoms} color="#13c2c2" />
-                    </span>
-                  ),
-                },
-                {
-                  key: 'CONDITION',
-                  label: (
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <ThunderboltOutlined /> Bệnh lý <Badge count={stats.conditions} color="#fa8c16" />
+                      <ThunderboltOutlined /> Bệnh lý / Triệu chứng{' '}
+                      <Badge count={stats.conditions + stats.symptoms} overflowCount={999} color="#fa8c16" />
                     </span>
                   ),
                 },
@@ -938,7 +993,8 @@ export default function CmsCatalogsPage() {
                   key: 'MEDICATION',
                   label: (
                     <span className="flex items-center gap-1.5 font-medium">
-                      <MedicineBoxOutlined /> Thuốc <Badge count={stats.medications} color="#52c41a" />
+                      <MedicineBoxOutlined /> Thuốc thường dùng{' '}
+                      <Badge count={stats.medications} overflowCount={999} color="#52c41a" />
                     </span>
                   ),
                 },
@@ -1200,6 +1256,68 @@ export default function CmsCatalogsPage() {
               </Form.Item>
             </div>
           </Form>
+        </Modal>
+
+        {/* Modal Gộp 2 mục danh mục thành 1 */}
+        <Modal
+          title={
+            <div className="flex items-center gap-2 text-base font-semibold">
+              <SwapOutlined className="text-teal-600" />
+              Gộp mục danh mục trùng lặp
+            </div>
+          }
+          open={Boolean(mergeSourceItem)}
+          onOk={handleMergeSubmit}
+          confirmLoading={mergeSubmitting}
+          okButtonProps={{ disabled: !mergeTargetId }}
+          onCancel={() => {
+            setMergeSourceItem(null)
+            setMergeTargetId(undefined)
+          }}
+          okText="Xác nhận gộp"
+          cancelText="Hủy"
+          destroyOnClose
+        >
+          {mergeSourceItem && (
+            <div className="space-y-4 py-2 text-sm">
+              <Alert
+                type="info"
+                showIcon
+                message="Bảo toàn dữ liệu hồ sơ bệnh nhân"
+                description="Toàn bộ hồ sơ bệnh án, lịch nhắc thuốc hoặc đánh giá đang gắn mục nguồn sẽ được chuyển sang mục đích trước khi xóa mục nguồn."
+              />
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                <div className="text-xs text-slate-500">Mục nguồn (sẽ bị gộp và xóa)</div>
+                <div className="font-semibold text-slate-800 dark:text-white mt-0.5">
+                  {mergeSourceItem.name} <span className="font-mono text-xs text-slate-500">({mergeSourceItem.code})</span>
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  Đang sử dụng: {mergeSourceItem.usageCount ?? 0} hồ sơ/bản ghi
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+                  Chọn mục đích giữ lại (cùng loại {TYPE_CONFIG[mergeSourceItem.type].label}):
+                </div>
+                <Select
+                  showSearch
+                  className="w-full"
+                  placeholder="Chọn danh mục đích..."
+                  value={mergeTargetId}
+                  onChange={setMergeTargetId}
+                  filterOption={(input, option) =>
+                    String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
+                  options={items
+                    .filter((i) => i.type === mergeSourceItem.type && i.id !== mergeSourceItem.id)
+                    .map((i) => ({
+                      value: i.id,
+                      label: `${i.name} (${i.code}) — ${i.usageCount ?? 0} hồ sơ`,
+                    }))}
+                />
+              </div>
+            </div>
+          )}
         </Modal>
 
         {/* Modal Hướng dẫn quy chuẩn mã y khoa */}

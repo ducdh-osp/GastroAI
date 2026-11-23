@@ -15,6 +15,7 @@ import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.knowledge.KnowledgeArticleAdminService;
 import vn.gastroai.be.config.SecurityConfig;
 import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 import vn.gastroai.be.infrastructure.security.JwtService;
@@ -52,6 +53,9 @@ class KnowledgeArticleAdminControllerTest {
 
     @MockitoBean
     private AuditLogService auditLogService;
+
+    @MockitoBean
+    private AdminRepository adminRepository;
 
     @MockitoBean
     private JwtService jwtService;

@@ -29,19 +29,19 @@ public class DashboardExportService {
         float[] summaryWidths = {35f, 15f, 35f, 15f};
         List<String[]> summaryRows = new ArrayList<>();
         summaryRows.add(new String[]{
-                "Tổng số bệnh nhân", String.valueOf(stats.summary().totalPatients()),
-                "Tổng số phiên chat", String.valueOf(stats.summary().totalSessions())
+                "Bệnh nhân hoạt động trong kỳ", String.valueOf(stats.summary().totalPatients()),
+                "Phiên chat mở trong kỳ", String.valueOf(stats.summary().totalSessions())
         });
         summaryRows.add(new String[]{
-                "Tổng số tin nhắn chat", String.valueOf(stats.summary().totalMessages()),
-                "Tin nhắn trong ngày", String.valueOf(stats.summary().todayMessages())
+                "Tin nhắn chat trong kỳ", String.valueOf(stats.summary().totalMessages()),
+                "Tin nhắn hôm nay", String.valueOf(stats.summary().todayMessages())
         });
         summaryRows.add(new String[]{
-                "Tổng số ca đánh giá triệu chứng", String.valueOf(stats.summary().totalAssessments()),
+                "Ca đánh giá triệu chứng trong kỳ", String.valueOf(stats.summary().totalAssessments()),
                 "Ca đánh giá khẩn cấp", String.valueOf(stats.summary().emergencyAssessments())
         });
         summaryRows.add(new String[]{
-                "Tổng số cảnh báo Triage", String.valueOf(stats.summary().totalAlerts()),
+                "Cảnh báo Triage trong kỳ", String.valueOf(stats.summary().totalAlerts()),
                 "Cảnh báo cần can thiệp", String.valueOf(stats.summary().newAlerts())
         });
         summaryRows.add(new String[]{
@@ -148,13 +148,13 @@ public class DashboardExportService {
             }
 
             Object[][] kpis = {
-                    {1, "Tổng số bệnh nhân đăng ký", stats.summary().totalPatients(), "Người dùng"},
-                    {2, "Tổng số phiên chat", stats.summary().totalSessions(), "Phiên"},
-                    {3, "Tổng số tin nhắn chat", stats.summary().totalMessages(), "Tin nhắn"},
+                    {1, "Bệnh nhân hoạt động trong kỳ", stats.summary().totalPatients(), "Người dùng"},
+                    {2, "Phiên chat mở trong kỳ", stats.summary().totalSessions(), "Phiên"},
+                    {3, "Tin nhắn chat trong kỳ", stats.summary().totalMessages(), "Tin nhắn"},
                     {4, "Tin nhắn hôm nay", stats.summary().todayMessages(), "Tin nhắn"},
-                    {5, "Tổng số ca đánh giá triệu chứng", stats.summary().totalAssessments(), "Lượt đánh giá"},
-                    {6, "Số ca đánh giá khẩn cấp", stats.summary().emergencyAssessments(), "Lượt khẩn cấp"},
-                    {7, "Tổng số cảnh báo Triage kích hoạt", stats.summary().totalAlerts(), "Cảnh báo"},
+                    {5, "Ca đánh giá triệu chứng trong kỳ", stats.summary().totalAssessments(), "Lượt đánh giá"},
+                    {6, "Ca đánh giá khẩn cấp trong kỳ", stats.summary().emergencyAssessments(), "Lượt khẩn cấp"},
+                    {7, "Cảnh báo Triage kích hoạt trong kỳ", stats.summary().totalAlerts(), "Cảnh báo"},
                     {8, "Cảnh báo Triage cần can thiệp", stats.summary().newAlerts(), "Cảnh báo"},
                     {9, "Cảnh báo Triage hệ thống đang tự xử lý", stats.summary().inProgressAlerts(), "Cảnh báo"},
                     {10, "Cảnh báo Triage đã xử lý", stats.summary().resolvedAlerts(), "Cảnh báo"},

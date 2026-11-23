@@ -6,6 +6,7 @@ import vn.gastroai.be.api.cms.knowledge.ArticleTopicResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.knowledge.ArticleTopic;
 import vn.gastroai.be.infrastructure.persistence.postgres.ArticleTopicRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.FaqRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.KnowledgeArticleRepository;
 
 import java.util.List;
@@ -23,7 +24,8 @@ class ArticleTopicServiceTest {
 
     private final ArticleTopicRepository topics = mock(ArticleTopicRepository.class);
     private final KnowledgeArticleRepository articles = mock(KnowledgeArticleRepository.class);
-    private final ArticleTopicService service = new ArticleTopicService(topics, articles);
+    private final FaqRepository faqs = mock(FaqRepository.class);
+    private final ArticleTopicService service = new ArticleTopicService(topics, articles, faqs);
 
     private ArticleTopic topic(Long id, String name, int sortOrder) {
         ArticleTopic t = new ArticleTopic(name, sortOrder);
@@ -85,6 +87,7 @@ class ArticleTopicServiceTest {
         ArticleTopicResponse result = service.update(1L, new ArticleTopicRequest("Dạ dày - thực quản", null));
 
         verify(articles).renameCategory("Dạ dày", "Dạ dày - thực quản");
+        verify(faqs).renameCategory("Dạ dày", "Dạ dày - thực quản");
         assertEquals("Dạ dày - thực quản", result.name());
         assertEquals(10, result.sortOrder());
         assertEquals(4L, result.articleCount());
@@ -125,6 +128,18 @@ class ArticleTopicServiceTest {
         ArticleTopic existing = topic(1L, "Dạ dày", 10);
         when(topics.findById(1L)).thenReturn(Optional.of(existing));
         when(articles.countByCategory("Dạ dày")).thenReturn(2L);
+        when(faqs.countByCategory("Dạ dày")).thenReturn(0L);
+
+        assertThrows(IllegalStateException.class, () -> service.delete(1L));
+        verify(topics, never()).delete(any());
+    }
+
+    @Test
+    void deleteBlockedWhenFaqsStillUseTopic() {
+        ArticleTopic existing = topic(1L, "Dạ dày", 10);
+        when(topics.findById(1L)).thenReturn(Optional.of(existing));
+        when(articles.countByCategory("Dạ dày")).thenReturn(0L);
+        when(faqs.countByCategory("Dạ dày")).thenReturn(3L);
 
         assertThrows(IllegalStateException.class, () -> service.delete(1L));
         verify(topics, never()).delete(any());

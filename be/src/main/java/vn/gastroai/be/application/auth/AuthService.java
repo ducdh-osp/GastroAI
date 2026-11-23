@@ -90,7 +90,7 @@ public class AuthService {
         // Scheduler chay moi phut, nhung xoa lai tai day de nguoi dung co the dang ky
         // ngay lap tuc trong khoang thoi gian giua hai lan scheduler chay.
         if (existing != null && !deleteIfExpiredUnverified(existing, now)) {
-            throw new IllegalStateException("Email da duoc su dung");
+            throw new IllegalStateException("Email đã được sử dụng");
         }
         String rawToken = UUID.randomUUID() + UUID.randomUUID().toString();
         Patient patient = new Patient();

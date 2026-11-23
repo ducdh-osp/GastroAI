@@ -17,6 +17,8 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     long countByCreatedAtGreaterThanEqual(Instant since);
 
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(Instant startDate, Instant endDate);
+
     @Query(value = """
             SELECT to_char(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM-DD') AS day,
                    count(*) AS totalMessages,

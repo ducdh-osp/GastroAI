@@ -13,6 +13,7 @@ import vn.gastroai.be.api.cms.knowledge.CmsArticleRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsArticleSummaryResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.application.support.VietnameseText;
+import vn.gastroai.be.domain.knowledge.ArticleStatus;
 import vn.gastroai.be.domain.knowledge.ArticleTopic;
 import vn.gastroai.be.domain.knowledge.KnowledgeArticle;
 import vn.gastroai.be.infrastructure.persistence.postgres.ArticleTopicRepository;
@@ -42,6 +43,12 @@ public class KnowledgeArticleAdminService {
 
     @Transactional(value = TX, readOnly = true)
     public Page<CmsArticleSummaryResponse> list(String query, String category, Boolean published, int page, int size) {
+        return list(query, category, published, null, page, size);
+    }
+
+    @Transactional(value = TX, readOnly = true)
+    public Page<CmsArticleSummaryResponse> list(
+            String query, String category, Boolean published, ArticleStatus status, int page, int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
@@ -49,7 +56,8 @@ public class KnowledgeArticleAdminService {
         String normalizedCategory = category == null || category.isBlank() ? "" : VietnameseText.normalize(category.trim());
 
         List<KnowledgeArticle> filtered = articleRepository.findAllByOrderBySortOrderAscTitleAsc().stream()
-                .filter(a -> published == null || a.isPublished() == published)
+                .filter(a -> status == null || resolveStatus(a) == status)
+                .filter(a -> status != null || published == null || a.isPublished() == published)
                 .filter(a -> normalizedCategory.isEmpty()
                         || VietnameseText.normalize(a.getCategory()).equals(normalizedCategory))
                 .filter(a -> normalizedQuery.isEmpty()
@@ -76,6 +84,10 @@ public class KnowledgeArticleAdminService {
 
     @Transactional(TX)
     public CmsArticleDetailResponse create(CmsArticleRequest request) {
+        if (Boolean.TRUE.equals(request.published()) || request.status() == ArticleStatus.PUBLISHED) {
+            throw new IllegalArgumentException(
+                    "Không thể công khai bài viết ngay lúc tạo; vui lòng lưu nháp hoặc gửi duyệt để đối chiếu nguồn riêng.");
+        }
         String title = clean(request.title(), "Tiêu đề không được để trống");
         String summary = clean(request.summary(), "Tóm tắt không được để trống");
         String category = validateCategory(request.category());
@@ -88,8 +100,10 @@ public class KnowledgeArticleAdminService {
         if (sourceCheckedAt.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException("Ngày kiểm tra nguồn không được lớn hơn thời điểm hiện tại");
         }
-        boolean published = Boolean.TRUE.equals(request.published());
         int sortOrder = request.sortOrder() != null ? request.sortOrder() : nextSortOrder();
+        ArticleStatus initialStatus = request.status() == ArticleStatus.PENDING_REVIEW
+                ? ArticleStatus.PENDING_REVIEW
+                : ArticleStatus.DRAFT;
 
         KnowledgeArticle article = new KnowledgeArticle();
         article.setTitle(title);
@@ -101,23 +115,10 @@ public class KnowledgeArticleAdminService {
         article.setSourceUrl(sourceUrl);
         article.setSourceCheckedAt(sourceCheckedAt);
         article.setSortOrder(sortOrder);
+        article.setPublished(false);
+        article.setStatus(initialStatus);
         article.setCreatedAt(Instant.now());
         article.setUpdatedAt(Instant.now());
-
-        if (published) {
-            if (request.medicalReviewer() == null || request.medicalReviewer().isBlank()) {
-                throw new IllegalArgumentException("Bài viết muốn xuất bản bắt buộc phải có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa");
-            }
-            article.setPublished(true);
-            article.setMedicalReviewer(request.medicalReviewer().trim());
-            article.setMedicalReviewedAt(Instant.now());
-        } else {
-            article.setPublished(false);
-            if (request.medicalReviewer() != null && !request.medicalReviewer().isBlank()) {
-                article.setMedicalReviewer(request.medicalReviewer().trim());
-                article.setMedicalReviewedAt(Instant.now());
-            }
-        }
 
         KnowledgeArticle saved = articleRepository.saveAndFlush(article);
         return CmsArticleDetailResponse.from(saved);
@@ -167,11 +168,13 @@ public class KnowledgeArticleAdminService {
                 // Nội dung y khoa thay đổi trên bài đang xuất bản - bắt buộc phải kiểm duyệt lại
                 if (request.medicalReviewer() != null && !request.medicalReviewer().isBlank()) {
                     article.setPublished(true);
+                    article.setStatus(ArticleStatus.PUBLISHED);
                     article.setMedicalReviewer(request.medicalReviewer().trim());
                     article.setMedicalReviewedAt(Instant.now());
                 } else {
-                    // Tự động chuyển về bản nháp để đảm bảo an toàn y tế cho bệnh nhân
+                    // Tự động chuyển về chờ duyệt để đảm bảo an toàn y tế cho bệnh nhân
                     article.setPublished(false);
+                    article.setStatus(ArticleStatus.PENDING_REVIEW);
                     article.setMedicalReviewedAt(null);
                 }
             } else {
@@ -182,6 +185,7 @@ public class KnowledgeArticleAdminService {
                     throw new IllegalArgumentException("Bài viết muốn xuất bản bắt buộc phải có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa");
                 }
                 article.setPublished(true);
+                article.setStatus(ArticleStatus.PUBLISHED);
                 article.setMedicalReviewer(reviewer);
                 if (article.getMedicalReviewedAt() == null || (request.medicalReviewer() != null && !request.medicalReviewer().isBlank())) {
                     article.setMedicalReviewedAt(Instant.now());
@@ -189,6 +193,22 @@ public class KnowledgeArticleAdminService {
             }
         } else {
             article.setPublished(false);
+            if (request.status() == ArticleStatus.PENDING_REVIEW) {
+                article.setStatus(ArticleStatus.PENDING_REVIEW);
+                if (contentChanged) {
+                    article.setMedicalReviewedAt(null);
+                }
+            } else if (request.status() == ArticleStatus.DRAFT) {
+                article.setStatus(ArticleStatus.DRAFT);
+                if (contentChanged) {
+                    article.setMedicalReviewedAt(null);
+                }
+            } else if (contentChanged) {
+                article.setStatus(ArticleStatus.PENDING_REVIEW);
+                article.setMedicalReviewedAt(null);
+            } else {
+                article.setStatus(article.getMedicalReviewedAt() != null ? ArticleStatus.HIDDEN : ArticleStatus.DRAFT);
+            }
             if (request.medicalReviewer() != null && !request.medicalReviewer().isBlank()) {
                 article.setMedicalReviewer(request.medicalReviewer().trim());
                 article.setMedicalReviewedAt(Instant.now());
@@ -199,6 +219,17 @@ public class KnowledgeArticleAdminService {
 
         KnowledgeArticle saved = articleRepository.saveAndFlush(article);
         return CmsArticleDetailResponse.from(saved);
+    }
+
+    @Transactional(TX)
+    public CmsArticleDetailResponse submitForReview(Long id) {
+        KnowledgeArticle article = load(id);
+        if (article.isPublished()) {
+            throw new IllegalStateException("Bài viết đang xuất bản không cần gửi duyệt lại.");
+        }
+        article.setStatus(ArticleStatus.PENDING_REVIEW);
+        article.setUpdatedAt(Instant.now());
+        return CmsArticleDetailResponse.from(articleRepository.saveAndFlush(article));
     }
 
     @Transactional(TX)
@@ -216,10 +247,12 @@ public class KnowledgeArticleAdminService {
                 throw new IllegalArgumentException("Không thể xuất bản bài viết khi chưa có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa");
             }
             article.setPublished(true);
+            article.setStatus(ArticleStatus.PUBLISHED);
             article.setMedicalReviewer(reviewer);
             article.setMedicalReviewedAt(Instant.now());
         } else {
             article.setPublished(false);
+            article.setStatus(article.getMedicalReviewedAt() != null ? ArticleStatus.HIDDEN : ArticleStatus.DRAFT);
         }
         article.setUpdatedAt(Instant.now());
         KnowledgeArticle saved = articleRepository.saveAndFlush(article);
@@ -230,6 +263,16 @@ public class KnowledgeArticleAdminService {
     public void delete(Long id) {
         KnowledgeArticle article = load(id);
         articleRepository.delete(article);
+    }
+
+    private static ArticleStatus resolveStatus(KnowledgeArticle article) {
+        if (article.getStatus() != null) {
+            return article.getStatus();
+        }
+        if (article.isPublished()) {
+            return ArticleStatus.PUBLISHED;
+        }
+        return article.getMedicalReviewedAt() != null ? ArticleStatus.HIDDEN : ArticleStatus.DRAFT;
     }
 
     private KnowledgeArticle load(Long id) {

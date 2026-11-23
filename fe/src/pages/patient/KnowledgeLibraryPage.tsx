@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined, CloseCircleOutlined, FileSearchOutlined, SearchOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Empty, Input, Pagination, Select, Spin, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Empty, Input, Pagination, Spin, Tag, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getKnowledgeArticle, listKnowledgeArticleCategories, listKnowledgeArticles } from '../../api/articles'
@@ -145,9 +145,16 @@ function ArticleDetail({ slug }: { slug: string }) {
       {error && <Alert type="error" showIcon message={error} />}
       {article && (
         <Card className="rounded-2xl border-black/5 shadow-sm">
-          <Tag color="cyan">{article.category}</Tag>
-          <Text type="secondary" className="ml-2 text-xs">Khoảng {article.readingMinutes} phút đọc</Text>
-          <Title level={2} className="mb-2! mt-3!">{cleanTitle(article.title)}</Title>
+          <Title level={2} className="mb-2! mt-1!">{cleanTitle(article.title)}</Title>
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
+            <span>Chủ đề: <Tag color="cyan" className="m-0 ml-1">{article.category}</Tag></span>
+            {article.updatedAt && (
+              <span>
+                · Cập nhật {new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(article.updatedAt))}
+              </span>
+            )}
+            <span>· Khoảng {article.readingMinutes} phút đọc</span>
+          </div>
           <p className="my-5 text-base leading-7 text-slate-600 dark:text-white">{article.summary}</p>
           {!article.content.includes('/images/articles/') && illustration && (
             <figure className="my-6 block text-center">
@@ -239,7 +246,7 @@ export default function KnowledgeLibraryPage() {
             <Title level={2} className="mb-1! mt-1!">Thư viện bài viết</Title>
             <Text type="secondary">Tìm hiểu các chủ đề tiêu hoá từ nguồn y tế đáng tin cậy trước khi trao đổi với trợ lý GastroAI.</Text>
           </div>
-          <div className="mb-6 flex flex-wrap items-center gap-3">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
             <Input.Search
               allowClear
               enterButton={<><SearchOutlined /> Tìm</>}
@@ -257,28 +264,43 @@ export default function KnowledgeLibraryPage() {
               onSearch={(value) => { setPage(0); setQuery(value.trim()) }}
               className="max-w-lg"
             />
-            <Select
-              allowClear
-              placeholder="Tất cả chủ đề"
-              options={[
-                { value: '', label: 'Tất cả chủ đề' },
-                ...categories.map((value) => ({ value, label: value })),
-              ]}
-              value={category || undefined}
-              onChange={(value) => {
-                setPage(0)
-                setCategory(value || undefined)
-              }}
-              className="w-56"
-            />
+            {hasFilterActive && (
+              <Button
+                icon={<CloseCircleOutlined />}
+                onClick={handleClearFilters}
+                className="shrink-0"
+              >
+                Bỏ chọn
+              </Button>
+            )}
+          </div>
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <Text type="secondary" className="mr-1 text-xs font-medium">Chủ đề:</Text>
             <Button
-              icon={<CloseCircleOutlined />}
-              onClick={handleClearFilters}
-              disabled={!hasFilterActive}
-              className="shrink-0"
+              size="small"
+              type={!category ? 'primary' : 'default'}
+              className="rounded-full"
+              onClick={() => {
+                setPage(0)
+                setCategory(undefined)
+              }}
             >
-              Bỏ chọn
+              Tất cả
             </Button>
+            {categories.map((cat) => (
+              <Button
+                key={cat}
+                size="small"
+                type={category === cat ? 'primary' : 'default'}
+                className="rounded-full"
+                onClick={() => {
+                  setPage(0)
+                  setCategory(category === cat ? undefined : cat)
+                }}
+              >
+                {cat}
+              </Button>
+            ))}
           </div>
           {error && <Alert type="error" showIcon message={error} className="mb-4" />}
           {loading ? <div className="py-20 text-center"><Spin size="large" /></div> : articles.length === 0 ? (

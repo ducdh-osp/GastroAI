@@ -78,6 +78,7 @@ const REVIEW_CONFIRM_RULE = {
 
 export default function CmsFaqPage() {
   const { user } = useCmsAuth()
+  const canApprove = user?.userType !== 'CONTENT_AUTHOR'
   const [items, setItems] = useState<CmsFaqItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -311,6 +312,9 @@ export default function CmsFaqPage() {
   }
 
   function renderPublishAction(record: CmsFaqItem) {
+    if (!canApprove) {
+      return null
+    }
     if (record.published) {
       return (
         <Popconfirm
@@ -849,13 +853,13 @@ export default function CmsFaqPage() {
 
             <Form.Item
               name="medicalReviewer"
-              label="Người đối chiếu (Biên tập chuyên môn y khoa)"
+              label="Người đối chiếu (Tài khoản CMS đang đăng nhập)"
               rules={[
                 { required: true, whitespace: true, message: 'Vui lòng nhập tên người đối chiếu nguồn' },
                 { max: 200, message: 'Tối đa 200 ký tự' },
               ]}
             >
-              <Input placeholder="VD: Nguyễn Văn A - Biên tập chuyên môn y khoa" maxLength={200} />
+              <Input disabled maxLength={200} />
             </Form.Item>
 
             <Form.Item name="reviewConfirmed" valuePropName="checked" rules={[REVIEW_CONFIRM_RULE]}>

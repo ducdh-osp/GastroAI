@@ -27,6 +27,9 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
     }
 
     long countByStatus(TriageAlertStatus status);
+    long countByOccurredAtGreaterThanEqualAndOccurredAtLessThan(Instant startDate, Instant endDate);
+    long countByStatusAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+            TriageAlertStatus status, Instant startDate, Instant endDate);
     List<TriageAlert> findByOccurredAtBetween(Instant startDate, Instant endDate);
 
     @Query(value = """

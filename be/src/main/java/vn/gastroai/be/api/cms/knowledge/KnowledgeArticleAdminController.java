@@ -3,6 +3,7 @@ package vn.gastroai.be.api.cms.knowledge;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -16,9 +17,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.knowledge.KnowledgeArticleAdminService;
+import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.domain.knowledge.ArticleStatus;
+import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 
-/** UC0065 - Quan ly bai viet kien thuc tieu hoa cho Admin / Bac si. */
+/** UC0065 - Quan ly bai viet kien thuc tieu hoa cho Admin / Bien tap vien. */
 @RestController
 @RequestMapping("/api/v1/cms/articles")
 public class KnowledgeArticleAdminController {
@@ -27,11 +31,14 @@ public class KnowledgeArticleAdminController {
 
     private final KnowledgeArticleAdminService adminService;
     private final AuditLogService auditLogService;
+    private final AdminRepository adminRepository;
 
     public KnowledgeArticleAdminController(KnowledgeArticleAdminService adminService,
-                                           AuditLogService auditLogService) {
+                                           AuditLogService auditLogService,
+                                           AdminRepository adminRepository) {
         this.adminService = adminService;
         this.auditLogService = auditLogService;
+        this.adminRepository = adminRepository;
     }
 
     @GetMapping
@@ -39,9 +46,12 @@ public class KnowledgeArticleAdminController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Boolean published,
+            @RequestParam(required = false) ArticleStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<CmsArticleSummaryResponse> result = adminService.list(q, category, published, page, size);
+        Page<CmsArticleSummaryResponse> result = status != null
+                ? adminService.list(q, category, published, status, page, size)
+                : adminService.list(q, category, published, page, size);
         return CmsArticlePageResponse.from(result);
     }
 
@@ -67,9 +77,24 @@ public class KnowledgeArticleAdminController {
         return after;
     }
 
+    @PatchMapping("/{id}/submit-review")
+    public CmsArticleDetailResponse submitForReview(@PathVariable Long id) {
+        CmsArticleDetailResponse result = adminService.submitForReview(id);
+        auditLogService.record(AuditAction.CONTENT_UPDATE, TARGET, id, "«" + result.title() + "» · gửi duyệt");
+        return result;
+    }
+
     @PatchMapping("/{id}/publish")
-    public CmsArticleDetailResponse setPublished(@PathVariable Long id, @Valid @RequestBody CmsArticlePublishRequest request) {
-        CmsArticleDetailResponse result = adminService.setPublished(id, request);
+    public CmsArticleDetailResponse setPublished(
+            @PathVariable Long id,
+            @Valid @RequestBody CmsArticlePublishRequest request,
+            Authentication authentication) {
+        CmsArticlePublishRequest effective = request;
+        if (request.published()) {
+            String boundReviewer = resolveAuthenticatedReviewer(authentication, request.medicalReviewer());
+            effective = new CmsArticlePublishRequest(true, boundReviewer, request.version());
+        }
+        CmsArticleDetailResponse result = adminService.setPublished(id, effective);
         String detail = "«" + result.title() + "»";
         if (result.published() && result.medicalReviewer() != null) {
             detail += " · người duyệt: " + result.medicalReviewer();
@@ -77,6 +102,24 @@ public class KnowledgeArticleAdminController {
         auditLogService.record(request.published() ? AuditAction.CONTENT_PUBLISH : AuditAction.CONTENT_UNPUBLISH,
                 TARGET, id, detail);
         return result;
+    }
+
+    private String resolveAuthenticatedReviewer(Authentication authentication, String fallback) {
+        if (authentication != null && authentication.getName() != null) {
+            try {
+                Long adminId = Long.valueOf(authentication.getName());
+                Admin admin = adminRepository.findById(adminId).orElse(null);
+                if (admin != null) {
+                    String name = admin.getFullName() != null && !admin.getFullName().isBlank()
+                            ? admin.getFullName().trim()
+                            : admin.getEmail();
+                    return name + " (" + admin.getEmail() + ")";
+                }
+            } catch (NumberFormatException ignored) {
+                // Mock user in tests
+            }
+        }
+        return fallback;
     }
 
     @DeleteMapping("/{id}")
