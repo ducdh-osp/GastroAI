@@ -313,7 +313,7 @@ class TriageAlertServiceTest {
     void linkConversationDoesNothingWhenAlertNoLongerExists() {
         when(triageAlertRepository.findById(999L)).thenReturn(Optional.empty());
 
-        service.linkConversation(999L, 7L, 9L);
+            service.linkConversation(999L, 9L);
 
         verify(triageAlertRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any(TriageAlertEvent.class));
@@ -516,7 +516,7 @@ class TriageAlertServiceTest {
     @Test
     void claimOnAutoAlertIsEarlyInterventionAndBroadcastsSameTimestampUsedInDb() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
-        TriageAlert alert = new TriageAlert(patient, null, null, "Cau hoi khan cap",
+        TriageAlert alert = new TriageAlert(patient, null, "Cau hoi khan cap",
                 "[\"DAU_BUNG_CAP_TINH\"]", Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
         when(triageAlertRepository.findById(10L)).thenReturn(Optional.of(alert));
@@ -749,7 +749,7 @@ class TriageAlertServiceTest {
     @Test
     void listOpenQueriesBothOpenStatusesAndFillsCounters() {
         Patient patient = patient(1L, "Nguyen Van A", "0901234567");
-        TriageAlert alert = new TriageAlert(patient, 2L, 3L, "Cau hoi khan cap",
+        TriageAlert alert = new TriageAlert(patient, 3L, "Cau hoi khan cap",
                 "[\"XUAT_HUYET_TIEU_HOA\",\"DAU_BUNG_CAP_TINH\"]",
                 Instant.parse("2026-09-30T00:00:00Z"));
         alert.setId(10L);
