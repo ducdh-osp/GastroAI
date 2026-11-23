@@ -150,4 +150,14 @@ class TriageKeywordAdminControllerTest {
         verify(triageKeywordService, never()).delete(any());
         verify(auditLogService, never()).record(any(), any(), any(), any());
     }
+    
+    // SCR-AD-07: Bien tap chuyen mon y khoa them/sua/xoa tu khoa sang loc khan cap.
+    @Test
+    @WithMockUser(username = "12", roles = "CONTENT_EDITOR")
+    void listIsAllowedForContentEditor() throws Exception {
+        when(triageKeywordService.list()).thenReturn(List.of(response()));
+
+        mockMvc.perform(get("/api/v1/cms/triage-keywords"))
+                .andExpect(status().isOk());
+    }
 }

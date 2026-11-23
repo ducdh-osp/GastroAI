@@ -1,5 +1,6 @@
 import {
   AuditOutlined,
+  AlertOutlined,
   BookOutlined,
   DashboardOutlined,
   ExperimentOutlined,
@@ -36,8 +37,8 @@ export interface CmsNavGroup {
 // có ở CmsSidebar cũ.
 export const CMS_NAV_GROUPS: CmsNavGroup[] = [
   {
-    key: 'users',
-    title: 'Người dùng',
+    key: 'account',
+    title: 'Tài khoản',
     items: [
       { icon: TeamOutlined, title: 'Quản lý người dùng', desc: 'Xem, khoá/mở tài khoản bệnh nhân.', to: '/cms/users', adminOnly: true },
       { icon: SafetyCertificateOutlined, title: 'Phân quyền nhân sự', desc: 'Gán vai trò cho tài khoản nội bộ (RBAC).', to: '/cms/rbac', adminOnly: true },
@@ -52,14 +53,15 @@ export const CMS_NAV_GROUPS: CmsNavGroup[] = [
       { icon: TagsOutlined, title: 'Chủ đề bài viết', desc: 'Quản lý chủ đề dùng chung cho bài viết và FAQ.', to: '/cms/article-topics' },
       { icon: QuestionCircleOutlined, title: 'Câu hỏi thường gặp', desc: 'Soạn & duyệt FAQ hiển thị cho bệnh nhân.', to: '/cms/faq' },
       { icon: MedicineBoxOutlined, title: 'Danh mục chuẩn hoá', desc: 'Danh mục triệu chứng/thuốc dùng làm dropdown.', to: '/cms/catalogs' },
+            { icon: TagsOutlined, title: 'Từ khoá Triage', desc: 'Quản lý từ khoá sàng lọc dấu hiệu nguy hiểm.', to: '/cms/triage-keywords', roles: ['ADMIN', 'CONTENT_EDITOR'] },
     ],
   },
   {
     key: 'monitoring',
     title: 'Giám sát',
     items: [
-      { icon: SafetyOutlined, title: 'Cảnh báo khẩn cấp', desc: 'Theo dõi và xác nhận escalate các ca Triage cần can thiệp.', to: '/cms/triage-alerts', roles: ['ADMIN', 'DOCTOR'] },
-      { icon: ExperimentOutlined, title: 'Đánh giá AI & Triage', desc: 'Chất lượng truy xuất RAG và độ nhạy sàng lọc an toàn.', to: '/cms/evaluation', roles: ['ADMIN', 'DOCTOR'] },
+      { icon: SafetyOutlined, title: 'Cảnh báo khẩn cấp', desc: 'Theo dõi và xác nhận escalate các ca Triage cần can thiệp.', to: '/cms/triage-alerts', roles: ['ADMIN', 'CONTENT_EDITOR'] },
+      { icon: ExperimentOutlined, title: 'Đánh giá AI & Triage', desc: 'Chất lượng truy xuất RAG và độ nhạy sàng lọc an toàn.', to: '/cms/evaluation', roles: ['ADMIN', 'CONTENT_EDITOR'] },
       { icon: SoundOutlined, title: 'Thông báo broadcast', desc: 'Gửi thông báo chung tới toàn bộ/1 nhóm bệnh nhân.', to: '/cms/broadcast', adminOnly: true },
       { icon: DashboardOutlined, title: 'Thống kê hệ thống', desc: 'Lượt chat, triệu chứng phổ biến, số lần Triage kích hoạt.', to: '/cms/dashboard', adminOnly: true },
       { icon: AuditOutlined, title: 'Nhật ký hoạt động', desc: 'Theo dõi thao tác nhạy cảm để đảm bảo minh bạch.', to: '/cms/audit-logs', adminOnly: true },
@@ -69,7 +71,6 @@ export const CMS_NAV_GROUPS: CmsNavGroup[] = [
     key: 'config',
     title: 'Cấu hình',
     items: [
-      { icon: TagsOutlined, title: 'Từ khoá Triage', desc: 'Quản lý từ khoá sàng lọc dấu hiệu nguy hiểm.', to: '/cms/triage-keywords', roles: ['ADMIN', 'DOCTOR'] },
       { icon: SettingOutlined, title: 'Cấu hình RAG/Triage', desc: 'Tinh chỉnh tham số truy xuất và kênh cảnh báo.', to: '/cms/runtime-config', adminOnly: true },
       { icon: MailOutlined, title: 'Mẫu email', desc: 'Chỉnh nội dung email xác thực, nhắc thuốc, cảnh báo.', to: '/cms/email-templates', adminOnly: true },
     ],
