@@ -64,7 +64,7 @@ public class CmsAuthService {
     }
 
     @Transactional(value = "mysqlTransactionManager", noRollbackFor = {
-            BadCredentialsException.class, AccountLockedException.class
+            BadCredentialsException.class, AccountLockedException.class, AccountDisabledException.class
     })
     public CmsAuthResult login(CmsLoginCommand command, HttpServletRequest request) {
         Optional<Admin> found = adminRepository.findByEmailForUpdate(command.email());
@@ -78,6 +78,11 @@ public class CmsAuthService {
 
         Admin user = found.get();
         Instant now = Instant.now();
+
+        if (user.isAdminLocked()) {
+            saveHistory(user, now, LoginOutcome.BLOCKED, "Tài khoản bị Admin khóa", request);
+            throw new AccountDisabledException();
+        }
 
         if (isLocked(user, now)) {
             saveHistory(user, now, LoginOutcome.BLOCKED, "Tài khoản đang bị khóa", request);
@@ -107,13 +112,18 @@ public class CmsAuthService {
     }
 
     @Transactional(value = "mysqlTransactionManager", noRollbackFor = {
-            IllegalArgumentException.class, AccountLockedException.class
+            IllegalArgumentException.class, AccountLockedException.class, AccountDisabledException.class
     })
     public int changePassword(Long accountId, String currentPassword, String newPassword,
             HttpServletRequest request) {
         Admin user = adminRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new AccessDeniedException("Tài khoản không tồn tại hoặc đã bị xóa"));
         Instant now = Instant.now();
+
+        if (user.isAdminLocked()) {
+            saveHistory(user, now, LoginOutcome.BLOCKED, "Đổi mật khẩu khi tài khoản bị Admin khóa", request);
+            throw new AccountDisabledException();
+        }
 
         if (isLocked(user, now)) {
             saveHistory(user, now, LoginOutcome.BLOCKED, "Đổi mật khẩu khi tài khoản đang bị khóa", request);

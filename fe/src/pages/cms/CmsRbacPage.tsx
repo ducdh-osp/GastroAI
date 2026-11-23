@@ -1,8 +1,16 @@
-import { SafetyCertificateOutlined } from '@ant-design/icons'
-import { Alert, Card, Input, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd'
+import { LockOutlined, SafetyCertificateOutlined, UnlockOutlined, UserAddOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Input, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
-import { assignCmsRole, listCmsAccounts, type CmsAccount, type CmsPermissionRole } from '../../api/cmsRbac'
+import { Link } from 'react-router-dom'
+import {
+  assignCmsRole,
+  lockCmsAccount,
+  listCmsAccounts,
+  unlockCmsAccount,
+  type CmsAccount,
+  type CmsPermissionRole,
+} from '../../api/cmsRbac'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { formatDateTime } from '../../lib/format'
 
@@ -11,14 +19,16 @@ const PAGE_SIZE = 20
 const ROLE_LABEL: Record<CmsPermissionRole, string> = {
   ADMIN: 'Admin',
   DOCTOR: 'Bác sĩ',
-  CONTENT_EDITOR: 'Biên tập nội dung',
+  CONTENT_EDITOR: 'Biên tập chuyên môn y khoa',
+  CONTENT_AUTHOR: 'Cộng tác viên nội dung',
+  OPERATIONS: 'Giám sát vận hành',
 }
 
 type PendingRoleChange = { account: CmsAccount; role: CmsPermissionRole }
 
 function roleOptions(account: CmsAccount) {
   const allowedRoles: CmsPermissionRole[] = account.accountType === 'ADMIN'
-    ? ['ADMIN', 'CONTENT_EDITOR']
+    ? ['ADMIN', 'CONTENT_EDITOR', 'CONTENT_AUTHOR', 'OPERATIONS']
     : ['DOCTOR']
 
   return allowedRoles.map((value) => ({ value, label: ROLE_LABEL[value] }))
@@ -72,6 +82,23 @@ export default function CmsRbacPage() {
     }
   }
 
+  async function toggleLock(account: CmsAccount) {
+    const key = accountKey(account)
+    setBusy((current) => new Set(current).add(key))
+    try {
+      const updated = account.adminLocked ? await unlockCmsAccount(account.id) : await lockCmsAccount(account.id)
+      setData((items) => items.map((item) => accountKey(item) === accountKey(updated) ? updated : item))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể đổi trạng thái khoá.')
+    } finally {
+      setBusy((current) => {
+        const next = new Set(current)
+        next.delete(key)
+        return next
+      })
+    }
+  }
+
   const columns: ColumnsType<CmsAccount> = [
     { title: 'Tài khoản', key: 'account', render: (_, a) => <div><div className="font-medium">{a.fullName || 'Chưa cập nhật'}</div><Text type="secondary">{a.email}</Text></div> },
     { title: 'Loại tài khoản', dataIndex: 'accountType', key: 'accountType', render: (v: string) => <Tag>{v === 'ADMIN' ? 'Admin' : 'Tài khoản bác sĩ'}</Tag> },
@@ -102,16 +129,56 @@ export default function CmsRbacPage() {
             disabled={a.accountType === 'DOCTOR' || busy.has(key)}
             onChange={(role: CmsPermissionRole) => setPending({ account: a, role })}
             options={roleOptions(a)}
-            style={{ width: 190 }}
+            style={{ width: 220 }}
           />
         </Popconfirm>
       },
     },
     { title: 'Ngày tạo', dataIndex: 'createdAt', key: 'createdAt', render: formatDateTime },
+    {
+      title: 'Trạng thái', key: 'status', render: (_, a) =>
+        a.adminLocked ? <Tag color="red">Đã khoá</Tag> : <Tag color="green">Đang hoạt động</Tag>,
+    },
+    {
+      title: 'Thao tác', key: 'actions', render: (_, a) => {
+        if (a.accountType !== 'ADMIN') return null
+        const key = accountKey(a)
+        return (
+          <Popconfirm
+            title={a.adminLocked ? 'Mở khoá tài khoản này?' : 'Khoá tài khoản này?'}
+            description={a.adminLocked
+              ? 'Tài khoản sẽ đăng nhập lại được bình thường.'
+              : 'Tài khoản sẽ không đăng nhập được nữa, phiên hiện tại (nếu có) bị huỷ ngay.'}
+            okText="Xác nhận"
+            cancelText="Huỷ"
+            okButtonProps={{ danger: !a.adminLocked }}
+            onConfirm={() => void toggleLock(a)}
+          >
+            <Button
+              size="small"
+              danger={!a.adminLocked}
+              loading={busy.has(key)}
+              icon={a.adminLocked ? <UnlockOutlined /> : <LockOutlined />}
+            >
+              {a.adminLocked ? 'Mở khoá' : 'Khoá'}
+            </Button>
+          </Popconfirm>
+        )
+      },
+    },
   ]
 
   return <CmsAppShell><div className="w-full">
-    <div className="mb-6"><Text type="secondary">Người dùng</Text><Title level={2} className="mb-1! mt-1!"><SafetyCertificateOutlined className="mr-2" />Phân quyền RBAC</Title><Text type="secondary">Tài khoản Admin có thể mang vai trò Admin hoặc Biên tập nội dung; tài khoản Bác sĩ luôn giữ vai trò Bác sĩ. Thay đổi có hiệu lực ngay ở request kế tiếp.</Text></div>
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <Text type="secondary">Người dùng</Text>
+        <Title level={2} className="mb-1! mt-1!"><SafetyCertificateOutlined className="mr-2" />Phân quyền RBAC</Title>
+        <Text type="secondary">4 vai trò nội bộ: Admin, Biên tập chuyên môn y khoa, Cộng tác viên nội dung, Giám sát vận hành. Tài khoản Bác sĩ (cũ) luôn giữ nguyên vai trò. Thay đổi có hiệu lực ngay ở request kế tiếp.</Text>
+      </div>
+      <Link to="/cms/rbac/new">
+        <Button type="primary" icon={<UserAddOutlined />}>Tạo tài khoản mới</Button>
+      </Link>
+    </div>
     {error && <Alert type="error" message={error} showIcon className="mb-4" closable onClose={() => setError(null)} />}
     <Card className="rounded-2xl border-black/5 shadow-sm">
       <Space className="mb-4" wrap><Input.Search placeholder="Tìm theo tên hoặc email" allowClear value={query} onChange={(e) => setQuery(e.target.value)} onSearch={() => void reload(1)} style={{ width: 300 }} /></Space>

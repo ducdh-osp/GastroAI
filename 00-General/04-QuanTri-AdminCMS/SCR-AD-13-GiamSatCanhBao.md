@@ -3,7 +3,7 @@
 | Thuộc tính | Giá trị |
 | :--- | :--- |
 | UC | Phía nhận của `UC0036` ("Gửi cảnh báo Triage tới admin") — không có mã UC riêng trong đề cương, nhưng là màn hình thật sự cần thiết để UC0036 có ý nghĩa |
-| Actor | Hệ thống (tự động hoá phần lớn — xem §1), Admin (chỉ 1 bước xác nhận cuối — xem §2 Bước 3) |
+| Actor | Hệ thống (tự động hoá phần lớn — xem §1), Admin + Giám sát vận hành (1 bước xác nhận cuối — xem §2 Bước 3; Giám sát vận hành thêm theo SCR-AD-03 v1.2) |
 | Mục tiêu nghiệp vụ | Lớp bảo vệ thứ hai cho bệnh nhân gặp dấu hiệu nguy hiểm — hệ thống tự động phần hỏi thăm/nhắc nhở trong app, mọi liên hệ thật (người thân/bệnh nhân/115) luôn do Admin trực tiếp thực hiện bằng điện thoại cá nhân |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
 

@@ -213,8 +213,8 @@ hoặc đặt lịch khám thực tế, không xử lý đa ngôn ngữ (chỉ h
   nhóm set cờ khẩn cấp thật — xem Chương III §3.3).
 - Chat với phản hồi streaming thời gian thực (SSE).
 - Phân hệ theo dõi sức khỏe cá nhân: hồ sơ bệnh lý, nhật ký ăn uống, nhật ký Bristol, nhắc thuốc.
-- Phân hệ quản trị (CMS) với RBAC 2 vai trò nội bộ (Admin, Biên tập chuyên môn y khoa), quản lý
-  kho tri thức và Audit Log.
+- Phân hệ quản trị (CMS) với RBAC 4 vai trò nội bộ (Admin, Biên tập chuyên môn y khoa, Cộng tác
+  viên nội dung, Giám sát vận hành), quản lý kho tri thức và Audit Log.
 
 **Stretch goals** (chỉ khi MVP đã đạt chỉ số cốt lõi):
 - Mở rộng gợi ý tương quan thực phẩm–triệu chứng.
@@ -470,27 +470,37 @@ vĩnh viễn.
 > Checklist mẫu: actors/use case/user story, NFR hiệu năng/bảo mật/độ tin cậy/usability, kèm sơ đồ
 > use case + bảng FR/NFR có ID và acceptance criteria.
 >
-> **Cảnh báo drift đã phát hiện (20/11/2026):** `docs/masterplan-phan-he-usecase.xlsx` (sheet "Use
-> case chi tiết") vẫn ghi actor "Admin / Bác sĩ" cho nhiều UC quản trị, nhưng tài liệu nghiệp vụ mới
-> hơn (`00-General/04-QuanTri-AdminCMS/00-TongQuan.md` §0, quyết định **17/11/2026**) đã **bỏ vai
-> trò "Bác sĩ" như một tài khoản vận hành CMS riêng** — AI đảm nhận tư vấn trực tiếp, nhóm không có
-> bác sĩ thật để "đóng vai" tài khoản này. Còn lại **2 vai trò nội bộ: Admin, Biên tập chuyên môn y
-> khoa**. Nơi nào xlsx/code (`CmsRole.java`, `CmsRbacPage.tsx` vẫn còn `DOCTOR`) chưa khớp quyết
-> định này là drift thật, chưa refactor — bảng dưới đây viết theo quyết định mới nhất (đúng), có ghi
-> chú UC nào bị ảnh hưởng.
+> **Cảnh báo drift đã phát hiện (20/11/2026), cập nhật 23/11/2026:** `docs/masterplan-phan-he-usecase.xlsx`
+> (sheet "Use case chi tiết") vẫn ghi actor "Admin / Bác sĩ" cho nhiều UC quản trị, nhưng tài liệu
+> nghiệp vụ mới hơn (`00-General/04-QuanTri-AdminCMS/00-TongQuan.md` §0, quyết định **17/11/2026**)
+> đã **bỏ vai trò "Bác sĩ" như một tài khoản vận hành CMS riêng** — AI đảm nhận tư vấn trực tiếp,
+> nhóm không có bác sĩ thật để "đóng vai" tài khoản này.
+>
+> **Lần đổi mô hình vai trò thứ 2 (23/11/2026):** từ 2 vai trò (Admin, Biên tập chuyên môn y khoa)
+> nâng lên **4 vai trò nội bộ** — thêm **Cộng tác viên nội dung** và **Giám sát vận hành** (xem lập
+> luận đầy đủ, không phải "thêm cho có", ở `00-General/04-QuanTri-AdminCMS/SCR-AD-03-PhanQuyenRBAC.md`
+> §2). Nơi nào xlsx/code (`CmsRole.java`, `CmsRbacPage.tsx` vẫn còn nhãn `DOCTOR`/"Bác sĩ") chưa
+> khớp quyết định bỏ "Bác sĩ", và nơi nào `SecurityConfig.java`/`cmsNav.ts` chưa cấp quyền màn hình
+> cho 2 vai trò mới, đều là drift thật, chưa refactor xong — bảng dưới đây viết theo quyết định mới
+> nhất (đúng), có ghi chú UC nào bị ảnh hưởng.
 
 **Actors:**
 - **Bệnh nhân** — người dùng cuối phân hệ bệnh nhân (chat AI, theo dõi sức khỏe, nhắc thuốc).
-- **Admin** — quản trị CMS (phân quyền, cấu hình, audit log).
-- **Biên tập chuyên môn y khoa** — vai trò CMS thứ 2 (tải/duyệt tài liệu y khoa, quản lý từ khóa
+- **Admin** — quản trị CMS, không bị giới hạn màn hình nào (phân quyền, tạo tài khoản CMS, cấu
+  hình, audit log).
+- **Biên tập chuyên môn y khoa** — soạn **và duyệt/xuất bản** nội dung y tế (tài liệu RAG, từ khóa
   Triage, FAQ/bài viết) — tên gọi phản ánh đúng thực tế: nội dung do nhóm biên soạn/đối chiếu từ
   tài liệu y khoa đã công bố, không phải bác sĩ hành nghề thẩm định (nguyên tắc trung thực học
   thuật, xem `00-TongQuan.md` §0).
+- **Cộng tác viên nội dung** *(mới)* — chỉ soạn **nháp** FAQ/bài viết + quản lý chủ đề bài viết,
+  không duyệt/xuất bản được, không đụng Kho tài liệu RAG hay Từ khóa Triage.
+- **Giám sát vận hành** *(mới)* — chỉ xem Dashboard thống kê và xác nhận escalate ở màn Giám sát
+  cảnh báo khẩn cấp — không xem Audit Log, không đụng nội dung/tài khoản.
 - **Hệ thống** — actor kỹ thuật cho các use case tự động (RAG, Triage, phân tích tương quan) không
   do người dùng thao tác trực tiếp, theo quy ước UML cho tiến trình nền.
 
-**Hình 2. Sơ đồ Use case tổng quan** (ảnh đã vẽ: `usecase_diagram.png`, chèn vào đây khi dán sang
-Google Docs — mô tả khối dưới đây chỉ để đối chiếu nội dung):
+**Hình 2. Sơ đồ Use case tổng quan** (ảnh cần vẽ lại theo đúng khối dưới đây — bản cũ `usecase_diagram.png`
+đã lỗi thời theo RBAC 2 vai trò, chưa vẽ lại; mô tả khối dưới đây để đối chiếu nội dung khi vẽ):
 
 ```
 [Bệnh nhân] ──┬── Xác thực & tài khoản (đăng nhập, đổi mật khẩu)
@@ -504,16 +514,35 @@ Google Docs — mô tả khối dưới đây chỉ để đối chiếu nội d
 [Admin] ──────┬── Quản lý người dùng & phân quyền RBAC
               ├── Cấu hình tham số RAG/Triage
               ├── Xem đánh giá chất lượng AI (RAG/Triage)
-              └── Audit log (nhật ký thao tác nhạy cảm)
+              ├── Audit log (nhật ký thao tác nhạy cảm)
+              └── Tạo tài khoản nhân sự CMS  ← actor duy nhất, mới (UC0077)
 
 [Biên tập ────┬── Quản lý tài liệu RAG (tải lên, số hóa, chunking)
  chuyên môn    ├── Quản lý từ khóa Triage
- y khoa]       └── Quản lý FAQ / bài viết kiến thức
+ y khoa]       ├── Soạn FAQ / bài viết kiến thức (nháp)
+               ├── Duyệt & xuất bản FAQ / bài viết kiến thức
+               └── Quản lý chủ đề bài viết
+
+[Cộng tác ────┬── Soạn FAQ / bài viết kiến thức (nháp)   ← dùng chung oval với Biên tập
+ viên nội      └── Quản lý chủ đề bài viết                  ← dùng chung oval với Biên tập
+ dung] (mới)     (KHÔNG nối: Quản lý tài liệu RAG, Quản lý từ khóa Triage,
+                  Duyệt & xuất bản — xem SCR-AD-03 §3)
+
+[Giám sát ────┬── Dashboard thống kê                     ← dùng chung oval với Admin
+ vận hành]     └── Giám sát cảnh báo khẩn cấp (xác nhận escalate)  ← mới, dùng chung với Admin
+ (mới)           (KHÔNG nối: Audit log, Quản lý từ khóa Triage — dễ nhầm vì tên
+                  đều có "giám sát"/"Triage", xem SCR-AD-03 §3)
 
 [Hệ thống] ───┬── Truy xuất + sinh câu trả lời RAG
               ├── Sàng lọc Triage (đối sánh từ khóa) + đánh giá mức độ nghiêm trọng
               └── Phân tích tương quan thực phẩm–triệu chứng
 ```
+
+Nguyên tắc vẽ (giữ nhất quán, không nối Admin vào mọi oval): chỉ nối actor **chịu trách nhiệm
+chính** của use case, đúng cách bản cũ đã làm (Admin không nối vào các oval của Biên tập dù vẫn có
+quyền xem). Ngoại lệ: "Tạo tài khoản nhân sự CMS" là use case hoàn toàn mới, chỉ Admin — nối thẳng.
+"Dashboard" và "Giám sát cảnh báo khẩn cấp" dùng chung 2 actor (Admin + Giám sát vận hành) vì cả
+hai cùng là actor chính thật sự theo SCR-AD-03 §4, không phải Admin "mượn quyền".
 
 **User stories (mẫu đại diện):**
 - Là một bệnh nhân, tôi muốn hỏi AI về triệu chứng tiêu hóa, để nhận câu trả lời có trích dẫn
@@ -532,7 +561,7 @@ Google Docs — mô tả khối dưới đây chỉ để đối chiếu nội d
 | Mã | Loại | Actor | Yêu cầu | Tiêu chí chấp nhận |
 |---|---|---|---|---|
 | UC0002 | FR | Bệnh nhân | Đăng nhập | Đúng thông tin → nhận JWT; bệnh nhân/admin dùng cơ chế xác thực tách riêng (JWT/session) |
-| UC0006 | FR | Hệ thống | Phân quyền RBAC | Middleware chặn route nếu vai trò không đủ quyền; 2 vai trò nội bộ (Admin, Biên tập chuyên môn y khoa) |
+| UC0006 | FR | Hệ thống | Phân quyền RBAC | Middleware chặn route nếu vai trò không đủ quyền; 4 vai trò nội bộ (Admin, Biên tập chuyên môn y khoa, Cộng tác viên nội dung, Giám sát vận hành) |
 | UC0013 | FR | Bệnh nhân | Ghi nhận Bristol | Chọn đúng 1/7 loại theo Bristol Stool Chart, lưu kèm thời điểm |
 | UC0022 | FR | Hệ thống | Tương quan thực phẩm–triệu chứng | ≥15 bữa ăn/90 ngày → tối đa 10 món có ≥3 lần xuất hiện, sắp theo % giảm dần |
 | UC0023 | FR | Bệnh nhân | Hồ sơ nhạy cảm thực phẩm | Hiển thị baseline % + phân loại màu theo mức chênh so với baseline |
@@ -543,14 +572,15 @@ Google Docs — mô tả khối dưới đây chỉ để đối chiếu nội d
 | UC0039 | FR | Bệnh nhân | Sàng lọc triệu chứng có cấu trúc | Form hỏi-đáp theo bước, độc lập với chat tự do |
 | UC0040 | FR | Hệ thống | Đánh giá mức độ nghiêm trọng | Phân loại MILD/MODERATE/SEVERE theo dấu hiệu, ảnh hưởng hoạt động, diễn tiến, thời gian |
 | UC0042 | FR | Bệnh nhân | Đánh giá phản hồi AI | Gắn hữu ích/không hữu ích sau mỗi câu trả lời, lưu làm dữ liệu đánh giá |
-| UC0047 | FR | Admin | Gán vai trò RBAC | Gán 1 trong 2 vai trò nội bộ (Admin, Biên tập chuyên môn y khoa) cho 1 tài khoản CMS |
+| UC0047 | FR | Admin | Gán vai trò RBAC | Gán 1 trong 4 vai trò nội bộ (Admin, Biên tập chuyên môn y khoa, Cộng tác viên nội dung, Giám sát vận hành) cho 1 tài khoản CMS |
+| UC0077 | FR | Admin | Tạo tài khoản nhân sự CMS | Tạo tài khoản mới + gán đúng 1 trong 4 vai trò ngay từ đầu, không qua Flyway; mật khẩu tạm hiện đúng 1 lần; ghi Audit Log (`CMS_ACCOUNT_CREATE`) |
 | UC0048 | FR | Biên tập chuyên môn y khoa | Tải lên tài liệu y khoa | Tài liệu mới được số hóa, chunk, sinh embedding, truy xuất được ngay sau khi tải lên |
 | UC0052 | FR | Admin | Audit log | Thao tác nhạy cảm được ghi lại, không sửa/xoá được qua giao diện thường |
 | UC0054 | FR | Biên tập chuyên môn y khoa | Quản lý từ khóa Triage | Thêm/sửa/xoá từ khóa qua CMS, có hiệu lực ngay không cần deploy lại |
 | UC0059 | FR | Admin | Cấu hình tham số RAG/Triage | Đổi top-k/ngưỡng similarity qua UI, áp dụng ngay cho truy vấn tiếp theo |
 | UC0068 | FR | Bệnh nhân | Nhắc uống thuốc in-app | Gửi nhắc qua in-app/WebSocket đúng khung giờ khi đang online |
 | NFR-01 | NFR | — | Hiệu năng | Trả lời qua streaming SSE giảm cảm giác chờ; TTFT/latency tổng chưa đo đầy đủ (xem TODO) |
-| NFR-02 | NFR | — | Bảo mật | RBAC (2 vai trò: Admin, Biên tập chuyên môn y khoa) + audit log thao tác nhạy cảm; tách CSDL bệnh nhân/CMS vật lý; route CMS không session → 403 (đã xác nhận qua curl) |
+| NFR-02 | NFR | — | Bảo mật | RBAC (4 vai trò: Admin, Biên tập chuyên môn y khoa, Cộng tác viên nội dung, Giám sát vận hành) + audit log thao tác nhạy cảm; tách CSDL bệnh nhân/CMS vật lý; route CMS không session → 403 (đã xác nhận qua curl) |
 | NFR-03 | NFR | — | Độ tin cậy | Flyway migration kiểm soát phiên bản (60 Postgres + 16 MySQL); soft-delete cho phép khôi phục nhật ký ghi nhầm (UC0020) |
 | NFR-04 | NFR | — | Usability | Chuẩn hoá UI CMS bằng AntD; chưa có kiểm thử usability với người dùng ngoài nhóm — hạn chế cần nêu khi bảo vệ |
 | NFR-05 | NFR | — | Khả năng kiểm thử/tái lập | Bộ đánh giá RAG/Triage chạy trực tiếp qua API CMS, số liệu sinh từ dữ liệu thật, không hardcode |
@@ -913,14 +943,31 @@ hệ thống production thật; nêu rõ khi bảo vệ thay vì ngụy trang th
       Sandhu 1996 (RBAC) chưa được WebSearch xác minh lại (dùng từ kiến thức sẵn có), nên kiểm tra
       lại trước khi đưa vào danh mục tài liệu tham khảo chính thức.
 - [x] 2.3 "Công nghệ và lý do lựa chọn" đã viết xong (Bảng 7).
-- [ ] **Drift quan trọng phát hiện 20/11/2026**: tài liệu nghiệp vụ `00-General/04-QuanTri-AdminCMS/
-      00-TongQuan.md` §0 (quyết định 17/11/2026) đã bỏ vai trò "Bác sĩ" như tài khoản CMS riêng, còn
-      2 vai trò (Admin, Biên tập chuyên môn y khoa) — nhưng `CmsRole.java`, `CmsRbacPage.tsx` (code)
-      và `docs/masterplan-phan-he-usecase.xlsx` (sheet Use case chi tiết) **vẫn chưa refactor theo
-      quyết định này** (còn DOCTOR/"Bác sĩ"). Báo cáo (Chương I §1.3, Chương II §2.1, Chương III
-      §3.1) đã sửa theo quyết định mới nhất — nhưng nếu demo/chạy code thật trước hội đồng, UI CMS
-      lúc đó vẫn hiện "Bác sĩ" do code chưa cập nhật. Cần: (a) đồng bộ code trước khi nộp, hoặc
-      (b) nếu không kịp, phải nói rõ với hội đồng đây là gap đã biết, không phải lỗi không phát hiện.
+- [ ] **Drift "Bác sĩ" phát hiện 20/11/2026, vẫn CHƯA xử lý**: tài liệu nghiệp vụ
+      `00-TongQuan.md` §0 (quyết định 17/11/2026) đã bỏ vai trò "Bác sĩ" như tài khoản CMS riêng —
+      nhưng `CmsRole.java` (enum `DOCTOR`), `CmsRbacPage.tsx`/`cmsNav.ts` (nhãn "Bác sĩ") và
+      `docs/masterplan-phan-he-usecase.xlsx` (dòng UC0045 vẫn "Admin / Bác sĩ") **vẫn chưa refactor**.
+      Rủi ro demo: hội đồng mở CMS thật thấy dropdown còn "Bác sĩ". Cần: (a) đồng bộ code/xlsx trước
+      khi nộp, hoặc (b) nói rõ với hội đồng đây là gap đã biết — câu tự thừa nhận này PHẢI có mặt ở
+      bản nộp thật (docx/Google Docs), không chỉ nằm trong file nháp nội bộ này.
+- [ ] **Drift RBAC lần 2 (2→4 vai trò), phát sinh 23/11/2026, do 2 agent review (SA 10yr + GVHD 10yr)
+      phát hiện, CHƯA xử lý hết**:
+      1. Hình 2 (sơ đồ Use case) cần vẽ lại theo khối ASCII mới ở §3.1 — thêm actor Cộng tác viên nội
+         dung + Giám sát vận hành, thêm oval Dashboard/Tạo tài khoản/Giám sát cảnh báo khẩn cấp, tách
+         oval FAQ/bài viết thành "soạn" và "duyệt & xuất bản".
+      2. `SCR-AD-03-PhanQuyenRBAC.md` §4 có lỗi đánh máy đã sửa (cột Admin ở dòng AD-10/AD-11 từng ghi
+         nhầm "(soạn)" thay vì không giới hạn) — xác nhận lại đã đúng chưa nếu đổi ý sau này.
+      3. `SCR-AD-05-DashboardBaoCao.md`, `SCR-AD-13-GiamSatCanhBao.md` đã thêm actor Giám sát vận hành
+         vào bảng Thuộc tính — nhưng **code chưa theo**: `SecurityConfig.java`/`cmsNav.ts` chưa cấp
+         quyền màn hình cho `CONTENT_AUTHOR`/`OPERATIONS` ở bất kỳ API nào ngoài RBAC; và
+         `TriageAlertService.getDetail()` chỉ trả `EmergencyContact` cho viewer `"ADMIN"` — Giám sát
+         vận hành vào màn SCR-AD-13 thật sẽ KHÔNG thấy số điện thoại cần gọi. Đây là việc còn phải
+         làm trước khi tính năng 4-vai-trò dùng được thật, không chỉ là vấn đề tài liệu.
+      4. `docs/masterplan-phan-he-usecase.xlsx`: dòng UC0045 còn "Admin / Bác sĩ" (trùng gap ở trên);
+         UC0077 (Tạo tài khoản CMS, đã thêm vào bảng FR/NFR trên) chưa có trong xlsx chính thức.
+      5. Màn Tạo tài khoản CMS (UC0077) **hiện có code thật đang chạy trên máy Đức nhưng CHƯA commit**
+         — nếu commit sát ngày bảo vệ, nhớ đồng bộ lại cả xlsx + sơ đồ Use case cùng lúc, đừng để lệch
+         tiếp lần nữa.
 - [ ] Chương III §3.4 phát hiện 3 gap thật, nên làm trước khi bảo vệ nếu còn thời gian: (1) chưa
       chạy baseline lexical (LEXICAL_FALLBACK) để so sánh bằng số với vector retrieval cho RQ1;
       (2) chưa sweep nhiều giá trị `topK` dù hạ tầng đã hỗ trợ (ablation); (3) tương quan thực

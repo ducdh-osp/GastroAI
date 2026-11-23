@@ -3,7 +3,7 @@
 | Thuộc tính | Giá trị |
 | :--- | :--- |
 | UC | `UC0051` (dashboard), `UC0056` (xuất báo cáo) |
-| Actor | Admin |
+| Actor | Admin, Giám sát vận hành (thêm theo SCR-AD-03 v1.2 — xem đúng phạm vi theo dõi của vai trò này ở §1) |
 | Mục tiêu nghiệp vụ | Cho Admin nắm được "sức khoẻ vận hành" của toàn hệ thống trong 1 cái nhìn — không phải để bệnh nhân xem |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
 

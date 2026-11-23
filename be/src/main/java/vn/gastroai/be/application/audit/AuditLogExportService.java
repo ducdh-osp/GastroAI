@@ -115,6 +115,9 @@ public class AuditLogExportService {
             case DOCUMENT_DELETE_VERSION -> "Xoá phiên bản";
             case DOCUMENT_DELETE -> "Xoá tài liệu";
             case RBAC_ROLE_CHANGE -> "Đổi vai trò";
+            case CMS_ACCOUNT_CREATE -> "Tạo tài khoản CMS";
+            case CMS_ACCOUNT_LOCK -> "Khoá tài khoản CMS";
+            case CMS_ACCOUNT_UNLOCK -> "Mở khoá tài khoản CMS";
             case PATIENT_LOCK -> "Khoá bệnh nhân";
             case PATIENT_UNLOCK -> "Mở khoá bệnh nhân";
             case PATIENT_DATA_VIEW -> "Xem dữ liệu bệnh nhân";

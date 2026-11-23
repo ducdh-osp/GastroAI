@@ -23,7 +23,8 @@ import java.util.Set;
 @Component
 public class AdminSessionFilter extends OncePerRequestFilter {
 
-    private static final Set<String> CMS_ROLES = Set.of("ADMIN", "CONTENT_EDITOR");
+    // SCR-AD-03 v1.2: 4 vai tro tren bang admins (DOCTOR la bang rieng, khong qua day).
+    private static final Set<String> CMS_ROLES = Set.of("ADMIN", "CONTENT_EDITOR", "CONTENT_AUTHOR", "OPERATIONS");
 
     private final ObjectProvider<AdminRepository> admins;
 

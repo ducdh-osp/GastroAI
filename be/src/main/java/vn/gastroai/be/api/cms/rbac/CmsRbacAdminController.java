@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +45,30 @@ public class CmsRbacAdminController {
         CmsAccountResponse response = service.assignRole(accountType, accountId, request.role());
         auditLogService.record(AuditAction.RBAC_ROLE_CHANGE, accountType.name(), accountId,
                 "Vai trò mới: " + request.role());
+        return response;
+    }
+
+    /** SCR-AD-14 - chi tao tren bang admins (4 vai tro moi deu nam o day). */
+    @PostMapping
+    public CmsAccountResponse create(@Valid @RequestBody CreateCmsAccountRequest request) {
+        CmsAccountResponse response = service.createAccount(request);
+        auditLogService.record(AuditAction.CMS_ACCOUNT_CREATE, CmsAccountType.ADMIN.name(), response.id(),
+                "Tạo tài khoản mới, vai trò: " + response.role());
+        return response;
+    }
+
+    /** SCR-AD-03/SCR-AD-14 - khoa/mo tai khoan nhan su CMS (chi bang admins). */
+    @PutMapping("/{accountId}/lock")
+    public CmsAccountResponse lock(@PathVariable Long accountId) {
+        CmsAccountResponse response = service.lock(accountId);
+        auditLogService.record(AuditAction.CMS_ACCOUNT_LOCK, CmsAccountType.ADMIN.name(), accountId, null);
+        return response;
+    }
+
+    @PutMapping("/{accountId}/unlock")
+    public CmsAccountResponse unlock(@PathVariable Long accountId) {
+        CmsAccountResponse response = service.unlock(accountId);
+        auditLogService.record(AuditAction.CMS_ACCOUNT_UNLOCK, CmsAccountType.ADMIN.name(), accountId, null);
         return response;
     }
 

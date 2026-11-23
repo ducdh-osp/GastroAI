@@ -35,6 +35,7 @@ import NotificationsPage from '../pages/patient/NotificationsPage'
 import CmsNotificationsPage from '../pages/cms/CmsNotificationsPage'
 import CmsUsersPage from '../pages/cms/CmsUsersPage'
 import CmsRbacPage from '../pages/cms/CmsRbacPage'
+import CmsCreateAccountPage from '../pages/cms/CmsCreateAccountPage'
 import CmsChangePasswordPage from '../pages/cms/CmsChangePasswordPage'
 import CmsDashboardPage from '../pages/cms/CmsDashboardPage'
 import CmsBroadcastPage from '../pages/cms/CmsBroadcastPage'
@@ -236,6 +237,14 @@ export const router = createBrowserRouter([
             element: (
               <CmsAdminRoute>
                 <CmsRbacPage />
+              </CmsAdminRoute>
+            ),
+          },
+          {
+            path: '/cms/rbac/new',
+            element: (
+              <CmsAdminRoute>
+                <CmsCreateAccountPage />
               </CmsAdminRoute>
             ),
           },

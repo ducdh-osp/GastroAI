@@ -49,8 +49,8 @@
 | SCR-AD-07 Từ khoá Triage | ● | ● | | |
 | SCR-AD-08 Cấu hình RAG/Triage | ● | | | |
 | SCR-AD-09 Danh mục chuẩn hoá | ● | ● | | |
-| SCR-AD-10 Quản lý FAQ | ● (soạn) | ● (soạn+duyệt) | ● (soạn) | |
-| SCR-AD-11 Quản lý bài viết | ● (soạn) | ● (soạn+duyệt) | ● (soạn) | |
+| SCR-AD-10 Quản lý FAQ | ● | ● (soạn+duyệt) | ● (soạn) | |
+| SCR-AD-11 Quản lý bài viết | ● | ● (soạn+duyệt) | ● (soạn) | |
 | SCR-AD-12 Chủ đề bài viết | ● | ● | ● | |
 | SCR-AD-13 Giám sát cảnh báo khẩn cấp | ● (xác nhận) | | | ● (xác nhận) |
 | SCR-AD-14 Tạo tài khoản nhân sự CMS | ● *(duy nhất)* | | | |

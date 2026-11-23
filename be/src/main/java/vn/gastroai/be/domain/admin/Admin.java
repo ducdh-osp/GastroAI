@@ -39,6 +39,13 @@ public class Admin {
     @Column(name = "session_version", nullable = false)
     private int sessionVersion = 0;
 
+    /** Admin khoa thu cong (khac voi lockedUntil - tu khoa tam do sai mat khau nhieu lan). */
+    @Column(name = "admin_locked", nullable = false)
+    private boolean adminLocked;
+
+    @Column(name = "admin_locked_at")
+    private Instant adminLockedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CmsRole role = CmsRole.ADMIN;

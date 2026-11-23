@@ -12,6 +12,7 @@ public record CmsAccountResponse(
         String email,
         String fullName,
         CmsRole role,
-        Instant createdAt
+        Instant createdAt,
+        boolean adminLocked
 ) {
 }
