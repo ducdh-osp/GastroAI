@@ -167,24 +167,26 @@ class AuditLogServiceTest {
     void searchRejectsFromDateAfterToDate() {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> service.search(LocalDate.of(2026, 10, 30), LocalDate.of(2026, 10, 1),
-                        null, null, null, 0, 20));
+                        null, null, null, null, 0, 20));
 
         assertEquals("Từ ngày phải trước hoặc bằng Đến ngày", error.getMessage());
     }
 
     @Test
     void searchConvertsDatesToVietnamDayAndNormalisesKeyword() {
-        when(auditLogRepository.search(any(), any(), any(), any(), any(), any(), any()))
+        when(auditLogRepository.search(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         service.search(LocalDate.of(2026, 10, 30), LocalDate.of(2026, 10, 30),
-                AuditAction.PATIENT_LOCK, "  ", "  ADMIN ", 0, 20);
+                AuditAction.PATIENT_LOCK, "  ", 3L, "  ADMIN ", 0, 20);
 
         verify(auditLogRepository).search(
                 eq(Instant.parse("2026-10-29T17:00:00Z")),
                 eq(Instant.parse("2026-10-30T17:00:00Z")),
                 eq(AuditAction.PATIENT_LOCK),
                 isNull(),
+                eq("ADMIN"),
+                eq(3L),
                 eq("%admin%"),
                 eq("ADMIN"),
                 any());
@@ -192,12 +194,12 @@ class AuditLogServiceTest {
 
     @Test
     void exportRefusesMoreThanLimitRows() {
-        when(auditLogRepository.search(any(), any(), any(), any(), any(), any(), any()))
+        when(auditLogRepository.search(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, AuditLogService.MAX_EXPORT_ROWS),
                         AuditLogService.MAX_EXPORT_ROWS + 1L));
 
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> service.findForExport(null, null, null, null, null));
+                () -> service.findForExport(null, null, null, null, null, null));
 
         assertTrue(error.getMessage().contains("vượt quá giới hạn xuất"));
     }

@@ -210,9 +210,9 @@ export function AppHeader() {
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-white/10 bg-[#0f2926] px-4 text-white sm:px-6">
-      <span className="flex shrink-0 items-center">
+      <Link to="/" aria-label="Về Trang chủ" className="flex shrink-0 items-center">
         <Logo variant="light" />
-      </span>
+      </Link>
 
       <nav className="hidden min-w-0 flex-1 items-center gap-1 md:flex">
         <Link

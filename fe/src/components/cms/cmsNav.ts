@@ -53,7 +53,7 @@ export const CMS_NAV_GROUPS: CmsNavGroup[] = [
       { icon: TagsOutlined, title: 'Chủ đề bài viết', desc: 'Quản lý chủ đề dùng chung cho bài viết và FAQ.', to: '/cms/article-topics' },
       { icon: QuestionCircleOutlined, title: 'Câu hỏi thường gặp', desc: 'Soạn & duyệt FAQ hiển thị cho bệnh nhân.', to: '/cms/faq' },
       { icon: MedicineBoxOutlined, title: 'Danh mục chuẩn hoá', desc: 'Danh mục triệu chứng/thuốc dùng làm dropdown.', to: '/cms/catalogs' },
-            { icon: TagsOutlined, title: 'Từ khoá Triage', desc: 'Quản lý từ khoá sàng lọc dấu hiệu nguy hiểm.', to: '/cms/triage-keywords', roles: ['ADMIN', 'CONTENT_EDITOR'] },
+      { icon: AlertOutlined, title: 'Từ khoá Triage', desc: 'Quản lý từ khoá sàng lọc dấu hiệu nguy hiểm.', to: '/cms/triage-keywords', roles: ['ADMIN', 'CONTENT_EDITOR'] },
     ],
   },
   {

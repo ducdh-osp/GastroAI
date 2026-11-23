@@ -84,6 +84,8 @@ export interface AuditLogFilter {
   to?: string
   action?: AuditAction
   targetType?: AuditTargetType
+  /** id tài khoản CMS đã thực hiện thao tác (SCR-AD-06 bộ lọc "Người dùng"). */
+  actorId?: number
   q?: string
 }
 

@@ -36,6 +36,7 @@ import {
   type AuditLogFilter,
   type AuditTargetType,
 } from '../../api/cmsAuditLogs'
+import { listCmsAccounts } from '../../api/cmsRbac'
 import { AuditAnomalyRulesTab } from '../../components/cms/AuditAnomalyRulesTab'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { formatDateTime } from '../../lib/format'
@@ -169,6 +170,28 @@ export default function CmsAuditLogsPage() {
   const [filter, setFilter] = useState<AuditLogFilter>({})
   const [selected, setSelected] = useState<AuditLog | null>(null)
   const [exporting, setExporting] = useState(false)
+  // SCR-AD-06 §2 - bộ lọc "Người dùng": chọn 1 nhân sự CMS (tài khoản bảng admins).
+  const [actorOptions, setActorOptions] = useState<{ value: number; label: string }[]>([])
+
+  useEffect(() => {
+    let active = true
+    listCmsAccounts({ size: 100 })
+      .then((result) => {
+        if (!active) return
+        setActorOptions(result.items
+          .filter((account) => account.accountType === 'ADMIN')
+          .map((account) => ({
+            value: account.id,
+            label: account.fullName ? `${account.fullName} (${account.email})` : account.email,
+          })))
+      })
+      .catch((err: Error) => {
+        if (active) message.error(err.message)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -328,6 +351,17 @@ export default function CmsAuditLogsPage() {
                     onChange={(value?: AuditAction) => applyFilter({ action: value })}
                     options={actionOptions}
                     style={{ width: 210 }}
+                  />
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="Tất cả người dùng"
+                    value={filter.actorId}
+                    onChange={(value?: number) => applyFilter({ actorId: value })}
+                    options={actorOptions}
+                    notFoundContent="Không có nhân sự phù hợp"
+                    style={{ width: 240 }}
                   />
                   <Select
                     allowClear
