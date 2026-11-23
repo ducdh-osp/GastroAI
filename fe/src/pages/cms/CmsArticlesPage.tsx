@@ -33,6 +33,8 @@ import {
   extractArticleError,
   listCmsArticles,
   publishCmsArticle,
+  submitCmsArticleForReview,
+  type ArticleStatus,
   type CmsArticleSummary,
 } from '../../api/cmsArticles'
 import { listArticleTopics, type ArticleTopic } from '../../api/cmsArticleTopics'
@@ -45,8 +47,16 @@ const { Title, Text, Paragraph } = Typography
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'Tất cả trạng thái' },
   { value: 'PUBLISHED', label: 'Đã đăng' },
-  { value: 'DRAFT', label: 'Bản nháp / Chờ duyệt' },
+  { value: 'PENDING_REVIEW', label: 'Chờ duyệt' },
+  { value: 'DRAFT', label: 'Bản nháp' },
+  { value: 'HIDDEN', label: 'Đang ẩn' },
 ]
+
+function resolveArticleStatus(record: CmsArticleSummary): ArticleStatus {
+  if (record.status) return record.status
+  if (record.published) return 'PUBLISHED'
+  return record.medicalReviewedAt ? 'HIDDEN' : 'DRAFT'
+}
 
 interface ArticleReviewFormValues {
   medicalReviewer: string
@@ -63,6 +73,7 @@ const ARTICLE_REVIEW_CONFIRM_RULE = {
 export default function CmsArticlesPage() {
   const navigate = useNavigate()
   const { user } = useCmsAuth()
+  const canApprove = user?.userType !== 'CONTENT_AUTHOR'
 
   const [articles, setArticles] = useState<CmsArticleSummary[]>([])
   const [topics, setTopics] = useState<ArticleTopic[]>([])
@@ -98,13 +109,13 @@ export default function CmsArticlesPage() {
     setLoading(true)
     setError(null)
 
-    const publishedParam =
-      selectedStatus === 'PUBLISHED' ? true : selectedStatus === 'DRAFT' ? false : undefined
+    const statusParam =
+      selectedStatus !== 'ALL' ? (selectedStatus as ArticleStatus) : undefined
 
     listCmsArticles({
       q: query || undefined,
       category: selectedCategory || undefined,
-      published: publishedParam,
+      status: statusParam,
       page,
       size: pageSize,
     })
@@ -156,6 +167,19 @@ export default function CmsArticlesPage() {
       message.error(extractArticleError(err, 'Không thể duyệt bài viết.'))
     } finally {
       setReviewSubmitting(false)
+    }
+  }
+
+  async function handleSubmitForReview(article: CmsArticleSummary) {
+    setTogglingId(article.id)
+    try {
+      await submitCmsArticleForReview(article.id)
+      message.success('Đã gửi bài viết sang trạng thái Chờ duyệt.')
+      load()
+    } catch (err: unknown) {
+      message.error(extractArticleError(err, 'Không thể gửi duyệt bài viết.'))
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -228,49 +252,68 @@ export default function CmsArticlesPage() {
     {
       title: 'Trạng thái',
       key: 'published',
-      width: 210,
+      width: 220,
       render: (_, record) => {
-        const hasValidReview = Boolean(record.medicalReviewer?.trim() && record.medicalReviewedAt)
+        const status = resolveArticleStatus(record)
         return (
           <div className="flex items-center gap-2 flex-wrap">
-            {record.published ? (
+            {status === 'PUBLISHED' ? (
               <>
                 <Tag color="green" className="m-0">Đã đăng</Tag>
-                <Popconfirm
-                  title="Ẩn bài viết này?"
-                  description="Bài viết sẽ tạm ẩn khỏi thư viện bệnh nhân mà không bị xóa nội dung gốc."
-                  okText="Ẩn"
-                  cancelText="Hủy"
-                  onConfirm={() => void handleHide(record)}
-                >
-                  <Button size="small" icon={<EyeInvisibleOutlined />} loading={togglingId === record.id}>
-                    Ẩn
-                  </Button>
-                </Popconfirm>
+                {canApprove && (
+                  <Popconfirm
+                    title="Ẩn bài viết này?"
+                    description="Bài viết sẽ tạm ẩn khỏi thư viện bệnh nhân mà không bị xóa nội dung gốc."
+                    okText="Ẩn"
+                    cancelText="Hủy"
+                    onConfirm={() => void handleHide(record)}
+                  >
+                    <Button size="small" icon={<EyeInvisibleOutlined />} loading={togglingId === record.id}>
+                      Ẩn
+                    </Button>
+                  </Popconfirm>
+                )}
               </>
-            ) : hasValidReview ? (
+            ) : status === 'HIDDEN' ? (
               <>
                 <Tag color="default" className="m-0">Đang ẩn</Tag>
-                <Popconfirm
-                  title="Hiển thị lại bài viết?"
-                  description={`Nội dung đã được ${record.medicalReviewer} đối chiếu nguồn.`}
-                  okText="Hiển thị"
-                  cancelText="Hủy"
-                  onConfirm={() => void handleRepublish(record)}
+                {canApprove && (
+                  <Popconfirm
+                    title="Hiển thị lại bài viết?"
+                    description={`Nội dung đã được ${record.medicalReviewer} đối chiếu nguồn.`}
+                    okText="Hiển thị"
+                    cancelText="Hủy"
+                    onConfirm={() => void handleRepublish(record)}
+                  >
+                    <Button size="small" type="primary" ghost icon={<CheckCircleOutlined />} loading={togglingId === record.id}>
+                      Hiển thị lại
+                    </Button>
+                  </Popconfirm>
+                )}
+              </>
+            ) : status === 'DRAFT' ? (
+              <>
+                <Tag color="blue" className="m-0">Bản nháp</Tag>
+                <Button
+                  size="small"
+                  type="primary"
+                  ghost
+                  loading={togglingId === record.id}
+                  onClick={() => void handleSubmitForReview(record)}
                 >
-                  <Button size="small" type="primary" ghost icon={<CheckCircleOutlined />} loading={togglingId === record.id}>
-                    Hiển thị lại
-                  </Button>
-                </Popconfirm>
+                  Gửi duyệt
+                </Button>
               </>
             ) : (
               <>
                 <Tag color="orange" className="m-0">Chờ duyệt</Tag>
-                <Tooltip title="Biên tập chuyên môn y khoa đối chiếu nguồn y khoa công bố rồi duyệt đăng">
-                  <Button size="small" type="primary" ghost icon={<SafetyCertificateOutlined />} onClick={() => handleOpenReview(record)}>
-                    Duyệt
-                  </Button>
-                </Tooltip>
+                {canApprove && (
+                  <Tooltip title="Biên tập chuyên môn y khoa đối chiếu nguồn y khoa công bố rồi duyệt đăng">
+                    <Button size="small" type="primary" ghost icon={<SafetyCertificateOutlined />} onClick={() => handleOpenReview(record)}>
+                      Duyệt
+                    </Button>
+                  </Tooltip>
+                )}
               </>
             )}
           </div>
@@ -465,13 +508,13 @@ export default function CmsArticlesPage() {
 
               <Form.Item
                 name="medicalReviewer"
-                label="Người đối chiếu (Biên tập chuyên môn y khoa)"
+                label="Người đối chiếu (Tài khoản CMS đang đăng nhập)"
                 rules={[
                   { required: true, whitespace: true, message: 'Vui lòng nhập tên người đối chiếu nguồn' },
                   { max: 200, message: 'Tối đa 200 ký tự' },
                 ]}
               >
-                <Input placeholder="VD: Nguyễn Văn A - Biên tập chuyên môn y khoa" maxLength={200} />
+                <Input disabled maxLength={200} />
               </Form.Item>
 
               <Form.Item name="reviewConfirmed" valuePropName="checked" rules={[ARTICLE_REVIEW_CONFIRM_RULE]}>

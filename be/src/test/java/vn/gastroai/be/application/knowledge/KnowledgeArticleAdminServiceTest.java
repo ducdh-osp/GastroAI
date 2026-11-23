@@ -9,6 +9,7 @@ import vn.gastroai.be.api.cms.knowledge.CmsArticlePublishRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsArticleRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsArticleSummaryResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
+import vn.gastroai.be.domain.knowledge.ArticleStatus;
 import vn.gastroai.be.domain.knowledge.ArticleTopic;
 import vn.gastroai.be.domain.knowledge.KnowledgeArticle;
 import vn.gastroai.be.infrastructure.persistence.postgres.ArticleTopicRepository;
@@ -83,7 +84,7 @@ class KnowledgeArticleAdminServiceTest {
     }
 
     @Test
-    void createAutoGeneratesSlugAndEnforcesMedicalReviewerForPublished() {
+    void createAutoGeneratesSlugAndSupportsDraftAndPendingReviewStatuses() {
         when(articleRepository.existsBySlug("viem-loet-da-day")).thenReturn(false);
         when(articleRepository.findAllByOrderBySortOrderAscTitleAsc()).thenReturn(List.of());
         when(articleRepository.saveAndFlush(any(KnowledgeArticle.class))).thenAnswer(inv -> {
@@ -101,19 +102,40 @@ class KnowledgeArticleAdminServiceTest {
                 "Bệnh viện Bạch Mai",
                 "https://bachmai.gov.vn",
                 null,
-                true,
-                "BS. Nguyễn Văn A",
+                false,
                 null,
-                null
+                null,
+                null,
+                ArticleStatus.PENDING_REVIEW
         );
 
         CmsArticleDetailResponse res = service.create(req);
 
         assertEquals("viem-loet-da-day", res.slug());
         assertEquals("Viêm loét dạ dày", res.title());
-        assertTrue(res.published());
-        assertEquals("BS. Nguyễn Văn A", res.medicalReviewer());
-        assertNotNull(res.medicalReviewedAt());
+        assertFalse(res.published());
+        assertEquals(ArticleStatus.PENDING_REVIEW, res.status());
+        assertNull(res.medicalReviewer());
+    }
+
+    @Test
+    void createRejectsImmediatePublishToEnforceSeparateApproval() {
+        CmsArticleRequest req = new CmsArticleRequest(
+                "Viêm loét dạ dày",
+                null,
+                "Tóm tắt",
+                "Dạ dày",
+                "Nội dung bài viết",
+                "Nguồn",
+                "https://example.com",
+                null,
+                true,
+                "BS. Nguyễn Văn A",
+                null,
+                null
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> service.create(req));
     }
 
     @Test

@@ -133,8 +133,21 @@ public class ChatHistoryService {
     /** Danh sách phiên chat phân trang, mới nhất trước, của 1 bệnh nhân. */
     @Transactional(value = "postgresTransactionManager", readOnly = true)
     public Page<ChatSession> listSessions(Long patientId, int page, int size) {
-        return sessionRepository.findByPatientId(patientId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt")));
+        return listSessions(patientId, null, page, size);
+    }
+
+    /** Danh sách phiên chat của 1 bệnh nhân, hỗ trợ tìm theo tiêu đề hoặc toàn bộ nội dung hỏi/đáp. */
+    @Transactional(value = "postgresTransactionManager", readOnly = true)
+    public Page<ChatSession> listSessions(Long patientId, String query, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
+        if (query == null || query.isBlank()) {
+            return sessionRepository.findByPatientId(patientId, pageable);
+        }
+        String escaped = query.trim()
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+        return sessionRepository.searchByPatientAndContent(patientId, escaped, pageable);
     }
 
     /** Toàn bộ tin nhắn trong 1 phiên (kiểm tra quyền sở hữu). */

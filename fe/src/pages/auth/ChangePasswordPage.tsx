@@ -15,7 +15,6 @@ const { Title, Text } = Typography
 interface ChangePasswordFormValues {
   currentPassword: string
   newPassword: string
-  confirmPassword: string
 }
 
 export default function ChangePasswordPage() {
@@ -28,11 +27,6 @@ export default function ChangePasswordPage() {
   async function onFinish(values: ChangePasswordFormValues) {
     setError(null)
     setSuccess(null)
-    if (values.newPassword !== values.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp.')
-      return
-    }
-
     setLoading(true)
     try {
       await changePassword({ currentPassword: values.currentPassword, newPassword: values.newPassword })
@@ -55,7 +49,7 @@ export default function ChangePasswordPage() {
 
   return (
     <AppShell>
-      <div className="max-w-md">
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center py-4">
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
           <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
@@ -67,24 +61,6 @@ export default function ChangePasswordPage() {
             </Form.Item>
             <Form.Item label="Mật khẩu mới" name="newPassword" extra={PASSWORD_REQUIREMENTS_MESSAGE} rules={[{ required: true, message: 'Nhập mật khẩu mới' }, { validator: (_, value: string) => !value || meetsPasswordRequirements(value) ? Promise.resolve() : Promise.reject(new Error(PASSWORD_REQUIREMENTS_MESSAGE)) }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}>
               <Input.Password maxLength={72} autoComplete="new-password" />
-            </Form.Item>
-            <Form.Item
-              label="Xác nhận mật khẩu mới"
-              name="confirmPassword"
-              dependencies={['newPassword']}
-              rules={[
-                { required: true, message: 'Nhập lại mật khẩu mới' },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue('newPassword') === value) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('Mật khẩu xác nhận không khớp.'))
-                  },
-                }),
-              ]}
-            >
-              <Input.Password autoComplete="new-password" />
             </Form.Item>
             <Button type="primary" htmlType="submit" block loading={loading}>Đổi mật khẩu</Button>
           </Form>

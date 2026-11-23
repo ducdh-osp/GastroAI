@@ -274,7 +274,7 @@ export default function CmsDashboardPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
-                        Người dùng
+                        Bệnh nhân hoạt động ({data.days} ngày)
                       </Text>
                       <Statistic
                         value={data.summary.totalPatients}

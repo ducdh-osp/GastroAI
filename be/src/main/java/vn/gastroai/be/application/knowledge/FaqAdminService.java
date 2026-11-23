@@ -78,26 +78,16 @@ public class FaqAdminService {
 
     @Transactional(value = TX)
     public CmsFaqResponse create(CmsFaqRequest req) {
+        if (Boolean.TRUE.equals(req.published())) {
+            throw new IllegalArgumentException(
+                    "Không thể công khai FAQ ngay lúc tạo; vui lòng lưu ở trạng thái chờ duyệt và thực hiện duyệt riêng.");
+        }
         String question = clean(req.question(), "Câu hỏi không được để trống");
         String answer = clean(req.answer(), "Câu trả lời không được để trống");
         String category = clean(req.category(), "Chủ đề không được để trống");
         int sortOrder = req.sortOrder() != null ? req.sortOrder() : nextSortOrder();
-        // Mặc định là bản nháp - chỉ công khai khi client yêu cầu rõ ràng VÀ có bác sĩ kiểm duyệt
-        boolean published = Boolean.TRUE.equals(req.published());
-        String reviewer = trimToNull(req.medicalReviewer());
 
         Faq faq = new Faq(question, answer, category, sortOrder, false);
-        if (published) {
-            if (reviewer == null) {
-                throw new IllegalArgumentException(MSG_REVIEW_REQUIRED);
-            }
-            faq.setPublished(true);
-        }
-        if (reviewer != null) {
-            faq.setMedicalReviewer(reviewer);
-            faq.setMedicalReviewedAt(Instant.now());
-        }
-
         return toResponse(faqRepository.saveAndFlush(faq));
     }
 

@@ -59,8 +59,8 @@ export default function CmsChangePasswordPage() {
 
   return (
     <CmsAppShell>
-      <div className="max-w-md">
-        <div className="mb-6">
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center py-4">
+        <div className="mb-6 text-center">
           <Text type="secondary">Bảo mật tài khoản</Text>
           <Title level={2} className="mb-1! mt-1!">
             <KeyOutlined className="mr-2" />

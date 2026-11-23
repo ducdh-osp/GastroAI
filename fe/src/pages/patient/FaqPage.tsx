@@ -10,8 +10,41 @@ import { Link } from 'react-router-dom'
 import { listFaqs, type FaqItem } from '../../api/faqs'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 import { AppShell } from '../../components/layout/AppShell'
+import { foldVietnamese } from '../../lib/vietnameseText'
 
 const { Title, Text, Paragraph } = Typography
+
+function scoreFaqRelevance(faq: FaqItem, foldedQuery: string, queryTokens: string[]): number {
+  const qText = foldVietnamese(faq.question)
+  const cText = foldVietnamese(faq.category || '')
+  const aText = foldVietnamese(faq.answer)
+  const combined = `${qText} ${cText} ${aText}`
+
+  let score = 0
+  if (qText.includes(foldedQuery)) score += 100
+  if (cText.includes(foldedQuery)) score += 60
+  if (aText.includes(foldedQuery)) score += 40
+
+  if (queryTokens.length > 0) {
+    let matchedInQuestion = 0
+    let matchedAnywhere = 0
+    for (const token of queryTokens) {
+      if (qText.includes(token) || cText.includes(token)) matchedInQuestion++
+      if (combined.includes(token)) matchedAnywhere++
+    }
+    if (matchedAnywhere === queryTokens.length) {
+      score += 30 + matchedInQuestion * 10
+    } else if (queryTokens.length >= 2) {
+      const meaningfulTokens = queryTokens.filter((t) => t.length >= 2)
+      const matchedMeaningful = meaningfulTokens.filter((t) => combined.includes(t)).length
+      const minRequired = Math.max(2, Math.ceil(meaningfulTokens.length * 0.6))
+      if (meaningfulTokens.length > 0 && matchedMeaningful >= minRequired) {
+        score += matchedMeaningful * 8
+      }
+    }
+  }
+  return score
+}
 
 export default function FaqPage() {
   const [faqs, setFaqs] = useState<FaqItem[]>([])
@@ -42,15 +75,16 @@ export default function FaqPage() {
   const hasQuery = Boolean(activeSearch.trim())
 
   const groupedFaqs = useMemo(() => {
-    const q = activeSearch.toLowerCase().trim()
-    const matched = q
-      ? faqs.filter(
-          (faq) =>
-            faq.question.toLowerCase().includes(q) ||
-            faq.answer.toLowerCase().includes(q) ||
-            faq.category.toLowerCase().includes(q)
-        )
-      : faqs
+    const q = foldVietnamese(activeSearch).trim()
+    if (!q) {
+      return []
+    }
+    const tokens = q.split(/\s+/).filter(Boolean)
+    const matched = faqs
+      .map((faq) => ({ faq, score: scoreFaqRelevance(faq, q, tokens) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((entry) => entry.faq)
 
     const groups = new Map<string, FaqItem[]>()
     for (const faq of matched) {
@@ -152,6 +186,22 @@ export default function FaqPage() {
                 </section>
               ))}
             </div>
+          ) : !hasQuery ? (
+            <div className="py-12">
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={
+                  <div className="space-y-1">
+                    <Text className="text-slate-600 dark:text-white font-medium">
+                      Nhập từ khóa để tra cứu câu hỏi thường gặp
+                    </Text>
+                    <p className="text-xs text-slate-400 dark:text-slate-400">
+                      Hệ thống sẽ hiển thị các câu hỏi trùng khớp hoặc liên quan đến từ khóa bạn tìm (hỗ trợ cả tiếng Việt có dấu và không dấu).
+                    </p>
+                  </div>
+                }
+              />
+            </div>
           ) : (
             <div className="py-12">
               <Empty
@@ -159,9 +209,7 @@ export default function FaqPage() {
                 description={
                   <div className="space-y-1">
                     <Text className="text-slate-600 dark:text-white font-medium">
-                      {hasQuery
-                        ? `Không tìm thấy câu hỏi phù hợp với "${activeSearch}"`
-                        : 'Chưa có câu hỏi thường gặp nào được công khai.'}
+                      {`Không tìm thấy câu hỏi phù hợp với "${activeSearch}"`}
                     </Text>
                     <p className="text-xs text-slate-400 dark:text-slate-400">
                       Hãy thử từ khóa khác hoặc đặt câu hỏi trực tiếp cho Trợ lý AI GastroAI bên dưới.

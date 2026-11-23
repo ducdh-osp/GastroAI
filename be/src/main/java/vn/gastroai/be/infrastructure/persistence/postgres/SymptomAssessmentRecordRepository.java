@@ -1,6 +1,7 @@
 package vn.gastroai.be.infrastructure.persistence.postgres;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vn.gastroai.be.domain.triage.SymptomAssessmentRecord;
@@ -13,6 +14,17 @@ public interface SymptomAssessmentRecordRepository extends JpaRepository<Symptom
     List<SymptomAssessmentRecord> findTop100ByPatientIdOrderByAssessedAtDesc(Long patientId);
 
     long countByEmergencyTrue();
+
+    long countByAssessedAtGreaterThanEqualAndAssessedAtLessThan(Instant startDate, Instant endDate);
+
+    long countByEmergencyTrueAndAssessedAtGreaterThanEqualAndAssessedAtLessThan(Instant startDate, Instant endDate);
+
+    @Query("SELECT s.primarySymptom, COUNT(s) FROM SymptomAssessmentRecord s GROUP BY s.primarySymptom")
+    List<Object[]> countGroupedByPrimarySymptom();
+
+    @Modifying
+    @Query("UPDATE SymptomAssessmentRecord s SET s.primarySymptom = :targetCode WHERE UPPER(s.primarySymptom) = UPPER(:sourceCode)")
+    int replacePrimarySymptom(@Param("sourceCode") String sourceCode, @Param("targetCode") String targetCode);
 
     @Query(value = """
             SELECT primary_symptom AS symptom,

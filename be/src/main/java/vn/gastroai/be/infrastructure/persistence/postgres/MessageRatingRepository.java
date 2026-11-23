@@ -3,6 +3,7 @@ package vn.gastroai.be.infrastructure.persistence.postgres;
 import org.springframework.data.jpa.repository.JpaRepository;
 import vn.gastroai.be.domain.chat.MessageRating;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,4 +16,6 @@ public interface MessageRatingRepository extends JpaRepository<MessageRating, Lo
     List<MessageRating> findByMessageIdIn(List<Long> messageIds);
 
     long countByRating(String rating);
+
+    long countByRatingAndRatedAtGreaterThanEqualAndRatedAtLessThan(String rating, Instant startDate, Instant endDate);
 }

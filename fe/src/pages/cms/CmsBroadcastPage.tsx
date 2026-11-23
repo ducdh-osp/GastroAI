@@ -17,6 +17,7 @@ import {
   Input,
   Modal,
   notification,
+  Radio,
   Select,
   Space,
   Switch,
@@ -28,9 +29,11 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useState } from 'react'
 import {
+  estimateBroadcastRecipients,
   getBroadcastAnnouncements,
   sendBroadcastNotification,
   type BroadcastAnnouncement,
+  type BroadcastEstimate,
   type SendBroadcastRequest,
 } from '../../api/notifications'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
@@ -38,6 +41,20 @@ import { extractErrorMessage } from '../../lib/errors'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
+
+const TARGET_GROUP_OPTIONS = [
+  { value: 'ALL', label: 'Tất cả bệnh nhân (Toàn hệ thống)' },
+  { value: 'ACTIVE_30_DAYS', label: 'Bệnh nhân hoạt động trong 30 ngày qua' },
+  { value: 'RECENT_TRIAGE', label: 'Bệnh nhân có cảnh báo Triage (30 ngày qua)' },
+]
+
+function targetGroupLabel(group?: string): string {
+  if (!group || group === 'ALL' || group === 'ALL_PATIENTS') {
+    return 'Tất cả bệnh nhân'
+  }
+  const found = TARGET_GROUP_OPTIONS.find((item) => item.value === group)
+  return found ? found.label : group
+}
 
 export function CmsBroadcastPage() {
   const [data, setData] = useState<BroadcastAnnouncement[]>([])
@@ -49,6 +66,10 @@ export function CmsBroadcastPage() {
   // Modal create
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [audienceMode, setAudienceMode] = useState<'ALL' | 'GROUP'>('ALL')
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [estimate, setEstimate] = useState<BroadcastEstimate | null>(null)
+  const [estimateLoading, setEstimateLoading] = useState(false)
   const [form] = Form.useForm<SendBroadcastRequest>()
 
   // Detail modal
@@ -58,6 +79,27 @@ export function CmsBroadcastPage() {
   // Watch form values for live preview
   const previewTitle = Form.useWatch('title', form)
   const previewMessage = Form.useWatch('message', form)
+  const watchedTargetGroup = Form.useWatch('targetGroup', form)
+
+  useEffect(() => {
+    if (!createModalOpen) return
+    const targetGroup = watchedTargetGroup || 'ALL'
+    let cancelled = false
+    setEstimateLoading(true)
+    estimateBroadcastRecipients(targetGroup)
+      .then((res) => {
+        if (!cancelled) setEstimate(res)
+      })
+      .catch(() => {
+        if (!cancelled) setEstimate(null)
+      })
+      .finally(() => {
+        if (!cancelled) setEstimateLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [createModalOpen, watchedTargetGroup])
 
   const loadData = useCallback(async (targetPage = page, targetSize = pageSize) => {
     setLoading(true)
@@ -83,6 +125,7 @@ export function CmsBroadcastPage() {
 
   const handleOpenCreateModal = () => {
     form.resetFields()
+    setAudienceMode('ALL')
     form.setFieldsValue({
       targetGroup: 'ALL',
       sendWebSocket: true,
@@ -111,6 +154,10 @@ export function CmsBroadcastPage() {
   }
 
   const handleConfirmBroadcast = (values: SendBroadcastRequest) => {
+    const groupLabel = targetGroupLabel(values.targetGroup)
+    const countText = estimate
+      ? `${estimate.estimatedRecipients.toLocaleString('vi-VN')} bệnh nhân`
+      : 'toàn bộ bệnh nhân thuộc nhóm đã chọn'
     Modal.confirm({
       title: 'Xác nhận gửi broadcast',
       content: (
@@ -119,7 +166,10 @@ export function CmsBroadcastPage() {
             Tiêu đề: <strong>{values.title}</strong>
           </p>
           <p className="mb-0">
-            Thông báo sẽ được gửi tới toàn bộ bệnh nhân (tự động trừ những người đã tắt "Thông báo hệ thống" trong cài đặt cá nhân).
+            Đối tượng: <strong>{groupLabel}</strong>
+          </p>
+          <p className="mb-0">
+            Ước tính gửi tới <strong>{countText}</strong> (đã tự động trừ những người tắt "Thông báo hệ thống" trong cài đặt cá nhân).
           </p>
           <p className="mb-0 font-medium text-red-600">
             Hành động này không thể thu hồi sau khi gửi.
@@ -162,12 +212,11 @@ export function CmsBroadcastPage() {
       dataIndex: 'targetGroup',
       key: 'targetGroup',
       width: 170,
-      render: (aud: string) => {
-        if (!aud || aud === 'ALL' || aud === 'ALL_PATIENTS') {
-          return <Tag color="blue" icon={<UsergroupAddOutlined />}>Tất cả bệnh nhân</Tag>
-        }
-        return <Tag color="purple">{aud}</Tag>
-      },
+      render: (aud: string) => (
+        <Tag color={!aud || aud === 'ALL' || aud === 'ALL_PATIENTS' ? 'blue' : 'purple'} icon={<UsergroupAddOutlined />}>
+          {targetGroupLabel(aud)}
+        </Tag>
+      ),
     },
     {
       title: 'Số người nhận',
@@ -345,17 +394,48 @@ export function CmsBroadcastPage() {
                   />
                 </Form.Item>
 
+                <Form.Item label={<span className="font-medium text-slate-700">Đối tượng nhận</span>}>
+                  <Radio.Group
+                    value={audienceMode}
+                    onChange={(e) => {
+                      const mode = e.target.value as 'ALL' | 'GROUP'
+                      setAudienceMode(mode)
+                      form.setFieldValue('targetGroup', mode === 'ALL' ? 'ALL' : 'ACTIVE_30_DAYS')
+                    }}
+                  >
+                    <Radio value="ALL">Toàn bộ bệnh nhân</Radio>
+                    <Radio value="GROUP">Chọn nhóm cụ thể</Radio>
+                  </Radio.Group>
+                </Form.Item>
+
                 <Form.Item
                   name="targetGroup"
-                  label={<span className="font-medium text-slate-700">Đối tượng nhận</span>}
+                  hidden={audienceMode === 'ALL'}
+                  label={<span className="font-medium text-slate-700">Nhóm bệnh nhân cụ thể</span>}
                   rules={[{ required: true }]}
                 >
                   <Select
-                    options={[
-                      { value: 'ALL', label: 'Tất cả bệnh nhân (Toàn hệ thống)' },
-                    ]}
+                    options={TARGET_GROUP_OPTIONS.filter((opt) => opt.value !== 'ALL')}
                   />
                 </Form.Item>
+
+                <Alert
+                  type="info"
+                  showIcon
+                  className="text-xs"
+                  message={
+                    estimateLoading
+                      ? 'Đang ước tính số bệnh nhân nhận thông báo...'
+                      : estimate
+                        ? `Ước tính gửi tới ${estimate.estimatedRecipients.toLocaleString('vi-VN')} bệnh nhân`
+                        : 'Chưa ước tính được số người nhận'
+                  }
+                  description={
+                    estimate
+                      ? `Trong tổng số ${estimate.candidateCount.toLocaleString('vi-VN')} bệnh nhân thuộc nhóm đã chọn (đã trừ người tắt "Thông báo hệ thống").`
+                      : undefined
+                  }
+                />
 
                 <Form.Item
                   name="actionUrl"
@@ -427,6 +507,9 @@ export function CmsBroadcastPage() {
               <Button onClick={() => setCreateModalOpen(false)} disabled={submitting}>
                 Hủy bỏ
               </Button>
+              <Button icon={<EyeOutlined />} onClick={() => setPreviewModalOpen(true)} disabled={submitting}>
+                Xem trước
+              </Button>
               <Button
                 type="primary"
                 htmlType="submit"
@@ -434,10 +517,45 @@ export function CmsBroadcastPage() {
                 loading={submitting}
                 className="bg-teal-600 hover:bg-teal-500"
               >
-                Phát sóng ngay
+                Gửi ngay
               </Button>
             </div>
           </Form>
+        </Modal>
+
+        {/* Modal Xem trước thông báo riêng */}
+        <Modal
+          title="Xem trước giao diện thông báo bệnh nhân nhận được"
+          open={previewModalOpen}
+          onCancel={() => setPreviewModalOpen(false)}
+          footer={[
+            <Button key="close" type="primary" onClick={() => setPreviewModalOpen(false)}>
+              Đóng xem trước
+            </Button>,
+          ]}
+          centered
+        >
+          <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-3 mt-2">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                <BellOutlined />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-slate-900 text-sm">
+                    {previewTitle || 'Tiêu đề thông báo mẫu'}
+                  </span>
+                  <Tag color="blue">Hệ thống</Tag>
+                </div>
+                <p className="mt-1.5 mb-1 text-xs text-slate-700 whitespace-pre-line">
+                  {previewMessage || 'Chưa nhập nội dung thông báo...'}
+                </p>
+                <span className="text-[11px] text-slate-400">
+                  Đối tượng: {targetGroupLabel(watchedTargetGroup)} · Ước tính {estimate?.estimatedRecipients ?? 0} người nhận
+                </span>
+              </div>
+            </div>
+          </div>
         </Modal>
 
         {/* Modal Xem chi tiết broadcast */}
@@ -460,9 +578,7 @@ export function CmsBroadcastPage() {
                 <div className="whitespace-pre-line text-slate-800">{selectedItem.message}</div>
               </Descriptions.Item>
               <Descriptions.Item label="Đối tượng">
-                {selectedItem.targetGroup === 'ALL'
-                  ? 'Tất cả bệnh nhân'
-                  : selectedItem.targetGroup}
+                {targetGroupLabel(selectedItem.targetGroup)}
               </Descriptions.Item>
               <Descriptions.Item label="Số người nhận">
                 <span className="font-semibold text-emerald-600">

@@ -39,15 +39,30 @@ export default function ChatHistoryPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const [exportingId, setExportingId] = useState<number | null>(null)
+  const hasLoadedRef = useRef(false)
   useEffect(() => () => { messageRequestSequence.current += 1 }, [])
   useEffect(() => {
-    setLoadingSessions(true)
-    setSessionsError(null)
-    listChatSessions(0, 50)
-      .then((res) => setSessions(res.sessions))
-      .catch(() => setSessionsError('Không thể tải lịch sử phiên chat.'))
-      .finally(() => setLoadingSessions(false))
-  }, [])
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      if (!hasLoadedRef.current) setLoadingSessions(true)
+      setSessionsError(null)
+      listChatSessions(0, 50, searchQuery)
+        .then((res) => {
+          if (!cancelled) setSessions(res.sessions)
+        })
+        .catch(() => {
+          if (!cancelled) setSessionsError('Không thể tải lịch sử phiên chat.')
+        })
+        .finally(() => {
+          hasLoadedRef.current = true
+          if (!cancelled) setLoadingSessions(false)
+        })
+    }, searchQuery.trim() ? 250 : 0)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [searchQuery])
 
   async function handleSelectSession(session: ChatSessionSummary) {
     const requestSequence = ++messageRequestSequence.current
@@ -104,19 +119,15 @@ export default function ChatHistoryPage() {
     }
   }
   const groupedSessions = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    const filtered = q
-      ? sessions.filter((s) => s.title.toLowerCase().includes(q))
-      : sessions
     const groups = new Map<string, ChatSessionSummary[]>()
-    for (const s of filtered) {
+    for (const s of sessions) {
       const label = getSessionTimeGroup(s.updatedAt)
       const list = groups.get(label) ?? []
       list.push(s)
       groups.set(label, list)
     }
     return Array.from(groups.entries())
-  }, [sessions, searchQuery])
+  }, [sessions])
 
   return (
     <AppShell fixedViewport>

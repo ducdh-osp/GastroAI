@@ -17,6 +17,49 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     @Query("select p.id from Patient p where p.emailVerified = true")
     java.util.List<Long> findAllVerifiedIds();
 
+    @Query(value = """
+            SELECT DISTINCT p.id
+            FROM patients p
+            WHERE p.email_verified = true
+              AND (
+                EXISTS (
+                    SELECT 1 FROM chat_sessions cs
+                    JOIN chat_messages cm ON cm.session_id = cs.id
+                    WHERE cs.patient_id = p.id AND cm.created_at >= :since
+                )
+                OR EXISTS (
+                    SELECT 1 FROM symptom_assessments sa
+                    WHERE sa.patient_id = p.id AND sa.assessed_at >= :since
+                )
+              )
+            """, nativeQuery = true)
+    java.util.List<Long> findVerifiedIdsActiveSince(@Param("since") Instant since);
+
+    @Query(value = """
+            SELECT DISTINCT p.id
+            FROM patients p
+            JOIN triage_alerts ta ON ta.patient_id = p.id
+            WHERE p.email_verified = true
+              AND (ta.occurred_at >= :since OR ta.status <> 'RESOLVED')
+            """, nativeQuery = true)
+    java.util.List<Long> findVerifiedIdsWithRecentTriage(@Param("since") Instant since);
+
+    @Query(value = """
+            SELECT count(DISTINCT patient_id) FROM (
+                SELECT cs.patient_id AS patient_id
+                FROM chat_sessions cs
+                JOIN chat_messages cm ON cm.session_id = cs.id
+                WHERE cm.created_at >= :startDate AND cm.created_at < :endDate
+                UNION
+                SELECT sa.patient_id AS patient_id
+                FROM symptom_assessments sa
+                WHERE sa.assessed_at >= :startDate AND sa.assessed_at < :endDate
+            ) active_patients
+            """, nativeQuery = true)
+    long countActivePatientsBetween(
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate);
+
     Optional<Patient> findByEmail(String email);
 
     Optional<Patient> findByVerificationTokenHash(String hash);

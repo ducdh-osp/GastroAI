@@ -202,38 +202,49 @@ export default function CmsArticleTopicsPage() {
         </div>
       ),
     },
-    { title: 'Số bài viết', dataIndex: 'articleCount', key: 'articleCount', width: 130 },
+    { title: 'Số bài viết', dataIndex: 'articleCount', key: 'articleCount', width: 120 },
+    {
+      title: 'Số FAQ',
+      dataIndex: 'faqCount',
+      key: 'faqCount',
+      width: 110,
+      render: (val?: number) => val ?? 0,
+    },
     {
       title: 'Thao tác',
       key: 'actions',
       width: 130,
-      render: (_, topic) => (
-        <div className="flex gap-1">
-          <Tooltip title="Sửa">
-            <Button type="text" icon={<EditOutlined />} aria-label={`Sửa chủ đề ${topic.name}`} onClick={() => openEdit(topic)} />
-          </Tooltip>
-          <Popconfirm
-            title="Xoá chủ đề này?"
-            description={
-              topic.articleCount > 0
-                ? `Còn ${topic.articleCount} bài viết đang dùng, hệ thống sẽ không cho xoá.`
-                : 'Thao tác không thể hoàn tác.'
-            }
-            okText="Xoá"
-            cancelText="Huỷ"
-            okButtonProps={{ danger: true }}
-            onConfirm={() => handleDelete(topic)}
-          >
-            <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              loading={deletingId === topic.id}
-              aria-label={`Xoá chủ đề ${topic.name}`}
-            />
-          </Popconfirm>
-        </div>
-      ),
+      render: (_, topic) => {
+        const faqCount = topic.faqCount ?? 0
+        const hasRefs = topic.articleCount > 0 || faqCount > 0
+        return (
+          <div className="flex gap-1">
+            <Tooltip title="Sửa">
+              <Button type="text" icon={<EditOutlined />} aria-label={`Sửa chủ đề ${topic.name}`} onClick={() => openEdit(topic)} />
+            </Tooltip>
+            <Popconfirm
+              title="Xoá chủ đề này?"
+              description={
+                hasRefs
+                  ? `Còn ${topic.articleCount} bài viết và ${faqCount} FAQ đang dùng, hệ thống sẽ không cho xoá.`
+                  : 'Thao tác không thể hoàn tác.'
+              }
+              okText="Xoá"
+              cancelText="Huỷ"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => handleDelete(topic)}
+            >
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                loading={deletingId === topic.id}
+                aria-label={`Xoá chủ đề ${topic.name}`}
+              />
+            </Popconfirm>
+          </div>
+        )
+      },
     },
   ]
 
@@ -245,8 +256,8 @@ export default function CmsArticleTopicsPage() {
             <Text type="secondary">Kho tri thức</Text>
             <Title level={2} className="mb-1! mt-1!">Chủ đề bài viết</Title>
             <Text type="secondary">
-              Nhóm chủ đề (vd: dạ dày, đại tràng, chế độ ăn) dùng để phân loại bài viết kiến thức.
-              Đổi tên một chủ đề sẽ cập nhật theo các bài viết đang dùng nó.
+              Nhóm chủ đề (vd: dạ dày, đại tràng, chế độ ăn) dùng chung để phân loại bài viết kiến thức và FAQ.
+              Đổi tên một chủ đề sẽ cập nhật theo các bài viết và FAQ đang dùng nó.
             </Text>
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>

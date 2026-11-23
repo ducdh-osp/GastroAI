@@ -3,10 +3,13 @@ package vn.gastroai.be.api.cms.knowledge;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.knowledge.FaqAdminService;
+import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.audit.AuditAction;
+import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 
 import java.util.List;
 
@@ -19,10 +22,14 @@ public class FaqAdminController {
 
     private final FaqAdminService faqAdminService;
     private final AuditLogService auditLogService;
+    private final AdminRepository adminRepository;
 
-    public FaqAdminController(FaqAdminService faqAdminService, AuditLogService auditLogService) {
+    public FaqAdminController(FaqAdminService faqAdminService,
+                              AuditLogService auditLogService,
+                              AdminRepository adminRepository) {
         this.faqAdminService = faqAdminService;
         this.auditLogService = auditLogService;
+        this.adminRepository = adminRepository;
     }
 
     @GetMapping
@@ -68,9 +75,15 @@ public class FaqAdminController {
     @PatchMapping("/{id}/publish")
     public ResponseEntity<CmsFaqResponse> setPublished(
             @PathVariable Long id,
-            @Valid @RequestBody CmsFaqPublishRequest request
+            @Valid @RequestBody CmsFaqPublishRequest request,
+            Authentication authentication
     ) {
-        CmsFaqResponse result = faqAdminService.setPublished(id, request);
+        CmsFaqPublishRequest effective = request;
+        if (Boolean.TRUE.equals(request.published())) {
+            String boundReviewer = resolveAuthenticatedReviewer(authentication, request.medicalReviewer());
+            effective = new CmsFaqPublishRequest(true, boundReviewer, request.version());
+        }
+        CmsFaqResponse result = faqAdminService.setPublished(id, effective);
         String detail = quote(result.question());
         if (result.published() && result.medicalReviewer() != null) {
             detail += " · người duyệt: " + result.medicalReviewer();
@@ -78,6 +91,24 @@ public class FaqAdminController {
         auditLogService.record(Boolean.TRUE.equals(request.published())
                 ? AuditAction.CONTENT_PUBLISH : AuditAction.CONTENT_UNPUBLISH, TARGET, id, detail);
         return ResponseEntity.ok(result);
+    }
+
+    private String resolveAuthenticatedReviewer(Authentication authentication, String fallback) {
+        if (authentication != null && authentication.getName() != null) {
+            try {
+                Long adminId = Long.valueOf(authentication.getName());
+                Admin admin = adminRepository.findById(adminId).orElse(null);
+                if (admin != null) {
+                    String name = admin.getFullName() != null && !admin.getFullName().isBlank()
+                            ? admin.getFullName().trim()
+                            : admin.getEmail();
+                    return name + " (" + admin.getEmail() + ")";
+                }
+            } catch (NumberFormatException ignored) {
+                // Non-numeric principal (e.g. unit/WebMvcTest mock user)
+            }
+        }
+        return fallback;
     }
 
     @DeleteMapping("/{id}")

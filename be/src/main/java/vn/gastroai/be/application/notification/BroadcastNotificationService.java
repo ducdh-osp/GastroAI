@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.api.notification.BroadcastAnnouncementRequest;
 import vn.gastroai.be.api.notification.BroadcastAnnouncementResponse;
+import vn.gastroai.be.api.notification.BroadcastEstimateResponse;
 import vn.gastroai.be.api.notification.NotificationResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.notification.AppNotification;
@@ -18,6 +19,8 @@ import vn.gastroai.be.infrastructure.persistence.postgres.AppNotificationReposit
 import vn.gastroai.be.infrastructure.persistence.postgres.BroadcastAnnouncementRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -45,13 +48,19 @@ public class BroadcastNotificationService {
         this.eventPublisher = eventPublisher;
     }
 
+    @Transactional(value = "postgresTransactionManager", readOnly = true)
+    public BroadcastEstimateResponse estimateRecipients(String rawTargetGroup) {
+        String targetGroup = normalizeTargetGroup(rawTargetGroup);
+        List<Long> candidateIds = resolveCandidateIds(targetGroup);
+        List<Long> targetIds = settingService.filterSystemBroadcastEnabledPatientIds(candidateIds);
+        return new BroadcastEstimateResponse(targetGroup, targetIds.size(), candidateIds.size());
+    }
+
     @Transactional("postgresTransactionManager")
     public BroadcastAnnouncementResponse sendBroadcast(Long adminId, BroadcastAnnouncementRequest request) {
-        String targetGroup = request.targetGroup() == null || request.targetGroup().isBlank()
-                ? "ALL"
-                : request.targetGroup().trim().toUpperCase();
+        String targetGroup = normalizeTargetGroup(request.targetGroup());
 
-        List<Long> candidateIds = patientRepository.findAllVerifiedIds();
+        List<Long> candidateIds = resolveCandidateIds(targetGroup);
 
         // Loc nhung benh nhan cho phep nhan thong bao he thong/broadcast (batch query 1 lan tranh N+1)
         List<Long> targetIds = settingService.filterSystemBroadcastEnabledPatientIds(candidateIds);
@@ -124,6 +133,28 @@ public class BroadcastNotificationService {
         return broadcastRepository.findById(id)
                 .map(this::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay thong bao broadcast"));
+    }
+
+    private String normalizeTargetGroup(String rawTargetGroup) {
+        if (rawTargetGroup == null || rawTargetGroup.isBlank()) {
+            return "ALL";
+        }
+        String normalized = rawTargetGroup.trim().toUpperCase();
+        return switch (normalized) {
+            case "ALL", "ALL_PATIENTS" -> "ALL";
+            case "ACTIVE_30_DAYS", "RECENT_TRIAGE" -> normalized;
+            default -> throw new IllegalArgumentException("Nhom doi tuong nhan broadcast khong hop le: " + normalized);
+        };
+    }
+
+    private List<Long> resolveCandidateIds(String targetGroup) {
+        Instant thirtyDaysAgo = Instant.now().minus(30, ChronoUnit.DAYS);
+        return switch (targetGroup) {
+            case "ALL" -> patientRepository.findAllVerifiedIds();
+            case "ACTIVE_30_DAYS" -> patientRepository.findVerifiedIdsActiveSince(thirtyDaysAgo);
+            case "RECENT_TRIAGE" -> patientRepository.findVerifiedIdsWithRecentTriage(thirtyDaysAgo);
+            default -> throw new IllegalArgumentException("Nhom doi tuong nhan broadcast khong hop le: " + targetGroup);
+        };
     }
 
     private BroadcastAnnouncementResponse toResponse(BroadcastAnnouncement announcement) {

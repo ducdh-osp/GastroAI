@@ -145,6 +145,22 @@ export interface SendBroadcastRequest {
   sendWebSocket?: boolean
 }
 
+export interface BroadcastEstimate {
+  targetGroup: string
+  estimatedRecipients: number
+  candidateCount: number
+}
+
+export async function estimateBroadcastRecipients(
+  targetGroup = 'ALL',
+): Promise<BroadcastEstimate> {
+  const { data } = await cmsApiClient.get<BroadcastEstimate>(
+    '/cms/notifications/broadcast/estimate',
+    { params: { targetGroup } },
+  )
+  return data
+}
+
 export async function sendBroadcastNotification(
   payload: SendBroadcastRequest,
 ): Promise<BroadcastAnnouncement> {

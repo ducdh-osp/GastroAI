@@ -11,9 +11,26 @@ public record CmsCatalogItemResponse(
         String name,
         String triageCode,
         Integer sortOrder,
-        boolean active
+        boolean active,
+        long usageCount
 ) {
+    public CmsCatalogItemResponse(
+            Long id,
+            CatalogType type,
+            String code,
+            String name,
+            String triageCode,
+            Integer sortOrder,
+            boolean active
+    ) {
+        this(id, type, code, name, triageCode, sortOrder, active, 0L);
+    }
+
     public static CmsCatalogItemResponse from(CatalogItem item) {
+        return from(item, 0L);
+    }
+
+    public static CmsCatalogItemResponse from(CatalogItem item, long usageCount) {
         return new CmsCatalogItemResponse(
                 item.getId(),
                 item.getType(),
@@ -21,7 +38,8 @@ public record CmsCatalogItemResponse(
                 item.getName(),
                 item.getTriageCode(),
                 item.getSortOrder(),
-                item.isActive()
+                item.isActive(),
+                usageCount
         );
     }
 }

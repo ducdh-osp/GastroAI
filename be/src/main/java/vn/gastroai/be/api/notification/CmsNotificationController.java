@@ -22,6 +22,14 @@ public class CmsNotificationController {
         this.broadcastService = broadcastService;
     }
 
+    @GetMapping("/broadcast/estimate")
+    public BroadcastEstimateResponse estimateBroadcast(
+            @RequestParam(defaultValue = "ALL") String targetGroup,
+            Authentication authentication) {
+        validateCms(authentication);
+        return broadcastService.estimateRecipients(targetGroup);
+    }
+
     @PostMapping("/broadcast")
     @ResponseStatus(HttpStatus.CREATED)
     public BroadcastAnnouncementResponse sendBroadcast(

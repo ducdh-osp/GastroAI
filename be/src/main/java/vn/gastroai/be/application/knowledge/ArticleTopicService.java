@@ -7,6 +7,7 @@ import vn.gastroai.be.api.cms.knowledge.ArticleTopicResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.domain.knowledge.ArticleTopic;
 import vn.gastroai.be.infrastructure.persistence.postgres.ArticleTopicRepository;
+import vn.gastroai.be.infrastructure.persistence.postgres.FaqRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.KnowledgeArticleRepository;
 
 import java.time.Instant;
@@ -14,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** UC0066 - CRUD chu de/danh muc bai viet cho Admin/Bac si. */
+/** UC0066 - CRUD chu de/danh muc bai viet & FAQ dung chung cho Admin/Bien tap vien. */
 @Service
 public class ArticleTopicService {
 
@@ -23,21 +24,31 @@ public class ArticleTopicService {
 
     private final ArticleTopicRepository topicRepository;
     private final KnowledgeArticleRepository articleRepository;
+    private final FaqRepository faqRepository;
 
     public ArticleTopicService(ArticleTopicRepository topicRepository,
-                               KnowledgeArticleRepository articleRepository) {
+                               KnowledgeArticleRepository articleRepository,
+                               FaqRepository faqRepository) {
         this.topicRepository = topicRepository;
         this.articleRepository = articleRepository;
+        this.faqRepository = faqRepository;
     }
 
     @Transactional(value = TX, readOnly = true)
     public List<ArticleTopicResponse> list() {
-        Map<String, Long> counts = new HashMap<>();
+        Map<String, Long> articleCounts = new HashMap<>();
         for (Object[] row : articleRepository.countByCategoryGrouped()) {
-            counts.put((String) row[0], (Long) row[1]);
+            articleCounts.put((String) row[0], (Long) row[1]);
+        }
+        Map<String, Long> faqCounts = new HashMap<>();
+        for (Object[] row : faqRepository.countByCategoryGrouped()) {
+            faqCounts.put((String) row[0], (Long) row[1]);
         }
         return topicRepository.findAllByOrderBySortOrderAscNameAsc().stream()
-                .map(t -> toResponse(t, counts.getOrDefault(t.getName(), 0L)))
+                .map(t -> toResponse(
+                        t,
+                        articleCounts.getOrDefault(t.getName(), 0L),
+                        faqCounts.getOrDefault(t.getName(), 0L)))
                 .toList();
     }
 
@@ -49,7 +60,7 @@ public class ArticleTopicService {
         }
         int sortOrder = request.sortOrder() != null ? request.sortOrder() : nextSortOrder();
         ArticleTopic saved = topicRepository.save(new ArticleTopic(name, sortOrder));
-        return toResponse(saved, 0L);
+        return toResponse(saved, 0L, 0L);
     }
 
     @Transactional(TX)
@@ -64,8 +75,9 @@ public class ArticleTopicService {
         }
         String oldName = topic.getName();
         if (!oldName.equals(newName)) {
-            // Cac bai viet luu category dang chuoi ten, phai doi theo de khong bi mo coi.
+            // Bai viet va FAQ luu category dang chuoi ten, phai doi theo de khong bi mo coi.
             articleRepository.renameCategory(oldName, newName);
+            faqRepository.renameCategory(oldName, newName);
             topic.setName(newName);
         }
         if (request.sortOrder() != null) {
@@ -73,22 +85,27 @@ public class ArticleTopicService {
         }
         topic.setUpdatedAt(Instant.now());
         ArticleTopic saved = topicRepository.save(topic);
-        return toResponse(saved, articleRepository.countByCategory(saved.getName()));
+        return toResponse(
+                saved,
+                articleRepository.countByCategory(saved.getName()),
+                faqRepository.countByCategory(saved.getName()));
     }
 
     @Transactional(TX)
     public void delete(Long id) {
         ArticleTopic topic = load(id);
-        long inUse = articleRepository.countByCategory(topic.getName());
-        if (inUse > 0) {
-            throw new IllegalStateException("Khong the xoa chu de \"" + topic.getName() + "\" vi con "
-                    + inUse + " bai viet dang dung. Hay chuyen cac bai viet sang chu de khac truoc.");
+        long articlesInUse = articleRepository.countByCategory(topic.getName());
+        long faqsInUse = faqRepository.countByCategory(topic.getName());
+        if (articlesInUse > 0 || faqsInUse > 0) {
+            throw new IllegalStateException("Không thể xoá chủ đề \"" + topic.getName() + "\" vì còn "
+                    + articlesInUse + " bài viết và " + faqsInUse
+                    + " FAQ đang dùng. Hãy chuyển sang chủ đề khác trước.");
         }
         try {
             topicRepository.delete(topic);
             topicRepository.flush();
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            throw new IllegalStateException("Khong the xoa chu de \"" + topic.getName() + "\" vi con bai viet dang dung.", e);
+            throw new IllegalStateException("Không thể xoá chủ đề \"" + topic.getName() + "\" vì vẫn đang được sử dụng.", e);
         }
     }
 
@@ -113,7 +130,8 @@ public class ArticleTopicService {
         return name;
     }
 
-    private static ArticleTopicResponse toResponse(ArticleTopic topic, long articleCount) {
-        return new ArticleTopicResponse(topic.getId(), topic.getName(), topic.getSortOrder(), articleCount, topic.getVersion());
+    private static ArticleTopicResponse toResponse(ArticleTopic topic, long articleCount, long faqCount) {
+        return new ArticleTopicResponse(
+                topic.getId(), topic.getName(), topic.getSortOrder(), articleCount, faqCount, topic.getVersion());
     }
 }

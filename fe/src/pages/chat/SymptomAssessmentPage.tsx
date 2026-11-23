@@ -178,12 +178,24 @@ export default function SymptomAssessmentPage() {
         showError('Vui lòng nhập mô tả chi tiết cho triệu chứng khác ở mục 1.')
         return
       }
+    }
+    if (step === 2) {
       if (!answers.duration) {
-        showError('Vui lòng chọn thời gian triệu chứng kéo dài ở mục 2.')
+        showError('Vui lòng chọn thời gian triệu chứng kéo dài ở mục 1.')
         return
       }
       if (!answers.patientGroup) {
-        showError('Vui lòng chọn đối tượng được đánh giá ở mục 3.')
+        showError('Vui lòng chọn đối tượng được đánh giá ở mục 2.')
+        return
+      }
+    }
+    if (step === 3) {
+      if (!answers.reportedSeverity) {
+        showError('Vui lòng chọn mức độ ảnh hưởng của triệu chứng ở mục 1.')
+        return
+      }
+      if (!answers.activityImpact) {
+        showError('Vui lòng chọn mức ảnh hưởng sinh hoạt ở mục 2.')
         return
       }
     }
@@ -192,20 +204,27 @@ export default function SymptomAssessmentPage() {
     containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  function triggerImmediateEmergencyWarning() {
+    setError(null)
+    setResult({
+      id: 0,
+      assessedAt: new Date().toISOString(),
+      severityLevel: 'SEVERE',
+      careRecommendation: 'EMERGENCY_CARE',
+      emergency: true,
+      matchedGroups: [],
+      requiresClinicianReview: true,
+      reasonCodes: ['WARNING_SIGNS_PRESENT'],
+    })
+    containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   async function submit() {
-    if (!answers.reportedSeverity) {
-      showError('Vui lòng chọn mức độ ảnh hưởng của triệu chứng ở mục 1.')
-      return
-    }
     if (!answers.progression) {
-      showError('Vui lòng chọn diễn tiến triệu chứng gần đây ở mục 2.')
+      showError('Vui lòng chọn diễn tiến triệu chứng gần đây.')
       return
     }
-    if (!answers.activityImpact) {
-      showError('Vui lòng chọn mức ảnh hưởng sinh hoạt ở mục 3.')
-      return
-    }
-    if (!answers.primarySymptom || !answers.duration || !answers.patientGroup) {
+    if (!answers.primarySymptom || !answers.duration || !answers.patientGroup || !answers.reportedSeverity || !answers.activityImpact) {
       showError('Thiếu thông tin bắt buộc. Hãy quay lại kiểm tra các câu trả lời.')
       return
     }
@@ -244,10 +263,10 @@ export default function SymptomAssessmentPage() {
   const emergencySelected = emergencyWarningOptions.some((option) => warningSet.has(option.value))
   const careAdvice = result
     ? (getCareAdvice(result.careRecommendation) ?? {
-        type: 'info' as const,
-        title: 'Kết quả đánh giá',
-        description: 'Hãy liên hệ cơ sở y tế để được tư vấn chi tiết hơn nếu triệu chứng tiếp diễn.',
-      })
+      type: 'info' as const,
+      title: 'Kết quả đánh giá',
+      description: 'Hãy liên hệ cơ sở y tế để được tư vấn chi tiết hơn nếu triệu chứng tiếp diễn.',
+    })
     : null
   const titleForSeverity = answers.reportedSeverity ? severityLabels[answers.reportedSeverity] : 'Chưa chọn'
 
@@ -275,7 +294,13 @@ export default function SymptomAssessmentPage() {
             <Steps
               current={step}
               responsive
-              items={[{ title: 'Dấu hiệu cảnh báo' }, { title: 'Triệu chứng' }, { title: 'Mức độ' }]}
+              items={[
+                { title: 'Cảnh báo' },
+                { title: 'Triệu chứng' },
+                { title: 'Thời gian & Đối tượng' },
+                { title: 'Mức độ & Ảnh hưởng' },
+                { title: 'Diễn tiến' },
+              ]}
             />
           </div>
         )}
@@ -378,11 +403,16 @@ export default function SymptomAssessmentPage() {
                     showIcon
                     message="Phát hiện dấu hiệu cần trợ giúp khẩn cấp"
                     description={
-                      <span>
-                        Hãy ưu tiên gọi{' '}
-                        <a href="tel:115" className="font-bold underline">115</a>{' '}
-                        hoặc đến cơ sở y tế gần nhất ngay lập tức — đừng chờ hoàn thành công cụ sàng lọc trước khi tìm trợ giúp.
-                      </span>
+                      <div className="space-y-2">
+                        <div>
+                          Hãy ưu tiên gọi{' '}
+                          <a href="tel:115" className="font-bold underline">115</a>{' '}
+                          hoặc đến cơ sở y tế gần nhất ngay lập tức — không cần chờ hoàn thành hết 5 bước.
+                        </div>
+                        <Button type="primary" danger size="small" onClick={triggerImmediateEmergencyWarning}>
+                          Xem hướng dẫn cấp cứu ngay
+                        </Button>
+                      </div>
                     }
                   />
                 )}
@@ -469,10 +499,14 @@ export default function SymptomAssessmentPage() {
                     </div>
                   )}
                 </section>
+              </div>
+            )}
 
+            {step === 2 && (
+              <div className="space-y-7">
                 <section>
                   <div className="flex items-center gap-2.5">
-                    <Title level={4} className="mb-1!">2. Triệu chứng kéo dài bao lâu?</Title>
+                    <Title level={4} className="mb-1!">1. Triệu chứng kéo dài bao lâu?</Title>
                     {answers.duration ? <Tag color="success">Đã chọn</Tag> : <Tag color="default">Chưa chọn</Tag>}
                   </div>
                   <Text type="secondary">Chọn khoảng thời gian gần đúng; đây là thông tin bổ sung cho kết quả.</Text>
@@ -494,7 +528,7 @@ export default function SymptomAssessmentPage() {
 
                 <section>
                   <div className="flex items-center gap-2.5">
-                    <Title level={4} className="mb-1!">3. Bạn đang đánh giá cho ai?</Title>
+                    <Title level={4} className="mb-1!">2. Bạn đang đánh giá cho ai?</Title>
                     {answers.patientGroup ? <Tag color="success">Đã chọn</Tag> : <Tag color="default">Chưa chọn</Tag>}
                   </div>
                   <Text type="secondary">Chọn nhóm phù hợp nhất với người đang có triệu chứng.</Text>
@@ -529,7 +563,7 @@ export default function SymptomAssessmentPage() {
               </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <div className="space-y-7">
                 <section>
                   <div className="flex items-center gap-2.5">
@@ -558,7 +592,29 @@ export default function SymptomAssessmentPage() {
 
                 <section>
                   <div className="flex items-center gap-2.5">
-                    <Title level={4} className="mb-1!">2. Diễn tiến trong thời gian gần đây</Title>
+                    <Title level={4} className="mb-1!">2. Mức ảnh hưởng đến sinh hoạt</Title>
+                    {answers.activityImpact ? <Tag color="success">Đã chọn</Tag> : <Tag color="default">Chưa chọn</Tag>}
+                  </div>
+                  <Text type="secondary">Trả lời riêng theo những gì bạn đang trải qua; mức này không tự suy ra từ mức độ triệu chứng.</Text>
+                  <div className="mt-3.5 grid gap-3.5 sm:grid-cols-3">
+                    {activityImpactOptions.map((option) => (
+                      <button key={option.value} type="button" aria-pressed={answers.activityImpact === option.value}
+                        onClick={() => update('activityImpact', option.value)}
+                        className={`rounded-xl border p-4 text-left transition-colors ${answers.activityImpact === option.value ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-800 dark:hover:bg-neutral-700'}`}>
+                        <span className="block font-semibold text-slate-800 dark:text-white">{option.label}</span>
+                        <span className="mt-2 block text-sm leading-5 text-slate-500 dark:text-white">{option.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="space-y-7">
+                <section>
+                  <div className="flex items-center gap-2.5">
+                    <Title level={4} className="mb-1!">Diễn tiến trong thời gian gần đây</Title>
                     {answers.progression ? <Tag color="success">Đã chọn</Tag> : <Tag color="default">Chưa chọn</Tag>}
                   </div>
                   <Text type="secondary">Chọn tình trạng hiện đang thay đổi theo hướng nào.</Text>
@@ -577,23 +633,6 @@ export default function SymptomAssessmentPage() {
                     ))}
                   </div>
                 </section>
-                <section>
-                  <div className="flex items-center gap-2.5">
-                    <Title level={4} className="mb-1!">3. Mức ảnh hưởng đến sinh hoạt</Title>
-                    {answers.activityImpact ? <Tag color="success">Đã chọn</Tag> : <Tag color="default">Chưa chọn</Tag>}
-                  </div>
-                  <Text type="secondary">Trả lời riêng theo những gì bạn đang trải qua; mức này không tự suy ra từ mức độ triệu chứng.</Text>
-                  <div className="mt-3.5 grid gap-3.5 sm:grid-cols-3">
-                    {activityImpactOptions.map((option) => (
-                      <button key={option.value} type="button" aria-pressed={answers.activityImpact === option.value}
-                        onClick={() => update('activityImpact', option.value)}
-                        className={`rounded-xl border p-4 text-left transition-colors ${answers.activityImpact === option.value ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-800 dark:hover:bg-neutral-700'}`}>
-                        <span className="block font-semibold text-slate-800 dark:text-white">{option.label}</span>
-                        <span className="mt-2 block text-sm leading-5 text-slate-500 dark:text-white">{option.description}</span>
-                      </button>
-                    ))}
-                  </div>
-                </section>
               </div>
             )}
 
@@ -606,8 +645,8 @@ export default function SymptomAssessmentPage() {
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 dark:border-white/10 pt-5">
               <Button size="middle" className="!h-10 !rounded-lg !px-5 font-medium" disabled={step === 0 || submitting} onClick={() => { setError(null); setStep((current) => current - 1) }}>Quay lại</Button>
-              <Text type="secondary" className="font-medium">Bước {step + 1} / 3</Text>
-              {step < 2 ? (
+              <Text type="secondary" className="font-medium">Bước {step + 1} / 5</Text>
+              {step < 4 ? (
                 <Button type="primary" size="middle" className="!h-10 !rounded-lg !px-6 font-medium shadow-xs" onClick={next}>Tiếp tục</Button>
               ) : (
                 <Button type="primary" size="middle" className="!h-10 !rounded-lg !px-6 font-medium shadow-xs" loading={submitting} onClick={() => void submit()}>Xem kết quả</Button>
