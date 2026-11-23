@@ -1,16 +1,18 @@
 package vn.gastroai.be.api.cms.user;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.admin.AdminPatientManagementService;
 import vn.gastroai.be.domain.audit.AuditAction;
-import vn.gastroai.be.application.audit.AuditLogService;    
+import vn.gastroai.be.application.audit.AuditLogService;
 
 /** UC0046 - API chi danh cho ADMIN. */
 @RestController
@@ -36,9 +38,9 @@ public class CmsUserAdminController {
     }
 
     @PostMapping("/{patientId}/lock")
-    public CmsPatientResponse lock(@PathVariable Long patientId) {
+    public CmsPatientResponse lock(@PathVariable Long patientId, @Valid @RequestBody LockPatientRequest request) {
         CmsPatientResponse response = service.lock(patientId);
-        auditLogService.record(AuditAction.PATIENT_LOCK, "PATIENT", patientId, null);
+        auditLogService.record(AuditAction.PATIENT_LOCK, "PATIENT", patientId, request.reason());
         return response;
     }
 

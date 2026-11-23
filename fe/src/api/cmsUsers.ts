@@ -30,9 +30,14 @@ export async function listCmsPatients(params: { q?: string; locked?: boolean; pa
   }
 }
 
-export async function setCmsPatientLock(id: number, locked: boolean) {
+export function setCmsPatientLock(id: number, locked: true, reason: string): Promise<CmsPatient>
+export function setCmsPatientLock(id: number, locked: false): Promise<CmsPatient>
+export async function setCmsPatientLock(id: number, locked: boolean, reason?: string): Promise<CmsPatient> {
   try {
-    const { data } = await cmsApiClient.post<CmsPatient>(`/cms/users/${id}/${locked ? 'lock' : 'unlock'}`)
+    const { data } = await cmsApiClient.post<CmsPatient>(
+      `/cms/users/${id}/${locked ? 'lock' : 'unlock'}`,
+      locked ? { reason: reason?.trim() } : undefined,
+    )
     return data
   } catch (error) {
     throw extractErrorMessage(error, locked ? 'Không thể khóa tài khoản.' : 'Không thể mở khóa tài khoản.')
