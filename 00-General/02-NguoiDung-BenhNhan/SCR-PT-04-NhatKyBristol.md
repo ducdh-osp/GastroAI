@@ -17,11 +17,14 @@ Thang phân loại phân Bristol (Bristol Stool Chart) là thang 7 mức đượ
 
 ## 2. Thiết kế màn hình
 
+Trang `/bristol` có hai tab ngang hàng **Nhật ký / Xu hướng**. Tab Nhật ký có lựa chọn **Nhật ký / Thùng rác**; tab Xu hướng được mô tả trong SCR-PT-05. Route cũ `/bristol-history` chỉ chuyển hướng tới `/bristol?tab=trend`.
+
 ```text
 ┌───────────────────────────────────────────────────────────┐
 │  Nhật ký tiêu hoá                    [ + Ghi nhận mới ]        │
+│  [Nhật ký]    [Xu hướng]                                       │
 │  ┌─────────┬──────────┐                                       │
-│  │Danh sách │ Thùng rác│                                       │
+│  │ Nhật ký  │ Thùng rác│                                       │
 │  └─────────┴──────────┘                                       │
 │  Hôm nay, 08:15 — Mức 4 (Bình thường)         [Sửa] [Xoá]      │
 │  Hôm qua, 21:40 — Mức 6 (Hơi lỏng)            [Sửa] [Xoá]      │
@@ -30,22 +33,20 @@ Thang phân loại phân Bristol (Bristol Stool Chart) là thang 7 mức đượ
 — Form ghi nhận mới —
 ┌─────────────────────────────────────┐
 │  Ghi nhận tình trạng tiêu hoá           │
-│                                          │
+│  Thời điểm [Bây giờ]                     │
 │  Chọn mức phù hợp nhất:                 │
-│  ┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐
-│  │ 1  ││ 2  ││ 3  ││ 4  ││ 5  ││ 6  ││ 7  │
-│  │🔵🔵││🔵🔵││ 🌽 ││ 🌭 ││ 🟤 ││ 🥣 ││ 💧 │  ← icon minh hoạ
-│  └────┘└────┘└────┘└────┘└────┘└────┘└────┘
-│   Táo        Bình thường       Tiêu chảy
-│   bón                                    │
+│  ( ) Loại 1: mô tả                       │
+│  ( ) Loại 2: mô tả                       │
+│  ... đủ 7 lựa chọn theo mô tả Bristol    │
+│  ( ) Loại 7: mô tả                       │
 │                                          │
-│  Triệu chứng kèm theo (không bắt buộc)  │
+│  Ghi chú (không bắt buộc)               │
 │  [___________________________________]  │
 │       [     Lưu     ]                   │
 └─────────────────────────────────────┘
 ```
 
-Luôn hiển thị **cả 7 mức cùng lúc** dưới dạng minh hoạ trực quan (không phải dropdown ẩn) — bệnh nhân cần so sánh hình ảnh để chọn đúng mức, không phải nhớ định nghĩa bằng chữ.
+Form hiện hiển thị **7 lựa chọn radio với nhãn mô tả**, không có bộ hình minh hoạ như mockup cũ. Thời điểm mặc định là hiện tại, không được ở tương lai. Trường **Ghi chú** (`notes`, tối đa 5.000 ký tự) có thể ghi triệu chứng kèm theo, ví dụ đau bụng; hiện không có trường triệu chứng riêng. Hình minh hoạ cho từng mức là đề xuất cải tiến chưa triển khai.
 
 ## 3. Ý nghĩa 7 mức (dùng nhất quán ở mọi nơi hiển thị trong app)
 
@@ -63,10 +64,11 @@ Luôn hiển thị **cả 7 mức cùng lúc** dưới dạng minh hoạ trực 
 
 | Tình huống | Hành vi đúng | Vì sao |
 | :--- | :--- | :--- |
-| Ghi nhận mức 1, 2, 6, hoặc 7 nhiều lần liên tục trong thời gian ngắn | Không tự ý cảnh báo y tế ngay tại màn này (đây là nơi ghi chép, không phải nơi chẩn đoán) — nhưng dữ liệu này cần được AI nhìn thấy khi bệnh nhân chat để có thể chủ động hỏi thêm | Táo bón/tiêu chảy kéo dài là dấu hiệu cần theo dõi, nhưng cảnh báo dồn dập ngay tại màn ghi chép sẽ gây hoang mang không cần thiết cho 1 bất thường đơn lẻ — việc diễn giải nên để dành cho AI tư vấn có ngữ cảnh đầy đủ hơn |
+| Có nhiều ghi nhận cần theo dõi | Lưu nhật ký để bệnh nhân xem trong tab Xu hướng; không tự sinh cảnh báo tại form. Chat AI hiện chưa tự đọc nhật ký Bristol | Khả năng đưa nhật ký vào ngữ cảnh AI là mục tiêu chưa triển khai, xem SCR-PT-08 |
 | Xoá/khôi phục | Giống hệt nguyên tắc ở [SCR-PT-02](SCR-PT-02-NhatKyAnUong.md) §4 | Nhất quán trải nghiệm giữa 2 loại nhật ký |
 
 ## 5. Tham chiếu
 
 - Xem xu hướng theo thời gian: [SCR-PT-05-XuHuongBristol.md](SCR-PT-05-XuHuongBristol.md)
 - Dấu hiệu nguy hiểm cần phân biệt với ghi nhận thường quy (máu trong phân, đau dữ dội...): `03-AIChatbot-RAG/` (lớp sàng lọc an toàn)
+- Đối chiếu code: `router.tsx`, `BristolPage.tsx`, `BristolLogModal.tsx`, `BristolLogRequest.java`.

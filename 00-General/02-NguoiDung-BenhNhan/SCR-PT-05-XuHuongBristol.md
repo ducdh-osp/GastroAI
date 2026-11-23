@@ -13,10 +13,14 @@ Một con số Bristol đơn lẻ ít ý nghĩa — giá trị thật nằm ở 
 
 ## 2. Thiết kế màn hình
 
+Đây là tab **Xu hướng** của trang Nhật ký Bristol, mở trực tiếp tại `/bristol?tab=trend`. Route cũ `/bristol-history` chuyển hướng tới tab này; `/bristol` mặc định mở tab Nhật ký.
+
 ```text
 ┌───────────────────────────────────────────────────────────┐
-│  Xu hướng tiêu hoá                   Khoảng thời gian [30 ngày▾]│
-│                                                                 │
+│  Nhật ký Bristol                                               │
+│  [Nhật ký]    [Xu hướng]                                       │
+│  Khoảng xem: [7 ngày] [30 ngày] [90 ngày]                        │
+│  [Tổng lần] [Tỷ lệ loại 3–5] [Ghi nhận gần nhất]                │
 │  7 ┤                        ●                                  │
 │  6 ┤              ●     ●       ●                               │
 │  5 ┤        ●                        ●                          │
@@ -27,25 +31,28 @@ Một con số Bristol đơn lẻ ít ý nghĩa — giá trị thật nằm ở 
 │    └──────────────────────────────────────────────────────    │
 │     1/11        10/11        20/11        30/11                │
 │                                                                 │
-│  Vùng tô màu nhạt: mức 3-5 (bình thường)                        │
-│                                                                 │
-│  ⓘ Bạn có 3 lần ghi nhận mức 6-7 trong 7 ngày qua — nếu kèm     │
-│    đau bụng hoặc kéo dài, hãy trò chuyện với AI để được tư vấn   │
-│    thêm.                                      [Hỏi AI ngay →]  │
+│  Bấm một điểm để xem nhật ký của ngày tương ứng                 │
 └───────────────────────────────────────────────────────────┘
 ```
 
-Vùng tô màu nhạt ở mức 3-5 giúp bệnh nhân **nhìn phát biết ngay** điểm nào nằm trong/ngoài vùng bình thường, không cần tự nhớ ý nghĩa từng mức.
+Biểu đồ hiện nối các lần ghi nhận, có nhãn mô tả ngắn trên trục dọc và tooltip; trục số trong sơ đồ trên chỉ minh hoạ thang 1–7. **Chưa có vùng nền tô mức 3–5 hoặc banner dẫn sang AI.** Thẻ "Trong khoảng loại 3–5" là tỷ lệ số lần thuộc nhóm này trên tổng số lần ghi trong khoảng xem. Khi chưa có dữ liệu, hiển thị trạng thái trống.
 
 ## 3. Nguyên tắc diễn giải
 
 | Yếu tố | Nguyên tắc | Vì sao |
 | :--- | :--- | :--- |
-| Gợi ý khi có nhiều điểm bất thường gần đây | Chỉ **gợi ý trò chuyện với AI**, không tự kết luận tình trạng bệnh | Đây là màn hình hiển thị dữ liệu, không phải màn hình chẩn đoán — mọi diễn giải sâu hơn nên dẫn người dùng sang kênh có thể hỏi-đáp thêm (chat AI) thay vì đưa ra 1 câu kết luận tĩnh có thể sai ngữ cảnh |
+| Xem lại một thời điểm | Bấm điểm biểu đồ → tab Nhật ký lọc theo ngày tại Việt Nam của điểm đó | Xem tất cả lần ghi trong ngày rồi chọn mục cần sửa |
+| Các thẻ thống kê | Hiện tổng lần, tỷ lệ loại 3–5, ghi nhận gần nhất | Mô tả dữ liệu đã ghi; không phải kết luận chẩn đoán |
 | Không đưa ra kết luận kiểu "Bạn có thể bị IBS" | Tuyệt đối tránh | Tên 1 bệnh cụ thể đi kèm dữ liệu cá nhân, hiển thị như một khẳng định, dễ bị hiểu nhầm là chẩn đoán chính thức — vượt quá vai trò gợi ý sơ bộ của sản phẩm |
 | Khoảng thời gian xem | 7/30/90 ngày, mặc định 30 | Đồng nhất với [SCR-PT-03](SCR-PT-03-LichSuAnUong.md) để bệnh nhân quen 1 kiểu điều khiển duy nhất trong toàn app |
 
-## 4. Tham chiếu
+## 4. Đề xuất chưa triển khai
+
+- Tô nhạt vùng mức 3–5 để dễ đọc biểu đồ.
+- Banner gợi ý mở chat khi có nhiều ghi nhận cần theo dõi. Ví dụ "3 lần mức 6–7 trong 7 ngày" trong mockup cũ chỉ là ý tưởng thiết kế, chưa phải quy tắc cảnh báo đã được hệ thống áp dụng. Cần xác định tiêu chí, nội dung và ngữ cảnh chuyển sang chat trước khi triển khai.
+
+## 5. Tham chiếu
 
 - Ghi nhận dữ liệu: [SCR-PT-04-NhatKyBristol.md](SCR-PT-04-NhatKyBristol.md)
 - Trò chuyện khi có bất thường: [SCR-PT-08-ChatAI.md](SCR-PT-08-ChatAI.md)
+- Đối chiếu code: `router.tsx`, `BristolPage.tsx`, `BristolTrendTab.tsx`, `BristolTrendChart.tsx`.
