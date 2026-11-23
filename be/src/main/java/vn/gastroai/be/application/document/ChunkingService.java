@@ -44,7 +44,7 @@ public class ChunkingService {
             chunk.setDocument(document);
             chunk.setChunkIndex(i);
             chunk.setContent(chunkContents.get(i));
-            chunk.setTokenCount(null);
+
 
             chunks.add(chunk);
         }

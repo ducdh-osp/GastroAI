@@ -52,17 +52,13 @@ public class PatientLoginHistory {
     @Column(name = "user_agent", nullable = false, length = 1024)
     private String userAgent;
 
-    @Column(name = "device_label", nullable = false)
-    private String deviceLabel;
-
     public PatientLoginHistory(Patient patient, Instant attemptedAt, LoginOutcome outcome,
-                               String failureReason, String ipAddress, String userAgent, String deviceLabel) {
+                               String failureReason, String ipAddress, String userAgent) {
         this.patient = patient;
         this.attemptedAt = attemptedAt;
         this.outcome = outcome;
         this.failureReason = failureReason;
         this.ipAddress = ipAddress;
         this.userAgent = userAgent;
-        this.deviceLabel = deviceLabel;
     }
 }
