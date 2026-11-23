@@ -17,8 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Xac nhan findTopK() chi tra ve chunk thuoc document status='DONE' VA la phien ban dang
- * dung (is_current = TRUE), khong lo chunk cua document ERROR hay phien ban cu vao - du cac
+ * Xac nhan findTopK() chi tra ve chunk cua tai lieu chatbot dang dung (da duoc Bien tap xac nhan
+ * va khong bi go), khong lo chunk cua document ERROR / chua xac nhan / da go - du cac
  * document co embedding GIONG HET NHAU (cung 1 vector toan so 1), nen neu ai xoa dieu kien
  * WHERE thi chunk khong hop le chac chan lot vao top-10.
  *
@@ -40,14 +40,15 @@ class EmbeddingStoreStatusFilterIT {
     private JdbcTemplate jdbcTemplate;
     private Long doneChunkId;
     private Long errorChunkId;
-    private Long oldVersionChunkId;
+    private Long notApprovedChunkId;
+    private Long unpublishedChunkId;
 
     @BeforeEach
     void setUp() {
         jdbcTemplate = new JdbcTemplate(postgresDataSource);
 
         Long doneDocumentId = jdbcTemplate.queryForObject(
-                "INSERT INTO documents (title, status) VALUES (?, 'DONE') RETURNING id",
+                "INSERT INTO documents (title, status, content_approved_at) VALUES (?, 'DONE', now()) RETURNING id",
                 Long.class, TITLE_PREFIX + "DONE");
         doneChunkId = jdbcTemplate.queryForObject(
                 "INSERT INTO chunks (document_id, chunk_index, content) VALUES (?, 0, ?) RETURNING id",
@@ -60,19 +61,29 @@ class EmbeddingStoreStatusFilterIT {
                 "INSERT INTO chunks (document_id, chunk_index, content) VALUES (?, 0, ?) RETURNING id",
                 Long.class, errorDocumentId, "Noi dung chunk ERROR");
 
-        // UC0049 - phien ban DONE nhung khong con la ban dang dung (is_current = FALSE).
-        Long oldVersionDocumentId = jdbcTemplate.queryForObject(
-                "INSERT INTO documents (title, status, is_current) VALUES (?, 'DONE', FALSE) RETURNING id",
-                Long.class, TITLE_PREFIX + "OLD_VERSION");
-        oldVersionChunkId = jdbcTemplate.queryForObject(
+        // SCR-AD-04 - ban DONE nhung chatbot khong dung vi chua duoc Bien tap xac nhan.
+        Long notApprovedDocumentId = jdbcTemplate.queryForObject(
+                "INSERT INTO documents (title, status) VALUES (?, 'DONE') RETURNING id",
+                Long.class, TITLE_PREFIX + "NOT_APPROVED");
+        notApprovedChunkId = jdbcTemplate.queryForObject(
                 "INSERT INTO chunks (document_id, chunk_index, content) VALUES (?, 0, ?) RETURNING id",
-                Long.class, oldVersionDocumentId, "Noi dung chunk phien ban cu");
+                Long.class, notApprovedDocumentId, "Noi dung chunk chua xac nhan");
+
+        // UC0050 - tai lieu da xac nhan nhung Admin da go khoi chatbot.
+        Long unpublishedDocumentId = jdbcTemplate.queryForObject(
+                "INSERT INTO documents (title, status, content_approved_at, unpublished_at) "
+                        + "VALUES (?, 'DONE', now(), now()) RETURNING id",
+                Long.class, TITLE_PREFIX + "UNPUBLISHED");
+        unpublishedChunkId = jdbcTemplate.queryForObject(
+                "INSERT INTO chunks (document_id, chunk_index, content) VALUES (?, 0, ?) RETURNING id",
+                Long.class, unpublishedDocumentId, "Noi dung chunk da go");
 
         float[] vector = new float[3072];
         Arrays.fill(vector, 1f);
         embeddingStore.save(doneChunkId, vector, "test-model");
         embeddingStore.save(errorChunkId, vector, "test-model");
-        embeddingStore.save(oldVersionChunkId, vector, "test-model");
+        embeddingStore.save(notApprovedChunkId, vector, "test-model");
+        embeddingStore.save(unpublishedChunkId, vector, "test-model");
     }
 
     @AfterEach
@@ -95,13 +106,15 @@ class EmbeddingStoreStatusFilterIT {
     }
 
     @Test
-    void findTopKSkipsNonCurrentVersions() {
+    void findTopKSkipsDocumentsNotInUse() {
         float[] queryVector = new float[3072];
         Arrays.fill(queryVector, 1f);
 
         List<SimilarChunk> results = embeddingStore.findTopK(queryVector, 10);
 
-        assertTrue(results.stream().noneMatch(r -> r.chunkId().equals(oldVersionChunkId)),
-                "Chunk cua phien ban khong con dung khong duoc lot vao ket qua RAG");
+        assertTrue(results.stream().noneMatch(r -> r.chunkId().equals(notApprovedChunkId)),
+                "Chunk cua tai lieu chua xac nhan khong duoc lot vao ket qua RAG");
+        assertTrue(results.stream().noneMatch(r -> r.chunkId().equals(unpublishedChunkId)),
+                "Chunk cua tai lieu da go khong duoc lot vao ket qua RAG");
     }
 }

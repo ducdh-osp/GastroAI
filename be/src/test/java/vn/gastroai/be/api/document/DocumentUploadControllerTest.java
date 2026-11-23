@@ -133,7 +133,7 @@ class DocumentUploadControllerTest {
                                 42L, "IBS guide", "/path", "https://example.com",
                                 DocumentStatus.DONE, DocumentProcessingStage.DONE,
                                 null, 10L, java.time.Instant.now(), java.time.Instant.now(),
-                                                               1, 1, 1, false, true);
+                                true, false, false, true);
                 when(documentStatusService.list(null, null, null, null, 0, 15))
                                 .thenReturn(new DocumentPageResponse(java.util.List.of(docSummary), 1, 0, 15,
                                                 new DocumentStats(1, 1, 0, 0)));
@@ -142,7 +142,9 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.total").value(1))
                                 .andExpect(jsonPath("$.items[0].id").value(42))
-                                .andExpect(jsonPath("$.items[0].chunkCount").value(10));
+                                .andExpect(jsonPath("$.items[0].chunkCount").value(10))
+                                .andExpect(jsonPath("$.items[0].inUse").value(true))
+                                .andExpect(jsonPath("$.items[0].replacing").value(false));
         }
 
         @Test
@@ -204,35 +206,18 @@ class DocumentUploadControllerTest {
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        void uploadVersionAcceptedForAdmin() throws Exception {
-                when(documentUploadService.uploadNewVersion(eq(42L), any()))
+        void uploadReplacementAcceptedForAdmin() throws Exception {
+                when(documentUploadService.uploadReplacement(eq(42L), any()))
                                 .thenReturn(document(DocumentStatus.PENDING, DocumentProcessingStage.PENDING));
                 MockMultipartFile file = new MockMultipartFile(
                                 "file", "ibs-v2.pdf", "application/pdf", new byte[] { 1 });
 
-                mockMvc.perform(multipart("/api/v1/documents/42/versions").file(file))
+                mockMvc.perform(multipart("/api/v1/documents/42/replacement").file(file))
                                 .andExpect(status().isAccepted())
                                 .andExpect(jsonPath("$.documentId").value(42))
                                 .andExpect(jsonPath("$.status").value("PENDING"));
-        }
-
-        @Test
-        @WithMockUser(roles = "ADMIN")
-        void listVersionsOkForAdmin() throws Exception {
-                when(documentStatusService.listVersions(42L)).thenReturn(java.util.List.of());
-
-                mockMvc.perform(get("/api/v1/documents/42/versions"))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$").isArray());
-        }
-
-        @Test
-        @WithMockUser(roles = "ADMIN")
-        void activateVersionReturnsNoContentForAdmin() throws Exception {
-                mockMvc.perform(post("/api/v1/documents/42/versions/7/activate"))
-                                .andExpect(status().isNoContent());
-
-                verify(documentStatusService).activateVersion(42L, 7L);
+                verify(auditLogService).record(AuditAction.DOCUMENT_REPLACE, "DOCUMENT", 42L,
+                                "Bản thay thế id=42");
         }
 
         // SCR-AD-04 §3.1b - chi Bien tap duoc xac nhan noi dung, ghi lai ai xac nhan.
@@ -241,24 +226,50 @@ class DocumentUploadControllerTest {
         void contentEditorCanApproveDocumentContent() throws Exception {
                 when(auditLogService.currentActorEmail()).thenReturn("bientap@gastroai.vn");
 
-                mockMvc.perform(post("/api/v1/documents/42/versions/7/approve"))
+                mockMvc.perform(post("/api/v1/documents/42/approve"))
                                 .andExpect(status().isNoContent());
 
-                verify(documentStatusService).approveContent(42L, 7L, "bientap@gastroai.vn");
-                verify(auditLogService).record(eq(AuditAction.DOCUMENT_APPROVE_CONTENT), eq("DOCUMENT"), eq(42L), any());
+                verify(documentStatusService).approveContent(42L, "bientap@gastroai.vn");
+                verify(auditLogService).record(AuditAction.DOCUMENT_APPROVE_CONTENT, "DOCUMENT", 42L,
+                                "Xác nhận nội dung");
+        }
+
+        // Admin tai len va xu ly ky thuat, nhung KHONG tu xac nhan noi dung y khoa (SecurityConfig).
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        void adminCannotApproveDocumentContent() throws Exception {
+                mockMvc.perform(post("/api/v1/documents/42/approve"))
+                                .andExpect(status().isForbidden());
+
+                verify(documentStatusService, never()).approveContent(any(), any());
+        }
+
+        // SCR-AD-04 §3.2: xac nhan ban thay the -> nhat ky ghi ro ban cu da bi xoa vinh vien.
+        @Test
+        @WithMockUser(roles = "CONTENT_EDITOR")
+        void approvingReplacementRecordsThatOldVersionWasDeleted() throws Exception {
+                when(auditLogService.currentActorEmail()).thenReturn("bientap@gastroai.vn");
+                when(documentStatusService.approveContent(42L, "bientap@gastroai.vn")).thenReturn(true);
+
+                mockMvc.perform(post("/api/v1/documents/42/approve"))
+                                .andExpect(status().isNoContent());
+
+                verify(auditLogService).record(AuditAction.DOCUMENT_APPROVE_CONTENT, "DOCUMENT", 42L,
+                                "Xác nhận bản thay thế · đã xoá vĩnh viễn bản cũ");
         }
 
         // Admin tai len va xu ly ky thuat, nhung khong tu duyet noi dung y khoa.
         @Test
         @WithMockUser(roles = "CONTENT_EDITOR")
-        void contentEditorCanOpenReviewOfAVersion() throws Exception {
+        void contentEditorCanOpenReviewOfAReplacement() throws Exception {
                 when(documentReviewService.review(42L)).thenReturn(new DocumentReviewResponse(
-                                42L, "Phác đồ HP", 2, DocumentStatus.DONE, false, false, null, null,
-                                "PDF", null, java.util.List.of(new DocumentReviewResponse.Chunk(0, "Đoạn 1"))));
+                                42L, "Phác đồ HP", DocumentStatus.DONE, false, false, null, null,
+                                "PDF", true, null, java.util.List.of(new DocumentReviewResponse.Chunk(0, "Đoạn 1"))));
 
                 mockMvc.perform(get("/api/v1/documents/42/review"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.originalFileType").value("PDF"))
+                                .andExpect(jsonPath("$.replacesExisting").value(true))
                                 .andExpect(jsonPath("$.chunks[0].content").value("Đoạn 1"));
         }
 
@@ -282,17 +293,6 @@ class DocumentUploadControllerTest {
                 verify(auditLogService).record(AuditAction.DOCUMENT_UNPUBLISH, "DOCUMENT", 42L, null);
         }
 
-        @Test
-        @WithMockUser(roles = "ADMIN")
-        void deleteVersionReturnsNoContentForAdmin() throws Exception {
-                mockMvc.perform(delete("/api/v1/documents/42/versions/7"))
-                                .andExpect(status().isNoContent());
-
-                verify(documentUploadService).deleteVersion(42L, 7L);
-                verify(auditLogService).record(AuditAction.DOCUMENT_DELETE_VERSION, "DOCUMENT", 42L,
-                                "Xoá phiên bản id=7");
-        }
-
         // Benh nhan khong duoc go tai lieu: SecurityConfig chan o tang quyen, service
         // khong bi goi.
         @Test
@@ -302,15 +302,6 @@ class DocumentUploadControllerTest {
                                 .andExpect(status().isForbidden());
 
                 verify(documentStatusService, never()).unpublish(any());
-        }
-
-        @Test
-        @WithMockUser(roles = "PATIENT")
-        void deleteVersionForbiddenForPatient() throws Exception {
-                mockMvc.perform(delete("/api/v1/documents/42/versions/7"))
-                                .andExpect(status().isForbidden());
-
-                verify(documentUploadService, never()).deleteVersion(any(), any());
         }
 
         @Test

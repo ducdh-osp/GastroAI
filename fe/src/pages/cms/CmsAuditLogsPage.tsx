@@ -46,6 +46,7 @@ const PAGE_SIZE = 20
 
 const ACTION_LABEL: Record<AuditAction, string> = {
   DOCUMENT_UPLOAD: 'Tải lên tài liệu',
+  DOCUMENT_REPLACE: 'Tải bản thay thế',
   DOCUMENT_NEW_VERSION: 'Tải phiên bản mới',
   DOCUMENT_ACTIVATE_VERSION: 'Kích hoạt phiên bản',
   DOCUMENT_APPROVE_CONTENT: 'Xác nhận nội dung tài liệu',

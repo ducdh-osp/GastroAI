@@ -10,7 +10,6 @@ import {
   FilePdfOutlined,
   MoreOutlined,
   FileTextOutlined,
-  HistoryOutlined,
   InboxOutlined,
   LinkOutlined,
   LoadingOutlined,
@@ -22,24 +21,21 @@ import {
   FileWordOutlined,
 } from '@ant-design/icons'
 import {
+  Alert,
   Button,
   Card,
   Col,
   DatePicker,
-  Drawer,
   Dropdown,
   Empty,
   Input,
   Modal,
-  Popconfirm,
   Row,
   Segmented,
   Select,
-  Space,
   Statistic,
   Table,
   Tag,
-  Tooltip,
   Typography,
   Upload,
   message,
@@ -49,20 +45,16 @@ import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  activateCmsDocumentVersion,
   deleteCmsDocument,
-  deleteCmsDocumentVersion,
   listCmsDocuments,
-  listCmsDocumentVersions,
   publishCmsDocument,
   retryCmsDocument,
   unpublishCmsDocument,
   updateCmsDocumentInfo,
   uploadCmsDocument,
-  uploadCmsDocumentVersion,
+  uploadCmsDocumentReplacement,
   type CmsDocumentItem,
   type CmsDocumentStats,
-  type CmsDocumentVersion,
   type DocumentProcessingStage,
   type DocumentStatus,
 } from '../../api/cmsDocuments'
@@ -141,12 +133,12 @@ export default function CmsDocumentsPage() {
   // Modal xem lỗi chi tiết
   const [errorModalItem, setErrorModalItem] = useState<CmsDocumentItem | null>(null)
 
-  // UC0049 - tai ban moi: null = tai tai lieu moi (nhu cu), co gia tri = tai phien ban moi cho tai lieu do
+  // UC0049 / SCR-AD-04 §3.2 - null = tải tài liệu mới, có giá trị = tải bản thay thế cho tài liệu đó
   const [versionTarget, setVersionTarget] = useState<CmsDocumentItem | null>(null)
-
-  // UC0049 - ngan keo lich su phien ban
-  const [historyItem, setHistoryItem] = useState<CmsDocumentItem | null>(null)
-  // SCR-AD-04 §3.1b - phiên bản đang mở trong ngăn kéo "Xem & xác nhận nội dung".
+  // SCR-AD-04 §3.3 - xoá phải gõ lại đúng tên tài liệu
+  const [deleteTarget, setDeleteTarget] = useState<CmsDocumentItem | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  // SCR-AD-04 §3.1b - bản đang mở trong ngăn kéo "Xem & xác nhận nội dung".
   const [reviewId, setReviewId] = useState<number | null>(null)
   // Từ khoá khi mở ngăn kéo từ ô "Tìm theo nội dung" - để ngăn kéo tô vàng và lọc các đoạn khớp.
   const [reviewQuery, setReviewQuery] = useState<string | null>(null)
@@ -161,8 +153,6 @@ export default function CmsDocumentsPage() {
   // UC0055 - 2 kiểu tìm chung 1 chỗ (BA: cùng 1 màn): theo tên/nguồn lọc ngay trên bảng, theo nội dung
   // thì thay bảng bằng danh sách tài liệu có từ khoá.
   const [searchMode, setSearchMode] = useState<'name' | 'content'>('name')
-  const [versions, setVersions] = useState<CmsDocumentVersion[]>([])
-  const [versionsLoading, setVersionsLoading] = useState(false)
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -266,8 +256,8 @@ export default function CmsDocumentsPage() {
     setUploading(true)
     try {
       if (versionTarget) {
-        await uploadCmsDocumentVersion(versionTarget.id, file)
-        message.success(`Đã tải phiên bản mới cho "${versionTarget.title}". Bản cũ vẫn được dùng cho tới khi bản mới xử lý xong.`)
+        await uploadCmsDocumentReplacement(versionTarget.id, file)
+        message.success(`Đã tải bản thay thế cho "${versionTarget.title}". Chatbot vẫn dùng bản cũ cho tới khi bản mới được xác nhận.`)
       } else {
         await uploadCmsDocument(file, sourceUrlInput || undefined, titleInput)
         message.success('Đã tải lên tài liệu thành công. Hệ thống đang tiến hành số hóa tự động.')
@@ -304,48 +294,6 @@ export default function CmsDocumentsPage() {
         loadData()
       } catch (err: unknown) {
         message.error(errorMessageOf(err, 'Xóa tài liệu thất bại'))
-      }
-    })
-  }
-
-  async function openHistory(item: CmsDocumentItem) {
-    setHistoryItem(item)
-    setVersionsLoading(true)
-    try {
-      setVersions(await listCmsDocumentVersions(item.id))
-    } catch (err) {
-      message.error(errorMessageOf(err, 'Không tải được lịch sử phiên bản'))
-    } finally {
-      setVersionsLoading(false)
-    }
-  }
-
-  function handleActivate(version: CmsDocumentVersion) {
-    if (!historyItem) return Promise.resolve()
-    const target = historyItem
-    return runBusy(`activate-${version.id}`, async () => {
-      try {
-        await activateCmsDocumentVersion(target.id, version.id)
-        message.success(`Chatbot đã chuyển sang dùng phiên bản v${version.versionNo}`)
-        await openHistory(target)
-        loadData()
-      } catch (err) {
-        message.error(errorMessageOf(err, 'Không đổi được phiên bản'))
-      }
-    })
-  }
-
-  function handleDeleteVersion(version: CmsDocumentVersion) {
-    if (!historyItem) return Promise.resolve()
-    const target = historyItem
-    return runBusy(`deleteVersion-${version.id}`, async () => {
-      try {
-        await deleteCmsDocumentVersion(target.id, version.id)
-        message.success(`Đã xóa phiên bản v${version.versionNo}`)
-        await openHistory(target)
-        loadData()
-      } catch (err) {
-        message.error(errorMessageOf(err, 'Không xóa được phiên bản'))
       }
     })
   }
@@ -398,58 +346,30 @@ export default function CmsDocumentsPage() {
     })
   }
 
-  function renderStatusTag(status: DocumentStatus, contentApproved = true) {
-    switch (status) {
-      case 'DONE':
-        if (!contentApproved) {
-          return (
-            <Tooltip title="Biên tập cần mở “Xem & xác nhận”, đối chiếu file gốc với các đoạn rồi xác nhận. Chatbot chưa dùng bản này.">
-              <Tag icon={<FileSearchOutlined />} color="gold">
-                Chờ xác nhận nội dung
-              </Tag>
-            </Tooltip>
-          )
-        }
-        return (
-          <Tag icon={<CheckCircleOutlined />} color="success">
-            Sẵn sàng (RAG)
-          </Tag>
-        )
-      case 'PROCESSING':
-        return (
-          <Tag icon={<LoadingOutlined spin />} color="processing">
-            Đang xử lý
-          </Tag>
-        )
-      case 'PENDING':
-        return (
-          <Tag icon={<ClockCircleOutlined />} color="warning">
-            Chờ xử lý
-          </Tag>
-        )
-      case 'ERROR':
-        return (
-          <Tag icon={<CloseCircleOutlined />} color="error">
-            Lỗi xử lý
-          </Tag>
-        )
-      default:
-        return <Tag>{status}</Tag>
+  // SCR-AD-04 §3.2 - nói trước điều sẽ xảy ra khi tải bản thay thế, khớp đúng nhánh xử lý ở BE.
+  function replacementNotice(target: CmsDocumentItem): string {
+    // Có bản đã xác nhận (dòng chính) khi dòng đang hiện đã xác nhận, hoặc đang có bản thay thế.
+    if (!target.contentApproved && !target.replacing) {
+      return 'Bản cũ chưa được dùng cho AI nên bị xoá ngay.'
     }
+    const notice = target.unpublished
+      ? 'Tài liệu đang bị gỡ. Bản hiện tại bị xoá vĩnh viễn khi bản mới được xác nhận.'
+      : 'Chatbot vẫn dùng bản hiện tại tới khi bản mới được xác nhận, sau đó bản hiện tại bị xoá vĩnh viễn.'
+    return target.replacing ? `${notice} Bản thay thế đang chờ sẽ bị bỏ.` : notice
   }
 
-
-
-  // SCR-AD-04 §3.1 - gộp trạng thái, phiên bản và bước xử lý thành 1 câu: tài liệu này đang thế nào với chatbot.
+  // SCR-AD-04 §3.1 + §3.2 - gộp trạng thái và bước xử lý thành 1 câu: tài liệu này đang thế nào với chatbot.
+  // Không còn số phiên bản: mỗi tài liệu chỉ có bản đang dùng, cùng lắm thêm 1 bản thay thế đang chờ.
   function renderProcessingState(record: CmsDocumentItem) {
-    const servingNote = record.currentVersionNo !== null && !record.unpublished
-      ? `Chatbot vẫn đang dùng v${record.currentVersionNo}`
+    const prefix = record.replacing ? 'Bản thay thế: ' : ''
+    const servingNote = record.inUse
+      ? 'Chatbot vẫn dùng bản hiện tại cho tới khi bản thay thế được xác nhận'
       : 'Chatbot chưa dùng tài liệu này'
 
     if (record.status === 'ERROR') {
       return (
         <div className="space-y-1">
-          <Tag icon={<CloseCircleOutlined />} color="error">Lỗi xử lý v{record.versionNo}</Tag>
+          <Tag icon={<CloseCircleOutlined />} color="error">{prefix}Lỗi xử lý</Tag>
           {record.errorMessage && (
             <button
               type="button"
@@ -467,7 +387,7 @@ export default function CmsDocumentsPage() {
       return (
         <div className="space-y-1">
           <Tag icon={record.status === 'PENDING' ? <ClockCircleOutlined /> : <LoadingOutlined spin />} color="processing">
-            {STAGE_LABEL[record.processingStage]} v{record.versionNo}
+            {prefix}{STAGE_LABEL[record.processingStage]}
           </Tag>
           <Text type="secondary" className="block text-xs">{servingNote}</Text>
         </div>
@@ -476,7 +396,7 @@ export default function CmsDocumentsPage() {
     if (!record.contentApproved) {
       return (
         <div className="space-y-1">
-          <Tag icon={<FileSearchOutlined />} color="gold">Chờ xác nhận nội dung v{record.versionNo}</Tag>
+          <Tag icon={<FileSearchOutlined />} color="gold">{prefix}Chờ xác nhận nội dung</Tag>
           <Text type="secondary" className="block text-xs">{servingNote}</Text>
         </div>
       )
@@ -486,7 +406,7 @@ export default function CmsDocumentsPage() {
     }
     return (
       <Tag icon={<CheckCircleOutlined />} color="success">
-        Đang dùng cho AI · v{record.currentVersionNo ?? record.versionNo}
+        Đang dùng cho AI
       </Tag>
     )
   }
@@ -495,7 +415,7 @@ export default function CmsDocumentsPage() {
     Modal.confirm({
       title: record.unpublished ? 'Đăng lại tài liệu cho chatbot?' : 'Gỡ tài liệu khỏi chatbot?',
       content: record.unpublished
-        ? 'Chatbot sẽ dùng lại phiên bản đã xác nhận nội dung mới nhất.'
+        ? 'Chatbot sẽ dùng lại bản đã xác nhận nội dung.'
         : 'Chatbot sẽ không trích dẫn tài liệu này nữa. Dữ liệu vẫn được giữ, có thể đăng lại.',
       okText: 'Đồng ý',
       cancelText: 'Hủy',
@@ -503,15 +423,10 @@ export default function CmsDocumentsPage() {
     })
   }
 
+  // SCR-AD-04 §3.3 - xoá là vĩnh viễn nên phải gõ lại đúng tên tài liệu, không chỉ bấm Có/Không.
   function confirmDelete(record: CmsDocumentItem) {
-    Modal.confirm({
-      title: `Xóa tài liệu và tất cả ${record.versionCount} phiên bản?`,
-      content: 'Chatbot sẽ không còn trích dẫn tài liệu này cho bệnh nhân. Không thể hoàn tác.',
-      okText: 'Xóa tất cả',
-      okButtonProps: { danger: true },
-      cancelText: 'Hủy',
-      onOk: () => handleDelete(record),
-    })
+    setDeleteConfirmText('')
+    setDeleteTarget(record)
   }
 
   // SCR-AD-04 §2 - mọi thao tác gom vào 1 menu [···] có chữ, thay cho hàng biểu tượng không tên.
@@ -527,14 +442,13 @@ export default function CmsDocumentsPage() {
             }]
           : []),
         ...(record.status === 'ERROR' ? [{ key: 'retry', icon: <RedoOutlined />, label: 'Thử xử lý lại' }] : []),
-        { key: 'version', icon: <CloudUploadOutlined />, label: 'Tải phiên bản mới', disabled: processing },
-        { key: 'history', icon: <HistoryOutlined />, label: 'Lịch sử phiên bản' },
+        { key: 'version', icon: <CloudUploadOutlined />, label: 'Tải bản thay thế', disabled: processing },
         { key: 'rename', icon: <EditOutlined />, label: 'Sửa tên / nguồn' },
         {
           key: 'publish',
           icon: record.unpublished ? <EyeOutlined /> : <EyeInvisibleOutlined />,
           label: record.unpublished ? 'Đăng lại cho chatbot' : 'Gỡ khỏi chatbot',
-          disabled: !record.unpublished && record.currentVersionNo === null,
+          disabled: !record.unpublished && !record.inUse,
         },
         { type: 'divider' as const },
         { key: 'delete', icon: <DeleteOutlined />, label: 'Xóa tài liệu', danger: true },
@@ -543,7 +457,6 @@ export default function CmsDocumentsPage() {
         if (key === 'review') openReview(record.id)
         if (key === 'retry') void handleRetry(record)
         if (key === 'version') openUploadVersion(record)
-        if (key === 'history') void openHistory(record)
         if (key === 'rename') openRename(record)
         if (key === 'publish') confirmTogglePublish(record)
         if (key === 'delete') confirmDelete(record)
@@ -782,110 +695,52 @@ export default function CmsDocumentsPage() {
             setReviewQuery(null)
             setReviewChunkIndex(null)
           }}
-          onApproved={() => {
-            loadData()
-            if (historyItem) void openHistory(historyItem)
-          }}
+          onApproved={() => loadData()}
         />
 
-        {/* UC0049 - Ngăn kéo lịch sử phiên bản */}
-        <Drawer
-          title={historyItem ? `Lịch sử phiên bản — ${historyItem.title}` : ''}
-          open={historyItem !== null}
-          onClose={() => setHistoryItem(null)}
-          width={560}
+        {/* SCR-AD-04 §3.3 - xoá vĩnh viễn: bắt gõ lại tên tài liệu */}
+        <Modal
+          title="Xoá vĩnh viễn tài liệu?"
+          open={deleteTarget !== null}
+          onCancel={() => setDeleteTarget(null)}
+          okText="Xoá vĩnh viễn"
+          cancelText="Hủy"
+          okButtonProps={{
+            danger: true,
+            disabled: deleteTarget === null || deleteConfirmText.trim() !== deleteTarget.title.trim(),
+            loading: deleteTarget !== null && busyKey === `delete-${deleteTarget.id}`,
+          }}
+          onOk={async () => {
+            if (!deleteTarget) return
+            await handleDelete(deleteTarget)
+            setDeleteTarget(null)
+          }}
+          destroyOnHidden
         >
-          <Table<CmsDocumentVersion>
-            rowKey="id"
-            size="small"
-            loading={versionsLoading}
-            dataSource={versions}
-            pagination={false}
-            columns={[
-              { title: 'Bản', dataIndex: 'versionNo', width: 60, render: (v: number) => `v${v}` },
-              {
-                title: 'Trạng thái',
-                dataIndex: 'status',
-                width: 150,
-                render: (s: DocumentStatus, v) => (
-                  <Space orientation="vertical" size={2}>
-                    {renderStatusTag(s, v.contentApproved)}
-                    {v.contentApproved && v.contentApprovedBy && (
-                      <Text type="secondary" className="text-xs">Xác nhận: {v.contentApprovedBy}</Text>
-                    )}
-                  </Space>
-                ),
-              },
-              {
-                title: 'Thời gian tải lên',
-                dataIndex: 'uploadedAt',
-                render: (val: string) => dayjs(val).format('DD/MM/YYYY HH:mm'),
-              },
-              {
-                title: '',
-                key: 'action',
-                width: 190,
-                render: (_, v) => {
-                  const canDelete = !v.currentVersion
-                    && v.versionNo !== 1
-                    && v.status !== 'PENDING'
-                    && v.status !== 'PROCESSING'
-                  return (
-                    <Space size={4}>
-                      {v.status === 'DONE' && !v.contentApproved ? (
-                        <Button size="small" type={canApproveContent ? 'primary' : 'default'} onClick={() => openReview(v.id)}>
-                          {canApproveContent ? 'Xem & xác nhận' : 'Xem nội dung'}
-                        </Button>
-                      ) : v.currentVersion ? (
-                        <Tag color="green">Đang dùng</Tag>
-                      ) : v.status === 'DONE' ? (
-                        <Popconfirm
-                          title={`Chuyển chatbot sang dùng phiên bản v${v.versionNo}?`}
-                          description="Từ giờ chatbot sẽ trích dẫn nội dung của phiên bản này thay cho bản đang dùng."
-                          okText="Dùng bản này"
-                          cancelText="Hủy"
-                          disabled={busyKey !== null}
-                          onConfirm={() => handleActivate(v)}
-                        >
-                          <Button
-                            size="small"
-                            loading={busyKey === `activate-${v.id}`}
-                            disabled={busyKey !== null}
-                          >
-                            Dùng bản này
-                          </Button>
-                        </Popconfirm>
-                      ) : null}
-                      {canDelete && (
-                        <Popconfirm
-                          title={`Xóa phiên bản v${v.versionNo}?`}
-                          okText="Xóa"
-                          cancelText="Hủy"
-                          okButtonProps={{ danger: true }}
-                          disabled={busyKey !== null}
-                          onConfirm={() => handleDeleteVersion(v)}
-                        >
-                          <Button
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            title="Xóa phiên bản này"
-                            loading={busyKey === `deleteVersion-${v.id}`}
-                            disabled={busyKey !== null}
-                          />
-                        </Popconfirm>
-                      )}
-                    </Space>
-                  )
-                },
-              },
-            ]}
-          />
-        </Drawer>
+          {deleteTarget && (
+            <div className="space-y-3">
+              <Alert
+                type="error"
+                showIcon
+                message="Không thể khôi phục"
+                description="Chatbot sẽ không còn trích dẫn tài liệu này cho bệnh nhân. Toàn bộ nội dung, các đoạn đã chia và bản thay thế đang chờ (nếu có) bị xoá vĩnh viễn."
+              />
+              <Text>
+                Gõ lại đúng tên tài liệu <Text strong copyable>{deleteTarget.title}</Text> để xác nhận:
+              </Text>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={deleteTarget.title}
+                autoFocus
+              />
+            </div>
+          )}
+        </Modal>
 
         {/* Modal Tải lên tài liệu */}
         <Modal
-          title={versionTarget ? `Tải phiên bản mới cho "${versionTarget.title}"` : 'Tải lên tài liệu phác đồ y khoa mới'}
+          title={versionTarget ? 'Tải bản thay thế' : 'Tải lên tài liệu'}
           open={uploadModalOpen}
           onCancel={() => {
             if (uploading) return
@@ -902,17 +757,20 @@ export default function CmsDocumentsPage() {
               loading={uploading}
               onClick={handleUpload}
             >
-              Bắt đầu tải lên & số hóa
+              Tải lên
             </Button>,
           ]}
-          width={580}
+          width={520}
           destroyOnHidden
         >
           <div className="space-y-4 py-2">
+            {versionTarget && (
+              <div className="space-y-2">
+                <Text strong className="block">{versionTarget.title}</Text>
+                <Alert type="info" showIcon message={replacementNotice(versionTarget)} />
+              </div>
+            )}
             <div>
-              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
-                Chọn tệp tài liệu:
-              </Text>
               <Dragger
                 accept=".pdf,.docx"
                 fileList={uploadFileList}
@@ -937,37 +795,28 @@ export default function CmsDocumentsPage() {
                 <p className="ant-upload-drag-icon">
                   <InboxOutlined className="text-teal-600 text-3xl" />
                 </p>
-                <p className="ant-upload-text text-sm font-medium">
-                  Kéo thả file vào đây hoặc bấm để chọn tệp từ máy tính
-                </p>
-                <p className="ant-upload-hint text-xs text-slate-400 dark:text-white">
-                  Chỉ nhận PDF hoặc DOCX, tối đa 20MB.
-                </p>
+                <p className="ant-upload-text text-sm">Kéo thả hoặc bấm để chọn file</p>
+                <p className="ant-upload-hint text-xs text-slate-400 dark:text-white">PDF, DOCX · tối đa 20MB</p>
               </Dragger>
             </div>
 
             {!versionTarget && (
               <div>
-                <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
-                  Tên tài liệu:
-                </Text>
+                <Text className="text-sm text-slate-600 dark:text-white block mb-1">Tên tài liệu</Text>
                 <Input
-                  placeholder="VD: Trào ngược dạ dày thực quản (GERD)"
+                  placeholder="Tự lấy theo tên file"
                   value={titleInput}
                   onChange={(e) => setTitleInput(e.target.value)}
                   maxLength={255}
-                  showCount
                 />
               </div>
             )}
 
             {!versionTarget && (
               <div>
-                <Text className="font-semibold text-slate-700 dark:text-white block mb-1">
-                  URL nguồn công khai (Tùy chọn):
-                </Text>
+                <Text className="text-sm text-slate-600 dark:text-white block mb-1">URL nguồn</Text>
                 <Input
-                  placeholder="VD: https://benhvien.vn/phac-do-dieu-tri-ibs.pdf"
+                  placeholder="Không bắt buộc"
                   value={sourceUrlInput}
                   onChange={(e) => setSourceUrlInput(e.target.value)}
                   prefix={<LinkOutlined className="text-slate-400 dark:text-white" />}
@@ -989,20 +838,19 @@ export default function CmsDocumentsPage() {
         >
           <div className="space-y-4 py-2">
             <div>
-              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">Tên tài liệu:</Text>
+              <Text className="text-sm text-slate-600 dark:text-white block mb-1">Tên tài liệu</Text>
               <Input
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
                 onPressEnter={handleRename}
                 maxLength={255}
-                showCount
                 autoFocus
               />
             </div>
             <div>
-              <Text className="font-semibold text-slate-700 dark:text-white block mb-1">URL nguồn công khai (Tùy chọn):</Text>
+              <Text className="text-sm text-slate-600 dark:text-white block mb-1">URL nguồn</Text>
               <Input
-                placeholder="VD: https://benhvien.vn/phac-do-dieu-tri-ibs.pdf"
+                placeholder="Không bắt buộc"
                 value={renameUrl}
                 onChange={(e) => setRenameUrl(e.target.value)}
                 onPressEnter={handleRename}

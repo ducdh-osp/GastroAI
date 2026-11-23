@@ -2,20 +2,18 @@ package vn.gastroai.be.infrastructure.persistence.postgres;
 
 import java.time.Instant;
 
-/** 1 dong tong hop theo nhom phien ban cua mot tai lieu (ket qua GROUP BY). */
+/** 1 dong tong hop theo tai lieu (dong chinh + ban thay the neu co) - ket qua GROUP BY. */
 public interface DocumentGroupRow {
-    /** Ma nhom = id cua dong goc. */
+
+    /** Ma tai lieu = id cua dong chinh. */
     Long getGroupId();
 
-    /** Tong so phien ban cua tai lieu. */
-    Long getVersionCount();
+    /** So dong cua tai lieu: 1, hoac 2 khi dang co ban thay the. */
+    Long getRowCount();
 
-    /** So hieu (v?) cua ban dang dung, null neu khong ban nao dang dung. */
-    Integer getCurrentVersionNo();
+    /** id dong chatbot dang dung, null neu chatbot chua/khong dung tai lieu nay. */
+    Long getInUseId();
 
-    /** id dong cua ban dang dung, null neu khong ban nao dang dung. */
-    Long getCurrentId();
-
-    /** Thoi diem admin go tai lieu (tren dong goc), null neu khong bi go. */
+    /** Thoi diem admin go tai lieu (tren dong chinh), null neu khong bi go. */
     Instant getUnpublishedAt();
 }

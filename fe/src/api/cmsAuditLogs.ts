@@ -3,6 +3,7 @@ import { extractErrorMessage } from '../lib/errors'
 
 export type AuditAction =
   | 'DOCUMENT_UPLOAD'
+  | 'DOCUMENT_REPLACE'
   | 'DOCUMENT_NEW_VERSION'
   | 'DOCUMENT_ACTIVATE_VERSION'
   | 'DOCUMENT_APPROVE_CONTENT'

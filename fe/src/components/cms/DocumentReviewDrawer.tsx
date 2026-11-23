@@ -160,8 +160,10 @@ export function DocumentReviewDrawer({
     if (!review) return
     setApproving(true)
     try {
-      await approveCmsDocumentContent(review.id, review.id)
-      message.success(`Đã xác nhận nội dung v${review.versionNo}, chatbot bắt đầu dùng tài liệu này`)
+      await approveCmsDocumentContent(review.id)
+      message.success(review.replacesExisting
+        ? 'Đã xác nhận bản thay thế. Chatbot dùng bản mới, bản cũ đã bị xoá vĩnh viễn'
+        : 'Đã xác nhận nội dung, chatbot bắt đầu dùng tài liệu này')
       onApproved()
       onClose()
     } catch (err) {
@@ -230,17 +232,27 @@ export function DocumentReviewDrawer({
       title={
         <div className="flex flex-wrap items-center gap-2">
           <FileSearchOutlined className="text-teal-600" />
-          <span>{review ? `${review.title} · v${review.versionNo}` : 'Xem nội dung tài liệu'}</span>
+          <span>{review ? review.title : 'Xem nội dung tài liệu'}</span>
           {review?.contentApproved && <Tag color="green">Đã xác nhận</Tag>}
-          {awaitingApproval && <Tag color="gold">Chờ xác nhận nội dung</Tag>}
+          {awaitingApproval && <Tag color="gold">{review?.replacesExisting ? 'Bản thay thế chờ xác nhận' : 'Chờ xác nhận nội dung'}</Tag>}
         </div>
       }
       extra={
         awaitingApproval && canApprove ? (
           <Popconfirm
-            title="Xác nhận dùng cho AI?"
-            description="Bạn đã đối chiếu nội dung với nguồn y khoa đã công bố (phác đồ, hướng dẫn điều trị chính thức)?"
-            okText="Xác nhận dùng cho AI"
+            title={review?.replacesExisting ? 'Xác nhận bản thay thế?' : 'Xác nhận dùng cho AI?'}
+            description={
+              review?.replacesExisting ? (
+                <div className="max-w-xs">
+                  Bạn đã đối chiếu nội dung với nguồn y khoa đã công bố? Bản đang dùng sẽ bị{' '}
+                  <strong>xoá vĩnh viễn</strong> và <strong>không thể khôi phục</strong>.
+                </div>
+              ) : (
+                'Bạn đã đối chiếu nội dung với nguồn y khoa đã công bố (phác đồ, hướng dẫn điều trị chính thức)?'
+              )
+            }
+            okText={review?.replacesExisting ? 'Xác nhận, xoá bản cũ' : 'Xác nhận dùng cho AI'}
+            okButtonProps={review?.replacesExisting ? { danger: true } : undefined}
             cancelText="Hủy"
             onConfirm={handleApprove}
           >
@@ -259,6 +271,15 @@ export function DocumentReviewDrawer({
         </div>
       )}
       {error && <Alert type="error" message={error} showIcon />}
+      {review && !loading && awaitingApproval && review.replacesExisting && (
+        <Alert
+          type="warning"
+          showIcon
+          className="mb-4"
+          message="Đây là bản thay thế"
+          description="Chatbot vẫn đang dùng bản cũ. Khi bạn xác nhận bản này, bản cũ sẽ bị xoá vĩnh viễn (cả nội dung đã chia đoạn) và không thể khôi phục."
+        />
+      )}
       {review && !loading && (
         <div className="flex h-full flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">

@@ -20,11 +20,12 @@ export interface CmsDocumentItem {
   chunkCount: number
   uploadedAt: string
   updatedAt: string
-  versionNo: number
-  currentVersionNo: number | null
-  versionCount: number
+  /** Chatbot đang dùng tài liệu này (có bản đã xác nhận và không bị gỡ). */
+  inUse: boolean
+  /** Dòng đang hiện là bản thay thế chờ xử lý / chờ xác nhận; bản cũ vẫn phục vụ chatbot. */
+  replacing: boolean
   unpublished: boolean
-  /** Bản mới nhất đã được Biên tập xác nhận nội dung chưa (SCR-AD-04 §3.1b). */
+  /** Dòng đang hiện đã được Biên tập xác nhận nội dung chưa (SCR-AD-04 §3.1b). */
   contentApproved: boolean
 }
 
@@ -67,18 +68,6 @@ export async function deleteCmsDocument(documentId: number): Promise<void> {
   await cmsApiClient.delete(`/documents/${documentId}`)
 }
 
-export interface CmsDocumentVersion {
-  id: number
-  versionNo: number
-  title: string
-  status: DocumentStatus
-  currentVersion: boolean
-  uploadedAt: string
-  errorMessage: string | null
-  contentApproved: boolean
-  contentApprovedBy: string | null
-  contentApprovedAt: string | null
-}
 export interface CmsDocumentStats {
   total: number
   ready: number
@@ -108,34 +97,32 @@ export interface CmsDocumentSearchResult {
   totalDocuments: number
 }
 
-export async function uploadCmsDocumentVersion(documentId: number, file: File): Promise<void> {
+/**
+ * UC0049 / SCR-AD-04 §3.2 - tải bản thay thế. Bản đang dùng vẫn phục vụ AI cho tới khi Biên tập
+ * xác nhận bản mới; lúc đó bản cũ bị xoá vĩnh viễn (không giữ lịch sử phiên bản).
+ */
+export async function uploadCmsDocumentReplacement(documentId: number, file: File): Promise<void> {
   const formData = new FormData()
   formData.append('file', file)
-  await cmsApiClient.post(`/documents/${documentId}/versions`, formData, {
+  await cmsApiClient.post(`/documents/${documentId}/replacement`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
 
-export async function listCmsDocumentVersions(documentId: number): Promise<CmsDocumentVersion[]> {
-  const { data } = await cmsApiClient.get<CmsDocumentVersion[]>(`/documents/${documentId}/versions`)
-  return data
-}
-
-export async function activateCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
-  await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/activate`)
-}
-/** SCR-AD-04 §3.1b - nội dung 1 phiên bản để đối chiếu trước khi xác nhận. */
+/** SCR-AD-04 §3.1b - nội dung 1 bản để đối chiếu trước khi xác nhận. */
 export interface CmsDocumentReview {
   id: number
   title: string
-  versionNo: number
   status: DocumentStatus
-  currentVersion: boolean
+  /** Chatbot đang dùng đúng bản này. */
+  inUse: boolean
   contentApproved: boolean
   contentApprovedBy: string | null
   contentApprovedAt: string | null
   /** PDF xem bằng iframe; DOCX hoặc không có file gốc thì xem fullText. */
   originalFileType: 'PDF' | 'DOCX' | null
+  /** true = bản thay thế: xác nhận sẽ xoá vĩnh viễn bản đang dùng (SCR-AD-04 §3.2). */
+  replacesExisting: boolean
   fullText: string | null
   chunks: { chunkIndex: number; content: string }[]
 }
@@ -152,11 +139,8 @@ export async function getCmsDocumentFile(documentId: number): Promise<Blob> {
 }
 
 /** SCR-AD-04 §3.1b - chỉ Biên tập gọi được (BE trả 403 với Admin). */
-export async function approveCmsDocumentContent(documentId: number, versionId: number): Promise<void> {
-  await cmsApiClient.post(`/documents/${documentId}/versions/${versionId}/approve`)
-}
-export async function deleteCmsDocumentVersion(documentId: number, versionId: number): Promise<void> {
-  await cmsApiClient.delete(`/documents/${documentId}/versions/${versionId}`)
+export async function approveCmsDocumentContent(documentId: number): Promise<void> {
+  await cmsApiClient.post(`/documents/${documentId}/approve`)
 }
 export async function updateCmsDocumentInfo(
   documentId: number,

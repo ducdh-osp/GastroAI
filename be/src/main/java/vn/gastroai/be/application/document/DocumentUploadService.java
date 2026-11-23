@@ -15,8 +15,6 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -27,37 +25,66 @@ public class DocumentUploadService {
 
     private final FileStorageService fileStorageService;
     private final DocumentRepository documentRepository;
+    private final DocumentGroupPruner groupPruner;
 
     public DocumentUploadService(
             FileStorageService fileStorageService,
-            DocumentRepository documentRepository) {
+            DocumentRepository documentRepository,
+            DocumentGroupPruner groupPruner) {
         this.fileStorageService = fileStorageService;
         this.documentRepository = documentRepository;
+        this.groupPruner = groupPruner;
     }
 
     public Document upload(MultipartFile file, String sourceUrl, String title) {
         String resolvedTitle = DocumentTitle.normalize(
                 title == null || title.isBlank() ? file.getOriginalFilename() : title);
-        return storeNewDocument(file, sourceUrl, resolvedTitle, null, 1, false);
+        return storeNewDocument(file, sourceUrl, resolvedTitle, null);
     }
 
+    /**
+     * UC0049 / SCR-AD-04 §3.2 - tai ban thay the cho 1 tai lieu da co. Khong giu lich su:
+     * <ul>
+     *   <li>Tai lieu dang dung cho AI: ban dang dung van phuc vu binh thuong cho toi khi Bien tap
+     *       xac nhan ban thay the (luc do moi xoa vinh vien ban cu - xem
+     *       {@link DocumentStatusService#approveContent}). Ban thay the cu chua duoc xac nhan (neu co)
+     *       bi bo, chi giu ban moi nhat.</li>
+     *   <li>Tai lieu chua tung duoc dung cho AI (loi xu ly / dang cho xac nhan): thay luon, xoa ban cu.</li>
+     * </ul>
+     */
     @Transactional("postgresTransactionManager")
-    public Document uploadNewVersion(Long documentId, MultipartFile file) {
+    public Document uploadReplacement(Long documentId, MultipartFile file) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
-        Long groupId = document.groupId();
-        Document latest = documentRepository.findGroup(groupId).get(0);
+        List<Document> group = documentRepository.findGroup(document.groupId());
 
-        if (latest.getStatus() == DocumentStatus.PENDING || latest.getStatus() == DocumentStatus.PROCESSING) {
-            throw new IllegalStateException("Phiên bản trước đang được xử lý, vui lòng chờ xong rồi tải bản mới");
+        boolean processing = group.stream().anyMatch(v ->
+                v.getStatus() == DocumentStatus.PENDING || v.getStatus() == DocumentStatus.PROCESSING);
+        if (processing) {
+            throw new IllegalStateException("Bản trước đang được xử lý, vui lòng chờ xong rồi tải bản thay thế");
         }
-        // Phien ban moi giu ten va URL hien tai cua tai lieu - muon doi thi dung "Sua thong tin".
-        return storeNewDocument(file, latest.getSourceUrl(), latest.getTitle(), groupId,
-                latest.getVersionNo() + 1, false);
+
+        Document latest = group.get(0);
+        Document live = group.stream()
+                .filter(v -> v.getStatus() == DocumentStatus.DONE && v.getContentApprovedAt() != null)
+                .findFirst()
+                .orElse(null);
+
+        if (live != null) {
+            groupPruner.keepOnly(live, group);
+            // Ban thay the giu ten va URL hien tai cua tai lieu - muon doi thi dung "Sua thong tin".
+            return storeNewDocument(file, live.getSourceUrl(), live.getTitle(), live.getId());
+        }
+        groupPruner.deleteAll(group);
+        return storeNewDocument(file, latest.getSourceUrl(), latest.getTitle(), null);
     }
 
-    private Document storeNewDocument(MultipartFile file, String sourceUrl, String title, Long rootId,
-            int versionNo, boolean currentVersion) {
+    /**
+     * Luu file + tao dong PENDING. {@code replacesId} = null: tai lieu moi;
+     * co gia tri: ban thay the cho dong chinh co id nay. Dong moi chua duoc chatbot dung
+     * cho toi khi Bien tap xac nhan noi dung.
+     */
+    private Document storeNewDocument(MultipartFile file, String sourceUrl, String title, Long replacesId) {
 
         // 0. Validate URL nguồn TRƯỚC khi lưu file, để URL sai không để lại file mồ côi
         String normalizedSourceUrl = normalizeSourceUrl(sourceUrl);
@@ -73,7 +100,7 @@ public class DocumentUploadService {
             List<Document> duplicates = documentRepository.findByContentHashAndStatusNot(contentHash,
                     DocumentStatus.ERROR);
 
-            if (rootId == null) {
+            if (replacesId == null) {
                 // Tai lieu moi: trung voi bat ky tai lieu nao (chua ERROR) deu bi chan.
                 if (!duplicates.isEmpty()) {
                     Document existing = duplicates.get(0);
@@ -82,14 +109,13 @@ public class DocumentUploadService {
                                     + "\" (id " + existing.groupId() + ")");
                 }
             } else {
-                // Phien ban moi: chi chan khi trung voi mot phien ban trong CHINH nhom nay.
+                // Ban thay the: chi chan khi trung voi ban dang dung cua CHINH tai lieu nay.
                 duplicates.stream()
-                        .filter(d -> d.groupId().equals(rootId))
+                        .filter(d -> d.groupId().equals(replacesId))
                         .findFirst()
                         .ifPresent(sameGroup -> {
                             throw new IllegalStateException(
-                                    "Nội dung file này trùng với phiên bản v" + sameGroup.getVersionNo()
-                                            + " của chính tài liệu này");
+                                    "Nội dung file này trùng với bản đang dùng của chính tài liệu này");
                         });
             }
 
@@ -101,20 +127,18 @@ public class DocumentUploadService {
             document.setSourceUrl(normalizedSourceUrl);
             document.setStatus(DocumentStatus.PENDING);
             document.setContentHash(contentHash);
-            document.setRootId(rootId);
-            document.setVersionNo(versionNo);
-            document.setCurrentVersion(currentVersion);
+            document.setReplacesId(replacesId);
             // 3. Lưu document vào database với trạng thái PENDING - không tự gọi
             // worker xử lý ở đây nữa. DocumentProcessingScheduler sẽ định kỳ quét và
             // giành lấy document này để xử lý (xem file DocumentProcessingScheduler).
             try {
-                // saveAndFlush: ghi xuong DB ngay de bat loi trung (nhom, versionNo) tai day,
-                // khong de no no o cuoi giao dich voi thong bao kho hieu.
+                // saveAndFlush: ghi xuong DB ngay de bat loi "da co ban thay the" (uk_documents_one_replacement)
+                // tai day, khong de no no o cuoi giao dich voi thong bao kho hieu.
                 document = documentRepository.saveAndFlush(document);
             } catch (DataIntegrityViolationException e) {
-                if (rootId != null) {
+                if (replacesId != null) {
                     throw new IllegalStateException(
-                            "Vừa có người khác tải phiên bản mới cho tài liệu này, "
+                            "Vừa có người khác tải bản thay thế cho tài liệu này, "
                                     + "vui lòng tải lại trang rồi thử lại",
                             e);
                 }
@@ -191,85 +215,19 @@ public class DocumentUploadService {
         return url;
     }
 
+    /** UC0050 / SCR-AD-04 §3.3 - xoá vĩnh viễn cả tài liệu (dòng chính + bản thay thế nếu có). */
     @Transactional("postgresTransactionManager")
     public void delete(Long documentId) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Không tìm thấy tài liệu: " + documentId));
-        Long groupId = document.groupId();
-        List<Document> versions = documentRepository.findGroup(groupId);
+        List<Document> group = documentRepository.findGroup(document.groupId());
 
-        boolean anyProcessing = versions.stream()
+        boolean processing = group.stream()
                 .anyMatch(v -> v.getStatus() == DocumentStatus.PENDING || v.getStatus() == DocumentStatus.PROCESSING);
-        if (anyProcessing) {
-            throw new IllegalStateException(
-                    "Tài liệu có phiên bản đang được xử lý, vui lòng thử lại sau");
+        if (processing) {
+            throw new IllegalStateException("Tài liệu đang được xử lý, vui lòng thử lại sau");
         }
-
-        // Gom duong dan file TRUOC khi xoa DB - sau deleteGroup cac dong khong con de
-        // doc.
-        List<Path> files = versions.stream()
-                .map(Document::getSource)
-                .filter(source -> source != null)
-                .map(Path::of)
-                .toList();
-
-        documentRepository.deleteGroup(groupId);
-        files.forEach(this::deleteFileAfterCommit);
-    }
-
-    @Transactional("postgresTransactionManager")
-    public void deleteVersion(Long documentId, Long versionId) {
-        Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Không tìm thấy tài liệu: " + documentId));
-        Long groupId = document.groupId();
-        Document target = documentRepository.findById(versionId)
-                .filter(v -> v.groupId().equals(groupId))
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Phiên bản không thuộc tài liệu này"));
-
-        // Nhom chi con 1 ban: khong con gi de giu lai, xoa ca tai lieu.
-        if (documentRepository.findGroup(groupId).size() == 1) {
-            delete(documentId);
-            return;
-        }
-
-        if (target.getStatus() == DocumentStatus.PENDING
-                || target.getStatus() == DocumentStatus.PROCESSING) {
-            throw new IllegalStateException(
-                    "Phiên bản đang được xử lý, vui lòng thử lại sau");
-        }
-        if (target.isCurrentVersion()) {
-            throw new IllegalStateException(
-                    "Không xóa được phiên bản đang dùng. Hãy chọn dùng phiên bản khác trước");
-        }
-        if (target.getRootId() == null) {
-            throw new IllegalStateException(
-                    "Đây là phiên bản gốc, không xóa riêng được khi tài liệu còn phiên bản khác. "
-                            + "Hãy xóa cả tài liệu");
-        }
-
-        documentRepository.delete(target);
-        if (target.getSource() != null) {
-            deleteFileAfterCommit(Path.of(target.getSource()));
-        }
-    }
-
-    /**
-     * Chi xoa file tren dia SAU KHI DB da commit xong viec xoa - commit loi thi giu
-     * file.
-     */
-    private void deleteFileAfterCommit(Path file) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            fileStorageService.delete(file);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                fileStorageService.delete(file);
-            }
-        });
+        groupPruner.deleteAll(group);
     }
 }
