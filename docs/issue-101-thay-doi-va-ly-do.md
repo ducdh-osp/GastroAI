@@ -101,6 +101,10 @@ Lệnh chạy tại thư mục `be`:
 
 Kiểm thử trình duyệt dùng bệnh nhân giả lập, không tác động tài khoản hoặc dữ liệu bệnh nhân thật. Chưa chạy tích hợp toàn hệ thống với PostgreSQL/MySQL thật, SMTP hoặc Gemini; chưa thực hiện lại toàn bộ giao diện của các phân hệ chỉ sửa tài liệu. Kết luận cho các phần đó dựa trên source và các test tương ứng đã chạy, không được hiểu là mọi luồng thực tế đều đã được kiểm thử đầu-cuối.
 
+### Kiểm tra lại trước khi merge `dev` ngày 25/11/2026
+
+Nhánh công việc đã hợp nhất `origin/dev` tại `6c8a7f9`, không có xung đột. Chạy lại cùng 16 lớp test backend đạt **162 test, 0 failure, 0 error, 0 skipped**; lint và build frontend đều thành công. Tổng giảm một test vì commit mới từ `dev` bỏ ca kiểm tra riêng cho vai trò `DOCTOR` cũ; các ca bổ sung kiểm tra lý do khóa vẫn được giữ. Kết quả 163 test và 6 nhóm UI phía trên là lần kiểm tra ngày 24/11 trên bản trước khi cập nhật `dev`.
+
 ## 5. Giới hạn cần biết
 
 `AuditLogService` hiện bắt lỗi ghi log để thao tác chính đã thành công không bị ảnh hưởng. Bệnh nhân ở PostgreSQL, audit ở MySQL; bản sửa truyền đúng lý do vào luồng audit nhưng không bổ sung giao dịch nguyên tử hoặc hàng đợi ghi bền vững giữa hai database. Nếu MySQL lỗi, việc khóa vẫn có thể thành công mà thiếu audit. Đây là giới hạn hạ tầng sẵn có và đã được ghi vào AD-02.
