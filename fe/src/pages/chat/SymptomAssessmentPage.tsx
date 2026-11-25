@@ -323,21 +323,23 @@ export default function SymptomAssessmentPage() {
                 title={<span className="flex flex-wrap items-center justify-center gap-2">Mức đánh giá: <Tag color={severityColors[result.severityLevel]}>{severityLabels[result.severityLevel]}</Tag></span>}
                 subTitle="Đây là gợi ý sơ bộ dựa trên câu trả lời bạn cung cấp, không thay thế chẩn đoán của bác sĩ."
               />
-              <Alert type={careAdvice.type} showIcon message={careAdvice.title} description={careAdvice.description} />
-              {result.emergency && (
-                <Alert
-                  className="mt-3"
-                  type="error"
-                  showIcon
-                  message={
+              <Alert
+                type={result.emergency ? 'error' : careAdvice.type}
+                showIcon
+                message={careAdvice.title}
+                description={
+                  result.emergency ? (
                     <span>
                       Nếu dấu hiệu đang xảy ra, hãy gọi{' '}
                       <a href="tel:115" className="font-bold underline">115</a>{' '}
-                      hoặc đến cơ sở y tế gần nhất ngay.
+                      hoặc đến cơ sở y tế gần nhất ngay; đừng chờ chatbot đánh giá thêm.
+                      {result.careRecommendation !== 'EMERGENCY_CARE' && ` ${careAdvice.description}`}
                     </span>
-                  }
-                />
-              )}
+                  ) : (
+                    careAdvice.description
+                  )
+                }
+              />
             </Card>
 
             <Card title="Tóm tắt câu trả lời" className="rounded-2xl border-black/5 shadow-sm">

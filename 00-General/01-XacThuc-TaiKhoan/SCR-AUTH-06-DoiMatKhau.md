@@ -25,6 +25,9 @@
 │   ⓘ tối thiểu 8 ký tự, có hoa, số và  │
 │     ký tự đặc biệt                    │
 │                                        │
+│   Xác nhận mật khẩu mới           [👁]│
+│   [___________________________]       │
+│                                        │
 │        [   Đổi mật khẩu   ]           │
 └─────────────────────────────────────┘
 ```
@@ -37,7 +40,7 @@ Nằm trong dropdown tài khoản trên header (xem `02-NguoiDung-BenhNhan/SCR-P
 | :--- | :--- | :--- |
 | Nhập sai mật khẩu hiện tại | Báo lỗi ngay tại ô đó, không xoá ô mật khẩu mới đã gõ | Không bắt người dùng gõ lại từ đầu vì 1 lỗi ở ô khác |
 | Mật khẩu mới trùng mật khẩu cũ đã từng dùng | Từ chối, lý do giống hệt `SCR-AUTH-05` | Cùng 1 nguyên tắc nghiệp vụ, áp dụng nhất quán ở cả 2 nơi đổi mật khẩu |
-| Thành công | Xác nhận ngắn gọn ngay trên trang, **không đăng xuất người dùng** | Đổi mật khẩu xong mà bị đá ra ngoài phải đăng nhập lại là một trải nghiệm khó chịu không cần thiết — phiên hiện tại vẫn hợp lệ |
+| Thành công | Thông báo đổi mật khẩu thành công, **vô hiệu hoá ngay phiên đăng nhập hiện tại** và chuyển về màn Đăng nhập | Khi người dùng chủ động đổi mật khẩu (thường do nghi ngờ lộ thông tin hoặc vừa dùng chung thiết bị), nâng `tokenVersion` và bắt đăng nhập lại bằng mật khẩu mới giúp thu hồi tức thì mọi phiên cũ còn mở |
 
 ## 4. Tham chiếu
 

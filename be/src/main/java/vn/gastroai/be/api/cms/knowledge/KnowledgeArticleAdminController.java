@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.knowledge.KnowledgeArticleAdminService;
 import vn.gastroai.be.domain.admin.Admin;
@@ -70,11 +71,53 @@ public class KnowledgeArticleAdminController {
     }
 
     @PutMapping("/{id}")
-    public CmsArticleDetailResponse update(@PathVariable Long id, @Valid @RequestBody CmsArticleRequest request) {
+    public CmsArticleDetailResponse update(
+            @PathVariable Long id,
+            @Valid @RequestBody CmsArticleRequest request,
+            Authentication authentication) {
         CmsArticleDetailResponse before = adminService.getById(id);
-        CmsArticleDetailResponse after = adminService.update(id, request);
+        boolean hasReviewerInput = request.medicalReviewer() != null && !request.medicalReviewer().isBlank();
+        if (!canApproveContent(authentication)
+                && (hasReviewerInput
+                || (!before.published() && Boolean.TRUE.equals(request.published()))
+                || request.status() == ArticleStatus.PUBLISHED)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Tài khoản biên soạn không có quyền duyệt hoặc xuất bản bài viết");
+        }
+
+        CmsArticleRequest effective = request;
+        if (hasReviewerInput) {
+            String boundReviewer = resolveAuthenticatedReviewer(authentication, request.medicalReviewer());
+            effective = new CmsArticleRequest(
+                    request.title(),
+                    request.slug(),
+                    request.summary(),
+                    request.category(),
+                    request.content(),
+                    request.sourceName(),
+                    request.sourceUrl(),
+                    request.sourceCheckedAt(),
+                    request.published(),
+                    boundReviewer,
+                    request.sortOrder(),
+                    request.version(),
+                    request.status()
+            );
+        }
+
+        CmsArticleDetailResponse after = adminService.update(id, effective);
         auditLogService.record(AuditAction.CONTENT_UPDATE, TARGET, id, describeUpdate(before, after));
         return after;
+    }
+
+    private boolean canApproveContent(Authentication authentication) {
+        if (authentication == null) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())
+                        || "ROLE_CONTENT_EDITOR".equals(a.getAuthority()));
     }
 
     @PatchMapping("/{id}/submit-review")

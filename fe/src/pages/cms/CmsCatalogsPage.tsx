@@ -205,7 +205,7 @@ export default function CmsCatalogsPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Filters
-  const [selectedTypeTab, setSelectedTypeTab] = useState<string>('CONDITION_SYMPTOM')
+  const [selectedTypeTab, setSelectedTypeTab] = useState<string>('ALL')
   const [searchText, setSearchText] = useState('')
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
 
@@ -245,7 +245,7 @@ export default function CmsCatalogsPage() {
   const defineWatchedScope = Form.useWatch('scope', defineCodeForm)
 
   const activeModalType: CatalogType = (watchedType ||
-    (selectedTypeTab === 'MEDICATION' ? 'MEDICATION' : 'CONDITION')) as CatalogType
+    (selectedTypeTab === 'ALL' ? 'SYMPTOM' : selectedTypeTab)) as CatalogType
 
   const selectedCodeMeta = useMemo(() => {
     if (!watchedCode) return null
@@ -439,11 +439,8 @@ export default function CmsCatalogsPage() {
   // Filtered items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      // Type tab filter (SCR-AD-09: gộp Bệnh lý / Triệu chứng và Thuốc thường dùng)
-      if (selectedTypeTab === 'CONDITION_SYMPTOM' && item.type !== 'CONDITION' && item.type !== 'SYMPTOM') {
-        return false
-      }
-      if (selectedTypeTab === 'MEDICATION' && item.type !== 'MEDICATION') {
+      // Type tab filter (SCR-AD-09: 3 nhóm danh mục chuẩn SYMPTOM, CONDITION, MEDICATION)
+      if (selectedTypeTab !== 'ALL' && item.type !== selectedTypeTab) {
         return false
       }
       // Active filter
@@ -471,7 +468,7 @@ export default function CmsCatalogsPage() {
     setModalError(null)
     setCodeSearchText('')
     setTriageSearchText('')
-    const currentTabType: CatalogType = selectedTypeTab === 'MEDICATION' ? 'MEDICATION' : 'CONDITION'
+    const currentTabType: CatalogType = selectedTypeTab !== 'ALL' ? (selectedTypeTab as CatalogType) : 'SYMPTOM'
     // Default next sortOrder based on selected type
     const maxSort = items
       .filter((i) => i.type === currentTabType)
@@ -981,11 +978,26 @@ export default function CmsCatalogsPage() {
               className="!mb-0"
               items={[
                 {
-                  key: 'CONDITION_SYMPTOM',
+                  key: 'ALL',
                   label: (
                     <span className="flex items-center gap-1.5 font-medium">
-                      <ThunderboltOutlined /> Bệnh lý / Triệu chứng{' '}
-                      <Badge count={stats.conditions + stats.symptoms} overflowCount={999} color="#fa8c16" />
+                      Tất cả <Badge count={stats.total} overflowCount={999} color="#64748b" />
+                    </span>
+                  ),
+                },
+                {
+                  key: 'SYMPTOM',
+                  label: (
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <ExperimentOutlined /> Triệu chứng <Badge count={stats.symptoms} overflowCount={999} color="#13c2c2" />
+                    </span>
+                  ),
+                },
+                {
+                  key: 'CONDITION',
+                  label: (
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <ThunderboltOutlined /> Bệnh lý <Badge count={stats.conditions} overflowCount={999} color="#fa8c16" />
                     </span>
                   ),
                 },

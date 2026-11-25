@@ -1,4 +1,3 @@
-import { KeyOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
 import { changeCmsPassword } from '../../api/cmsAuth'
@@ -60,18 +59,12 @@ export default function CmsChangePasswordPage() {
   return (
     <CmsAppShell>
       <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center py-4">
-        <div className="mb-6 text-center">
-          <Text type="secondary">Bảo mật tài khoản</Text>
-          <Title level={2} className="mb-1! mt-1!">
-            <KeyOutlined className="mr-2" />
-            Đổi mật khẩu
-          </Title>
-        </div>
-
         <Card className="rounded-2xl border-black/5 shadow-sm">
-          {error && <Alert type="error" title={error} showIcon className="mb-4" />}
-          {success && <Alert type="success" title={success} showIcon className="mb-4" />}
-          <Form<ChangePasswordFormValues> form={form} layout="vertical" onFinish={onFinish} disabled={loading}>
+          <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
+          <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
+          {error && <Alert type="error" title={error} showIcon className="my-4" />}
+          {success && <Alert type="success" title={success} showIcon className="my-4" />}
+          <Form<ChangePasswordFormValues> form={form} layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4">
             <Form.Item
               label="Mật khẩu hiện tại"
               name="currentPassword"

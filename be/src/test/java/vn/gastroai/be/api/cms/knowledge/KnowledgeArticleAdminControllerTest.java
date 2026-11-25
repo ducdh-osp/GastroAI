@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import vn.gastroai.be.application.audit.AuditLogService;
 import vn.gastroai.be.application.knowledge.KnowledgeArticleAdminService;
 import vn.gastroai.be.config.SecurityConfig;
+import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
@@ -23,10 +24,13 @@ import vn.gastroai.be.infrastructure.security.JwtService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -223,6 +227,52 @@ class KnowledgeArticleAdminControllerTest {
         verify(service).update(eq(1L), any(CmsArticleRequest.class));
         verify(auditLogService).record(AuditAction.CONTENT_UPDATE, "ARTICLE", 1L,
                 "Tiêu đề: «Tiêu đề cũ» → «Tiêu đề sửa»");
+    }
+
+    @Test
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
+    void updateBindsMedicalReviewerToAuthenticatedAdminAccount() throws Exception {
+        Admin editor = mock(Admin.class);
+        when(editor.getFullName()).thenReturn("BS. Lê Thực Tế");
+        when(editor.getEmail()).thenReturn("le@gastro.vn");
+        when(adminRepository.findById(8L)).thenReturn(Optional.of(editor));
+
+        CmsArticleRequest spoofedReq = new CmsArticleRequest(
+                "Tiêu đề sửa", null, "Tóm tắt sửa", "Dạ dày",
+                "Nội dung sửa", "Nguồn", "https://example.com/updated", null,
+                true, "BS. Giả Mạo", 5, 0L
+        );
+        when(service.getById(1L)).thenReturn(sampleDetail(1L, "Tiêu đề cũ", true));
+        when(service.update(eq(1L), any(CmsArticleRequest.class))).thenReturn(sampleDetail(1L, "Tiêu đề sửa", true));
+
+        mockMvc.perform(put("/api/v1/cms/articles/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(spoofedReq)))
+                .andExpect(status().isOk());
+
+        verify(service).update(eq(1L), argThat(req ->
+                "BS. Lê Thực Tế (le@gastro.vn)".equals(req.medicalReviewer())));
+    }
+
+    @Test
+    @WithMockUser(username = "9", roles = "CONTENT_AUTHOR")
+    void updateWithReviewerForbiddenForContentAuthor() throws Exception {
+        CmsArticleRequest req = new CmsArticleRequest(
+                "Tiêu đề sửa", null, "Tóm tắt sửa", "Dạ dày",
+                "Nội dung sửa", "Nguồn", "https://example.com/updated", null,
+                true, "BS. Tự Gõ", 5, 0L
+        );
+        when(service.getById(1L)).thenReturn(sampleDetail(1L, "Tiêu đề cũ", false));
+
+        mockMvc.perform(put("/api/v1/cms/articles/1")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isForbidden());
+
+        verify(service, never()).update(any(), any());
+        verify(auditLogService, never()).record(any(), any(), any(), any());
     }
 
     @Test

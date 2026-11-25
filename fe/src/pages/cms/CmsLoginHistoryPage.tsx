@@ -61,7 +61,7 @@ const columns: ColumnsType<LoginHistoryItem> = [
     ),
   },
   {
-    title: 'Vị trí/IP',
+    title: 'Địa chỉ IP',
     key: 'ip',
     width: 160,
     render: (_, record) => <Text code>{record.ipAddress ?? '—'}</Text>,

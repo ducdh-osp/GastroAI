@@ -1,4 +1,4 @@
-# SCR-AD-09 — Danh mục chuẩn hoá (triệu chứng, thuốc)
+# SCR-AD-09 — Danh mục chuẩn hoá (triệu chứng, bệnh lý, thuốc)
 
 | Thuộc tính | Giá trị |
 | :--- | :--- |
@@ -9,24 +9,23 @@
 
 ## 1. Vì sao cần danh mục chuẩn, dù đã để nhiều nơi khác nhập tự do
 
-[SCR-PT-02-NhatKyAnUong.md](../02-NguoiDung-BenhNhan/SCR-PT-02-NhatKyAnUong.md) cố tình để nhập món ăn tự do (vì ẩm thực quá đa dạng, không thể liệt kê hết). Nhưng với **triệu chứng và thuốc dùng trong hồ sơ bệnh lý** ([SCR-PT-01](../02-NguoiDung-BenhNhan/SCR-PT-01-HoSoBenhLy.md)), việc để nhập tự do hoàn toàn sẽ gây hậu quả khác: cùng 1 triệu chứng, người viết "đau dạ dày", người viết "đau bao tử", người viết "viêm dạ dày" — dữ liệu không đồng nhất, khó dùng để khớp với từ khoá Triage hay thống kê chính xác. Danh mục chuẩn giải quyết đúng vấn đề này cho những nơi cần **dữ liệu sạch** hơn là sự linh hoạt diễn đạt.
+[SCR-PT-02-NhatKyAnUong.md](../02-NguoiDung-BenhNhan/SCR-PT-02-NhatKyAnUong.md) cố tình để nhập món ăn tự do (vì ẩm thực quá đa dạng, không thể liệt kê hết). Nhưng với **triệu chứng, bệnh lý nền và thuốc dùng trong hồ sơ bệnh lý** ([SCR-PT-01](../02-NguoiDung-BenhNhan/SCR-PT-01-HoSoBenhLy.md)), việc để nhập tự do hoàn toàn sẽ gây hậu quả khác: cùng 1 khái niệm, người viết "đau dạ dày", người viết "đau bao tử", người viết "viêm dạ dày" — dữ liệu không đồng nhất, khó dùng để khớp với từ khoá Triage hay thống kê chính xác. Danh mục chuẩn giải quyết đúng vấn đề này cho những nơi cần **dữ liệu sạch** hơn là sự linh hoạt diễn đạt.
 
 ## 2. Thiết kế màn hình
 
 ```text
 ┌───────────────────────────────────────────────────────────┐
-│  Danh mục chuẩn hoá                                            │
-│ ┌──────────────┬──────────┐                                   │
-│ │ Bệnh lý/      │ Thuốc    │                                   │
-│ │ Triệu chứng   │ thường dùng│                                   │
-│ └──────────────┴──────────┘                                   │
-│                                      [ + Thêm mục mới ]         │
-│ ┌─────────────────────────────────────────────────────────┐ │
-│ │ Tên chuẩn hoá            │ Đang dùng ở        │ Thao tác     │ │
-│ ├─────────────────────────────────────────────────────────┤ │
-│ │ Viêm dạ dày              │ 128 hồ sơ           │ [Sửa][Xoá]   │ │
-│ │ Hội chứng ruột kích thích│ 45 hồ sơ            │ [Sửa][Xoá]   │ │
-│ └─────────────────────────────────────────────────────────┘ │
+│  Danh mục chuẩn hoá                                       │
+│ ┌──────────────┬──────────────┬─────────────────────────┐ │
+│ │ Triệu chứng  │ Bệnh lý      │ Thuốc thường dùng       │ │
+│ └──────────────┴──────────────┴─────────────────────────┘ │
+│                                        [ + Thêm mục mới ] │
+│ ┌───────────────────────────────────────────────────────┐ │
+│ │ Tên chuẩn hoá             │ Đang dùng ở   │ Thao tác  │ │
+│ ├───────────────────────────────────────────────────────┤ │
+│ │ Viêm dạ dày               │ 128 hồ sơ     │ [Sửa][Xoá]│ │
+│ │ Hội chứng ruột kích thích │ 45 hồ sơ      │ [Sửa][Xoá]│ │
+│ └───────────────────────────────────────────────────────┘ │
 └───────────────────────────────────────────────────────────┘
 ```
 

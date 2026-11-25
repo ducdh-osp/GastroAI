@@ -87,13 +87,15 @@ function KnowledgeArticleCard({ article }: { article: KnowledgeArticleSummary })
         className="h-full overflow-hidden rounded-2xl border-black/5 shadow-sm transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md"
         cover={
           illustration ? (
-            <div className="flex h-44 w-full items-center justify-center overflow-hidden border-b border-slate-100 bg-slate-50 p-3 transition-colors group-hover:bg-teal-50/40 dark:border-slate-700 dark:bg-slate-800">
-              <img
-                src={illustration.src}
-                alt={illustration.alt}
-                loading="lazy"
-                className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-              />
+            <div className="overflow-hidden border-b border-slate-100 bg-slate-50 transition-colors group-hover:bg-teal-50/40 dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex h-48 w-full items-center justify-center p-3">
+                <img
+                  src={illustration.src}
+                  alt={illustration.alt}
+                  loading="lazy"
+                  className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
             </div>
           ) : undefined
         }
@@ -137,7 +139,7 @@ function ArticleDetail({ slug }: { slug: string }) {
   }, [slug])
 
   return (
-    <div className="max-w-4xl">
+    <div className="mx-auto w-full max-w-4xl">
       <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/articles')} className="mb-4 px-0 text-teal-700">
         Quay lại thư viện
       </Button>

@@ -20,14 +20,14 @@ Người dùng không mở màn này mỗi ngày — nhưng **biết rằng nó 
 │  Lịch sử đăng nhập                                                    │
 │  ⚠ Có 2 lần đăng nhập thất bại trong 7 ngày qua — nếu không phải bạn, │  ← chỉ hiện khi có
 │    hãy đổi mật khẩu ngay                                              │     thất bại thật
-│ ┌────────────────┬───────────┬─────────────┬────────────┬─────────┐ │
-│ │ Thời gian        │ Thiết bị  │ Vị trí/IP   │ Kết quả    │         │ │
-│ ├────────────────┼───────────┼─────────────┼────────────┼─────────┤ │
-│ │ Hôm nay, 09:02   │ Chrome ·  │ Hà Nội       │ ✓ Thành     │         │ │
-│ │                  │ Windows   │             │   công      │         │ │
-│ │ Hôm nay, 08:55   │ Chrome ·  │ Hà Nội       │ ✕ Sai mật   │         │ │
-│ │                  │ Windows   │             │   khẩu      │         │ │
-│ └────────────────┴───────────┴─────────────┴────────────┴─────────┘ │
+│ ┌────────────────┬───────────┬───────────────┬────────────┬───────┐ │
+│ │ Thời gian        │ Thiết bị  │ Địa chỉ IP    │ Kết quả    │       │ │
+│ ├────────────────┼───────────┼───────────────┼────────────┼───────┤ │
+│ │ Hôm nay, 09:02   │ Chrome ·  │ 113.190.23.45 │ ✓ Thành     │       │ │
+│ │                  │ Windows   │               │   công      │       │ │
+│ │ Hôm nay, 08:55   │ Chrome ·  │ 113.190.23.45 │ ✕ Sai mật   │       │ │
+│ │                  │ Windows   │               │   khẩu      │       │ │
+│ └────────────────┴───────────┴───────────────┴────────────┴───────┘ │
 │                                                Phân trang: ‹ 1 2 3 ›   │
 └───────────────────────────────────────────────────────────────────┘
 ```
@@ -37,7 +37,7 @@ Người dùng không mở màn này mỗi ngày — nhưng **biết rằng nó 
 | Yếu tố | Nguyên tắc | Vì sao |
 | :--- | :--- | :--- |
 | Cảnh báo thất bại gần đây | Phải tính trên **toàn bộ** lịch sử gần đây, không chỉ những gì đang hiện trên trang hiện tại (nếu có phân trang) | Một người dùng chỉ xem trang đầu không nên bỏ lỡ 1 lần thất bại đáng ngờ nằm ở trang sau |
-| Hiển thị thiết bị/vị trí | Dùng ngôn ngữ dễ hiểu ("Chrome · Windows", "Hà Nội") thay vì chuỗi kỹ thuật khó đọc | Người dùng phổ thông không đọc được chuỗi định danh trình duyệt gốc hay dãy số địa chỉ mạng |
+| Hiển thị thiết bị & địa chỉ IP | Phân tích chuỗi `User-Agent` thành tên thiết bị dễ đọc ("Chrome · Windows", kèm tooltip chuỗi gốc) và hiển thị nguyên vẹn địa chỉ IP thực tế ghi nhận được (không tra cứu GeoIP) | Nhân sự CMS đọc được ngay trình duyệt/hệ điều hành quen thuộc và đối chiếu chính xác địa chỉ IP mạng mà không bị sai lệch vị trí do NAT nhà mạng |
 | Khi phát hiện bất thường | Luôn kèm gợi ý hành động ngay tại chỗ ("đổi mật khẩu ngay"), đừng chỉ hiển thị dữ liệu thô | Tra được thông tin mà không biết phải làm gì tiếp theo thì tính năng chưa trọn vẹn |
 | Thời gian lưu trữ | Đủ dài để phát hiện mẫu hình bất thường kéo dài (vài tháng), không cần lưu vô hạn | Cân bằng giữa hữu ích và tối giản dữ liệu nhạy cảm lưu trữ lâu dài |
 
