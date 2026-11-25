@@ -1,6 +1,6 @@
-import { HeartOutlined } from '@ant-design/icons'
-import { Button, Card, Skeleton, Typography } from 'antd'
-import { useEffect, useState } from 'react'
+import { HeartOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Button, Card, Result, Skeleton, Typography } from 'antd'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bar,
@@ -49,6 +49,22 @@ export default function HomePage() {
   const [bristolTrend, setBristolTrend] = useState<BristolLogPoint[] | null>(null)
   const [foodTrend, setFoodTrend] = useState<DailyCountPoint[] | null>(null)
   const [sensitivity, setSensitivity] = useState<FoodSensitivityProfileResponse | null>(null)
+  const [sensitivityError, setSensitivityError] = useState(false)
+  const sensitivityRequestId = useRef(0)
+
+  // Tách riêng để nút "Thử lại" gọi lại được; requestId bỏ kết quả của lần gọi cũ / khi đã rời trang.
+  const loadSensitivity = useCallback(() => {
+    const currentRequestId = ++sensitivityRequestId.current
+    setSensitivity(null)
+    setSensitivityError(false)
+    getFoodSensitivityProfile(90)
+      .then((res) => {
+        if (currentRequestId === sensitivityRequestId.current) setSensitivity(res)
+      })
+      .catch(() => {
+        if (currentRequestId === sensitivityRequestId.current) setSensitivityError(true)
+      })
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -58,13 +74,12 @@ export default function HomePage() {
     getFoodDiaryTrend(14)
       .then((res) => active && setFoodTrend(res))
       .catch(() => active && setFoodTrend([]))
-    getFoodSensitivityProfile(90)
-      .then((res) => active && setSensitivity(res))
-      .catch(() => {})
+    loadSensitivity()
     return () => {
       active = false
+      sensitivityRequestId.current += 1
     }
-  }, [])
+  }, [loadSensitivity])
 
   const bristolByDay = new Map((bristolTrend ?? []).map((p) => [p.loggedAt.slice(0, 10), p.bristolType]))
   const bristolChartData = last14Days().map((date) => ({
@@ -148,7 +163,18 @@ export default function HomePage() {
             </Link>
           }
         >
-          {sensitivity === null ? (
+          {sensitivityError ? (
+            <Result
+              status="warning"
+              title="Không tải được dữ liệu"
+              subTitle="Đã có lỗi khi tải phân tích nhạy cảm thực phẩm. Vui lòng thử lại."
+              extra={
+                <Button icon={<ReloadOutlined />} onClick={loadSensitivity}>
+                  Thử lại
+                </Button>
+              }
+            />
+          ) : sensitivity === null ? (
             <Skeleton active paragraph={{ rows: 3 }} />
           ) : !sensitivity.hasEnoughData || sensitivity.topCorrelations.length === 0 ? (
             <Text type="secondary" className="text-sm">

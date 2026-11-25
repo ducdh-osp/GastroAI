@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Logo } from '../brand/Logo'
 import { NotificationBell } from '../layout/NotificationBell'
-import { filterCmsNavGroups } from './cmsNav'
+import { canAccessCmsPath, CMS_ROLE_LABEL, filterCmsNavGroups } from './cmsNav'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
 import { useTheme } from '../../stores/themeStore'
 import { getUnreadNotificationCount } from '../../api/notifications'
@@ -40,12 +40,6 @@ function navItemLabel(title: string, interventionCount: number) {
   )
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: 'Admin',
-  DOCTOR: 'Bác sĩ',
-  CONTENT_EDITOR: 'Biên tập nội dung',
-}
-
 export function CmsHeader() {
   const { user, logout } = useCmsAuth()
   const navigate = useNavigate()
@@ -65,7 +59,8 @@ export function CmsHeader() {
   }, [user?.userType])
 
   // Số ca "Cần can thiệp" (SCR-AD-13) hiện cạnh mục "Cảnh báo khẩn cấp" - chỉ đếm, không tải danh sách.
-  const canSeeTriage = user?.userType === 'ADMIN'
+  // Admin và Giám sát vận hành cùng xử lý cảnh báo khẩn cấp (SCR-AD-03 §4).
+  const canSeeTriage = canAccessCmsPath(user?.userType, '/cms/triage-alerts')
   const [interventionCount, setInterventionCount] = useState(0)
   const countSeq = useRef(0)
   const refreshInterventionCount = useCallback(() => {
@@ -251,7 +246,7 @@ export function CmsHeader() {
               <span className="block max-w-[10rem] truncate text-sm font-medium text-white">
                 {user?.fullName ?? user?.email}
               </span>
-              <span className="block text-xs text-white/50">{user ? ROLE_LABEL[user.userType] : ''}</span>
+              <span className="block text-xs text-white/50">{user ? CMS_ROLE_LABEL[user.userType] ?? user.userType : ''}</span>
             </span>
             <DownOutlined className="text-xs text-white/40" />
           </button>

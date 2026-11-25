@@ -152,7 +152,7 @@ Các khối xếp dọc theo đúng thứ tự dưới đây. Hai thẻ biểu �
 | Chưa có dữ liệu Bristol / ăn uống trong 14 ngày | Thẻ vẫn vẽ đủ trục và lưới 14 ngày: Bristol không có điểm nào, cột ăn uống toàn bằng 0 — không hiện câu thông báo riêng |
 | Lỗi tải Bristol / ăn uống | Xử lý như không có dữ liệu (biểu đồ rỗng), không hiện thông báo lỗi |
 | Chưa đủ dữ liệu nhạy cảm thực phẩm (API trả `hasEnoughData = false`, hoặc danh sách món tương quan rỗng) | Thẻ hiện câu: "Chưa đủ dữ liệu để phân tích — ghi thêm nhật ký ăn uống kèm triệu chứng để AI gợi ý món ăn hay đi kèm triệu chứng của riêng bạn." |
-| Lỗi tải nhạy cảm thực phẩm | Thẻ giữ nguyên Skeleton (code không xử lý nhánh lỗi riêng cho thẻ này) |
+| Lỗi tải nhạy cảm thực phẩm | Thẻ hiện "Không tải được dữ liệu" kèm câu "Đã có lỗi khi tải phân tích nhạy cảm thực phẩm. Vui lòng thử lại." và nút **Thử lại** — bấm thì thẻ về Skeleton và gọi lại API |
 | Lỗi tải Tiến độ theo dõi | Hiện thông báo lỗi màu đỏ phía trên khối ("Không thể tải tiến độ theo dõi sức khỏe…") |
 | Nút "Xem đầy đủ" (thẻ Nhạy cảm thực phẩm) | Chuyển tới `/food-sensitivity` — màn [SCR-PT-10](SCR-PT-10-NhayCamThucPham.md) |
 | Hôm nay **chưa** có ghi nhận, chuỗi = 0 | Thẻ nhắc "Hôm nay bạn chưa ghi nhật ký" + câu "Thêm một ghi nhận để bắt đầu thói quen theo dõi từ hôm nay." + 2 nút **Ghi bữa ăn** (→ `/food-diary`) và **Ghi Bristol** (→ `/bristol`). Thẻ "Chuỗi ngày duy trì" hiện "0 ngày" kèm "Hãy ghi một mục trong hôm nay." |

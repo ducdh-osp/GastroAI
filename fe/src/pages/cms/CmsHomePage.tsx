@@ -1,6 +1,6 @@
-import { AlertOutlined, DashboardOutlined, MessageOutlined, SmileOutlined, TeamOutlined } from '@ant-design/icons'
-import { Button, Card, Empty, Skeleton, Tag, Typography } from 'antd'
-import { useEffect, useState } from 'react'
+import { AlertOutlined, DashboardOutlined, MessageOutlined, ReloadOutlined, SmileOutlined, TeamOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Empty, Skeleton, Tag, Typography } from 'antd'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Area,
@@ -16,40 +16,57 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import type { CmsRole } from '../../api/cmsAuth'
 import { getDashboardStats, type DashboardStatsResponse } from '../../api/cmsDashboard'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
+import { canAccessCmsPath, CMS_ROLE_LABEL, filterCmsNavGroups } from '../../components/cms/cmsNav'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 const { Title, Paragraph, Text } = Typography
-
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: 'Admin',
-  DOCTOR: 'Bác sĩ',
-  CONTENT_EDITOR: 'Biên tập chuyên môn y khoa',
-  CONTENT_AUTHOR: 'Cộng tác viên nội dung',
-  OPERATIONS: 'Giám sát vận hành',
-}
 
 const PIE_COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#6366f1']
 const PREVIEW_DAYS = 14
 
 // Trang chủ CMS — kiểu dashboard (xem HomePage.tsx phía bệnh nhân), KHÔNG phải lưới ô bấm điều
-// hướng nữa: điều hướng đã có đầy đủ qua dropdown trên header (CmsHeader/cmsNav.ts), lưới ô ở
-// đây chỉ trùng lặp. Biểu đồ lấy lại từ CmsDashboardPage.tsx (cùng API getDashboardStats), rút
-// gọn còn 14 ngày cố định làm bản xem nhanh — xem đầy đủ + đổi khoảng ngày thì qua /cms/dashboard.
+// hướng nữa: điều hướng đã có đầy đủ qua dropdown trên header (CmsHeader/cmsNav.ts). Biểu đồ lấy
+// lại từ CmsDashboardPage.tsx (cùng API getDashboardStats), rút gọn còn 14 ngày cố định làm bản
+// xem nhanh — xem đầy đủ + đổi khoảng ngày thì qua /cms/dashboard.
+// Chỉ vai trò được vào /cms/dashboard (theo cmsNav.ts: Admin, Giám sát vận hành) được gọi API thống kê; vai trò khác
+// (Biên tập, Cộng tác viên) thấy lời chào + lối tắt tới các màn mình được dùng, không gọi API.
 export default function CmsHomePage() {
   const { user } = useCmsAuth()
+  const canViewDashboard = canAccessCmsPath(user?.userType, '/cms/dashboard')
   const [data, setData] = useState<DashboardStatsResponse | null>(null)
+  const [loading, setLoading] = useState(canViewDashboard)
+  const [error, setError] = useState<string | null>(null)
+  const requestId = useRef(0)
+
+  const load = useCallback(() => {
+    const currentRequestId = ++requestId.current
+    setLoading(true)
+    setError(null)
+    getDashboardStats(PREVIEW_DAYS)
+      .then((res) => {
+        if (currentRequestId === requestId.current) setData(res)
+      })
+      .catch((err: unknown) => {
+        if (currentRequestId === requestId.current) {
+          setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu thống kê dashboard.')
+        }
+      })
+      .finally(() => {
+        if (currentRequestId === requestId.current) setLoading(false)
+      })
+  }, [])
 
   useEffect(() => {
-    let active = true
-    getDashboardStats(PREVIEW_DAYS)
-      .then((res) => active && setData(res))
-      .catch(() => active && setData(null))
+    if (!canViewDashboard) return
+    load()
     return () => {
-      active = false
+      // Bỏ kết quả của request đang bay khi rời trang.
+      requestId.current += 1
     }
-  }, [])
+  }, [canViewDashboard, load])
 
   const chartData = (data?.dailyChats ?? []).map((item) => ({
     ...item,
@@ -67,16 +84,32 @@ export default function CmsHomePage() {
             <div>
               <Text type="secondary">Tổng quan hệ thống</Text>
               <Title level={2} className="mb-2! mt-1!">
-                Chào {user?.fullName ?? user?.email}{user ? ` - ${ROLE_LABEL[user.userType] ?? user.userType}` : ''} 👋
+                Chào {user?.fullName ?? user?.email}{user ? ` - ${CMS_ROLE_LABEL[user.userType] ?? user.userType}` : ''} 👋
               </Title>
               <Paragraph type="secondary" className="mb-0! max-w-3xl">
-                Số liệu vận hành {PREVIEW_DAYS} ngày gần nhất. Mọi chức năng quản trị nằm trên menu header phía trên.
+                {canViewDashboard
+                  ? `Số liệu vận hành ${PREVIEW_DAYS} ngày gần nhất. Mọi chức năng quản trị nằm trên menu header phía trên.`
+                  : 'Chọn nhanh chức năng bạn được dùng bên dưới, hoặc qua menu header phía trên.'}
               </Paragraph>
             </div>
           </div>
         </Card>
 
-        {data === null ? (
+        {!canViewDashboard ? (
+          <CmsShortcuts userType={user?.userType} />
+        ) : error ? (
+          <Alert
+            type="error"
+            showIcon
+            title="Không tải được số liệu tổng quan"
+            description={error}
+            action={
+              <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={load}>
+                Thử lại
+              </Button>
+            }
+          />
+        ) : loading || data === null ? (
           <Skeleton active paragraph={{ rows: 4 }} />
         ) : (
           <>
@@ -198,5 +231,40 @@ export default function CmsHomePage() {
         )}
       </div>
     </CmsAppShell>
+  )
+}
+
+// Lối tắt cho vai trò không xem dashboard — cùng nguồn menu với header (filterCmsNavGroups) nên
+// luôn khớp quyền, không phải khai báo lại danh sách màn ở đây.
+function CmsShortcuts({ userType }: { userType: CmsRole | undefined }) {
+  const groups = filterCmsNavGroups(userType)
+  if (groups.length === 0) {
+    return <Empty description="Tài khoản của bạn chưa được gán chức năng nào." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+  }
+  return (
+    <div className="grid gap-6">
+      {groups.map((group) => (
+        <section key={group.key}>
+          <Title level={4} className="mb-3!">{group.title}</Title>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {group.items.map((item) => (
+              <Link key={item.to} to={item.to} className="block h-full">
+                <Card hoverable className="h-full rounded-2xl border-black/5 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-lg text-teal-600 dark:bg-teal-500/10">
+                      <item.icon />
+                    </span>
+                    <div>
+                      <div className="font-medium">{item.title}</div>
+                      <Text type="secondary" className="text-xs">{item.desc}</Text>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   )
 }

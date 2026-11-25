@@ -85,9 +85,9 @@ public class SecurityConfig {
                         // This endpoint validates the JWT query token in
                         // PatientWebSocketHandshakeInterceptor.
                         .requestMatchers("/ws/patient/**").permitAll()
-                        .requestMatchers("/ws/**").hasAnyRole("ADMIN")
+                        .requestMatchers("/ws/**").hasAnyRole("ADMIN", "OPERATIONS")
                         .requestMatchers("/api/v1/cms/notifications/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN")
+                        .requestMatchers("/api/v1/cms/triage-alerts/**").hasAnyRole("ADMIN", "OPERATIONS")
                         .requestMatchers("/api/v1/cms/triage-assessments/**").hasAnyRole("ADMIN")
                         .requestMatchers("/api/v1/cms/triage-keywords/**").hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/evaluation/**").hasAnyRole("ADMIN")
@@ -106,7 +106,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/dashboard/**")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "OPERATIONS")
                         .requestMatchers("/api/v1/cms/runtime-config/**")
                         .hasRole("ADMIN")
                         .requestMatchers("/api/v1/cms/email-templates/**")
@@ -118,7 +118,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/documents/**")
                       .hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/auth/**")
-                        .hasAnyRole("ADMIN", "CONTENT_EDITOR")
+                        .hasAnyRole("ADMIN", "CONTENT_EDITOR", "CONTENT_AUTHOR", "OPERATIONS")
                         .requestMatchers("/api/v1/cms/audit-logs/**")
                         .hasRole("ADMIN")
                         // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng

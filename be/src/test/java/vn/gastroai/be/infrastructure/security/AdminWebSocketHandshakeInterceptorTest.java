@@ -92,6 +92,25 @@ class AdminWebSocketHandshakeInterceptorTest {
     }
 
     @Test
+    void acceptsOperationsAndStoresRealRole() {
+        loggedIn(4L, 0);
+        account(4L, CmsRole.OPERATIONS, 0);
+
+        assertTrue(handshake());
+        assertEquals(4L, attributes.get(AdminWebSocketHandshakeInterceptor.CMS_USER_ID_ATTRIBUTE));
+        assertEquals("OPERATIONS", attributes.get(AdminWebSocketHandshakeInterceptor.CMS_USER_TYPE_ATTRIBUTE));
+    }
+
+    @Test
+    void rejectsContentAuthor() {
+        loggedIn(5L, 0);
+        account(5L, CmsRole.CONTENT_AUTHOR, 0);
+
+        assertFalse(handshake());
+        assertEquals(HttpStatus.FORBIDDEN.value(), servletResponse.getStatus());
+    }
+
+    @Test
     void rejectsContentEditor() {
         loggedIn(3L, 0);
         account(3L, CmsRole.CONTENT_EDITOR, 0);

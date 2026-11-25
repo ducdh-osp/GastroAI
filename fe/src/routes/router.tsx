@@ -17,7 +17,7 @@ import ChatPage from '../pages/chat/ChatPage'
 import SymptomAssessmentPage from '../pages/chat/SymptomAssessmentPage'
 import { ProtectedRoute } from './ProtectedRoute'
 import { CmsProtectedRoute } from './CmsProtectedRoute'
-import { CmsAdminRoute } from './CmsAdminRoute'
+import { CmsRoleRoute } from './CmsRoleRoute'
 import { CmsAuthProvider } from '../stores/cmsAuthStore'
 import { FaviconSwitcher } from '../components/brand/FaviconSwitcher'
 import CmsTriageAlertsPage from '../pages/cms/CmsTriageAlertsPage'
@@ -227,57 +227,57 @@ export const router = createBrowserRouter([
           {
             path: '/cms/users',
             element: (
-              <CmsAdminRoute>
+              <CmsRoleRoute path="/cms/users">
                 <CmsUsersPage />
-              </CmsAdminRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/rbac',
             element: (
-              <CmsAdminRoute>
+              <CmsRoleRoute path="/cms/rbac">
                 <CmsRbacPage />
-              </CmsAdminRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/rbac/new',
             element: (
-              <CmsAdminRoute>
+              <CmsRoleRoute path="/cms/rbac">
                 <CmsCreateAccountPage />
-              </CmsAdminRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/dashboard',
             element: (
-              <CmsAdminRoute>
+              <CmsRoleRoute path="/cms/dashboard">
                 <CmsDashboardPage />
-              </CmsAdminRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/broadcast',
             element: (
-              <CmsAdminRoute>
+              <CmsRoleRoute path="/cms/broadcast">
                 <CmsBroadcastPage />
-              </CmsAdminRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/audit-logs',
             element: (
-              <CmsAdminRoute>
+              <CmsRoleRoute path="/cms/audit-logs">
                 <CmsAuditLogsPage />
-              </CmsAdminRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/evaluation',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/evaluation">
                 <CmsEvaluationPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
@@ -299,89 +299,89 @@ export const router = createBrowserRouter([
           {
             path: '/cms/triage-alerts',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/triage-alerts">
                 <CmsTriageAlertsPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/documents',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/documents">
                 <CmsDocumentsPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/triage-keywords',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/triage-keywords">
                 <CmsTriageKeywordsPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/runtime-config',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/runtime-config">
                 <CmsRuntimeConfigPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/email-templates',
             element: (
-              <CmsAdminRoute>
+              <CmsRoleRoute path="/cms/email-templates">
                 <CmsEmailTemplatesPage />
-              </CmsAdminRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/article-topics',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/article-topics">
                 <CmsArticleTopicsPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/articles',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/articles">
                 <CmsArticlesPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/articles/new',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/articles">
                 <CmsArticleEditorPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/articles/:id/edit',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/articles">
                 <CmsArticleEditorPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/faq',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/faq">
                 <CmsFaqPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
           {
             path: '/cms/catalogs',
             element: (
-              <CmsProtectedRoute>
+              <CmsRoleRoute path="/cms/catalogs">
                 <CmsCatalogsPage />
-              </CmsProtectedRoute>
+              </CmsRoleRoute>
             ),
           },
         ],

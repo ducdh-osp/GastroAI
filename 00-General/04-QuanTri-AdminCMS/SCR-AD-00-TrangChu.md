@@ -3,8 +3,8 @@
 | Thuộc tính | Giá trị |
 | :--- | :--- |
 | UC | Không có mã UC riêng — khung điều hướng của toàn phân hệ, thay thế vai trò "chọn chức năng" trước đây gán cho thanh bên (sidebar) |
-| Actor | Mọi tài khoản CMS: Admin, Biên tập chuyên môn y khoa, Cộng tác viên nội dung, Giám sát vận hành (menu header khác nhau theo vai trò — xem §2.1; số liệu Trang chủ hiện chỉ Admin xem được — xem §3.3) |
-| Mục tiêu nghiệp vụ | Trang chủ CMS (`/cms`) là **bảng tổng quan vận hành hệ thống** (14 ngày gần nhất); việc chọn chức năng quản trị nằm ở **menu dropdown trên header**, có mặt ở mọi màn hình CMS |
+| Actor | Mọi tài khoản CMS: Admin, Biên tập chuyên môn y khoa, Cộng tác viên nội dung, Giám sát vận hành (menu header khác nhau theo vai trò — xem §2.1; số liệu dashboard chỉ Admin và Giám sát vận hành xem — xem §3.4) |
+| Mục tiêu nghiệp vụ | Trang chủ CMS (`/cms`) là **bảng tổng quan vận hành hệ thống** (14 ngày gần nhất) với Admin và Giám sát vận hành, là **lời chào + lối tắt** với Biên tập chuyên môn y khoa và Cộng tác viên nội dung; việc chọn chức năng quản trị nằm ở **menu dropdown trên header**, có mặt ở mọi màn hình CMS |
 | Tài liệu tổng quan | [00-TongQuan.md](00-TongQuan.md) |
 
 ## 1. Cùng nguyên tắc với phía bệnh nhân
@@ -49,37 +49,37 @@ Khác biệt với phía bệnh nhân: số liệu trên Trang chủ CMS là s�
 | Logo GastroAI | Góc trái | Bấm → về Trang chủ CMS (`/cms`) từ bất kỳ màn nào |
 | Mục "🏠 Trang chủ" | Đầu thanh điều hướng (màn rộng) | Về `/cms`; được tô sáng khi đang ở Trang chủ |
 | Các nhóm dropdown chức năng | Giữa header (màn rộng) | Rê chuột hoặc bấm để mở danh sách mục, bấm mục → chuyển thẳng tới màn đó. Nhóm chứa màn đang mở được tô sáng. **Chỉ hiện nhóm/mục mà vai trò đang đăng nhập được thấy** (§2.1); nhóm không còn mục nào thì ẩn luôn |
-| Badge số ca "cần can thiệp" | Cạnh mục "Cảnh báo khẩn cấp", nhóm "Giám sát" và nút "Chức năng" | Chỉ với Admin: số ca Triage đang ở trạng thái cần can thiệp ([SCR-AD-13](SCR-AD-13-GiamSatCanhBao.md)); cập nhật theo sự kiện realtime và tự làm mới mỗi 60 giây phòng khi mất kết nối; ẩn khi = 0 |
+| Badge số ca "cần can thiệp" | Cạnh mục "Cảnh báo khẩn cấp", nhóm "Giám sát" và nút "Chức năng" | Chỉ với Admin và Giám sát vận hành: số ca Triage đang ở trạng thái cần can thiệp ([SCR-AD-13](SCR-AD-13-GiamSatCanhBao.md)); cập nhật theo sự kiện realtime và tự làm mới mỗi 60 giây phòng khi mất kết nối; ẩn khi = 0 |
 | Nút "Chức năng ▾" | Thay cho thanh điều hướng trên màn hẹp | Bấm mở 1 dropdown duy nhất: "Trang chủ" + các nhóm dạng menu con, cùng các mục như màn rộng |
 | Công tắc giao diện sáng/tối | Bên phải (ẩn trên màn rất hẹp) | Bật/tắt chế độ tối |
 | 🔔 Chuông thông báo | Bên phải, trước tên người dùng | **Chỉ hiện với Admin** — mở trung tâm thông báo CMS (`/cms/notifications`, [SCR-NT-01](../05-ThongBao-Notification/SCR-NT-01-TrungTamThongBao.md), audience Admin), badge số chưa đọc |
-| Ảnh đại diện (chữ cái đầu) + tên + nhãn vai trò + mũi tên | Ngoài cùng bên phải (tên và nhãn ẩn trên màn hẹp) | Nhãn vai trò dưới tên hiện "Admin" / "Bác sĩ" / "Biên tập nội dung"; với Cộng tác viên nội dung và Giám sát vận hành nhãn đang để trống (bảng nhãn của header chưa có 2 vai trò này). Bấm mở dropdown: **Lịch sử đăng nhập** (`/cms/login-history`), **Đổi mật khẩu** (`/cms/change-password`), **Đăng xuất** |
+| Ảnh đại diện (chữ cái đầu) + tên + nhãn vai trò + mũi tên | Ngoài cùng bên phải (tên và nhãn ẩn trên màn hẹp) | Nhãn vai trò dưới tên hiện đúng tên ở [SCR-AD-03](SCR-AD-03-PhanQuyenRBAC.md): "Admin" / "Biên tập chuyên môn y khoa" / "Cộng tác viên nội dung" / "Giám sát vận hành" (tài khoản Bác sĩ cũ: "Bác sĩ"). Bấm mở dropdown: **Lịch sử đăng nhập** (`/cms/login-history`), **Đổi mật khẩu** (`/cms/change-password`), **Đăng xuất** |
 
 ### 2.1. Nhóm và mục menu theo vai trò
 
-Nguồn: `CMS_NAV_GROUPS` + `filterCmsNavGroups` trong `fe/src/components/cms/cmsNav.ts`. Mục đánh dấu `adminOnly` chỉ Admin thấy; mục có danh sách `roles` chỉ các vai trò trong danh sách thấy; mục không có cả hai thì mọi vai trò CMS đều thấy.
+Nguồn: `CMS_NAV_GROUPS` + `filterCmsNavGroups` trong `fe/src/components/cms/cmsNav.ts`. Mỗi mục khai báo danh sách `roles` đúng theo ma trận [SCR-AD-03 §4](SCR-AD-03-PhanQuyenRBAC.md); chỉ vai trò có trong danh sách mới thấy mục đó.
 
-| Nhóm | Mục | Màn đích | Điều kiện hiển thị | Admin | Biên tập chuyên môn y khoa | Cộng tác viên nội dung | Giám sát vận hành |
-| :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| Tài khoản | Quản lý người dùng | `/cms/users` | adminOnly | ● | | | |
-| | Phân quyền nhân sự | `/cms/rbac` | adminOnly | ● | | | |
-| Kho tri thức | Tài liệu y khoa | `/cms/documents` | mọi vai trò | ● | ● | ● | ● |
-| | Bài viết kiến thức | `/cms/articles` | mọi vai trò | ● | ● | ● | ● |
-| | Chủ đề bài viết | `/cms/article-topics` | mọi vai trò | ● | ● | ● | ● |
-| | Câu hỏi thường gặp | `/cms/faq` | mọi vai trò | ● | ● | ● | ● |
-| | Danh mục chuẩn hoá | `/cms/catalogs` | mọi vai trò | ● | ● | ● | ● |
-| | Từ khoá Triage | `/cms/triage-keywords` | roles: ADMIN, CONTENT_EDITOR | ● | ● | | |
-| Giám sát | Cảnh báo khẩn cấp | `/cms/triage-alerts` | roles: ADMIN, CONTENT_EDITOR | ● | ● | | |
-| | Đánh giá AI & Triage | `/cms/evaluation` | roles: ADMIN, CONTENT_EDITOR | ● | ● | | |
-| | Thông báo broadcast | `/cms/broadcast` | adminOnly | ● | | | |
-| | Thống kê hệ thống | `/cms/dashboard` | adminOnly | ● | | | |
-| | Nhật ký hoạt động | `/cms/audit-logs` | adminOnly | ● | | | |
-| Cấu hình | Cấu hình RAG/Triage | `/cms/runtime-config` | adminOnly | ● | | | |
-| | Mẫu email | `/cms/email-templates` | adminOnly | ● | | | |
+| Nhóm | Mục | Màn đích | Admin | Biên tập chuyên môn y khoa | Cộng tác viên nội dung | Giám sát vận hành |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| Tài khoản | Quản lý người dùng | `/cms/users` | ● | | | |
+| | Phân quyền nhân sự | `/cms/rbac` | ● | | | |
+| Kho tri thức | Tài liệu y khoa | `/cms/documents` | ● | ● | | |
+| | Bài viết kiến thức | `/cms/articles` | ● | ● | ● | |
+| | Chủ đề bài viết | `/cms/article-topics` | ● | ● | ● | |
+| | Câu hỏi thường gặp | `/cms/faq` | ● | ● | ● | |
+| | Danh mục chuẩn hoá | `/cms/catalogs` | ● | ● | | |
+| | Từ khoá Triage | `/cms/triage-keywords` | ● | ● | | |
+| Giám sát | Cảnh báo khẩn cấp | `/cms/triage-alerts` | ● | | | ● |
+| | Đánh giá AI & Triage | `/cms/evaluation` | ● | | | |
+| | Thông báo broadcast | `/cms/broadcast` | ● | | | |
+| | Thống kê hệ thống | `/cms/dashboard` | ● | | | ● |
+| | Nhật ký hoạt động | `/cms/audit-logs` | ● | | | |
+| Cấu hình | Cấu hình RAG/Triage | `/cms/runtime-config` | ● | | | |
+| | Mẫu email | `/cms/email-templates` | ● | | | |
 
-Hệ quả: Admin thấy đủ 4 nhóm; Biên tập chuyên môn y khoa thấy 2 nhóm (Kho tri thức, Giám sát); Cộng tác viên nội dung và Giám sát vận hành chỉ thấy nhóm Kho tri thức (5 mục, không có Từ khoá Triage).
+Hệ quả: Admin thấy đủ 4 nhóm; Biên tập chuyên môn y khoa và Cộng tác viên nội dung chỉ thấy nhóm Kho tri thức (lần lượt 6 và 3 mục); Giám sát vận hành chỉ thấy nhóm Giám sát (Cảnh báo khẩn cấp, Thống kê hệ thống). "Đánh giá AI & Triage" chưa có trong ma trận nên giữ chỉ Admin, khớp API `/api/v1/cms/evaluation/**`.
 
-> **Lưu ý — menu là bộ lọc hiển thị phía FE, quyền thật do backend quyết định.** `cmsNav.ts` vẫn giữ nguyên phân quyền từ sidebar cũ, chưa cập nhật theo ma trận 4 vai trò ở [SCR-AD-03](SCR-AD-03-PhanQuyenRBAC.md) (ghi chú trong `CmsRole.java`: việc enforce ma trận mới ở `SecurityConfig` và `cmsNav.ts` là việc riêng, chưa làm). Một số mục hiện trên menu nhưng API phía sau chỉ cho Admin (vd "Cảnh báo khẩn cấp", "Đánh giá AI & Triage" hiện cho Biên tập chuyên môn y khoa, trong khi `/api/v1/cms/triage-alerts/**` và `/api/v1/cms/evaluation/**` chỉ `ADMIN`); ngược lại Giám sát vận hành theo ma trận được xem Dashboard nhưng menu và API hiện chưa mở.
+Phía backend, `SecurityConfig` cho Admin và Giám sát vận hành gọi `/api/v1/cms/dashboard/**`, `/api/v1/cms/triage-alerts/**` và kết nối realtime `/ws/**`. Qua `/ws`, Giám sát vận hành chỉ đăng ký được các kênh cảnh báo Triage, **không** nhận kênh thông báo của Admin. Route `/cms/dashboard` và `/cms/triage-alerts` phía FE cũng chặn theo đúng 2 vai trò này: vào bằng URL khi không có quyền thì bị đưa về `/cms`.
 
 ## 3. Thiết kế màn Trang chủ (dashboard)
 
@@ -146,23 +146,51 @@ Toàn bộ khối số liệu lấy từ **1 API duy nhất**: `GET /api/v1/cms/
 | Tình huống | Hành vi thật của màn hình |
 | :--- | :--- |
 | Đang tải | Thẻ chào hiện ngay; toàn bộ phần số liệu bên dưới (4 thẻ + 3 biểu đồ) được thay bằng **1 khung Skeleton chung** (4 dòng) cho tới khi API trả về |
-| Lỗi tải API | Giữ nguyên Skeleton, không hiện thông báo lỗi (code gán lại dữ liệu = rỗng khi lỗi, nên màn không phân biệt được "đang tải" và "lỗi") |
+| Lỗi tải API (mất mạng, timeout, lỗi máy chủ…) | Thay phần số liệu bằng hộp báo lỗi màu đỏ "Không tải được số liệu tổng quan", kèm nội dung lỗi và nút **Thử lại** (bấm thì gọi lại API) |
 | Phiên CMS hết hạn (API trả 401) | Bộ xử lý chung của CMS xoá trạng thái đăng nhập và đưa về `/cms/login` |
-| **Tài khoản không phải Admin** mở Trang chủ | `SecurityConfig` chỉ cho vai trò `ADMIN` gọi `/api/v1/cms/dashboard/**`, nên với Biên tập chuyên môn y khoa, Cộng tác viên nội dung, Giám sát vận hành API trả 403 → rơi vào trường hợp "Lỗi tải API": chỉ thấy thẻ chào và khung Skeleton không bao giờ kết thúc. Các vai trò này điều hướng bình thường qua menu header |
 | Chưa có cảnh báo Triage nào trong 14 ngày | Thẻ "Phân bố cảnh báo Triage" hiện ô trống với câu "Chưa có cảnh báo Triage nào." |
 | Chưa có ghi nhận triệu chứng trong 14 ngày | Thẻ "Top triệu chứng…" hiện ô trống với câu "Chưa có ghi nhận triệu chứng trong khoảng thời gian này." |
 | Không có tin nhắn chat nào trong 14 ngày | Biểu đồ "Lượt chat theo ngày" vẫn vẽ đủ 14 ngày, toàn bằng 0 — không hiện câu thông báo riêng |
 | Nút "Xem đầy đủ" | Chuyển tới `/cms/dashboard` — màn [SCR-AD-05](SCR-AD-05-DashboardBaoCao.md), nơi đổi được khoảng ngày và xuất báo cáo |
+
+### 3.4. Trang chủ theo vai trò
+
+| Vai trò | Nội dung bên dưới thẻ chào |
+| :--- | :--- |
+| Admin, Giám sát vận hành | Dashboard như §3–§3.3 (gọi API thống kê) |
+| Biên tập chuyên môn y khoa, Cộng tác viên nội dung | **Không gọi API thống kê.** Câu phụ của thẻ chào đổi thành "Chọn nhanh chức năng bạn được dùng bên dưới, hoặc qua menu header phía trên.", tiếp theo là các thẻ lối tắt xếp theo nhóm (3 cột trên màn rộng, 2 cột từ `sm`, 1 cột trên điện thoại). Mỗi thẻ gồm icon, tên và mô tả ngắn của màn; bấm vào thì chuyển tới màn đó. Danh sách dùng chung nguồn với menu header (§2.1) nên luôn khớp quyền. Nếu không có mục nào thì hiện "Tài khoản của bạn chưa được gán chức năng nào." |
+
+```text
+— Biên tập chuyên môn y khoa đăng nhập —
+┌──────────────────────────────────────────────────────────────────────┐
+│ ┌──────────────────────────────────────────────────────────────────┐ │
+│ │ 📊 Tổng quan hệ thống                                               │ │
+│ │    Chào BS. Thu Hà - Biên tập chuyên môn y khoa 👋                  │ │
+│ │    Chọn nhanh chức năng bạn được dùng bên dưới, hoặc qua menu       │ │
+│ │    header phía trên.                                                │ │
+│ └──────────────────────────────────────────────────────────────────┘ │
+│  Kho tri thức                                                          │
+│ ┌────────────────────┐ ┌────────────────────┐ ┌────────────────────┐ │
+│ │📄 Tài liệu y khoa   │ │📚 Bài viết kiến thức│ │🏷 Chủ đề bài viết   │ │
+│ │ Tải lên, quản lý…  │ │ Soạn & duyệt bài…  │ │ Quản lý chủ đề…    │ │
+│ └────────────────────┘ └────────────────────┘ └────────────────────┘ │
+│ ┌────────────────────┐ ┌────────────────────┐ ┌────────────────────┐ │
+│ │❓ Câu hỏi thường gặp│ │💊 Danh mục chuẩn hoá│ │🚨 Từ khoá Triage    │ │
+│ │ Soạn & duyệt FAQ…  │ │ Danh mục triệu…    │ │ Quản lý từ khoá…   │ │
+│ └────────────────────┘ └────────────────────┘ └────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────┘
+```
 
 ## 4. Nguyên tắc thiết kế
 
 | Nguyên tắc | Cách áp dụng | Vì sao |
 | :--- | :--- | :--- |
 | Điều hướng ở header, Trang chủ chỉ để xem tổng quan | Không có lưới ô bấm chức năng trên Trang chủ; mọi chức năng chọn qua các nhóm dropdown trên header | Header có mặt ở mọi màn nên nhân sự chuyển thẳng giữa các chức năng; 1 lưới ô ở Trang chủ chỉ lặp lại đúng menu đó |
-| Chỉ hiện mục menu thuộc quyền của vai trò đang đăng nhập | Lọc theo `adminOnly` / `roles` (§2.1); nhóm rỗng thì ẩn cả nhóm | Không hiện mục dẫn tới nơi không có quyền vào, tránh gây hiểu nhầm |
+| Chỉ hiện mục menu thuộc quyền của vai trò đang đăng nhập | Lọc theo `roles` của từng mục, đúng ma trận SCR-AD-03 (§2.1); nhóm rỗng thì ẩn cả nhóm | Không hiện mục dẫn tới nơi không có quyền vào, tránh gây hiểu nhầm |
 | Giữ 4 nhóm quen thuộc từ sidebar cũ | Tài khoản / Kho tri thức / Giám sát / Cấu hình | Đổi cách điều hướng (bỏ sidebar) không cần đổi luôn cách tổ chức thông tin, giảm chi phí học lại cho nhân sự nội bộ |
+| Vai trò không xem số liệu thì không gọi API số liệu | Biên tập / Cộng tác viên thấy lối tắt thay cho dashboard (§3.4) | Không gọi 1 API chắc chắn bị từ chối; vai trò nội dung vẫn có điểm bắt đầu hữu ích thay vì 1 trang trống |
 | Trang chủ là bản xem nhanh, không thay màn Dashboard đầy đủ | Cố định 14 ngày, không bộ lọc, không xuất file; nút "Xem đầy đủ" dẫn sang SCR-AD-05 | Trang chủ để nắm tình hình trong vài giây; phân tích sâu và báo cáo làm ở màn chuyên trách |
-| Việc cần làm ngay được đẩy lên header | Badge số ca cần can thiệp cạnh "Cảnh báo khẩn cấp" và thẻ "N mới" trên Trang chủ | Admin thấy có ca chờ xử lý ở bất kỳ màn nào, không phải mở Trang chủ mới biết |
+| Việc cần làm ngay được đẩy lên header | Badge số ca cần can thiệp cạnh "Cảnh báo khẩn cấp" và thẻ "N mới" trên Trang chủ | Admin và Giám sát vận hành thấy có ca chờ xử lý ở bất kỳ màn nào, không phải mở Trang chủ mới biết |
 
 ## 5. Tham chiếu
 
