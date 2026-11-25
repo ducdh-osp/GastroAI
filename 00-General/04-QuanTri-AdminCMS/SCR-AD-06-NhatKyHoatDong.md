@@ -33,13 +33,29 @@ Với một hệ thống xử lý dữ liệu y tế, câu hỏi "ai đã xem/s�
 
 — Tab "Quy tắc cảnh báo bất thường" —
 ┌───────────────────────────────────────────────────────────┐
-│  Cảnh báo khi:                                                 │
-│  ☑ 1 tài khoản truy cập dữ liệu > [20] bệnh nhân khác nhau      │
-│     trong vòng [1 giờ]                                          │
-│  ☑ 1 tài khoản đăng nhập từ > [3] địa điểm khác nhau trong      │
-│     [24 giờ]                                                    │
+│  Cảnh báo khi (giá trị mặc định, Admin chỉnh được):           │
+│  ☑ 1 tài khoản xem dữ liệu từ [20] bệnh nhân khác nhau trở lên │
+│     trong vòng [10] phút                                        │
+│  ☑ 1 tài khoản đăng nhập/thao tác từ [4] địa chỉ IP khác nhau  │
+│     trở lên trong vòng [1440] phút (24 giờ)                     │
+│  … (6 quy tắc còn lại — xem bảng bên dưới)                      │
 └───────────────────────────────────────────────────────────┘
 ```
+
+Mockup trên chỉ minh hoạ 2 quy tắc. Trên màn thật, tab này là 1 bảng liệt kê **đủ 8 quy tắc mặc định** (cột: Quy tắc, Theo dõi, Ngưỡng cảnh báo `[ngưỡng] / [số phút]`, Bật, Sửa lần cuối, Lưu/Hoàn tác). Mọi quy tắc so sánh "**từ ngưỡng trở lên**" (`số đếm >= ngưỡng`), đếm theo từng tài khoản trong khung thời gian lùi tính từ thời điểm thao tác. Giá trị mặc định ban đầu (V11, V12, V16):
+
+| Mã quy tắc | Tên | Đếm gì | Ngưỡng mặc định | Khung thời gian mặc định |
+| :--- | :--- | :--- | :--- | :--- |
+| `MASS_PATIENT_VIEW` | Xem dữ liệu nhiều bệnh nhân | Số bệnh nhân khác nhau bị xem | 20 | 10 phút |
+| `MASS_DOCUMENT_DELETE` | Xoá tài liệu hàng loạt | Số lượt xoá tài liệu / xoá phiên bản tài liệu | 5 | 10 phút |
+| `MASS_DOCUMENT_UNPUBLISH` | Gỡ tài liệu hàng loạt | Số lượt gỡ tài liệu | 5 | 10 phút |
+| `MASS_PATIENT_LOCK` | Khoá/mở khoá nhiều bệnh nhân | Số bệnh nhân khác nhau bị khoá/mở khoá | 10 | 10 phút |
+| `MASS_ROLE_CHANGE` | Đổi vai trò nhiều tài khoản | Số tài khoản khác nhau bị đổi vai trò | 5 | 10 phút |
+| `MULTI_IP` | Đăng nhập/thao tác từ nhiều địa chỉ IP | Số địa chỉ IP khác nhau (mọi thao tác, không định vị địa lý) | 4 | 1440 phút (24 giờ) |
+| `MASS_CONTENT_DELETE` | Xoá nội dung hàng loạt | Số lượt xoá nội dung | 5 | 10 phút |
+| `MASS_CONTENT_UNPUBLISH` | Gỡ nội dung hàng loạt | Số lượt gỡ nội dung | 5 | 10 phút |
+
+Ô "số phút" nhận từ 1 đến 1440, ô ngưỡng từ 1 đến 1000. Ngoài 8 quy tắc trên, thao tác **khôi phục dữ liệu hệ thống** luôn sinh cảnh báo ngay (cố định trong code, không nằm trong bảng quy tắc nên không tắt/chỉnh được).
 
 ## 3. Nguyên tắc
 
