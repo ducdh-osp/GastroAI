@@ -75,6 +75,22 @@ class DashboardAdminControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "4", roles = "OPERATIONS")
+    void getStats_returnsOkForOperations() throws Exception {
+        when(dashboardAdminService.getStats(14)).thenReturn(mockResponse());
+
+        mockMvc.perform(get("/api/v1/cms/dashboard/stats?days=14"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "3", roles = "CONTENT_EDITOR")
+    void getStats_rejectsContentEditor() throws Exception {
+        mockMvc.perform(get("/api/v1/cms/dashboard/stats"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @WithMockUser(username = "2", roles = "PATIENT")
     void getStats_rejectsPatientRole() throws Exception {
         mockMvc.perform(get("/api/v1/cms/dashboard/stats"))

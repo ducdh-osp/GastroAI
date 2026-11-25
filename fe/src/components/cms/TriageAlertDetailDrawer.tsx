@@ -40,6 +40,7 @@ import { useNow } from '../../hooks/useNow'
 import { formatDateTime } from '../../lib/format'
 import { FAILSAFE_AFTER_MS, formatCountdown, INTERVENTION_AFTER_MS, msUntil } from '../../lib/triageTimers'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
+import { canAccessCmsPath } from './cmsNav'
 
 const { Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -204,12 +205,17 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
   }, [alertId, load])
 
   const alert = detail?.alert ?? null
-  const isClaimer = alert !== null && user?.userId === alert.claimedById && user?.userType === alert.claimedByType
-  // SCR-AD-13: 1 Admin bất kỳ xử lý được, không bắt buộc "tiếp nhận" trước.
+  // claimedByType là LOẠI TÀI KHOẢN (bảng admins -> "ADMIN", bảng doctors -> "DOCTOR"), không phải vai
+  // trò: Giám sát vận hành nằm ở bảng admins nên ca họ nhận vẫn ghi "ADMIN" (xem resolveRole ở BE).
+  const accountType = user?.userType === 'DOCTOR' ? 'DOCTOR' : 'ADMIN'
+  const isClaimer = alert !== null && user?.userId === alert.claimedById && accountType === alert.claimedByType
+  // SCR-AD-13: Admin/Giám sát vận hành bất kỳ xử lý được, không bắt buộc "tiếp nhận" trước - khớp
+  // TriageAlertService (cho phép mọi tài khoản loại ADMIN xử lý thay).
+  const canOverride = canAccessCmsPath(user?.userType, '/cms/triage-alerts')
   const isOpen = alert !== null && alert.status !== 'RESOLVED'
-  const canHandle = isOpen && (alert.claimedById === null || isClaimer || user?.userType === 'ADMIN')
+  const canHandle = isOpen && (alert.claimedById === null || isClaimer || canOverride)
   const canRelease = alert?.status === 'NEEDS_INTERVENTION' && alert.claimedById !== null
-    && (isClaimer || user?.userType === 'ADMIN')
+    && (isClaimer || canOverride)
   const contactRecorded = (detail?.actions ?? []).some((action) => action.actionType === 'CONTACT_RECORDED')
   const canResolve = contactRecorded
   const busy = guard.inFlightId !== null

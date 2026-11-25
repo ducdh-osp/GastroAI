@@ -85,6 +85,17 @@ class StompClientSendBlockingInterceptorTest {
     }
 
     @Test
+    void operationsCanSubscribeToTriageAlertsButNotAdminNotifications() {
+        Message<byte[]> triage = stompMessage(StompCommand.SUBSCRIBE, "/topic/triage-alerts",
+                Map.of("HTTP_SESSION_ID", "s3", "CMS_USER_TYPE", "OPERATIONS"));
+        Message<byte[]> adminNotifications = stompMessage(StompCommand.SUBSCRIBE, "/topic/notifications/admin",
+                Map.of("HTTP_SESSION_ID", "s3", "CMS_USER_TYPE", "OPERATIONS"));
+
+        assertSame(triage, interceptor.preSend(triage, null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(adminNotifications, null));
+    }
+
+    @Test
     void allowsConnectFrame() {
         Message<byte[]> message = stompMessage(StompCommand.CONNECT, null);
 

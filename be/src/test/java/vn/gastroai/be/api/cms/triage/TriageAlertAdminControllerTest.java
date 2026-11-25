@@ -138,6 +138,26 @@ class TriageAlertAdminControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "4", roles = "OPERATIONS")
+    void operationsCanClaimAsAdminAccountType() throws Exception {
+        // Giám sát vận hành nằm ở bảng admins -> loại tài khoản ghi trên ca vẫn là ADMIN.
+        when(triageAlertService.claim(10L, 4L, "ADMIN"))
+                .thenReturn(alert("NEEDS_INTERVENTION", 4L, "ADMIN", null, null));
+
+        mockMvc.perform(post("/api/v1/cms/triage-alerts/10/claim").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.claimedById").value(4))
+                .andExpect(jsonPath("$.claimedByType").value("ADMIN"));
+    }
+
+    @Test
+    @WithMockUser(username = "3", roles = "CONTENT_EDITOR")
+    void listRejectsContentEditor() throws Exception {
+        mockMvc.perform(get("/api/v1/cms/triage-alerts"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @WithMockUser(username = "1", roles = "PATIENT")
     void listRejectsPatientRole() throws Exception {
         mockMvc.perform(get("/api/v1/cms/triage-alerts"))
