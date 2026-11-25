@@ -106,8 +106,8 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.sessionId").value(1));
 
         // UC0036 - khong co dau hieu khan cap thi KHONG duoc tao/gan canh bao nao ca.
-        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), any());
-        verify(triageAlertService, never()).linkConversation(any(), any(), any());
+        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any());
+        verify(triageAlertService, never()).linkConversation(any(), any());
     }
 
     @Test
@@ -128,7 +128,7 @@ class ChatControllerTest {
                 new ChatAnswer(ragAnswer, true, List.of("DAU_BUNG_CAP_TINH")),
                 new TriageResult(true, List.of("DAU_BUNG_CAP_TINH")));
         when(triageAlertService.createAndPublish(
-                eq(1L), isNull(), isNull(),
+                eq(1L), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
                 .thenReturn(42L);
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
@@ -144,9 +144,9 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.matchedGroups[0]").value("DAU_BUNG_CAP_TINH"));
 
         verify(triageAlertService).createAndPublish(
-                eq(1L), isNull(), isNull(),
+                eq(1L), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
-        verify(triageAlertService).linkConversation(eq(42L), eq(1L), eq(1L));
+        verify(triageAlertService).linkConversation(eq(42L), eq(1L));
     }
 
     @Test

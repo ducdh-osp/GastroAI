@@ -50,7 +50,6 @@ export interface TriageAlert {
   patientId: number
   patientFullName: string | null
   patientPhone: string | null
-  sessionId: number | null
   messageId: number | null
   /** Tin gốc - không bị ghi đè khi bệnh nhân gửi lặp lại. */
   messageContent: string

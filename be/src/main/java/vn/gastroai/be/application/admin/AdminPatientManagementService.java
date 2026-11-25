@@ -33,7 +33,6 @@ public class AdminPatientManagementService {
     public CmsPatientResponse lock(Long patientId) {
         Patient patient = getForUpdate(patientId);
         if (!patient.isAdminLocked()) {
-            patient.setAdminLocked(true);
             patient.setAdminLockedAt(Instant.now());
             // Thu hoi ngay cac JWT da phat, ke ca token chua co request tiep theo.
             patient.setTokenVersion(patient.getTokenVersion() + 1);
@@ -44,7 +43,6 @@ public class AdminPatientManagementService {
     @Transactional("postgresTransactionManager")
     public CmsPatientResponse unlock(Long patientId) {
         Patient patient = getForUpdate(patientId);
-        patient.setAdminLocked(false);
         patient.setAdminLockedAt(null);
         // Khong ha tokenVersion: token da thu hoi khi khoa van phai vo hieu sau khi mo lai.
         return CmsPatientResponse.from(patient);

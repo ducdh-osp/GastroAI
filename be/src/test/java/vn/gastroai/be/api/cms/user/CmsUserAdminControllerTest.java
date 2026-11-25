@@ -112,17 +112,11 @@ class CmsUserAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "DOCTOR")
-    void doctorCannotListOrLockPatients() throws Exception {
-        mockMvc.perform(get("/api/v1/cms/users")).andExpect(status().isForbidden());
-        mockMvc.perform(post("/api/v1/cms/users/7/lock")).andExpect(status().isForbidden());
-        verify(auditLogService, never()).record(any(), any(), any(), any());
-    }
-
-    @Test
     @WithMockUser(roles = "CONTENT_EDITOR")
     void contentEditorCannotManagePatients() throws Exception {
         mockMvc.perform(get("/api/v1/cms/users")).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/cms/users/7/lock")).andExpect(status().isForbidden());
+        verify(auditLogService, never()).record(any(), any(), any(), any());
     }
 
     @Test

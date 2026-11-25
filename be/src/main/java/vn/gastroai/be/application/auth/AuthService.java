@@ -343,7 +343,7 @@ public class AuthService {
     private void record(Patient patient, LoginOutcome outcome, String reason,
                         ClientRequestInfo requestInfo) {
         history.save(new PatientLoginHistory(patient, Instant.now(), outcome, reason,
-                requestInfo.ipAddress(), requestInfo.userAgent(), requestInfo.deviceLabel()));
+                requestInfo.ipAddress(), requestInfo.userAgent()));
     }
 
     private void rejectReusedPassword(Patient patient, String newPassword) {

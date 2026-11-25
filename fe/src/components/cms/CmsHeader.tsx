@@ -46,10 +46,6 @@ const ROLE_LABEL: Record<string, string> = {
   CONTENT_EDITOR: 'Biên tập nội dung',
 }
 
-/** Header cố định cho mọi trang CMS sau đăng nhập — thay cho CmsSidebar cũ (xem
- * 00-General/04-QuanTri-AdminCMS/SCR-AD-00-TrangChu.md). Biểu tượng GastroAI chỉ là thương
- * hiệu tĩnh (không phải nút) — điều hướng đi qua Trang chủ + các nhóm dropdown ngay trên
- * header, cùng mẫu với AppHeader bên bệnh nhân. */
 export function CmsHeader() {
   const { user, logout } = useCmsAuth()
   const navigate = useNavigate()
@@ -143,9 +139,9 @@ export function CmsHeader() {
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-white/10 bg-[#0f172a] px-4 text-white sm:px-6">
-      <span className="flex shrink-0 items-center">
+      <Link to="/cms" aria-label="Về Trang chủ CMS" className="flex shrink-0 items-center">
         <Logo variant="light" />
-      </span>
+      </Link>
 
       <nav className="hidden min-w-0 flex-1 items-center gap-1 md:flex">
         <Link

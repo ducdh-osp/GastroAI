@@ -78,7 +78,7 @@ class SymptomAssessmentHistoryServiceTest {
         SymptomAssessmentResponse response = service.assessAndSave(42L, input);
 
         assertTrue(response.emergency());
-        verify(triageAlertService).createAndPublish(eq(42L), isNull(), isNull(),
+        verify(triageAlertService).createAndPublish(eq(42L), isNull(),
                 contains("Nôn ra máu"), eq(List.of("XUAT_HUYET_TIEU_HOA")));
     }
 
@@ -90,7 +90,7 @@ class SymptomAssessmentHistoryServiceTest {
 
         assertFalse(response.emergency());
         assertEquals(CareRecommendation.SEE_DOCTOR, response.careRecommendation());
-        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), anyList());
+        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), anyList());
     }
 
     @Test

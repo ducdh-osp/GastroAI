@@ -41,16 +41,17 @@ public class DocumentReviewService {
                 .map(DocumentReviewService::fileTypeOf)
                 .orElse(null);
 
-        return new DocumentReviewResponse(
+            return new DocumentReviewResponse(
                 document.getId(),
                 document.getTitle(),
-                document.getVersionNo(),
                 document.getStatus(),
-                document.isCurrentVersion(),
+                document.isInUse(),
                 document.getContentApprovedAt() != null,
                 document.getContentApprovedBy(),
                 document.getContentApprovedAt(),
                 fileType,
+                // SCR-AD-04 §3.2: xac nhan ban thay the se XOA VINH VIEN ban dang dung - FE canh bao truoc.
+                document.isReplacement(),
                 "PDF".equals(fileType) ? null : document.getFullText(),
                 chunkRepository.findByDocumentIdOrderByChunkIndex(documentId).stream()
                         .map(chunk -> new DocumentReviewResponse.Chunk(chunk.getChunkIndex(), chunk.getContent()))

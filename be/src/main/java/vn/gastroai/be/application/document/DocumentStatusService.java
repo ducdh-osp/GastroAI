@@ -10,7 +10,6 @@ import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 import vn.gastroai.be.domain.rag.DocumentStatus;
 import vn.gastroai.be.infrastructure.persistence.postgres.ChunkRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.DocumentRepository;
-import vn.gastroai.be.api.document.DocumentVersionResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import java.time.Instant;
 import java.util.List;
@@ -28,10 +27,13 @@ public class DocumentStatusService {
 
     private final DocumentRepository documentRepository;
     private final ChunkRepository chunkRepository;
+    private final DocumentGroupPruner groupPruner;
 
-    public DocumentStatusService(DocumentRepository documentRepository, ChunkRepository chunkRepository) {
+    public DocumentStatusService(DocumentRepository documentRepository, ChunkRepository chunkRepository,
+                                 DocumentGroupPruner groupPruner) {
         this.documentRepository = documentRepository;
         this.chunkRepository = chunkRepository;
+        this.groupPruner = groupPruner;
     }
 
     @Transactional(readOnly = true)
@@ -43,7 +45,6 @@ public class DocumentStatusService {
     public void markProcessing(Long documentId) {
         Document document = getDocument(documentId);
 
-        document.setStatus(DocumentStatus.PROCESSING);
         document.setProcessingStage(DocumentProcessingStage.EXTRACTION);
         document.setErrorMessage(null);
         // Xu ly lai thi noi dung co the khac, phai xac nhan lai.
@@ -71,7 +72,6 @@ public class DocumentStatusService {
     public void markDone(Long documentId) {
         Document document = getDocument(documentId);
 
-        document.setStatus(DocumentStatus.DONE);
         document.setProcessingStage(DocumentProcessingStage.DONE);
         document.setErrorMessage(null);
         // SCR-AD-04 §3.1b - xu ly ky thuat xong chua phai la xong: cho Bien tap xac nhan noi dung
@@ -91,7 +91,6 @@ public class DocumentStatusService {
 
         Document document = maybeDocument.get();
 
-        document.setStatus(DocumentStatus.ERROR);
         document.setProcessingStage(DocumentProcessingStage.ERROR);
         document.setErrorMessage(errorMessage);
 
@@ -135,18 +134,17 @@ public class DocumentStatusService {
                 ? ""
                 : vn.gastroai.be.application.support.VietnameseText.normalize(query.trim());
 
-        // Moi tai lieu 1 dong (phien ban moi nhat), KHONG co full_text - nhe hon nhieu
-        // so voi
-        // tai moi phien ban cua moi tai lieu.
-        List<DocumentListRow> latestPerGroup = documentRepository.findLatestVersionRows();
+        // Moi tai lieu 1 dong (ban thay the neu dang co, khong thi dong chinh), KHONG co
+        // full_text cho nhe.
+        List<DocumentListRow> latestPerGroup = documentRepository.findDisplayRows();
 
-        // Thong tin theo nhom: so phien ban, ban dang dung, da go hay chua.
+        // Thong tin theo tai lieu: co ban thay the khong, dong chatbot dang dung, da go hay chua.
         Map<Long, DocumentGroupRow> groups = documentRepository.findGroupRows().stream()
                 .collect(Collectors.toMap(DocumentGroupRow::getGroupId, g -> g));
 
         DocumentStats stats = new DocumentStats(
                 latestPerGroup.size(),
-                (int) groups.values().stream().filter(g -> g.getCurrentVersionNo() != null).count(),
+                (int) groups.values().stream().filter(g -> g.getInUseId() != null).count(),
                 (int) latestPerGroup.stream()
                         .filter(d -> d.getStatus() == DocumentStatus.PENDING
                                 || d.getStatus() == DocumentStatus.PROCESSING)
@@ -201,9 +199,8 @@ public class DocumentStatusService {
                             chunkCounts.getOrDefault(chunkOwnerId(row, group), 0L),
                             row.getUploadedAt(),
                             row.getUpdatedAt(),
-                            row.getVersionNo(),
-                            group == null ? null : group.getCurrentVersionNo(),
-                            group == null ? 1 : group.getVersionCount().intValue(),
+                            group != null && group.getInUseId() != null,
+                            group != null && group.getRowCount() > 1,
                             group != null && group.getUnpublishedAt() != null,
                             row.getContentApprovedAt() != null);
                 })
@@ -217,7 +214,7 @@ public class DocumentStatusService {
      * dang hien.
      */
     private static Long chunkOwnerId(DocumentListRow row, DocumentGroupRow group) {
-        return group != null && group.getCurrentId() != null ? group.getCurrentId() : row.getId();
+        return group != null && group.getInUseId() != null ? group.getInUseId() : row.getId();
     }
 
     @Transactional
@@ -226,118 +223,73 @@ public class DocumentStatusService {
         if (document.getStatus() != DocumentStatus.ERROR) {
             throw new IllegalStateException("Chỉ có thể thử lại các tài liệu đang ở trạng thái lỗi (ERROR)");
         }
-        document.setStatus(DocumentStatus.PENDING);
         document.setProcessingStage(DocumentProcessingStage.PENDING);
         document.setErrorMessage(null);
         return documentRepository.save(document);
     }
 
-    @Transactional(readOnly = true)
-    public List<DocumentVersionResponse> listVersions(Long documentId) {
-        Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
-        return documentRepository.findGroup(document.groupId()).stream()
-                .map(d -> new DocumentVersionResponse(d.getId(), d.getVersionNo(), d.getTitle(), d.getStatus(),
-                        d.isCurrentVersion(), d.getUploadedAt(), d.getErrorMessage(),
-                        d.getContentApprovedAt() != null, d.getContentApprovedBy(), d.getContentApprovedAt()))
-                .toList();
-    }
-
-    @Transactional
-    public void activateVersion(Long documentId, Long versionId) {
-        Document target = versionInGroup(documentId, versionId);
-
-        if (target.getStatus() != DocumentStatus.DONE) {
-            throw new IllegalStateException("Chỉ dùng được phiên bản đã xử lý xong");
-        }
-        if (target.getContentApprovedAt() == null) {
-            throw new IllegalStateException("Phiên bản này chưa được Biên tập xác nhận nội dung nên chưa dùng cho AI được");
-        }
-        clearUnpublishedFlag(target);
-        if (target.isCurrentVersion()) {
-            return;
-        }
-        documentRepository.clearCurrent(target.groupId());
-        target.setCurrentVersion(true);
-        documentRepository.save(target);
-    }
-
     /**
      * UC0048 / SCR-AD-04 §3.1b - Biên tập xác nhận đã đối chiếu nội dung với nguồn y khoa đã công bố.
-     * Sau bước này chatbot mới dùng phiên bản: nó thành bản đang dùng nếu mới hơn bản hiện tại
-     * và tài liệu không bị gỡ.
+     * Sau bước này chatbot mới dùng dòng này (trừ khi tài liệu đang bị gỡ).
+     * <p>
+     * §3.2: nếu đây là bản THAY THẾ, bản đang dùng bị xoá vĩnh viễn ngay lúc này
+     * (document + chunk + embedding) - không giữ lịch sử, không khôi phục được.
+     *
+     * @return true nếu đã thay thế (xoá) bản cũ
      */
     @Transactional
-    public void approveContent(Long documentId, Long versionId, String approverEmail) {
-        Document target = versionInGroup(documentId, versionId);
+    public boolean approveContent(Long documentId, String approverEmail) {
+        Document target = documentRepository.findById(documentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
 
         if (target.getStatus() != DocumentStatus.DONE) {
-            throw new IllegalStateException("Chỉ xác nhận được phiên bản đã xử lý xong");
+            throw new IllegalStateException("Chỉ xác nhận được bản đã xử lý xong");
         }
         if (target.getContentApprovedAt() != null) {
-            throw new IllegalStateException("Phiên bản này đã được xác nhận nội dung");
+            throw new IllegalStateException("Bản này đã được xác nhận nội dung");
         }
+        boolean replacesOld = target.isReplacement();
+        if (replacesOld) {
+            // Lam TRUOC khi dong vao target: truy van findGroup se flush target, ma ban thay the
+            // khong duoc mang co "da xac nhan" (ck_documents_replacement_pending).
+            groupPruner.keepOnly(target, documentRepository.findGroup(target.groupId()));
+        }
+
+        // Toi day target la dong chinh. Chatbot dung no ngay, tru khi tai lieu dang bi go
+        // (co "da go" da duoc chuyen sang tu dong chinh cu) - khi do cho toi luc dang lai.
         target.setContentApprovedAt(Instant.now());
         target.setContentApprovedBy(approverEmail);
-
-        boolean newerThanCurrent = documentRepository.findGroup(target.groupId()).stream()
-                .filter(Document::isCurrentVersion)
-                .findFirst()
-                .map(current -> target.getVersionNo() > current.getVersionNo())
-                .orElse(true);
-        if (!target.isCurrentVersion() && newerThanCurrent && rootOf(target).getUnpublishedAt() == null) {
-            documentRepository.clearCurrent(target.groupId());
-            target.setCurrentVersion(true);
-        }
         documentRepository.save(target);
+        return replacesOld;
     }
 
-    /**
-     * UC0050 - go tai lieu khoi chatbot nhung giu nguyen du lieu, co the dang lai
-     * sau.
-     */
+    /** UC0050 - gỡ tài liệu khỏi chatbot nhưng giữ nguyên dữ liệu, có thể đăng lại sau. */
     @Transactional
     public void unpublish(Long documentId) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
-
-        boolean hasDone = documentRepository.findGroup(document.groupId()).stream()
-                .anyMatch(v -> v.getStatus() == DocumentStatus.DONE);
-        if (!hasDone) {
-            throw new IllegalStateException("Tài liệu chưa có phiên bản nào xử lý xong, chưa có gì để gỡ");
+        Document main = mainRowOf(document);
+        if (!main.isInUse()) {
+            throw new IllegalStateException("Chatbot đang không dùng tài liệu này nên không có gì để gỡ");
         }
 
-        documentRepository.clearCurrent(document.groupId());
-
-        // Danh dau "go co chu dich" tren dong goc. clearCurrent la cau UPDATE hang loat
-        // nen
-        // ban trong bo nho co the con ghi "dang dung" (cu) - dong bo lai truoc khi
-        // save, neu
-        // khong save(root) se ghi de is_current = true tro lai.
-        Document root = rootOf(document);
-        root.setCurrentVersion(false);
-        root.setUnpublishedAt(Instant.now());
-        documentRepository.save(root);
+        main.setUnpublishedAt(Instant.now());
+        documentRepository.save(main);
     }
 
-    /** UC0050 - dang lai: bat phien ban DONE moi nhat da duoc Bien tap xac nhan noi dung. */
+    /** UC0050 - đăng lại tài liệu đã gỡ: chatbot dùng lại bản đã được Biên tập xác nhận. */
     @Transactional
     public void publish(Long documentId) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
-        Long groupId = document.groupId();
-        Document latestDone = documentRepository.findGroup(groupId).stream()
-                .filter(v -> v.getStatus() == DocumentStatus.DONE && v.getContentApprovedAt() != null)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Chưa có phiên bản nào được xác nhận nội dung để đăng"));
-
-        clearUnpublishedFlag(latestDone);
-        if (latestDone.isCurrentVersion()) {
-            return;
+        Document main = mainRowOf(document);
+        if (main.getUnpublishedAt() == null) {
+            throw new IllegalStateException("Tài liệu chưa bị gỡ khỏi chatbot nên không cần đăng lại");
         }
-        documentRepository.clearCurrent(groupId);
-        latestDone.setCurrentVersion(true);
-        documentRepository.save(latestDone);
+        // Khong can kiem tra "da xac nhan chua": chi tai lieu da xac nhan moi go duoc
+        // (ck_documents_unpublished_requires_approval).
+        main.setUnpublishedAt(null);
+        documentRepository.save(main);
     }
 
     @Transactional
@@ -349,32 +301,14 @@ public class DocumentStatusService {
         documentRepository.updateGroupInfo(document.groupId(), title, sourceUrl, Instant.now());
     }
 
-    /** Phiên bản versionId phải thuộc cùng tài liệu với documentId, nếu không coi như không tìm thấy. */
-    private Document versionInGroup(Long documentId, Long versionId) {
-        Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + documentId));
-        return documentRepository.findById(versionId)
-                .filter(v -> v.groupId().equals(document.groupId()))
-                .orElseThrow(() -> new ResourceNotFoundException("Phiên bản không thuộc tài liệu này"));
-    }
-
-    /** Dong goc cua nhom chua phien ban nay (chinh no neu no la ban goc). */
-    private Document rootOf(Document version) {
-        Long groupId = version.groupId();
-        if (groupId.equals(version.getId())) {
-            return version;
+    /** Dong chinh cua tai lieu chua dong nay (chinh no neu no la dong chinh). */
+    private Document mainRowOf(Document row) {
+        Long groupId = row.groupId();
+        if (groupId.equals(row.getId())) {
+            return row;
         }
         return documentRepository.findById(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu: " + groupId));
-    }
-
-    /** Dang lai / dung 1 ban cu thi bo co "da go" tren dong goc. */
-    private void clearUnpublishedFlag(Document version) {
-        Document root = rootOf(version);
-        if (root.getUnpublishedAt() != null) {
-            root.setUnpublishedAt(null);
-            documentRepository.save(root);
-        }
     }
 
     private Document getDocument(Long documentId) {

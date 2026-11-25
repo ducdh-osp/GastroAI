@@ -16,9 +16,10 @@ public record DocumentSummaryResponse(
         long chunkCount,
         Instant uploadedAt,
         Instant updatedAt,
-        int versionNo,
-        Integer currentVersionNo,
-        int versionCount,
+        /** Chatbot đang dùng tài liệu này (có 1 bản đã xác nhận và không bị gỡ). */
+        boolean inUse,
+        /** Dòng đang hiện là bản thay thế chờ xử lý / chờ xác nhận (bản cũ vẫn phục vụ chatbot). */
+        boolean replacing,
         boolean unpublished,
         boolean contentApproved
 ) {

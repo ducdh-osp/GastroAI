@@ -15,6 +15,7 @@ import vn.gastroai.be.application.readmodel.LoginHistoryItem;
 import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.admin.AdminLoginHistory;
 import vn.gastroai.be.domain.admin.AdminPasswordHistory;
+import vn.gastroai.be.domain.auth.DeviceLabel;
 import vn.gastroai.be.domain.auth.LoginOutcome;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminLoginHistoryRepository;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminPasswordHistoryRepository;
@@ -171,7 +172,7 @@ public class CmsAuthService {
                         history.getFailureReason(),
                         history.getIpAddress(),
                         history.getUserAgent(),
-                        history.getDeviceLabel()));
+                        DeviceLabel.of(history.getUserAgent())));
     }
 
     /** Số lần đăng nhập hoặc đổi mật khẩu không thành công trong 7 ngày qua, tính trên toàn bộ lịch sử. */
@@ -250,7 +251,6 @@ public class CmsAuthService {
                 outcome,
                 failureReason,
                 requestInfo.ipAddress(),
-                requestInfo.userAgent(),
-                requestInfo.deviceLabel()));
+                requestInfo.userAgent()));
     }
 }

@@ -52,13 +52,14 @@ public class AuditLogAdminController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate to,
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) String targetType,
+            @RequestParam(required = false) Long actorId,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page >= 0 va size trong khoang 1..100");
         }
-        return auditLogService.search(from, to, action, targetType, q, page, size);
+        return auditLogService.search(from, to, action, targetType, actorId, q, page, size);
     }
 
     @GetMapping("/export")
@@ -67,6 +68,7 @@ public class AuditLogAdminController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) java.time.LocalDate to,
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) String targetType,
+            @RequestParam(required = false) Long actorId,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "EXCEL") String format) {
         boolean csv = "CSV".equalsIgnoreCase(format);
@@ -74,12 +76,12 @@ public class AuditLogAdminController {
             throw new IllegalArgumentException("Định dạng xuất chỉ hỗ trợ CSV hoặc EXCEL");
         }
 
-        List<AuditLogResponse> logs = auditLogService.findForExport(from, to, action, targetType, q);
+        List<AuditLogResponse> logs = auditLogService.findForExport(from, to, action, targetType, actorId, q);
         byte[] content = csv ? exportService.toCsv(logs) : exportService.toExcel(logs);
 
         auditLogService.record(AuditAction.AUDIT_LOG_EXPORT, "SYSTEM", null,
                 "Xuất " + (csv ? "CSV" : "EXCEL") + " " + logs.size() + " dòng | "
-                        + describeFilter(from, to, action, targetType, q));
+                        + describeFilter(from, to, action, targetType, actorId, q));
 
         String filename = "GastroAI-AuditLog-"
                 + LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")).format(FILE_TIME)
@@ -105,7 +107,7 @@ public class AuditLogAdminController {
     }
 
     private String describeFilter(java.time.LocalDate from, java.time.LocalDate to, AuditAction action,
-                                  String targetType, String q) {
+                                  String targetType, Long actorId, String q) {
         List<String> parts = new ArrayList<>();
         if (from != null) {
             parts.add("từ " + from);
@@ -118,6 +120,9 @@ public class AuditLogAdminController {
         }
         if (targetType != null && !targetType.isBlank()) {
             parts.add("đối tượng " + targetType.trim());
+        }
+        if (actorId != null) {
+            parts.add("người thực hiện #" + actorId);
         }
         if (q != null && !q.isBlank()) {
             parts.add("từ khoá \"" + q.trim() + "\"");

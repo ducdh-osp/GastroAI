@@ -82,31 +82,27 @@ public class DocumentUploadController {
     }
 
     /**
-     * UC0049 - tai len phien ban moi cho 1 tai lieu da co. Ban moi chua duoc dung
-     * cho toi khi xu ly xong VA Bien tap xac nhan noi dung (xem approveContent).
+     * UC0049 / SCR-AD-04 §3.2 - tai ban thay the cho 1 tai lieu da co. Ban cu van phuc vu
+     * chatbot cho toi khi ban thay the xu ly xong VA Bien tap xac nhan noi dung (approveContent),
+     * luc do ban cu bi xoa vinh vien.
      */
-    @PostMapping("/{documentId}/versions")
-    public ResponseEntity<DocumentStatusResponse> uploadVersion(
+    @PostMapping("/{documentId}/replacement")
+    public ResponseEntity<DocumentStatusResponse> uploadReplacement(
             @PathVariable Long documentId,
             @RequestParam("file") MultipartFile file) {
-        Document document = documentUploadService.uploadNewVersion(documentId, file);
-        auditLogService.record(AuditAction.DOCUMENT_NEW_VERSION, "DOCUMENT", documentId,
-                "Phiên bản mới id=" + document.getId());
+        Document document = documentUploadService.uploadReplacement(documentId, file);
+        auditLogService.record(AuditAction.DOCUMENT_REPLACE, "DOCUMENT", documentId,
+                "Bản thay thế id=" + document.getId());
         return ResponseEntity.accepted().body(toResponse(document));
     }
 
-    /** UC0049 - lich su moi phien ban cua tai lieu, ban moi nhat dung dau. */
-    @GetMapping("/{documentId}/versions")
-    public ResponseEntity<List<DocumentVersionResponse>> listVersions(@PathVariable Long documentId) {
-        return ResponseEntity.ok(documentStatusService.listVersions(documentId));
-    }
     @GetMapping("/{documentId}/review")
     public ResponseEntity<DocumentReviewResponse> review(@PathVariable Long documentId) {
         return ResponseEntity.ok(documentReviewService.review(documentId));
     }
 
     /**
-     * File gốc của 1 phiên bản, mở xem ngay trên trình duyệt (inline) chứ không tải về.
+     * File gốc của 1 bản, mở xem ngay trên trình duyệt (inline) chứ không tải về.
      * FE tải bằng axios rồi tạo đường dẫn blob: cho iframe, nên không cần nới X-Frame-Options.
      */
     @GetMapping("/{documentId}/file")
@@ -126,24 +122,11 @@ public class DocumentUploadController {
     }
 
     /** UC0048 / SCR-AD-04 §3.1b - Biên tập xác nhận nội dung trước khi chatbot dùng (SecurityConfig chỉ cho CONTENT_EDITOR). */
-    @PostMapping("/{documentId}/versions/{versionId}/approve")
-    public ResponseEntity<Void> approveContent(
-            @PathVariable Long documentId,
-            @PathVariable Long versionId) {
-        documentStatusService.approveContent(documentId, versionId, auditLogService.currentActorEmail());
+    @PostMapping("/{documentId}/approve")
+    public ResponseEntity<Void> approveContent(@PathVariable Long documentId) {
+        boolean replaced = documentStatusService.approveContent(documentId, auditLogService.currentActorEmail());
         auditLogService.record(AuditAction.DOCUMENT_APPROVE_CONTENT, "DOCUMENT", documentId,
-                "Xác nhận nội dung phiên bản id=" + versionId);
-        return ResponseEntity.noContent().build();
-    }
-
-    /** UC0049 - chuyen chatbot sang dung 1 phien ban cu (phai da xu ly xong). */
-    @PostMapping("/{documentId}/versions/{versionId}/activate")
-    public ResponseEntity<Void> activateVersion(
-            @PathVariable Long documentId,
-            @PathVariable Long versionId) {
-        documentStatusService.activateVersion(documentId, versionId);
-        auditLogService.record(AuditAction.DOCUMENT_ACTIVATE_VERSION, "DOCUMENT", documentId,
-                "Kích hoạt phiên bản id=" + versionId);
+                replaced ? "Xác nhận bản thay thế · đã xoá vĩnh viễn bản cũ" : "Xác nhận nội dung");
         return ResponseEntity.noContent().build();
     }
 
@@ -155,7 +138,7 @@ public class DocumentUploadController {
         return ResponseEntity.noContent().build();
     }
 
-    /** UC0050 - dang lai phien ban DONE moi nhat da duoc xac nhan noi dung. */
+    /** UC0050 - dang lai ban da duoc xac nhan noi dung. */
     @PostMapping("/{documentId}/publish")
     public ResponseEntity<Void> publish(@PathVariable Long documentId) {
         documentStatusService.publish(documentId);
@@ -170,17 +153,6 @@ public class DocumentUploadController {
         documentStatusService.updateInfo(documentId, request.title(), request.sourceUrl());
         auditLogService.record(AuditAction.DOCUMENT_UPDATE_INFO, "DOCUMENT", documentId,
                 "Tên: " + request.title() + " | URL: " + request.sourceUrl());
-        return ResponseEntity.noContent().build();
-    }
-
-    /** Xoa rieng mot phien ban (khong xoa ca tai lieu). */
-    @DeleteMapping("/{documentId}/versions/{versionId}")
-    public ResponseEntity<Void> deleteVersion(
-            @PathVariable Long documentId,
-            @PathVariable Long versionId) {
-        documentUploadService.deleteVersion(documentId, versionId);
-        auditLogService.record(AuditAction.DOCUMENT_DELETE_VERSION, "DOCUMENT", documentId,
-                "Xoá phiên bản id=" + versionId);
         return ResponseEntity.noContent().build();
     }
 

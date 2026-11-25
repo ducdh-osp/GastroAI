@@ -100,7 +100,6 @@ public class TriageAlertService {
     @Transactional(TX)
     public Long createAndPublish(
             Long patientId,
-            Long sessionId,
             Long messageId,
             String messageContent,
             List<String> matchedGroups) {
@@ -131,7 +130,7 @@ public class TriageAlertService {
         }
 
         TriageAlert alert = triageAlertRepository.save(new TriageAlert(
-                patient, sessionId, messageId, messageContent, toJson(matchedGroups), now));
+                patient, messageId, messageContent, toJson(matchedGroups), now));
         recordAction(alert.getId(), TriageAlertActionType.CREATED, null, null, null);
         // SCR-AD-13 buoc 1: hoi tham ngay, hien popup co 2 nut [An toan] [Can ho tro] tren app benh nhan.
         appNotificationService.recordTriageCheckIn(patientId, alert.getId(), false);
@@ -142,7 +141,6 @@ public class TriageAlertService {
                 patientId,
                 patient.getFullName(),
                 patient.getPhone(),
-                sessionId,
                 messageId,
                 messageContent,
                 matchedGroups,
@@ -174,20 +172,19 @@ public class TriageAlertService {
      * thi giu nguyen, khong phat lai su kien.
      */
     @Transactional(TX)
-    public void linkConversation(Long alertId, Long sessionId, Long messageId) {
+    public void linkConversation(Long alertId, Long messageId) {
         Optional<TriageAlert> maybeAlert = triageAlertRepository.findById(alertId);
 
         if (maybeAlert.isEmpty()) {
-            log.warn("Khong the gan sessionId/messageId: canh bao Triage id={} khong con ton tai",
+            log.warn("Khong the gan messageId: canh bao Triage id={} khong con ton tai",
                     alertId);
             return;
         }
 
         TriageAlert alert = maybeAlert.get();
-        if (alert.getSessionId() != null || alert.getMessageId() != null) {
+        if (alert.getMessageId() != null) {
             return;
         }
-        alert.setSessionId(sessionId);
         alert.setMessageId(messageId);
         triageAlertRepository.save(alert);
 
@@ -200,7 +197,6 @@ public class TriageAlertService {
                 alert.getPatient().getId(),
                 alert.getPatient().getFullName(),
                 alert.getPatient().getPhone(),
-                sessionId,
                 messageId,
                 alert.getMessageContent(),
                 fromJson(alert.getMatchedGroups()),
@@ -623,7 +619,6 @@ public class TriageAlertService {
                     alert.getPatient().getId(),
                     alert.getPatient().getFullName(),
                     alert.getPatient().getPhone(),
-                    alert.getSessionId(),
                     alert.getMessageId(),
                     alert.getMessageContent(),
                     fromJson(alert.getMatchedGroups()),

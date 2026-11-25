@@ -85,10 +85,8 @@ public class Patient {
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
-    // Khoa thu cong tu CMS, doc lap voi khoa tam thoi do dang nhap sai.
-    @Column(name = "admin_locked", nullable = false)
-    private boolean adminLocked;
-
+    // Thời điểm bị khoá thủ công từ CMS, độc lập với khoá tạm do đăng nhập sai. null = không bị khoá.
+    // Không lưu thêm cột true/false vì suy ra được từ cột này (3NF) - xem isAdminLocked().
     @Column(name = "admin_locked_at")
     private Instant adminLockedAt;
 
@@ -101,5 +99,10 @@ public class Patient {
     @PreUpdate
     void touch() {
         updatedAt = Instant.now();
+    }
+
+    /** Đang bị Admin khoá thủ công. */
+    public boolean isAdminLocked() {
+        return adminLockedAt != null;
     }
 }

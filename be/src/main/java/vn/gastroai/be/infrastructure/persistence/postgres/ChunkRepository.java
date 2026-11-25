@@ -52,7 +52,7 @@ public interface ChunkRepository extends JpaRepository<Chunk, Long> {
      * và đã escape bằng SearchQueryEscaper (ký tự '!').
      */
     String MATCHING_CURRENT_CHUNKS = "FROM chunks c JOIN documents d ON d.id = c.document_id "
-            + "WHERE d.status = 'DONE' AND d.is_current = TRUE "
+            + "WHERE d.content_approved_at IS NOT NULL AND d.unpublished_at IS NULL "
             + "AND (CASE WHEN :keepAccents THEN " + LOWERED_CONTENT + " ELSE " + FOLDED_CONTENT + " END) "
             + "LIKE CONCAT('%', :q, '%') ESCAPE '!' ";
 

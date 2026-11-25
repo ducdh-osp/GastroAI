@@ -41,7 +41,7 @@ class AdminPatientManagementServiceTest {
     @Test
     void unlockDoesNotRestoreInvalidatedTokens() {
         Patient patient = patient();
-        patient.setAdminLocked(true);
+        patient.setAdminLockedAt(Instant.now());
         patient.setAdminLockedAt(Instant.now());
         patient.setTokenVersion(5);
         when(patients.findByIdForUpdate(1L)).thenReturn(Optional.of(patient));

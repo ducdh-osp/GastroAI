@@ -34,10 +34,7 @@ public class Document {
     @Column(length = 500)
     private String source;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private DocumentStatus status = DocumentStatus.PENDING;
-
+    /** Bước xử lý - nguồn duy nhất cho trạng thái; getStatus() suy ra từ đây (3NF). */
     @Enumerated(EnumType.STRING)
     @Column(name = "processing_stage", nullable = false, length = 20)
     private DocumentProcessingStage processingStage = DocumentProcessingStage.PENDING;
@@ -60,17 +57,14 @@ public class Document {
     @Column(name = "content_hash", length = 64)
     private String contentHash;
 
-    @Column(name = "root_id")
-    private Long rootId;
+    /**
+     * SCR-AD-04 §3.2: null = dong chinh cua tai lieu. Co gia tri = day la BAN THAY THE dang cho
+     * xu ly / cho xac nhan, tro ve dong chinh no se thay. Moi tai lieu co toi da 1 ban thay the.
+     */
+    @Column(name = "replaces_id")
+    private Long replacesId;
 
-    @Column(name = "version_no", nullable = false)
-    private int versionNo = 1;
-
-    @Column(name = "is_current", nullable = false)
-    private boolean currentVersion = true;
-
-    // Chi co y nghia tren dong goc cua nhom (rootId == null). Co gia tri = admin
-    // chu dong go.
+    // Chi co y nghia tren dong chinh (replacesId == null). Co gia tri = admin chu dong go.
     @Column(name = "unpublished_at")
     private Instant unpublishedAt;
 
@@ -80,12 +74,26 @@ public class Document {
     @Column(name = "content_approved_by", length = 255)
     private String contentApprovedBy;
 
+    /** Ma tai lieu: id cua dong chinh (ban thay the dung chung ma voi dong no se thay). */
     public Long groupId() {
-        return rootId != null ? rootId : id;
+        return replacesId != null ? replacesId : id;
+    }
+
+    public boolean isReplacement() {
+        return replacesId != null;
+    }
+
+    public boolean isInUse() {
+        return contentApprovedAt != null && unpublishedAt == null;
     }
 
     @PreUpdate
     void touch() {
         updatedAt = Instant.now();
+    }
+
+    /** Trạng thái tổng quát (PENDING / PROCESSING / DONE / ERROR), suy ra từ bước xử lý. */
+    public DocumentStatus getStatus() {
+        return processingStage.status();
     }
 }

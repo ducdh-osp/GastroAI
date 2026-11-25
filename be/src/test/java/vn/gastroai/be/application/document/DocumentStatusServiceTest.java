@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -40,6 +41,9 @@ class DocumentStatusServiceTest {
 
     @Mock
     private ChunkRepository chunkRepository;
+
+    @Mock
+    private DocumentGroupPruner groupPruner;
 
     @InjectMocks
     private DocumentStatusService documentStatusService;
@@ -76,7 +80,7 @@ class DocumentStatusServiceTest {
     void retryResetsErrorDocumentToPending() {
         Document document = new Document();
         document.setId(42L);
-        document.setStatus(DocumentStatus.ERROR);
+        document.setProcessingStage(DocumentProcessingStage.ERROR);
         document.setProcessingStage(DocumentProcessingStage.ERROR);
         document.setErrorMessage("Lỗi");
 
@@ -93,7 +97,7 @@ class DocumentStatusServiceTest {
     void retryThrowsWhenNotError() {
         Document document = new Document();
         document.setId(42L);
-        document.setStatus(DocumentStatus.DONE);
+        document.setProcessingStage(DocumentProcessingStage.DONE);
 
         when(documentRepository.findById(42L)).thenReturn(Optional.of(document));
 
@@ -102,312 +106,230 @@ class DocumentStatusServiceTest {
                 () -> documentStatusService.retry(42L));
     }
 
-    // ===== UC0049 - phien ban tai lieu =====
+    // ===== SCR-AD-04 §3.2 - dong chinh + ban thay the =====
 
-    // Tao 1 phien ban thuoc nhom (rootId = id cua ban goc).
-    private Document version(long id, Long rootId, int versionNo, boolean current, DocumentStatus status) {
+    // replacesId = null: dong chinh; co gia tri: ban thay the cho dong chinh do.
+    // Dong chinh DONE coi nhu Bien tap da xac nhan (tuc chatbot dang dung, neu khong bi go);
+    // ban thay the thi khong bao gio da xac nhan (ck_documents_replacement_pending).
+    private Document row(long id, Long replacesId, DocumentStatus status) {
         Document document = new Document();
         document.setId(id);
-        document.setRootId(rootId);
-        document.setVersionNo(versionNo);
-        document.setCurrentVersion(current);
-        document.setStatus(status);
-        // Ban DONE trong cac test cu coi nhu Bien tap da xac nhan; test can ban "cho xac nhan" tu dat null.
-        if (status == DocumentStatus.DONE) {
+        document.setReplacesId(replacesId);
+        document.setProcessingStage(stageOf(status));
+        if (status == DocumentStatus.DONE && replacesId == null) {
             document.setContentApprovedAt(Instant.now());
         }
         return document;
     }
 
-    // Ban 1 (hoac ban da la hien hanh) xong -> khong dong vao co hien hanh cua ai
-    // ca.
-    @Test
-    void markDoneLeavesAlreadyCurrentDocumentAlone() {
-        Document v1 = version(1L, null, 1, true, DocumentStatus.PROCESSING);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-
-        documentStatusService.markDone(1L);
-
-        assertEquals(DocumentStatus.DONE, v1.getStatus());
-        assertTrue(v1.isCurrentVersion());
-        verify(documentRepository, never()).clearCurrent(any());
-        verify(documentRepository).save(v1);
-    }
-
     // ===== SCR-AD-04 §3.1b - Bien tap xac nhan noi dung truoc khi chatbot dung =====
 
-    // Xu ly ky thuat xong chua duoc dung ngay: van cho xac nhan, khong dong vao ban dang dung.
+    // Xu ly ky thuat xong chua duoc dung ngay: van cho xac nhan.
     @Test
     void markDoneWaitsForContentApprovalBeforeAiUsesIt() {
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.PROCESSING);
+        Document v2 = row(2L, 1L, DocumentStatus.PROCESSING);
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
 
         documentStatusService.markDone(2L);
 
         assertEquals(DocumentStatus.DONE, v2.getStatus());
-        assertFalse(v2.isCurrentVersion());
+        assertFalse(v2.isInUse());
         assertNull(v2.getContentApprovedAt());
-        verify(documentRepository, never()).clearCurrent(any());
         verify(documentRepository).save(v2);
     }
 
-    // Xac nhan ban moi hon ban dang dung -> ban nay thanh ban dang dung, luu ai xac nhan.
-    // clearCurrent phai chay truoc save (index uk_documents_group_current).
+    // Gia lap DocumentGroupPruner.keepOnly: ban thay the thanh dong chinh, mang co "da go".
+    private void pruneReplacingMainRow(Document replacement, Document main) {
+        List<Document> group = List.of(replacement, main);
+        when(documentRepository.findGroup(main.getId())).thenReturn(group);
+        doAnswer(invocation -> {
+            replacement.setUnpublishedAt(main.getUnpublishedAt());
+            replacement.setReplacesId(null);
+            return 1;
+        }).when(groupPruner).keepOnly(replacement, group);
+    }
+
+    // Xac nhan ban thay the -> ban cu bi xoa vinh vien (keepOnly) TRUOC, roi ban moi moi duoc
+    // danh dau da xac nhan + chatbot dung.
     @Test
-    void approveContentMakesNewerVersionCurrentAndRecordsApprover() {
-        Document v1 = version(1L, null, 1, true, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        v2.setContentApprovedAt(null);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+    void approvingReplacementDeletesOldRowAndPutsItInUse() {
+        Document v1 = row(1L, null, DocumentStatus.DONE);
+        Document v2 = row(2L, 1L, DocumentStatus.DONE);
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
+        pruneReplacingMainRow(v2, v1);
 
-        documentStatusService.approveContent(1L, 2L, "bientap@gastroai.vn");
+        boolean replaced = documentStatusService.approveContent(2L, "bientap@gastroai.vn");
 
+        assertTrue(replaced);
+        assertNull(v2.getReplacesId());
         assertNotNull(v2.getContentApprovedAt());
         assertEquals("bientap@gastroai.vn", v2.getContentApprovedBy());
-        assertTrue(v2.isCurrentVersion());
-        InOrder order = inOrder(documentRepository);
-        order.verify(documentRepository).clearCurrent(1L);
+        assertTrue(v2.isInUse());
+        InOrder order = inOrder(groupPruner, documentRepository);
+        order.verify(groupPruner).keepOnly(v2, List.of(v2, v1));
         order.verify(documentRepository).save(v2);
     }
 
-    // Tai lieu da bi go -> xac nhan xong van khong tu dua len chatbot.
+    // Truy van findGroup se flush target -> luc do target chua duoc mang co "da xac nhan"
+    // (ban thay the da xac nhan vi pham ck_documents_replacement_pending).
+    @Test
+    void approvingReplacementLoadsGroupBeforeMarkingApproved() {
+        Document v1 = row(1L, null, DocumentStatus.DONE);
+        Document v2 = row(2L, 1L, DocumentStatus.DONE);
+        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
+        when(documentRepository.findGroup(1L)).thenAnswer(invocation -> {
+            assertNull(v2.getContentApprovedAt());
+            assertFalse(v2.isInUse());
+            return List.of(v2, v1);
+        });
+
+        documentStatusService.approveContent(2L, "bientap@gastroai.vn");
+
+        verify(documentRepository).findGroup(1L);
+    }
+
+    // Tai lieu moi (chua co ban nao dung cho AI): xac nhan khong xoa gi ca.
+    @Test
+    void approvingNewDocumentDeletesNothing() {
+        Document v1 = row(1L, null, DocumentStatus.DONE);
+        v1.setContentApprovedAt(null);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+
+        boolean replaced = documentStatusService.approveContent(1L, "bientap@gastroai.vn");
+
+        assertFalse(replaced);
+        verify(groupPruner, never()).keepOnly(any(), any());
+        verify(documentRepository, never()).findGroup(any());
+        assertTrue(v1.isInUse());
+        verify(documentRepository).save(v1);
+    }
+
+    // Tai lieu dang bi go -> xac nhan ban thay the xong van khong tu dua len chatbot.
     @Test
     void approveContentKeepsUnpublishedDocumentOffline() {
-        Document root = version(1L, null, 1, false, DocumentStatus.DONE);
-        root.setUnpublishedAt(Instant.now());
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        v2.setContentApprovedAt(null);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(root));
+        Document main = row(1L, null, DocumentStatus.DONE);
+        main.setUnpublishedAt(Instant.now());
+        Document v2 = row(2L, 1L, DocumentStatus.DONE);
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, root));
+        pruneReplacingMainRow(v2, main);
 
-        documentStatusService.approveContent(1L, 2L, "bientap@gastroai.vn");
+        documentStatusService.approveContent(2L, "bientap@gastroai.vn");
 
         assertNotNull(v2.getContentApprovedAt());
-        assertFalse(v2.isCurrentVersion());
-        verify(documentRepository, never()).clearCurrent(any());
-    }
-
-    // Xac nhan 1 ban cu hon ban dang dung -> khong keo chatbot lui ve ban cu.
-    @Test
-    void approveContentDoesNotReplaceNewerCurrentVersion() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        v2.setContentApprovedAt(null);
-        Document v3 = version(3L, 1L, 3, true, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v3, v2, v1));
-
-        documentStatusService.approveContent(1L, 2L, "bientap@gastroai.vn");
-
-        assertNotNull(v2.getContentApprovedAt());
-        assertFalse(v2.isCurrentVersion());
-        assertTrue(v3.isCurrentVersion());
-        verify(documentRepository, never()).clearCurrent(any());
+        assertNotNull(v2.getUnpublishedAt());
+        assertFalse(v2.isInUse());
     }
 
     @Test
-    void approveContentRejectsAlreadyApprovedVersion() {
-        Document v1 = version(1L, null, 1, true, DocumentStatus.DONE);
+    void approveContentRejectsAlreadyApprovedRow() {
+        Document v1 = row(1L, null, DocumentStatus.DONE);
         when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
 
         assertThrows(IllegalStateException.class,
-                () -> documentStatusService.approveContent(1L, 1L, "bientap@gastroai.vn"));
+                () -> documentStatusService.approveContent(1L, "bientap@gastroai.vn"));
 
         verify(documentRepository, never()).save(any());
     }
 
-    // Chua xac nhan noi dung thi Admin cung khong bat len cho chatbot dung duoc.
     @Test
-    void activateVersionRejectsUnapprovedVersion() {
-        Document v1 = version(1L, null, 1, true, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        v2.setContentApprovedAt(null);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
-
-        assertThrows(IllegalStateException.class, () -> documentStatusService.activateVersion(1L, 2L));
-
-        verify(documentRepository, never()).clearCurrent(any());
-    }
-
-    // Dang lai: bo qua ban moi nhat dang cho xac nhan, bat ban da xac nhan gan nhat.
-    @Test
-    void publishSkipsVersionWaitingForApproval() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        v2.setContentApprovedAt(null);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
-
-        documentStatusService.publish(1L);
-
-        assertTrue(v1.isCurrentVersion());
-        assertFalse(v2.isCurrentVersion());
-    }
-
-    // Phien ban thuoc nhom khac (rootId khac) -> khong duoc kich hoat, coi nhu
-    // khong tim thay.
-    @Test
-    void activateVersionRejectsVersionFromDifferentGroup() {
-        Document v1 = version(1L, null, 1, true, DocumentStatus.DONE);
-        Document other = version(20L, 10L, 2, false, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findById(20L)).thenReturn(Optional.of(other));
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> documentStatusService.activateVersion(1L, 20L));
-
-        verify(documentRepository, never()).clearCurrent(any());
-        verify(documentRepository, never()).save(any());
-        assertFalse(other.isCurrentVersion());
-    }
-
-    // Ban dich chua xu ly xong (vd ERROR) -> khong duoc dung lam ban hien hanh.
-    @Test
-    void activateVersionRejectsNonDoneTarget() {
-        Document v1 = version(1L, null, 1, true, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.ERROR);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
+    void approveContentRejectsRowNotYetProcessed() {
+        Document v2 = row(2L, 1L, DocumentStatus.PROCESSING);
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
 
         assertThrows(IllegalStateException.class,
-                () -> documentStatusService.activateVersion(1L, 2L));
+                () -> documentStatusService.approveContent(2L, "bientap@gastroai.vn"));
 
-        verify(documentRepository, never()).clearCurrent(any());
+        verify(groupPruner, never()).keepOnly(any(), any());
         verify(documentRepository, never()).save(any());
-        assertFalse(v2.isCurrentVersion());
     }
 
-    // Truong hop thanh cong: bo co hien hanh cua ca nhom TRUOC, bat ban dich SAU,
-    // roi save.
+    // ===== UC0050 - go / dang lai =====
+
+    // Go: chi dong chinh moi co the dang duoc dung; goi bang id ban thay the cung go dong chinh.
     @Test
-    void activateVersionSwitchesCurrentVersion() {
-        Document v1 = version(1L, null, 1, true, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
+    void unpublishTakesMainRowOffline() {
+        Document main = row(1L, null, DocumentStatus.DONE);
+        Document replacement = row(2L, 1L, DocumentStatus.PENDING);
+        when(documentRepository.findById(2L)).thenReturn(Optional.of(replacement));
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(main));
 
-        documentStatusService.activateVersion(1L, 2L);
-
-        assertTrue(v2.isCurrentVersion());
-
-        InOrder order = inOrder(documentRepository);
-        order.verify(documentRepository).clearCurrent(1L);
-        order.verify(documentRepository).save(v2);
-    }
-
-    @Test
-    void unpublishClearsCurrentForGroup() {
-        Document root = version(1L, null, 1, false, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, true, DocumentStatus.DONE);
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(root));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, root));
         documentStatusService.unpublish(2L);
 
-        verify(documentRepository).clearCurrent(1L);
+        assertFalse(main.isInUse());
+        assertNotNull(main.getUnpublishedAt());
+        assertNull(replacement.getUnpublishedAt());
+        verify(documentRepository).save(main);
     }
 
-    // Nhom khong co ban DONE nao (vd tat ca ERROR) -> khong co gi de dang, 409.
+    // Chatbot dang khong dung (chua xac nhan / da go roi) -> khong co gi de go, 409.
     @Test
-    void publishRejectsWhenNoDoneVersion() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.ERROR);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.ERROR);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
-
-        assertThrows(IllegalStateException.class, () -> documentStatusService.publish(1L));
-
-        verify(documentRepository, never()).clearCurrent(any());
-        verify(documentRepository, never()).save(any());
-    }
-
-    // Ban moi nhat (v3) bi ERROR -> dang ban DONE gan nhat (v2), khong phai v3,
-    // cung khong phai v1.
-    // clearCurrent phai chay truoc save (index uk_documents_group_current).
-    @Test
-    void publishActivatesLatestDoneVersion() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        Document v3 = version(3L, 1L, 3, false, DocumentStatus.ERROR);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v3, v2, v1));
-
-        documentStatusService.publish(1L);
-
-        assertTrue(v2.isCurrentVersion());
-        assertFalse(v1.isCurrentVersion());
-        assertFalse(v3.isCurrentVersion());
-
-        InOrder order = inOrder(documentRepository);
-        order.verify(documentRepository).clearCurrent(1L);
-        order.verify(documentRepository).save(v2);
-    }
-
-    @Test
-    void unpublishMarksRootAsUnpublished() {
-        Document root = version(1L, null, 1, true, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(root));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(root));
-
-        documentStatusService.unpublish(1L);
-
-        assertTrue(root.getUnpublishedAt() != null);
-        assertFalse(root.isCurrentVersion());
-        verify(documentRepository).clearCurrent(1L);
-        verify(documentRepository).save(root);
-    }
-
-    // Dang lai: xoa co go tren dong goc.
-    @Test
-    void publishClearsUnpublishedFlag() {
-        Document root = version(1L, null, 1, false, DocumentStatus.DONE);
-        root.setUnpublishedAt(Instant.now());
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(root));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(root));
-
-        documentStatusService.publish(1L);
-
-        assertNull(root.getUnpublishedAt());
-        assertTrue(root.isCurrentVersion());
-    }
-
-    // Chon "Dung ban nay" cung la dang lai -> xoa co go.
-    @Test
-    void activateVersionClearsUnpublishedFlag() {
-        Document root = version(1L, null, 1, false, DocumentStatus.DONE);
-        root.setUnpublishedAt(Instant.now());
-        Document v2 = version(2L, 1L, 2, false, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(root));
-        when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
-
-        documentStatusService.activateVersion(1L, 2L);
-
-        assertNull(root.getUnpublishedAt());
-        assertTrue(v2.isCurrentVersion());
-    }
-
-    @Test
-    void unpublishRejectsGroupWithoutDoneVersion() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.PENDING);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v1));
+    void unpublishRejectsDocumentNotInUse() {
+        Document main = row(1L, null, DocumentStatus.DONE);
+        main.setContentApprovedAt(null);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(main));
 
         assertThrows(IllegalStateException.class, () -> documentStatusService.unpublish(1L));
 
-        verify(documentRepository, never()).clearCurrent(any());
         verify(documentRepository, never()).save(any());
-        assertNull(v1.getUnpublishedAt());
+        assertNull(main.getUnpublishedAt());
+    }
+
+    @Test
+    void unpublishRejectsAlreadyUnpublishedDocument() {
+        Document main = row(1L, null, DocumentStatus.DONE);
+        Instant unpublishedAt = Instant.parse("2026-11-01T00:00:00Z");
+        main.setUnpublishedAt(unpublishedAt);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(main));
+
+        assertThrows(IllegalStateException.class, () -> documentStatusService.unpublish(1L));
+
+        assertEquals(unpublishedAt, main.getUnpublishedAt());
+        verify(documentRepository, never()).save(any());
+    }
+
+    // Dang lai: xoa co "da go" va chatbot dung lai dong chinh; ban thay the dang cho xac nhan
+    // khong bi dong toi.
+    @Test
+    void publishPutsMainRowBackInUse() {
+        Document main = row(1L, null, DocumentStatus.DONE);
+        main.setUnpublishedAt(Instant.now());
+        Document replacement = row(2L, 1L, DocumentStatus.DONE);
+        when(documentRepository.findById(2L)).thenReturn(Optional.of(replacement));
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(main));
+
+        documentStatusService.publish(2L);
+
+        assertNull(main.getUnpublishedAt());
+        assertTrue(main.isInUse());
+        assertFalse(replacement.isInUse());
+        verify(documentRepository).save(main);
+    }
+
+    // Chua bi go thi khong co gi de dang lai, 409.
+    @Test
+    void publishRejectsDocumentNotUnpublished() {
+        Document main = row(1L, null, DocumentStatus.DONE);
+        when(documentRepository.findById(1L)).thenReturn(Optional.of(main));
+
+        assertThrows(IllegalStateException.class, () -> documentStatusService.publish(1L));
+
+        verify(documentRepository, never()).save(any());
     }
 
     // ===== C6 - danh sach tai lieu: truy van nhe, dem chunk theo trang =====
 
+    /** Bước xử lý đại diện cho 1 trạng thái - Document chỉ lưu bước, trạng thái suy ra từ đó. */
+    private static DocumentProcessingStage stageOf(DocumentStatus status) {
+        return switch (status) {
+            case PENDING -> DocumentProcessingStage.PENDING;
+            case PROCESSING -> DocumentProcessingStage.EXTRACTION;
+            case DONE -> DocumentProcessingStage.DONE;
+            case ERROR -> DocumentProcessingStage.ERROR;
+        };
+    }
+
     // Dong nhe cua danh sach (khong co full_text).
-    private DocumentListRow listRow(long id, String title, DocumentStatus status, int versionNo, long groupId) {
+    private DocumentListRow listRow(long id, String title, DocumentStatus status, long groupId) {
         return new DocumentListRow() {
             @Override
             public Long getId() {
@@ -430,13 +352,8 @@ class DocumentStatusServiceTest {
             }
 
             @Override
-            public DocumentStatus getStatus() {
-                return status;
-            }
-
-            @Override
             public DocumentProcessingStage getProcessingStage() {
-                return DocumentProcessingStage.DONE;
+                return stageOf(status);
             }
 
             @Override
@@ -455,11 +372,6 @@ class DocumentStatusServiceTest {
             }
 
             @Override
-            public Integer getVersionNo() {
-                return versionNo;
-            }
-
-            @Override
             public Long getGroupId() {
                 return groupId;
             }
@@ -471,9 +383,8 @@ class DocumentStatusServiceTest {
         };
     }
 
-    // Dong tong hop theo nhom (ket qua GROUP BY).
-    private DocumentGroupRow groupRow(long groupId, long versionCount, Integer currentVersionNo,
-            Long currentId, Instant unpublishedAt) {
+    // Dong tong hop theo tai lieu (ket qua GROUP BY).
+    private DocumentGroupRow groupRow(long groupId, long rowCount, Long inUseId, Instant unpublishedAt) {
         return new DocumentGroupRow() {
             @Override
             public Long getGroupId() {
@@ -481,18 +392,13 @@ class DocumentStatusServiceTest {
             }
 
             @Override
-            public Long getVersionCount() {
-                return versionCount;
+            public Long getRowCount() {
+                return rowCount;
             }
 
             @Override
-            public Integer getCurrentVersionNo() {
-                return currentVersionNo;
-            }
-
-            @Override
-            public Long getCurrentId() {
-                return currentId;
+            public Long getInUseId() {
+                return inUseId;
             }
 
             @Override
@@ -505,12 +411,12 @@ class DocumentStatusServiceTest {
     // Loc theo tu khoa KHONG DAU (logic cua Hai) van hoat dong tren danh sach nhe.
     @Test
     void listFiltersByStatusAndQuery() {
-        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
-                listRow(1L, "Hội chứng ruột kích thích IBS", DocumentStatus.DONE, 1, 1L),
-                listRow(2L, "Viêm loét dạ dày", DocumentStatus.ERROR, 1, 2L)));
+        when(documentRepository.findDisplayRows()).thenReturn(List.of(
+                listRow(1L, "Hội chứng ruột kích thích IBS", DocumentStatus.DONE, 1L),
+                listRow(2L, "Viêm loét dạ dày", DocumentStatus.ERROR, 2L)));
         when(documentRepository.findGroupRows()).thenReturn(List.of(
-                groupRow(1L, 1, 1, 1L, null),
-                groupRow(2L, 1, null, null, null)));
+                groupRow(1L, 1, 1L, null),
+                groupRow(2L, 1, null, null)));
         when(chunkRepository.countByDocumentIdIn(any()))
                 .thenReturn(List.<Object[]>of(new Object[] { 1L, 15L }));
 
@@ -521,43 +427,41 @@ class DocumentStatusServiceTest {
         assertEquals(15L, page.items().get(0).chunkCount());
     }
 
-    // Tai lieu co 3 ban: dong hien la ban moi nhat (v3), ban dang dung la v2,
-    // so chunk lay theo BAN DANG DUNG (id 2), khong phai v3.
+    // Tai lieu dang co ban thay the (id 3) dang xu ly, chatbot van dung dong chinh (id 1):
+    // dong hien la ban thay the, so chunk lay theo DONG CHATBOT DANG DUNG (id 1).
     @Test
-    void listShowsOneRowPerDocumentWithLatestVersion() {
-        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
-                listRow(3L, "Phác đồ HP", DocumentStatus.PROCESSING, 3, 1L)));
+    void listShowsReplacementRowButCountsChunksOfRowInUse() {
+        when(documentRepository.findDisplayRows()).thenReturn(List.of(
+                listRow(3L, "Phác đồ HP", DocumentStatus.PROCESSING, 1L)));
         when(documentRepository.findGroupRows()).thenReturn(List.of(
-                groupRow(1L, 3, 2, 2L, null)));
+                groupRow(1L, 2, 1L, null)));
         when(chunkRepository.countByDocumentIdIn(any()))
-                .thenReturn(List.<Object[]>of(new Object[] { 2L, 40L }));
+                .thenReturn(List.<Object[]>of(new Object[] { 1L, 40L }));
 
         var page = documentStatusService.list(null, null, 0, 10);
 
         assertEquals(1, page.total());
         var item = page.items().get(0);
         assertEquals(3L, item.id());
-        assertEquals(3, item.versionNo());
-        assertEquals(2, item.currentVersionNo());
-        assertEquals(3, item.versionCount());
+        assertTrue(item.inUse());
+        assertTrue(item.replacing());
         assertEquals(40L, item.chunkCount());
-        verify(chunkRepository).countByDocumentIdIn(List.of(2L));
+        verify(chunkRepository).countByDocumentIdIn(List.of(1L));
     }
 
-    // Khong ban nao dang dung -> currentVersionNo la null, chunk dem theo dong dang
-    // hien.
+    // Chatbot chua dung tai lieu nao -> inUse = false, chunk dem theo chinh dong dang hien.
     @Test
-    void listReturnsNullCurrentVersionNoWhenNoVersionIsCurrent() {
-        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
-                listRow(3L, "Phác đồ HP", DocumentStatus.DONE, 3, 1L)));
+    void listReportsNotInUseWhenNoRowIsInUse() {
+        when(documentRepository.findDisplayRows()).thenReturn(List.of(
+                listRow(3L, "Phác đồ HP", DocumentStatus.DONE, 3L)));
         when(documentRepository.findGroupRows()).thenReturn(List.of(
-                groupRow(1L, 3, null, null, null)));
+                groupRow(3L, 1, null, null)));
         when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
 
         var page = documentStatusService.list(null, null, 0, 10);
 
-        assertNull(page.items().get(0).currentVersionNo());
-        assertEquals(3, page.items().get(0).versionCount());
+        assertFalse(page.items().get(0).inUse());
+        assertFalse(page.items().get(0).replacing());
         assertEquals(0L, page.items().get(0).chunkCount());
         verify(chunkRepository).countByDocumentIdIn(List.of(3L));
     }
@@ -565,10 +469,10 @@ class DocumentStatusServiceTest {
     // UC0055 - loc theo ngay cap nhat, tinh theo gio Viet Nam, ca hai dau tinh tron ngay.
     @Test
     void listFiltersByUpdatedDate() {
-        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
-                listRow(1L, "Phác đồ HP", DocumentStatus.DONE, 1, 1L)));
+        when(documentRepository.findDisplayRows()).thenReturn(List.of(
+                listRow(1L, "Phác đồ HP", DocumentStatus.DONE, 1L)));
         when(documentRepository.findGroupRows()).thenReturn(List.of(
-                groupRow(1L, 1, 1, 1L, null)));
+                groupRow(1L, 1, 1L, null)));
         when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
         java.time.LocalDate today = java.time.LocalDate.now(vn.gastroai.be.application.support.VietnamDateRange.ZONE);
 
@@ -590,45 +494,45 @@ class DocumentStatusServiceTest {
     // Nhom co unpublishedAt -> unpublished = true.
     @Test
     void listFlagsUnpublishedDocument() {
-        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
-                listRow(1L, "Phác đồ HP", DocumentStatus.DONE, 1, 1L)));
+        when(documentRepository.findDisplayRows()).thenReturn(List.of(
+                listRow(1L, "Phác đồ HP", DocumentStatus.DONE, 1L)));
         when(documentRepository.findGroupRows()).thenReturn(List.of(
-                groupRow(1L, 1, null, null, Instant.now())));
+                groupRow(1L, 1, null, Instant.now())));
         when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
 
         var page = documentStatusService.list(null, null, 0, 10);
 
         assertTrue(page.items().get(0).unpublished());
-        assertNull(page.items().get(0).currentVersionNo());
+        assertFalse(page.items().get(0).inUse());
     }
 
     // Tai lieu dang cho xu ly, chua ai go -> khong phai "da go".
     @Test
     void listDoesNotFlagWaitingDocumentAsUnpublished() {
-        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
-                listRow(1L, "Phác đồ HP", DocumentStatus.PROCESSING, 1, 1L)));
+        when(documentRepository.findDisplayRows()).thenReturn(List.of(
+                listRow(1L, "Phác đồ HP", DocumentStatus.PROCESSING, 1L)));
         when(documentRepository.findGroupRows()).thenReturn(List.of(
-                groupRow(1L, 1, null, null, null)));
+                groupRow(1L, 1, null, null)));
         when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
 
         var page = documentStatusService.list(null, null, 0, 10);
 
         assertFalse(page.items().get(0).unpublished());
-        assertNull(page.items().get(0).currentVersionNo());
+        assertFalse(page.items().get(0).inUse());
     }
 
     // Muc tieu chinh cua C6: chi dem chunk cho cac dong cua TRANG HIEN TAI, khong
     // dem ca bang.
     @Test
     void listCountsChunksOnlyForRowsOfCurrentPage() {
-        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
-                listRow(1L, "A", DocumentStatus.DONE, 1, 1L),
-                listRow(2L, "B", DocumentStatus.DONE, 1, 2L),
-                listRow(3L, "C", DocumentStatus.DONE, 1, 3L)));
+        when(documentRepository.findDisplayRows()).thenReturn(List.of(
+                listRow(1L, "A", DocumentStatus.DONE, 1L),
+                listRow(2L, "B", DocumentStatus.DONE, 2L),
+                listRow(3L, "C", DocumentStatus.DONE, 3L)));
         when(documentRepository.findGroupRows()).thenReturn(List.of(
-                groupRow(1L, 1, 1, 1L, null),
-                groupRow(2L, 1, 1, 2L, null),
-                groupRow(3L, 1, 1, 3L, null)));
+                groupRow(1L, 1, 1L, null),
+                groupRow(2L, 1, 2L, null),
+                groupRow(3L, 1, 3L, null)));
         when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
 
         var page = documentStatusService.list(null, null, 0, 2);
@@ -638,41 +542,11 @@ class DocumentStatusServiceTest {
         verify(chunkRepository).countByDocumentIdIn(List.of(1L, 2L));
     }
 
-    // ===== C8 - cac truong hop "khong lam gi" =====
-
-    // Kich hoat dung ban dang dung -> khong dong cham vao co hien hanh cua ai ca.
     @Test
-    void activateVersionDoesNothingWhenAlreadyCurrent() {
-        Document v1 = version(1L, null, 1, true, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-
-        documentStatusService.activateVersion(1L, 1L);
-
-        assertTrue(v1.isCurrentVersion());
-        verify(documentRepository, never()).clearCurrent(any());
-        verify(documentRepository, never()).save(any());
-    }
-
-    // Ban DONE moi nhat da la ban dang dung -> dang lai khong lam gi.
-    @Test
-    void publishDoesNothingWhenLatestDoneVersionAlreadyCurrent() {
-        Document v1 = version(1L, null, 1, false, DocumentStatus.DONE);
-        Document v2 = version(2L, 1L, 2, true, DocumentStatus.DONE);
-        when(documentRepository.findById(1L)).thenReturn(Optional.of(v1));
-        when(documentRepository.findGroup(1L)).thenReturn(List.of(v2, v1));
-
-        documentStatusService.publish(1L);
-
-        assertTrue(v2.isCurrentVersion());
-        verify(documentRepository, never()).clearCurrent(any());
-        verify(documentRepository, never()).save(any());
-    }
-
-    @Test
-    void updateInfoUpdatesWholeVersionGroup() {
+    void updateInfoUpdatesMainRowAndReplacement() {
         Document v2 = new Document();
         v2.setId(2L);
-        v2.setRootId(1L);
+        v2.setReplacesId(1L);
         when(documentRepository.findById(2L)).thenReturn(Optional.of(v2));
 
         documentStatusService.updateInfo(2L, "  Trào ngược   dạ dày  ", " https://moh.gov.vn/gerd ");
@@ -727,16 +601,16 @@ class DocumentStatusServiceTest {
 
     @Test
     void listStatsCountAllDocumentsRegardlessOfFilterAndPage() {
-        when(documentRepository.findLatestVersionRows()).thenReturn(List.of(
-                listRow(1L, "Dang dung", DocumentStatus.DONE, 1, 1L),
-                listRow(2L, "Bi loi", DocumentStatus.ERROR, 1, 2L),
-                listRow(3L, "Cho xu ly", DocumentStatus.PENDING, 1, 3L),
-                listRow(4L, "Da go", DocumentStatus.DONE, 1, 4L)));
+        when(documentRepository.findDisplayRows()).thenReturn(List.of(
+                listRow(1L, "Dang dung", DocumentStatus.DONE, 1L),
+                listRow(2L, "Bi loi", DocumentStatus.ERROR, 2L),
+                listRow(3L, "Cho xu ly", DocumentStatus.PENDING, 3L),
+                listRow(4L, "Da go", DocumentStatus.DONE, 4L)));
         when(documentRepository.findGroupRows()).thenReturn(List.of(
-                groupRow(1L, 1, 1, 1L, null),
-                groupRow(2L, 1, null, null, null),
-                groupRow(3L, 1, null, null, null),
-                groupRow(4L, 1, null, null, Instant.now())));
+                groupRow(1L, 1, 1L, null),
+                groupRow(2L, 1, null, null),
+                groupRow(3L, 1, null, null),
+                groupRow(4L, 1, null, Instant.now())));
         when(chunkRepository.countByDocumentIdIn(any())).thenReturn(new ArrayList<>());
 
         var page = documentStatusService.list(null, DocumentStatus.DONE, 0, 1);

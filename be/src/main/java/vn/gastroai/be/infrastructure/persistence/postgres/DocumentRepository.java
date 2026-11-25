@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.domain.rag.Document;
-import vn.gastroai.be.domain.rag.DocumentStatus;
+import vn.gastroai.be.domain.rag.DocumentProcessingStage;
 
 import java.util.List;
 
@@ -18,9 +18,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          * Tim cac document dang do o nhung trang thai chua hoan tat - dung de phuc hoi
          * sau khi server khoi dong lai.
          */
-        List<Document> findByStatusIn(List<DocumentStatus> statuses);
+        List<Document> findByProcessingStage(DocumentProcessingStage stage);
 
-        List<Document> findByContentHashAndStatusNot(String contentHash, DocumentStatus status);
+        List<Document> findByContentHashAndProcessingStageNot(String contentHash, DocumentProcessingStage stage);
 
         /**
          * Gianh quyen xu ly 1 document bang UPDATE nguyen tu - chi doi duoc neu con
@@ -31,9 +31,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          */
         @Modifying
         @Transactional
-        @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PROCESSING, "
+        @Query("UPDATE Document d SET d.processingStage = vn.gastroai.be.domain.rag.DocumentProcessingStage.EXTRACTION, "
                         + "d.updatedAt = CURRENT_TIMESTAMP "
-                        + "WHERE d.id = :id AND d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING")
+                        + "WHERE d.id = :id AND d.processingStage = vn.gastroai.be.domain.rag.DocumentProcessingStage.PENDING")
         int claimForProcessing(@Param("id") Long id);
 
         /**
@@ -42,7 +42,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          */
         @Modifying
         @Transactional
-        @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING, "
+        @Query("UPDATE Document d SET d.processingStage = vn.gastroai.be.domain.rag.DocumentProcessingStage.PENDING, "
                         + "d.updatedAt = CURRENT_TIMESTAMP "
                         + "WHERE d.id = :id")
         int revertToPending(@Param("id") Long id);
@@ -54,67 +54,51 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
          */
         @Modifying
         @Transactional
-        @Query("UPDATE Document d SET d.status = vn.gastroai.be.domain.rag.DocumentStatus.PENDING, "
+        @Query("UPDATE Document d SET d.processingStage = vn.gastroai.be.domain.rag.DocumentProcessingStage.PENDING, "
                         + "d.updatedAt = CURRENT_TIMESTAMP "
-                        + "WHERE d.status = vn.gastroai.be.domain.rag.DocumentStatus.PROCESSING")
+                        + "WHERE d.processingStage IN (vn.gastroai.be.domain.rag.DocumentProcessingStage.EXTRACTION, "
+                        + "vn.gastroai.be.domain.rag.DocumentProcessingStage.CHUNKING, "
+                        + "vn.gastroai.be.domain.rag.DocumentProcessingStage.EMBEDDING)")
         int requeueStuckProcessing();
 
-        @Query("SELECT d FROM Document d WHERE COALESCE(d.rootId, d.id) = :groupId ORDER BY d.versionNo DESC")
+        /**
+         * Moi dong cua 1 tai lieu: dong chinh + ban thay the (neu co). Ban thay the luon moi hon
+         * nen id lon hon - xep id giam dan thi ban thay the dung dau.
+         */
+        @Query("SELECT d FROM Document d WHERE COALESCE(d.replacesId, d.id) = :groupId ORDER BY d.id DESC")
         List<Document> findGroup(@Param("groupId") Long groupId);
 
         /**
-         * Tat "dang dung" cho ca nhom. Phai goi TRUOC khi bat ban moi (xem
-         * uk_documents_group_current).
-         */
-        @Modifying
-        @Transactional
-        @Query("UPDATE Document d SET d.currentVersion = false "
-                        + "WHERE COALESCE(d.rootId, d.id) = :groupId AND d.currentVersion = true")
-        int clearCurrent(@Param("groupId") Long groupId);
-
-        /**
-         * Xoa moi phien ban cua 1 nhom bang 1 cau lenh (chunk/embedding tu xoa theo
-         * cascade).
-         */
-        @Modifying
-        @Transactional
-        @Query("DELETE FROM Document d WHERE COALESCE(d.rootId, d.id) = :groupId")
-        int deleteGroup(@Param("groupId") Long groupId);
-
-        /**
-         * Moi tai lieu 1 dong: phien ban co versionNo lon nhat trong nhom. KHONG lay
-         * full_text
-         * (cot nay chua toan bo chu cua tai lieu, rat nang) - chi cac cot hien len bang
-         * danh sach.
+         * Moi tai lieu 1 dong de hien danh sach: ban thay the neu dang co, khong thi dong chinh.
+         * KHONG lay full_text (cot nay chua toan bo chu cua tai lieu, rat nang).
          */
         @Query("SELECT d.id AS id, d.title AS title, d.source AS source, d.sourceUrl AS sourceUrl, "
-                        + "d.status AS status, d.processingStage AS processingStage, "
+                        + "d.processingStage AS processingStage, "
                         + "d.errorMessage AS errorMessage, d.uploadedAt AS uploadedAt, "
-                        + "d.updatedAt AS updatedAt, d.versionNo AS versionNo, "
+                        + "d.updatedAt AS updatedAt, "
                         + "d.contentApprovedAt AS contentApprovedAt, "
-                        + "COALESCE(d.rootId, d.id) AS groupId "
+                        + "COALESCE(d.replacesId, d.id) AS groupId "
                         + "FROM Document d "
-                        + "WHERE d.versionNo = (SELECT MAX(x.versionNo) FROM Document x "
-                        + "WHERE COALESCE(x.rootId, x.id) = COALESCE(d.rootId, d.id)) "
+                        + "WHERE d.replacesId IS NOT NULL "
+                        + "OR NOT EXISTS (SELECT 1 FROM Document x WHERE x.replacesId = d.id) "
                         + "ORDER BY d.uploadedAt DESC")
-        List<DocumentListRow> findLatestVersionRows();
+        List<DocumentListRow> findDisplayRows();
 
         /**
-         * Thong tin tong hop theo nhom (moi tai lieu 1 dong): so phien ban, ban dang
-         * dung,
-         * thoi diem go (chi dong goc moi co unpublished_at).
+         * Thong tin tong hop theo tai lieu: so dong (2 = dang co ban thay the), dong chatbot dang
+         * dung, thoi diem go (chi dong chinh moi co unpublished_at).
          */
-        @Query("SELECT COALESCE(d.rootId, d.id) AS groupId, COUNT(d) AS versionCount, "
-                        + "MAX(CASE WHEN d.currentVersion = TRUE THEN d.versionNo END) AS currentVersionNo, "
-                        + "MAX(CASE WHEN d.currentVersion = TRUE THEN d.id END) AS currentId, "
-                        + "MAX(CASE WHEN d.rootId IS NULL THEN d.unpublishedAt END) AS unpublishedAt "
-                        + "FROM Document d GROUP BY COALESCE(d.rootId, d.id)")
+        @Query("SELECT COALESCE(d.replacesId, d.id) AS groupId, COUNT(d) AS rowCount, "
+                        + "MAX(CASE WHEN d.contentApprovedAt IS NOT NULL AND d.unpublishedAt IS NULL "
+                        + "THEN d.id END) AS inUseId, "
+                        + "MAX(CASE WHEN d.replacesId IS NULL THEN d.unpublishedAt END) AS unpublishedAt "
+                        + "FROM Document d GROUP BY COALESCE(d.replacesId, d.id)")
         List<DocumentGroupRow> findGroupRows();
 
         @Modifying
         @Transactional
         @Query("UPDATE Document d SET d.title = :title, d.sourceUrl = :sourceUrl, d.updatedAt = :now "
-                        + "WHERE COALESCE(d.rootId, d.id) = :groupId")
+                        + "WHERE COALESCE(d.replacesId, d.id) = :groupId")
         int updateGroupInfo(@Param("groupId") Long groupId,
                         @Param("title") String title,
                         @Param("sourceUrl") String sourceUrl,

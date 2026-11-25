@@ -78,7 +78,7 @@ class ChatControllerStreamingTest {
     void streamMessagePublishesTriageAlertWhenEmergencyDetected() throws Exception {
         stubStreamAnswer(true, List.of("DAU_BUNG_CAP_TINH"));
         when(triageAlertService.createAndPublish(
-                eq(1L), isNull(), isNull(),
+                eq(1L), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
                 .thenReturn(42L);
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
@@ -97,11 +97,11 @@ class ChatControllerStreamingTest {
                 .andExpect(status().isOk());
 
         // UC0067(va) - canh bao phai duoc gui NGAY (sessionId/messageId van null luc nay),
-        // roi linkConversation() gan id that (42) voi sessionId/messageId tu SavedExchange.
+        // roi linkConversation() gan id that (42) voi messageId tu SavedExchange.
         verify(triageAlertService, timeout(2000)).createAndPublish(
-                eq(1L), isNull(), isNull(),
+                eq(1L), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH")));
-        verify(triageAlertService, timeout(2000)).linkConversation(eq(42L), eq(5L), eq(9L));
+        verify(triageAlertService, timeout(2000)).linkConversation(eq(42L), eq(9L));
     }
 
     @Test
@@ -121,8 +121,8 @@ class ChatControllerStreamingTest {
         mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk());
 
-        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any(), any());
-        verify(triageAlertService, never()).linkConversation(any(), any(), any());
+        verify(triageAlertService, never()).createAndPublish(any(), any(), any(), any());
+        verify(triageAlertService, never()).linkConversation(any(), any());
     }
 
     @Test
@@ -136,7 +136,7 @@ class ChatControllerStreamingTest {
         when(attachmentProcessor.process(any())).thenReturn(processed);
         stubStreamAnswerWithAttachments(true, List.of("DAU_BUNG_CAP_TINH"));
         when(triageAlertService.createAndPublish(
-                eq(1L), isNull(), isNull(),
+                eq(1L), isNull(),
                 eq("Toi bi dau bung du doi qua"), eq(List.of("DAU_BUNG_CAP_TINH"))))
                 .thenReturn(42L);
         when(chatHistoryService.saveExchange(anyLong(), any(), anyString(), any(), anyBoolean(), any()))
@@ -159,7 +159,7 @@ class ChatControllerStreamingTest {
         verify(streamingRagQueryService, timeout(2000))
                 .streamAnswer(anyString(), eq(images), anyString(), any(), any());
         verify(chatHistoryService, timeout(2000)).saveAttachments(eq(8L), eq(processed.attachments()));
-        verify(triageAlertService, timeout(2000)).linkConversation(eq(42L), eq(5L), eq(9L));
+        verify(triageAlertService, timeout(2000)).linkConversation(eq(42L), eq(9L));
         verify(attachmentProcessor, never()).discard(any());
     }
 

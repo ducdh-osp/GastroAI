@@ -80,7 +80,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
             where (:q = ''
                     or lower(p.email) like lower(concat('%', :q, '%')) escape '!'
                     or lower(coalesce(p.fullName, '')) like lower(concat('%', :q, '%')) escape '!')
-              and (:adminLocked is null or p.adminLocked = :adminLocked)
+              and (:adminLocked is null
+                   or (:adminLocked = true and p.adminLockedAt is not null)
+                   or (:adminLocked = false and p.adminLockedAt is null))
             """)
     Page<Patient> searchForAdmin(
             @Param("q") String q,

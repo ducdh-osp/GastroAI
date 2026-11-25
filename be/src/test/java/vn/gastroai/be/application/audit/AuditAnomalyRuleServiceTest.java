@@ -15,6 +15,7 @@ import vn.gastroai.be.domain.audit.AuditAnomalyRule;
 import vn.gastroai.be.infrastructure.persistence.mysql.AuditAnomalyRuleRepository;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,7 +45,7 @@ class AuditAnomalyRuleServiceTest {
         AuditAnomalyRule rule = BeanUtils.instantiateClass(AuditAnomalyRule.class);
         ReflectionTestUtils.setField(rule, "code", code);
         ReflectionTestUtils.setField(rule, "name", name);
-        ReflectionTestUtils.setField(rule, "actions", "PATIENT_DATA_VIEW");
+        ReflectionTestUtils.setField(rule, "actions", new ArrayList<>(List.of(AuditAction.PATIENT_DATA_VIEW)));
         ReflectionTestUtils.setField(rule, "metric", AuditAnomalyRule.Metric.DISTINCT_TARGETS);
         ReflectionTestUtils.setField(rule, "threshold", 20);
         ReflectionTestUtils.setField(rule, "windowMinutes", 10);

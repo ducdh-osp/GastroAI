@@ -35,7 +35,6 @@ class TriageAlertPublisherTest {
                 1L,
                 "Nguyen Van A",
                 "0901234567",
-                2L,
                 3L,
                 "Toi bi dau bung du doi va non ra mau",
                 List.of("XUAT_HUYET_TIEU_HOA"),
@@ -57,7 +56,6 @@ class TriageAlertPublisherTest {
                 11L,
                 1L,
                 "Nguyen Van A",
-                null,
                 null,
                 null,
                 "Dau bung quan quai keo dai",
@@ -98,7 +96,7 @@ class TriageAlertPublisherTest {
                 messagingTemplate, configServiceWithRealtimeAlerts(false));
 
         TriageAlertEvent event = new TriageAlertEvent(
-                10L, 1L, "Nguyen Van A", "0901234567", 2L, 3L,
+                10L, 1L, "Nguyen Van A", "0901234567", 3L,
                 "Toi bi dau bung du doi va non ra mau",
                 List.of("XUAT_HUYET_TIEU_HOA"), "AUTO_HANDLING",
                 Instant.parse("2026-09-30T00:00:00Z"));

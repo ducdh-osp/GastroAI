@@ -85,15 +85,10 @@ class CmsEvaluationControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "2", roles = "DOCTOR")
-    void getSummary_returnsOkForDoctor() throws Exception {
-        when(triageEvaluationService.getLatestReport()).thenReturn(mockTriageReport());
-        when(ragEvaluationService.getLatestReport()).thenReturn(mockRagReport());
-
+    @WithMockUser(username = "2", roles = "CONTENT_EDITOR")
+    void getSummary_rejectsContentEditor() throws Exception {
         mockMvc.perform(get("/api/v1/cms/evaluation/summary"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.triageSensitivityRecall").value(1.0))
-                .andExpect(jsonPath("$.ragMrr").value(0.9545));
+                .andExpect(status().isForbidden());
     }
 
     @Test

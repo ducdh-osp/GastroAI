@@ -106,8 +106,8 @@ public class AuditLogService {
 
     @Transactional(value = "mysqlTransactionManager", readOnly = true)
     public AuditLogPageResponse search(LocalDate fromDate, LocalDate toDate, AuditAction action,
-            String targetType, String keyword, int page, int size) {
-        SearchCriteria criteria = toCriteria(fromDate, toDate, action, targetType, keyword);
+            String targetType, Long actorId, String keyword, int page, int size) {
+        SearchCriteria criteria = toCriteria(fromDate, toDate, action, targetType, actorId, keyword);
         Page<AuditLogResponse> result = runSearch(criteria, PageRequest.of(page, size, NEWEST_FIRST))
                 .map(AuditLogResponse::from);
         return AuditLogPageResponse.from(result);
@@ -115,8 +115,8 @@ public class AuditLogService {
 
     @Transactional(value = "mysqlTransactionManager", readOnly = true)
     public List<AuditLogResponse> findForExport(LocalDate fromDate, LocalDate toDate, AuditAction action,
-            String targetType, String keyword) {
-        SearchCriteria criteria = toCriteria(fromDate, toDate, action, targetType, keyword);
+            String targetType, Long actorId, String keyword) {
+        SearchCriteria criteria = toCriteria(fromDate, toDate, action, targetType, actorId, keyword);
         Page<AuditLog> result = runSearch(criteria, PageRequest.of(0, MAX_EXPORT_ROWS, NEWEST_FIRST));
         if (result.getTotalElements() > MAX_EXPORT_ROWS) {
             throw new IllegalArgumentException("Có " + result.getTotalElements()
@@ -126,8 +126,9 @@ public class AuditLogService {
         return result.getContent().stream().map(AuditLogResponse::from).toList();
     }
 
+    /** {@code actorId}: id tài khoản CMS (bảng admins) đã thực hiện thao tác - SCR-AD-06 bộ lọc "Người dùng". */
     private SearchCriteria toCriteria(LocalDate fromDate, LocalDate toDate, AuditAction action,
-            String targetType, String keyword) {
+            String targetType, Long actorId, String keyword) {
         if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
             throw new IllegalArgumentException("Từ ngày phải trước hoặc bằng Đến ngày");
         }
@@ -137,16 +138,17 @@ public class AuditLogService {
         String rawKeyword = normalize(keyword);
         String likeKeyword = rawKeyword == null ? null : "%" + rawKeyword.toLowerCase() + "%";
 
-        return new SearchCriteria(fromTime, toTime, action, normalize(targetType), likeKeyword, rawKeyword);
+        return new SearchCriteria(fromTime, toTime, action, normalize(targetType), actorId, likeKeyword, rawKeyword);
     }
 
     private Page<AuditLog> runSearch(SearchCriteria criteria, Pageable pageable) {
         return auditLogRepository.search(criteria.fromTime(), criteria.toTime(), criteria.action(),
-                criteria.targetType(), criteria.likeKeyword(), criteria.rawKeyword(), pageable);
+                criteria.targetType(), CMS_ACTOR_TYPE, criteria.actorId(), criteria.likeKeyword(),
+                criteria.rawKeyword(), pageable);
     }
 
     private record SearchCriteria(Instant fromTime, Instant toTime, AuditAction action,
-            String targetType, String likeKeyword, String rawKeyword) {
+            String targetType, Long actorId, String likeKeyword, String rawKeyword) {
     }
 
     private String normalize(String value) {

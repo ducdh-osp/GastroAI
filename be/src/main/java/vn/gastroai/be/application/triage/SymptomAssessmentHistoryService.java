@@ -66,7 +66,7 @@ public class SymptomAssessmentHistoryService {
                     ? input.primarySymptom().name() : input.primarySymptomDetail())
                     + "; dấu hiệu cảnh báo: " + String.join(", ", result.matchedGroups());
             triageAlertService.createAndPublish(
-                    patientId, null, null, messageContent, result.matchedGroups());
+                    patientId, null, messageContent, result.matchedGroups());
         }
         return new SymptomAssessmentResponse(saved.getId(), saved.getAssessedAt(), result.severityLevel(),
                 result.emergency(), result.matchedGroups(), result.reasonCodes(), result.requiresClinicianReview(),

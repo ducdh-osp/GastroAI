@@ -61,18 +61,6 @@ class SymptomAssessmentAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "9", roles = "DOCTOR")
-    void doctorViewingPatientHistoryIsAuditedToo() throws Exception {
-        when(historyService.listForPatient(5L)).thenReturn(List.of());
-
-        mockMvc.perform(get("/api/v1/cms/triage-assessments/patients/5"))
-                .andExpect(status().isOk());
-
-        verify(auditLogService).record(AuditAction.PATIENT_DATA_VIEW, "PATIENT", 5L,
-                "Xem lịch sử đánh giá triệu chứng");
-    }
-
-    @Test
     @WithMockUser(username = "7", roles = "ADMIN")
     void failedLookupIsNotAudited() throws Exception {
         when(historyService.listForPatient(999L))

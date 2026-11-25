@@ -48,9 +48,6 @@ public class AdminLoginHistory {
     @Column(name = "user_agent", nullable = false, length = 1024)
     private String userAgent;
 
-    @Column(name = "device_label", nullable = false)
-    private String deviceLabel;
-
     public AdminLoginHistory() {
     }
 
@@ -60,8 +57,7 @@ public class AdminLoginHistory {
             LoginOutcome outcome,
             String failureReason,
             String ipAddress,
-            String userAgent,
-            String deviceLabel
+            String userAgent
     ) {
         this.admin = admin;
         this.attemptedAt = attemptedAt;
@@ -69,7 +65,6 @@ public class AdminLoginHistory {
         this.failureReason = failureReason;
         this.ipAddress = ipAddress;
         this.userAgent = userAgent;
-        this.deviceLabel = deviceLabel;
     }
 
     public Long getId() {
@@ -126,13 +121,5 @@ public class AdminLoginHistory {
 
     public void setUserAgent(String userAgent) {
         this.userAgent = userAgent;
-    }
-
-    public String getDeviceLabel() {
-        return deviceLabel;
-    }
-
-    public void setDeviceLabel(String deviceLabel) {
-        this.deviceLabel = deviceLabel;
     }
 }

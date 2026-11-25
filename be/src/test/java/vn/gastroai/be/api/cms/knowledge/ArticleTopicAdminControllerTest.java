@@ -66,8 +66,8 @@ class ArticleTopicAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
-    void listReturnsTopicsForDoctor() throws Exception {
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
+    void listReturnsTopicsWithArticleCount() throws Exception {
         when(service.list()).thenReturn(List.of(
                 new ArticleTopicResponse(1L, "Dạ dày", 10, 5L, 0L)
         ));
@@ -139,7 +139,7 @@ class ArticleTopicAdminControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "8", roles = "DOCTOR")
+    @WithMockUser(username = "8", roles = "CONTENT_EDITOR")
     void updateReturnsOkAndAuditsNameAndOrderChange() throws Exception {
         ArticleTopicRequest request = new ArticleTopicRequest("Đại tràng & trực tràng", 25, 0L);
         when(service.list()).thenReturn(List.of(new ArticleTopicResponse(2L, "Đại tràng", 20, 3L, 0L)));

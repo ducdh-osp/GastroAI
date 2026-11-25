@@ -490,7 +490,7 @@ class AuthServiceTest {
     @Test
     void manuallyDisabledAccountCannotLoginEvenWithCorrectPassword() {
         Patient patient = patient();
-        patient.setAdminLocked(true);
+        patient.setAdminLockedAt(Instant.now());
         patient.setPasswordHash("bcrypt");
         patient.setEmailVerified(true);
         when(patients.findByEmailForUpdate("user@example.com")).thenReturn(Optional.of(patient));
