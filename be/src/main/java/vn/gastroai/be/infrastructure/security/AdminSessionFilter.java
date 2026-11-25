@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,6 +15,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import vn.gastroai.be.application.auth.CmsAuthService;
+import vn.gastroai.be.infrastructure.logging.RequestIdFilter;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
 
 import java.io.IOException;
@@ -50,6 +52,9 @@ public class AdminSessionFilter extends OncePerRequestFilter {
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
                 context.setAuthentication(authentication);
                 SecurityContextHolder.setContext(context);
+                // Log kỹ thuật: nhân sự CMS xác thực bằng session (không qua JwtAuthenticationFilter),
+                // nên actor phải gắn ở đây, vd ADMIN#5, CONTENT_EDITOR#7.
+                MDC.put(RequestIdFilter.MDC_ACTOR, role + "#" + accountId);
             } else {
                 // Phiên CMS không còn hiệu lực: bỏ mọi quyền còn sót lại, kể cả quyền phiên bản cũ
                 // của bộ lọc này từng lưu vào phiên.

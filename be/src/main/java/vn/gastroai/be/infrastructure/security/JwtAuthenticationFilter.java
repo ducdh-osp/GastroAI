@@ -8,12 +8,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import vn.gastroai.be.domain.auth.Patient;
+import vn.gastroai.be.infrastructure.logging.RequestIdFilter;
 import vn.gastroai.be.infrastructure.persistence.postgres.PatientRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.RevokedTokenRepository;
 
@@ -67,6 +69,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             List.of(new SimpleGrantedAuthority(
                                     "ROLE_" + patient.get().getRole().name())));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+                    // Log kỹ thuật: ai gọi request này (vd PATIENT#12). RequestIdFilter dọn MDC khi xong request.
+                    MDC.put(RequestIdFilter.MDC_ACTOR, patient.get().getRole().name() + "#" + patientId);
                 }
             } catch (RuntimeException exception) {
                 // Infrastructure failures need visibility; they are not invalid JWTs.
