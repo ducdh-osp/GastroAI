@@ -12,6 +12,8 @@
 
 > **Sợi chỉ đỏ xuyên suốt phân hệ này: biến dữ liệu bệnh nhân tự ghi (ăn gì, đi ngoài thế nào, uống thuốc chưa) thành thứ có ý nghĩa — qua AI. Không có phân hệ này, AI ở `03-AIChatbot-RAG/` chỉ trả lời chung chung; có đủ dữ liệu theo dõi, AI mới cá nhân hoá được: biết bệnh nhân đã thử món gì, phát hiện món ăn hay đi kèm triệu chứng, biết họ có đang quên uống thuốc hay không. Mọi màn hình dưới đây nên được thiết kế để khuyến khích ghi đều đặn — vì chính nhật ký đều đặn đó mới là "nguyên liệu" để AI tư vấn trở nên thông minh hơn theo thời gian, cho riêng từng người.**
 
+> **Hiện trạng sau đối chiếu #101:** đoạn trên là mục tiêu cá nhân hoá, chưa phải khả năng chat đang có. Pipeline chat chưa tự đọc hồ sơ, nhật ký hoặc lịch thuốc; chỉ dùng câu hỏi, tệp gửi kèm và tài liệu RAG. Nhạy cảm thực phẩm hiện dùng thống kê tương quan nhật ký, không gọi AI. Xem giới hạn cụ thể ở SCR-PT-01, SCR-PT-08 và SCR-PT-10.
+
 ---
 
 ## 1. Danh sách màn hình & UC
@@ -21,9 +23,9 @@
 | `SCR-PT-00` | [SCR-PT-00-TrangChu.md](SCR-PT-00-TrangChu.md) | Trang chủ & khung điều hướng | *(không có mã UC riêng — thay thế sidebar, xem file)* |
 | `SCR-PT-01` | [SCR-PT-01-HoSoBenhLy.md](SCR-PT-01-HoSoBenhLy.md) | Hồ sơ bệnh lý cá nhân | `UC0009`, `UC0010` |
 | `SCR-PT-02` | [SCR-PT-02-NhatKyAnUong.md](SCR-PT-02-NhatKyAnUong.md) | Nhật ký ăn uống | `UC0011`, `UC0020` (phần ăn uống) |
-| `SCR-PT-03` | [SCR-PT-03-LichSuAnUong.md](SCR-PT-03-LichSuAnUong.md) | Lịch sử & biểu đồ ăn uống | `UC0012` |
+| `SCR-PT-03` | [SCR-PT-03-LichSuAnUong.md](SCR-PT-03-LichSuAnUong.md) | Tab Xu hướng trong Nhật ký ăn uống | `UC0012` |
 | `SCR-PT-04` | [SCR-PT-04-NhatKyBristol.md](SCR-PT-04-NhatKyBristol.md) | Nhật ký tiêu hoá (thang Bristol) | `UC0013`, `UC0020` (phần Bristol) |
-| `SCR-PT-05` | [SCR-PT-05-XuHuongBristol.md](SCR-PT-05-XuHuongBristol.md) | Xu hướng tiêu hoá theo thời gian | `UC0014` |
+| `SCR-PT-05` | [SCR-PT-05-XuHuongBristol.md](SCR-PT-05-XuHuongBristol.md) | Tab Xu hướng trong Nhật ký Bristol | `UC0014` |
 | `SCR-PT-06` | [SCR-PT-06-StreakTuanThu.md](SCR-PT-06-StreakTuanThu.md) | Chuỗi ngày ghi nhật ký & tỷ lệ tuân thủ | `UC0025` |
 | `SCR-PT-07` | [SCR-PT-07-NhacThuoc.md](SCR-PT-07-NhacThuoc.md) | Nhắc uống thuốc | `UC0015`, `UC0016` |
 | `SCR-PT-08` | [SCR-PT-08-ChatAI.md](SCR-PT-08-ChatAI.md) | Trò chuyện với AI | `UC0017` (+ liên quan `UC0035/42/43` ở `03-AIChatbot-RAG/`) |
@@ -31,6 +33,8 @@
 | `SCR-PT-10` | [SCR-PT-10-NhayCamThucPham.md](SCR-PT-10-NhayCamThucPham.md) | Hồ sơ nhạy cảm thực phẩm | `UC0022`, `UC0023` |
 | `SCR-PT-11` | [SCR-PT-11-FAQ.md](SCR-PT-11-FAQ.md) | Câu hỏi thường gặp | `UC0021` |
 | `SCR-PT-12` | [SCR-PT-12-ThuVienKienThuc.md](SCR-PT-12-ThuVienKienThuc.md) | Thư viện kiến thức tiêu hoá | `UC0026` |
+
+Các mã tài liệu trên không tương ứng một-một với route: SCR-PT-02/03/10 là các tab trong `/food-diary`; SCR-PT-04/05 là các tab trong `/bristol`. Hai route lịch sử cũ chuyển hướng tới tab Xu hướng tương ứng.
 
 Ngoài ra, màn **Xuất nhật ký sức khoẻ ra PDF** (`UC0019`) không phải 1 trang riêng mà là **1 hành động** (nút "Xuất PDF") có thể gọi từ nhiều nơi (hồ sơ bệnh lý, lịch sử ăn uống, xu hướng Bristol) — mô tả trong [SCR-PT-01-HoSoBenhLy.md](SCR-PT-01-HoSoBenhLy.md) §5 vì đó là điểm vào tự nhiên nhất (hồ sơ tổng hợp).
 
@@ -74,9 +78,9 @@ Không còn sidebar liệt kê sẵn mọi chức năng — mọi hành trình d
            [ SCR-PT-10 ]   [ SCR-PT-05 ]            │
             Hồ sơ nhạy      Xu hướng                 │
             cảm thực        tiêu hoá                 │
-            phẩm (AI tự                              │
-            phát hiện mẫu                            │
-            hình)                                    │
+            phẩm (thống kê                           │
+            tương quan                               │
+            nhật ký)                                 │
                                                       ▼
                                           AI trả lời có trích dẫn,
                                           gợi ý câu hỏi tiếp theo
@@ -105,7 +109,7 @@ Không còn sidebar liệt kê sẵn mọi chức năng — mọi hành trình d
 
 - **Ghi nhận (`SCR-PT-02`, `SCR-PT-04`, `SCR-PT-07`)**: thao tác lặp lại hằng ngày — phải nhanh, ít bước, có thể làm "trong lúc đang bận" (vừa ăn xong, vừa định đi ngủ). Đây là nhóm màn hình quyết định bệnh nhân có **duy trì** thói quen hay bỏ cuộc sau vài ngày.
 - **Nhìn lại (`SCR-PT-03`, `SCR-PT-05`, `SCR-PT-06`)**: không cần nhanh, ngược lại cần **đẹp và dễ hiểu** — đây là lúc bệnh nhân thu hoạch thành quả của việc ghi chép đều đặn, cảm nhận được "tôi đang kiểm soát được bệnh của mình".
-- **Hiểu sâu hơn nhờ AI (`SCR-PT-10`)**: lớp giá trị cao nhất — biến dữ liệu thô (đã ghi ở nhóm "Ghi nhận") thành insight không tự tay phân tích được. Đây là nơi rõ nhất để "khoe" sức mạnh AI của sản phẩm, vì nó làm được việc mà ghi tay/excel không thể làm: tự động dò ra món ăn nào hay đi kèm triệu chứng.
+- **Đối chiếu tương quan (`SCR-PT-10`)**: thống kê món ăn hay đi kèm triệu chứng từ nhật ký để người dùng xem lại bằng chứng; hiện không dùng AI và không xác nhận quan hệ nguyên nhân.
 - **Trò chuyện & tra cứu (`SCR-PT-08`, `SCR-PT-09`, `SCR-PT-11`, `SCR-PT-12`)**: khi bệnh nhân chủ động cần câu trả lời — AI trả lời trực tiếp (chat) hoặc tự tra cứu trước (FAQ/thư viện) nếu câu hỏi đơn giản, đỡ phải chờ.
 
 ---

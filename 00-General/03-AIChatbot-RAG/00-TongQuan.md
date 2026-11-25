@@ -31,6 +31,8 @@
 
 ### 2.1 Hành trình 1 câu hỏi của bệnh nhân, từ góc nhìn nghiệp vụ
 
+Ngữ cảnh hiện tại gồm câu hỏi, ảnh/tài liệu gửi kèm và các đoạn RAG truy xuất. Cả luồng thường và streaming chưa tự nạp hồ sơ bệnh lý hoặc nhật ký của bệnh nhân; mục tiêu cá nhân hoá và giới hạn hiển thị được mô tả tại [SCR-PT-08](../02-NguoiDung-BenhNhan/SCR-PT-08-ChatAI.md).
+
 ```text
    [ Bệnh nhân gõ câu hỏi trên SCR-PT-08-ChatAI ]
                       │
@@ -65,6 +67,8 @@
 Một AI trả lời trôi chảy nhưng không kiểm chứng được nguồn gốc là rủi ro lớn với tư vấn y tế — nó có thể "nói rất tự tin" những điều sai (hiện tượng phổ biến với AI tạo sinh). Yêu cầu nghiệp vụ bắt buộc: **mọi câu trả lời liên quan tới thông tin y khoa cụ thể phải truy ngược được về đúng đoạn tài liệu đã dùng để tạo ra nó.** Đây không phải tính năng "nice to have" mà là điều kiện để sản phẩm xứng đáng được tin dùng cho tư vấn sức khoẻ — khác hẳn một chatbot thông thường.
 
 Chất lượng của bước "tìm đoạn tài liệu liên quan" (`UC0028`) quyết định toàn bộ chất lượng câu trả lời phía sau — nếu tìm sai/thiếu, dù bước sinh câu trả lời (`UC0029`) có giỏi thế nào cũng chỉ đang "trả lời đúng dựa trên tài liệu sai". Vì vậy cần đo lường độ chính xác của bước này một cách định lượng, không chỉ đánh giá cảm tính (xem `UC0037`, §2.5).
+
+**Hiện trạng hiển thị:** `RagQueryService.buildSources()` chọn tối đa 2 nguồn, che liều lượng rồi viết lại đoạn tham khảo cho dễ đọc. Nếu bước viết lại lỗi/sai định dạng, dùng đoạn gốc đã che liều; đoạn người dùng xem không được coi là trích nguyên văn. `SourceReferences` hiển thị đoạn nội dung dưới nhãn "Tài liệu tham khảo N", không mở tài liệu gốc. Khi không truy xuất được tài liệu phù hợp, danh sách nguồn rỗng. Đây là giới hạn hiện tại so với mục tiêu truy vết nguồn đầy đủ nêu trên.
 
 ### 2.3 Vì sao cần hiện trả lời dần theo thời gian thực (`UC0030`)
 
