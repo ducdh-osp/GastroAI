@@ -202,23 +202,25 @@ export default function CmsArticleTopicsPage() {
         </div>
       ),
     },
-    { title: 'Số bài viết', dataIndex: 'articleCount', key: 'articleCount', width: 120 },
+    { title: 'Số bài viết', dataIndex: 'articleCount', key: 'articleCount', width: 120, align: 'center' },
     {
       title: 'Số FAQ',
       dataIndex: 'faqCount',
       key: 'faqCount',
       width: 110,
+      align: 'center',
       render: (val?: number) => val ?? 0,
     },
     {
       title: 'Thao tác',
       key: 'actions',
       width: 130,
+      align: 'center',
       render: (_, topic) => {
         const faqCount = topic.faqCount ?? 0
         const hasRefs = topic.articleCount > 0 || faqCount > 0
         return (
-          <div className="flex gap-1">
+          <div className="flex justify-center gap-1">
             <Tooltip title="Sửa">
               <Button type="text" icon={<EditOutlined />} aria-label={`Sửa chủ đề ${topic.name}`} onClick={() => openEdit(topic)} />
             </Tooltip>
@@ -265,7 +267,7 @@ export default function CmsArticleTopicsPage() {
           </Button>
         </div>
 
-        {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+        {error && <Alert type="error" message={error} showIcon className="mb-4!" />}
 
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Table<ArticleTopic>
@@ -288,7 +290,7 @@ export default function CmsArticleTopicsPage() {
           confirmLoading={saving}
           destroyOnHidden
         >
-          <Form<TopicFormValues> form={form} layout="vertical" onFinish={handleSubmit} className="mt-4">
+          <Form<TopicFormValues> form={form} layout="vertical" onFinish={handleSubmit} className="mt-4!">
             <Form.Item
               name="name"
               label="Tên chủ đề"

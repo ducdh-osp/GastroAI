@@ -56,10 +56,17 @@ import {
   type TriageGroupMetric,
 } from '../../api/cmsDashboard'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
+import { formatSymptomLabel } from '../../lib/format'
 
 const { Title, Text, Paragraph } = Typography
 
 const PIE_COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#6366f1']
+
+function formatDateVi(isoDate: string): string {
+  if (!isoDate || isoDate.length < 10) return isoDate
+  const [y, m, d] = isoDate.slice(0, 10).split('-')
+  return y && m && d ? `${d}/${m}/${y}` : isoDate
+}
 
 export default function CmsDashboardPage() {
   const [days, setDays] = useState(30)
@@ -120,7 +127,7 @@ export default function CmsDashboardPage() {
       key: 'symptomName',
       render: (name: string, row) => (
         <div>
-          <div className="font-medium text-slate-800">{name}</div>
+          <div className="font-medium text-slate-800 dark:text-white">{formatSymptomLabel(name)}</div>
           <Text type="secondary" className="text-xs font-mono">{row.symptomCode}</Text>
         </div>
       ),
@@ -130,7 +137,7 @@ export default function CmsDashboardPage() {
       dataIndex: 'totalCount',
       key: 'totalCount',
       sorter: (a, b) => a.totalCount - b.totalCount,
-      render: (val: number) => <span className="font-semibold text-slate-700">{val}</span>,
+      render: (val: number) => <span className="font-semibold text-slate-700 dark:text-slate-200">{val}</span>,
     },
     {
       title: 'Ca khẩn cấp (Emergency)',
@@ -149,8 +156,8 @@ export default function CmsDashboardPage() {
       key: 'percentage',
       render: (val: number) => (
         <div className="flex items-center gap-2">
-          <Progress percent={val} size="small" strokeColor="#3b82f6" className="mb-0 max-w-[120px]" />
-          <span className="text-xs text-slate-500">{val}%</span>
+          <Progress percent={val} size="small" showInfo={false} strokeColor="#3b82f6" className="mb-0! flex-1 max-w-[120px]" />
+          <span className="w-11 text-right text-xs text-slate-500 dark:text-slate-400">{val}%</span>
         </div>
       ),
     },
@@ -164,7 +171,7 @@ export default function CmsDashboardPage() {
       key: 'groupName',
       render: (name: string, row) => (
         <div>
-          <div className="font-medium text-slate-800">{name}</div>
+          <div className="font-medium text-slate-800 dark:text-white">{name}</div>
           <Text type="secondary" className="text-xs font-mono">{row.groupCode}</Text>
         </div>
       ),
@@ -182,8 +189,8 @@ export default function CmsDashboardPage() {
       key: 'percentage',
       render: (val: number) => (
         <div className="flex items-center gap-2">
-          <Progress percent={val} size="small" strokeColor="#f97316" className="mb-0 max-w-[120px]" />
-          <span className="text-xs text-slate-500">{val}%</span>
+          <Progress percent={val} size="small" showInfo={false} strokeColor="#f97316" className="mb-0! flex-1 max-w-[120px]" />
+          <span className="w-11 text-right text-xs text-slate-500 dark:text-slate-400">{val}%</span>
         </div>
       ),
     },
@@ -191,7 +198,7 @@ export default function CmsDashboardPage() {
 
   // Table columns for Daily Chats tab
   const chatColumns: ColumnsType<DailyChatMetric> = [
-    { title: 'Ngày', dataIndex: 'day', key: 'day', render: (d: string) => <span className="font-medium">{d}</span> },
+    { title: 'Ngày', dataIndex: 'day', key: 'day', render: (d: string) => <span className="font-medium">{formatDateVi(d)}</span> },
     { title: 'Tổng tin nhắn', dataIndex: 'totalMessages', key: 'totalMessages' },
     { title: 'Người bệnh gửi', dataIndex: 'patientMessages', key: 'patientMessages' },
     { title: 'AI phản hồi', dataIndex: 'botMessages', key: 'botMessages' },
@@ -209,10 +216,14 @@ export default function CmsDashboardPage() {
     ...item,
     shortDay: item.day.length >= 10 ? `${item.day.slice(8, 10)}/${item.day.slice(5, 7)}` : item.day,
   }))
+  const symptomChartData = (data?.topSymptoms || []).map((item) => ({
+    ...item,
+    symptomName: formatSymptomLabel(item.symptomName),
+  }))
 
   return (
     <CmsAppShell>
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6">
         {/* Header Bar */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -257,11 +268,12 @@ export default function CmsDashboardPage() {
           </Space>
         </div>
 
-        {error && <Alert type="error" message={error} showIcon closable onClose={() => setError(null)} />}
+        {error && <Alert type="error" title={error} showIcon closable onClose={() => setError(null)} />}
 
         {loading && !data ? (
-          <div className="flex h-64 items-center justify-center">
-            <Spin size="large" tip="Đang tải dữ liệu thống kê..." />
+          <div className="flex h-64 flex-col items-center justify-center gap-3">
+            <Spin size="large" />
+            <Text type="secondary" className="text-sm">Đang tải dữ liệu thống kê...</Text>
           </div>
         ) : !data ? (
           <Empty description="Không có dữ liệu thống kê." />
@@ -270,23 +282,28 @@ export default function CmsDashboardPage() {
             {/* KPI Cards Row */}
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} lg={6}>
-                <Card className="rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
-                        Bệnh nhân hoạt động ({data.days} ngày)
-                      </Text>
-                      <Statistic
-                        value={data.summary.totalPatients}
-                        className="mt-1"
-                        valueStyle={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e293b' }}
-                      />
-                      <div className="mt-2 text-xs text-slate-500 flex items-center gap-1">
+                <Card
+                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800"
+                  styles={{ body: { height: '100%' } }}
+                >
+                  <div className="flex h-full items-start justify-between gap-3">
+                    <div className="flex h-full min-w-0 flex-1 flex-col justify-between">
+                      <div>
+                        <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
+                          Bệnh nhân hoạt động ({data.days} ngày)
+                        </Text>
+                        <Statistic
+                          value={data.summary.totalPatients}
+                          className="mt-1"
+                          styles={{ content: { fontSize: '1.75rem', fontWeight: 700 } }}
+                        />
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                         <ClockCircleOutlined />
                         <span>{data.summary.totalSessions} phiên chat đã mở</span>
                       </div>
                     </div>
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 text-xl">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 text-xl dark:bg-blue-950/40 dark:text-blue-400">
                       <TeamOutlined />
                     </span>
                   </div>
@@ -294,23 +311,28 @@ export default function CmsDashboardPage() {
               </Col>
 
               <Col xs={24} sm={12} lg={6}>
-                <Card className="rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
-                        Lượt Chat AI
-                      </Text>
-                      <Statistic
-                        value={data.summary.totalMessages}
-                        className="mt-1"
-                        valueStyle={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f766e' }}
-                      />
-                      <div className="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1">
+                <Card
+                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800"
+                  styles={{ body: { height: '100%' } }}
+                >
+                  <div className="flex h-full items-start justify-between gap-3">
+                    <div className="flex h-full min-w-0 flex-1 flex-col justify-between">
+                      <div>
+                        <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
+                          Lượt Chat AI
+                        </Text>
+                        <Statistic
+                          value={data.summary.totalMessages}
+                          className="mt-1"
+                          styles={{ content: { fontSize: '1.75rem', fontWeight: 700, color: '#0d9488' } }}
+                        />
+                      </div>
+                      <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                         <MessageOutlined />
                         <span>+{data.summary.todayMessages} tin nhắn hôm nay</span>
                       </div>
                     </div>
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-600 text-xl">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 text-xl dark:bg-teal-950/40 dark:text-teal-400">
                       <MessageOutlined />
                     </span>
                   </div>
@@ -318,36 +340,43 @@ export default function CmsDashboardPage() {
               </Col>
 
               <Col xs={24} sm={12} lg={6}>
-                <Card className="rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
-                        Cảnh báo Triage
-                      </Text>
-                      <Statistic
-                        value={data.summary.totalAlerts}
-                        className="mt-1"
-                        valueStyle={{ fontSize: '1.75rem', fontWeight: 700, color: '#e11d48' }}
-                      />
-                      <div className="mt-2 flex items-center gap-2">
-                        {data.summary.newAlerts > 0 ? (
-                          <Tag color="red" className="m-0 text-xs font-semibold animate-pulse">
-                            {data.summary.newAlerts} cần can thiệp
-                          </Tag>
-                        ) : (
-                          <Tag color="green" className="m-0 text-xs">Ổn định</Tag>
-                        )}
-                        <span className="text-xs text-slate-500">
-                          {data.summary.resolvedAlerts} đã xử lý
-                        </span>
+                <Card
+                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800"
+                  styles={{ body: { height: '100%' } }}
+                >
+                  <div className="flex h-full items-start justify-between gap-3">
+                    <div className="flex h-full min-w-0 flex-1 flex-col justify-between">
+                      <div>
+                        <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
+                          Cảnh báo Triage
+                        </Text>
+                        <Statistic
+                          value={data.summary.totalAlerts}
+                          className="mt-1"
+                          styles={{ content: { fontSize: '1.75rem', fontWeight: 700, color: '#e11d48' } }}
+                        />
                       </div>
-                      <div className="mt-2">
-                        <Link to="/cms/triage-alerts" className="text-xs font-medium text-rose-600 hover:text-rose-700 hover:underline">
-                          Xem chi tiết cảnh báo →
-                        </Link>
+                      <div className="mt-2 space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {data.summary.newAlerts > 0 ? (
+                            <Tag color="red" className="m-0 text-xs font-semibold animate-pulse">
+                              {data.summary.newAlerts} cần can thiệp
+                            </Tag>
+                          ) : (
+                            <Tag color="green" className="m-0 text-xs">Ổn định</Tag>
+                          )}
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {data.summary.resolvedAlerts} đã xử lý
+                          </span>
+                        </div>
+                        <div>
+                          <Link to="/cms/triage-alerts" className="text-xs font-medium text-rose-600 hover:text-rose-700 hover:underline dark:text-rose-400">
+                            Xem chi tiết cảnh báo →
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-50 text-rose-600 text-xl">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 text-xl dark:bg-rose-950/40 dark:text-rose-400">
                       <AlertOutlined />
                     </span>
                   </div>
@@ -355,26 +384,31 @@ export default function CmsDashboardPage() {
               </Col>
 
               <Col xs={24} sm={12} lg={6}>
-                <Card className="rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
-                        Đánh giá chất lượng AI
-                      </Text>
-                      <Statistic
-                        value={data.summary.satisfactionRate}
-                        suffix="%"
-                        className="mt-1"
-                        valueStyle={{ fontSize: '1.75rem', fontWeight: 700, color: '#7c3aed' }}
-                      />
-                      <div className="mt-2 text-xs text-slate-500 flex items-center gap-1">
+                <Card
+                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800"
+                  styles={{ body: { height: '100%' } }}
+                >
+                  <div className="flex h-full items-start justify-between gap-3">
+                    <div className="flex h-full min-w-0 flex-1 flex-col justify-between">
+                      <div>
+                        <Text type="secondary" className="text-xs uppercase font-medium tracking-wider">
+                          Đánh giá chất lượng AI
+                        </Text>
+                        <Statistic
+                          value={data.summary.satisfactionRate}
+                          suffix="%"
+                          className="mt-1"
+                          styles={{ content: { fontSize: '1.75rem', fontWeight: 700, color: '#7c3aed' } }}
+                        />
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                         <LikeOutlined className="text-blue-500" />
                         <span>{data.summary.helpfulRatings} thích</span>
-                        <span className="text-slate-300">|</span>
+                        <span className="text-slate-300 dark:text-neutral-600">|</span>
                         <span>{data.summary.unhelpfulRatings} chưa hài lòng</span>
                       </div>
                     </div>
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-purple-600 text-xl">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 text-xl dark:bg-purple-950/40 dark:text-purple-400">
                       <SmileOutlined />
                     </span>
                   </div>
@@ -387,13 +421,13 @@ export default function CmsDashboardPage() {
               {/* Daily Chat Activity Chart */}
               <Col xs={24} lg={16}>
                 <Card
-                  title={<span className="font-semibold text-slate-800">Xu hướng tương tác Chat theo ngày</span>}
-                  extra={<Text type="secondary" className="text-xs">{data.fromDate} → {data.toDate}</Text>}
-                  className="rounded-2xl border-slate-100 shadow-sm"
+                  title={<span className="font-semibold text-slate-800 dark:text-slate-100">Xu hướng tương tác Chat theo ngày</span>}
+                  extra={<Text type="secondary" className="text-xs">{formatDateVi(data.fromDate)} → {formatDateVi(data.toDate)}</Text>}
+                  className="h-full rounded-2xl border-slate-100 shadow-sm dark:border-neutral-800"
                 >
                   <div className="h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <AreaChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
@@ -404,9 +438,15 @@ export default function CmsDashboardPage() {
                             <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="shortDay" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.25} />
+                        <XAxis
+                          dataKey="shortDay"
+                          tick={{ fontSize: 11, fill: '#64748b' }}
+                          interval={chartData.length > 16 ? 2 : 0}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis allowDecimals={false} width={36} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                         <Tooltip
                           contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                           formatter={(value, name) => [
@@ -422,6 +462,7 @@ export default function CmsDashboardPage() {
                         <Legend
                           verticalAlign="top"
                           align="right"
+                          itemSorter={null}
                           formatter={(value) => (value === 'totalMessages' ? 'Tổng tin nhắn' : 'Khẩn cấp')}
                         />
                         <Area
@@ -449,36 +490,38 @@ export default function CmsDashboardPage() {
               {/* Triage Alert Distribution Pie */}
               <Col xs={24} lg={8}>
                 <Card
-                  title={<span className="font-semibold text-slate-800">Phân bố cảnh báo Triage</span>}
+                  title={<span className="font-semibold text-slate-800 dark:text-slate-100">Phân bố cảnh báo Triage</span>}
                   extra={<Tag color="volcano">{data.triageGroups.length} nhóm</Tag>}
-                  className="rounded-2xl border-slate-100 shadow-sm"
+                  className="h-full rounded-2xl border-slate-100 shadow-sm dark:border-neutral-800"
                 >
-                  <div className="h-72 w-full flex flex-col items-center justify-center">
+                  <div className="flex h-72 w-full flex-col items-center justify-center">
                     {data.triageGroups.length === 0 ? (
                       <Empty description="Chưa có cảnh báo Triage nào." image={Empty.PRESENTED_IMAGE_SIMPLE} />
                     ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={data.triageGroups}
-                            dataKey="count"
-                            nameKey="groupName"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={50}
-                            outerRadius={80}
-                            paddingAngle={4}
-                          >
-                            {data.triageGroups.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                            formatter={(value, name) => [`${value} ca`, name]}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      <div className="min-h-0 w-full flex-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={data.triageGroups}
+                              dataKey="count"
+                              nameKey="groupName"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={80}
+                              paddingAngle={4}
+                            >
+                              {data.triageGroups.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                              formatter={(value, name) => [`${value} ca`, name]}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
                     )}
                     {data.triageGroups.length > 0 && (
                       <div className="mt-2 flex flex-wrap justify-center gap-2 text-xs">
@@ -488,7 +531,7 @@ export default function CmsDashboardPage() {
                               className="h-2.5 w-2.5 rounded-full"
                               style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
                             />
-                            <span className="text-slate-600 truncate max-w-[120px]">{g.groupName}</span>
+                            <span className="text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{g.groupName}</span>
                           </span>
                         ))}
                       </div>
@@ -500,7 +543,7 @@ export default function CmsDashboardPage() {
 
             {/* Top Symptoms Bar Chart */}
             <Card
-              title={<span className="font-semibold text-slate-800">Top Triệu chứng tiêu hóa được báo cáo</span>}
+              title={<span className="font-semibold text-slate-800 dark:text-slate-100">Top Triệu chứng tiêu hóa được báo cáo</span>}
               extra={
                 data.topSymptoms.length > 0 ? (
                   <Space size="small" wrap>
@@ -514,33 +557,33 @@ export default function CmsDashboardPage() {
                   </Space>
                 ) : undefined
               }
-              className="rounded-2xl border-slate-100 shadow-sm"
+              className="rounded-2xl border-slate-100 shadow-sm dark:border-neutral-800"
             >
-              {data.topSymptoms.length > 0 && (
+              {symptomChartData.length > 0 && (
                 <Alert
                   type="info"
                   showIcon
-                  className="mb-4 text-xs"
-                  message={`Gợi ý nội dung: "${data.topSymptoms[0].symptomName}" đang là triệu chứng được ghi nhận nhiều nhất (${data.topSymptoms[0].totalCount} ca). Admin và Biên tập chuyên môn y khoa nên kiểm tra hoặc bổ sung tài liệu y khoa / bài viết liên quan.`}
+                  className="mb-4! text-xs"
+                  title={`Gợi ý nội dung: "${symptomChartData[0].symptomName}" đang là triệu chứng được ghi nhận nhiều nhất (${symptomChartData[0].totalCount} ca). Admin và Biên tập chuyên môn y khoa nên kiểm tra hoặc bổ sung tài liệu y khoa / bài viết liên quan.`}
                 />
               )}
               <div className="h-64 w-full">
-                {data.topSymptoms.length === 0 ? (
+                {symptomChartData.length === 0 ? (
                   <Empty description="Chưa có ghi nhận triệu chứng trong khoảng thời gian này." image={Empty.PRESENTED_IMAGE_SIMPLE} />
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.topSymptoms} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <BarChart data={symptomChartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.25} />
                       <XAxis
                         dataKey="symptomName"
-                        tick={{ fontSize: 12, fill: '#475569' }}
+                        tick={{ fontSize: 12, fill: '#64748b' }}
                         interval={0}
                         angle={-10}
                         textAnchor="end"
                         axisLine={false}
                         tickLine={false}
                       />
-                      <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} width={36} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <Tooltip
                         contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                         formatter={(val, name) => [
@@ -551,6 +594,7 @@ export default function CmsDashboardPage() {
                       <Legend
                         verticalAlign="top"
                         align="right"
+                        itemSorter={null}
                         formatter={(val) => (val === 'totalCount' ? 'Tổng số ca' : 'Khẩn cấp')}
                       />
                       <Bar dataKey="totalCount" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={48} />
@@ -562,7 +606,7 @@ export default function CmsDashboardPage() {
             </Card>
 
             {/* Detailed Data Tables (Tabs) */}
-            <Card className="rounded-2xl border-slate-100 shadow-sm">
+            <Card className="rounded-2xl border-slate-100 shadow-sm dark:border-neutral-800">
               <Tabs
                 defaultActiveKey="symptoms"
                 items={[

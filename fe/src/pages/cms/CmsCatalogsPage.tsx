@@ -80,6 +80,13 @@ const TRIAGE_OPTIONS = [
   { value: 'KHO_NUOT_DAU_KHI_NUOT', label: 'KHO_NUOT_DAU_KHI_NUOT - Khó / đau rát khi nuốt' },
 ]
 
+const TRIAGE_LABEL_BY_CODE: Record<string, string> = Object.fromEntries(
+  TRIAGE_OPTIONS.map((opt) => {
+    const parts = opt.label.split(' - ')
+    return [opt.value, parts.length > 1 ? parts.slice(1).join(' - ') : opt.label]
+  }),
+)
+
 export interface StandardCatalogCodeMeta {
   code: string
   name: string
@@ -477,7 +484,7 @@ export default function CmsCatalogsPage() {
     form.resetFields()
     form.setFieldsValue({
       type: currentTabType,
-      code: '',
+      code: undefined as unknown as string,
       name: '',
       triageCode: null,
       sortOrder: maxSort + 10,
@@ -738,21 +745,23 @@ export default function CmsCatalogsPage() {
       },
     },
     {
-      title: 'Mã Triage liên kết',
+      title: 'Cảnh báo Triage (115)',
       dataIndex: 'triageCode',
       key: 'triageCode',
-      width: 200,
+      width: 240,
       render: (triageCode: string | null) => {
         if (!triageCode) {
-          return <span className="text-slate-300 dark:text-slate-600 italic text-xs">Không có</span>
+          return <span className="text-slate-400 dark:text-slate-500 italic text-xs">Không gắn cảnh báo 115</span>
         }
+        const desc = TRIAGE_LABEL_BY_CODE[triageCode]
         return (
-          <Tooltip title="Mã nhóm khớp dấu hiệu cảnh báo khẩn cấp trong Triage tầng 1">
-            <Tag color="volcano" className="font-mono text-xs font-semibold px-2">
+          <div className="flex flex-col gap-1">
+            {desc && <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{desc}</span>}
+            <Tag color="volcano" className="w-fit font-mono text-[11px] font-semibold px-2 m-0">
               <ThunderboltOutlined className="mr-1" />
               {triageCode}
             </Tag>
-          </Tooltip>
+          </div>
         )
       },
     },
@@ -865,20 +874,19 @@ export default function CmsCatalogsPage() {
 
   return (
     <CmsAppShell>
-      <div className="w-full px-4 py-6">
+      <div className="flex w-full flex-col gap-6">
         {/* Header section */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <Title level={2} className="!mb-1 tracking-tight flex items-center gap-2">
               <MedicineBoxOutlined className="text-emerald-600" />
               Quản lý danh mục chuẩn hóa
             </Title>
             <Text type="secondary" className="text-sm">
-              Chuẩn hóa danh mục triệu chứng, bệnh lý tiêu hóa và thuốc dùng làm nguồn dữ liệu dropdown cho hồ sơ bệnh
-              án, nhật ký dùng thuốc và đối soát quy tắc cảnh báo Triage.
+              Chuẩn hóa tên gọi Triệu chứng, Bệnh lý và Thuốc hiển thị cho bệnh nhân trong Hồ sơ bệnh án và Nhắc uống thuốc; đồng thời gắn nhóm cảnh báo khẩn cấp 115 (Triage) cho các triệu chứng nguy hiểm.
             </Text>
           </div>
-          <Space>
+          <Space wrap>
             <Button icon={<BookOutlined />} onClick={() => setGuideModalOpen(true)}>
               Quy chuẩn mã y khoa
             </Button>
@@ -899,12 +907,11 @@ export default function CmsCatalogsPage() {
             type="error"
             showIcon
             closable
-            className="mb-6"
           />
         )}
 
         {/* Metric / Stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="shadow-xs border-slate-200 dark:border-slate-800" styles={{ body: { padding: '16px' } }}>
             <div className="flex items-center justify-between">
               <div>
@@ -970,7 +977,7 @@ export default function CmsCatalogsPage() {
         </div>
 
         {/* Filter and Tab Section */}
-        <Card className="shadow-xs border-slate-200 dark:border-slate-800 mb-6" styles={{ body: { padding: '16px 20px' } }}>
+        <Card className="shadow-xs border-slate-200 dark:border-slate-800" styles={{ body: { padding: '16px 20px' } }}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <Tabs
               activeKey={selectedTypeTab}
@@ -1015,7 +1022,7 @@ export default function CmsCatalogsPage() {
 
             <div className="flex items-center gap-2.5 flex-nowrap shrink-0">
               <Input
-                placeholder="Tìm tên, mã chuẩn hóa, triage..."
+                placeholder="Tìm tên hoặc mã chuẩn hóa..."
                 prefix={<SearchOutlined className="text-slate-400" />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -1078,11 +1085,11 @@ export default function CmsCatalogsPage() {
           }}
           okText={editingItem ? 'Lưu thay đổi' : 'Thêm mới'}
           cancelText="Hủy bỏ"
-          destroyOnClose
+          destroyOnHidden
           width={600}
         >
           {modalError && (
-            <Alert message="Không thể lưu danh mục" description={modalError} type="error" showIcon className="mb-4" />
+            <Alert title="Không thể lưu danh mục" description={modalError} type="error" showIcon className="mb-4!" />
           )}
 
           <Form form={form} layout="vertical" className="mt-4" initialValues={{ sortOrder: 10, active: true }}>
@@ -1128,7 +1135,7 @@ export default function CmsCatalogsPage() {
             <Form.Item
               name="code"
               label={
-                <div className="flex items-center justify-between w-full">
+                <div className="flex items-center justify-between gap-2 w-full">
                   <span className="flex items-center gap-1.5 font-medium">
                     Mã chuẩn hóa (Code định danh)
                   </span>
@@ -1139,18 +1146,19 @@ export default function CmsCatalogsPage() {
                     className="!p-0 !h-auto text-xs font-semibold text-emerald-600 hover:text-emerald-500"
                     onClick={handleOpenDefineCodeModal}
                   >
-                    + Thêm mã chuẩn hóa mới
+                    Thêm mã chuẩn hóa mới
                   </Button>
                 </div>
               }
               rules={[
-                { required: true, message: 'Vui lòng chọn hoặc thêm mã chuẩn hóa' },
+                { required: true, whitespace: true, message: 'Vui lòng chọn hoặc thêm mã chuẩn hóa' },
                 { max: 80, message: 'Mã tối đa 80 ký tự' },
               ]}
-              extra="Chọn từ danh sách chuẩn y khoa, gõ mã mới trực tiếp hoặc bấm '+ Thêm mã chuẩn hóa mới' bên cạnh."
+              extra="Bắt buộc chọn từ danh sách chuẩn y khoa hoặc bấm 'Thêm mã chuẩn hóa mới'."
             >
               <Select
                 showSearch
+                allowClear
                 placeholder="Chọn mã chuẩn hóa (vd: GERD, ABDOMINAL_PAIN...)"
                 options={codeOptions}
                 searchValue={codeSearchText}
@@ -1178,54 +1186,46 @@ export default function CmsCatalogsPage() {
                 }}
                 className="font-mono uppercase"
               />
-              {selectedCodeMeta && (
-                <div className="mt-2.5 p-3 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 text-xs">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
-                      <InfoCircleOutlined className="text-blue-500" />
-                      Chuẩn y khoa tham chiếu:
-                    </span>
-                    <Tag
-                      color={
-                        selectedCodeMeta.sourceType === 'triage'
-                          ? 'volcano'
-                          : selectedCodeMeta.sourceType === 'drug'
-                            ? 'green'
-                            : 'blue'
-                      }
-                      className="font-medium mr-0"
-                    >
-                      {selectedCodeMeta.source}
-                    </Tag>
-                  </div>
-                  <div className="text-slate-600 dark:text-slate-300 mb-1 leading-relaxed">
-                    <strong className="text-slate-700 dark:text-slate-200">Ý nghĩa: </strong>
-                    {selectedCodeMeta.desc}
-                  </div>
-                  <div className="text-slate-500 dark:text-slate-400 leading-relaxed">
-                    <strong className="text-slate-700 dark:text-slate-200">Phạm vi sử dụng: </strong>
-                    {selectedCodeMeta.scope}
-                  </div>
-                </div>
-              )}
             </Form.Item>
+
+            {selectedCodeMeta && (
+              <div className="-mt-2 mb-4 p-3 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 text-xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                    <InfoCircleOutlined className="text-blue-500" />
+                    Chuẩn y khoa tham chiếu:
+                  </span>
+                  <Tag
+                    color={
+                      selectedCodeMeta.sourceType === 'triage'
+                        ? 'volcano'
+                        : selectedCodeMeta.sourceType === 'drug'
+                          ? 'green'
+                          : 'blue'
+                    }
+                    className="font-medium mr-0"
+                  >
+                    {selectedCodeMeta.source}
+                  </Tag>
+                </div>
+                <div className="text-slate-600 dark:text-slate-300 mb-1 leading-relaxed">
+                  <strong className="text-slate-700 dark:text-slate-200">Ý nghĩa: </strong>
+                  {selectedCodeMeta.desc}
+                </div>
+                <div className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                  <strong className="text-slate-700 dark:text-slate-200">Phạm vi sử dụng: </strong>
+                  {selectedCodeMeta.scope}
+                </div>
+              </div>
+            )}
 
             <Form.Item
               name="triageCode"
-              label={
-                <span className="flex items-center gap-1.5">
-                  Mã Triage liên kết
-                  <Tooltip title="Liên kết triệu chứng với nhóm dấu hiệu khẩn cấp cấp cứu trong Triage tầng 1. Có thể bỏ trống nếu là triệu chứng thông thường hoặc phân loại khác.">
-                    <Text type="secondary" className="text-xs font-normal">
-                      (Khuyên dùng cho Triệu chứng)
-                    </Text>
-                  </Tooltip>
-                </span>
-              }
+              label="Nhóm cảnh báo cấp cứu Triage (không bắt buộc)"
               extra={
                 activeModalType === 'SYMPTOM'
-                  ? 'Chọn mã nhóm cấp cứu để kích hoạt cờ cảnh báo Triage (có thể bỏ trống nếu là triệu chứng thông thường).'
-                  : 'Không bắt buộc cho bệnh lý và thuốc (có thể để trống).'
+                  ? 'Mã Triage dùng để liên kết triệu chứng với hệ thống cảnh báo khẩn cấp 115 khi phát hiện dấu hiệu nguy hiểm. Triệu chứng thông thường có thể bỏ trống.'
+                  : 'Chỉ dùng cho triệu chứng nguy hiểm cần bật cảnh báo cấp cứu 115; bệnh lý và thuốc thường để trống.'
               }
             >
               <Select
@@ -1288,14 +1288,14 @@ export default function CmsCatalogsPage() {
           }}
           okText="Xác nhận gộp"
           cancelText="Hủy"
-          destroyOnClose
+          destroyOnHidden
         >
           {mergeSourceItem && (
-            <div className="space-y-4 py-2 text-sm">
+            <div className="flex flex-col gap-4 py-2 text-sm">
               <Alert
                 type="info"
                 showIcon
-                message="Bảo toàn dữ liệu hồ sơ bệnh nhân"
+                title="Bảo toàn dữ liệu hồ sơ bệnh nhân"
                 description="Toàn bộ hồ sơ bệnh án, lịch nhắc thuốc hoặc đánh giá đang gắn mục nguồn sẽ được chuyển sang mục đích trước khi xóa mục nguồn."
               />
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
@@ -1412,8 +1412,10 @@ export default function CmsCatalogsPage() {
           onCancel={() => setDefineCodeModalOpen(false)}
           okText="Lưu mã vào từ điển & Áp dụng"
           cancelText="Hủy bỏ"
-          destroyOnClose
-          width={640}
+          centered
+          destroyOnHidden
+          width={680}
+          styles={{ body: { maxHeight: '74vh', overflowY: 'auto', paddingRight: 4 } }}
         >
           <div className="mb-4 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
             💡 <strong>Mã chuẩn hóa mới</strong> sau khi thêm sẽ có đầy đủ huy hiệu (Tag chuẩn), mô tả ý nghĩa y khoa và phạm vi phục vụ màn hình, xuất hiện trực tiếp trong danh sách chọn của Bác sĩ và bảng quản trị.
@@ -1487,7 +1489,7 @@ export default function CmsCatalogsPage() {
                 label="Màu sắc huy hiệu (Tag Type)"
                 rules={[{ required: true, message: 'Vui lòng chọn kiểu tag' }]}
               >
-                <Radio.Group className="w-full grid grid-cols-2 gap-2">
+                <Radio.Group className="grid! w-full grid-cols-2 gap-2">
                   <Radio.Button value="icd" className="text-center text-xs">
                     🔵 ICD-10 (Xanh)
                   </Radio.Button>

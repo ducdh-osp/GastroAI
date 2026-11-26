@@ -15,7 +15,7 @@ import {
   Col,
   Empty,
   Input,
-  message,
+  notification,
   Progress,
   Radio,
   Row,
@@ -59,6 +59,8 @@ export default function CmsEvaluationPage() {
   const [loadingRag, setLoadingRag] = useState(false)
   const [runningTriage, setRunningTriage] = useState(false)
   const [runningRag, setRunningRag] = useState(false)
+  const [lastTriageRunInfo, setLastTriageRunInfo] = useState<{ timestamp: string; summary: string } | null>(null)
+  const [lastRagRunInfo, setLastRagRunInfo] = useState<{ timestamp: string; summary: string } | null>(null)
 
   // Filters for Triage
   const [triageFilterClass, setTriageFilterClass] = useState<string>('ALL')
@@ -87,7 +89,10 @@ export default function CmsEvaluationPage() {
       const data = await getTriageEvaluation()
       setTriageReport(data)
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Không thể tải báo cáo đánh giá Triage.')
+      notification.error({
+        title: 'Không thể tải báo cáo Triage',
+        description: err instanceof Error ? err.message : 'Vui lòng thử lại sau.',
+      })
     } finally {
       setLoadingTriage(false)
     }
@@ -99,7 +104,10 @@ export default function CmsEvaluationPage() {
       const data = await getRagEvaluation()
       setRagReport(data)
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Không thể tải báo cáo đánh giá RAG.')
+      notification.error({
+        title: 'Không thể tải báo cáo RAG',
+        description: err instanceof Error ? err.message : 'Vui lòng thử lại sau.',
+      })
     } finally {
       setLoadingRag(false)
     }
@@ -110,10 +118,20 @@ export default function CmsEvaluationPage() {
     try {
       const res = await runTriageEvaluation()
       setTriageReport(res)
-      message.success('Chạy kiểm thử đánh giá độ nhạy Triage thành công!')
-      loadSummary()
+      const timestamp = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      const summaryText = `Bắt đúng ${res.truePositives}/${res.positiveCases} ca cấp cứu (Độ nhạy ${(res.sensitivityRecall * 100).toFixed(1)}%), ${res.falsePositives} báo động giả, F2 = ${res.f2Score.toFixed(3)}.`
+      setLastTriageRunInfo({ timestamp, summary: summaryText })
+      notification.success({
+        title: 'Chạy đánh giá Triage thành công',
+        description: `Hoàn tất lúc ${timestamp}: ${summaryText}`,
+        duration: 6,
+      })
+      void loadSummary()
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi khi chạy đánh giá Triage.')
+      notification.error({
+        title: 'Lỗi khi chạy đánh giá Triage',
+        description: err instanceof Error ? err.message : 'Không thể thực thi đánh giá Triage.',
+      })
     } finally {
       setRunningTriage(false)
     }
@@ -124,10 +142,20 @@ export default function CmsEvaluationPage() {
     try {
       const res = await runRagEvaluation(ragTopK)
       setRagReport(res)
-      message.success(`Chạy kiểm định độ chính xác truy xuất RAG (Top-${ragTopK}) thành công!`)
-      loadSummary()
+      const timestamp = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      const summaryText = `Top-${res.topK}: trúng ${res.hitCountAtK}/${res.totalQueries} truy vấn (${(res.hitRateAtK * 100).toFixed(1)}%), Hit@1 = ${(res.hitRateAt1 * 100).toFixed(1)}%, MRR = ${res.mrr.toFixed(3)}, độ trễ TB ${res.averageLatencyMs.toFixed(0)} ms.`
+      setLastRagRunInfo({ timestamp, summary: summaryText })
+      notification.success({
+        title: `Chạy đánh giá RAG (Top-${ragTopK}) thành công`,
+        description: `Hoàn tất lúc ${timestamp}: ${summaryText}`,
+        duration: 6,
+      })
+      void loadSummary()
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi khi chạy đánh giá RAG.')
+      notification.error({
+        title: 'Lỗi khi chạy đánh giá RAG',
+        description: err instanceof Error ? err.message : 'Không thể thực thi đánh giá RAG.',
+      })
     } finally {
       setRunningRag(false)
     }
@@ -223,6 +251,7 @@ export default function CmsEvaluationPage() {
             <Progress
               percent={pct}
               size="small"
+              showInfo={false}
               status={pct >= 95 ? 'success' : pct >= 80 ? 'normal' : 'exception'}
               style={{ width: 140 }}
             />
@@ -434,16 +463,16 @@ export default function CmsEvaluationPage() {
     <CmsAppShell>
       <div style={{ maxWidth: 1400, margin: '0 auto', paddingBottom: 48 }}>
         {/* Header */}
-        <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <Space orientation="horizontal" align="center">
               <ExperimentOutlined style={{ fontSize: 26, color: '#3b82f6' }} />
               <Title level={2} style={{ margin: 0 }}>
-                Đánh giá mô hình AI & Triage
+                Đánh giá mô hình AI &amp; Triage
               </Title>
             </Space>
             <Paragraph type="secondary" style={{ marginTop: 6, marginBottom: 0 }}>
-              Kiểm định định lượng độ nhạy tầng cảnh báo khẩn cấp (Triage Sensitivity) và độ chính xác truy xuất kho tri thức y khoa (RAG Retrieval Accuracy) theo mục tiêu Đề cương đồ án.
+              Kiểm định định lượng độ nhạy tầng cảnh báo khẩn cấp (Triage) và độ chính xác truy xuất kho tri thức y khoa (RAG).
             </Paragraph>
           </div>
 
@@ -451,30 +480,13 @@ export default function CmsEvaluationPage() {
             <Button
               icon={<ReloadOutlined />}
               onClick={() => {
-                loadSummary()
-                loadTriage()
-                loadRag()
+                void loadSummary()
+                void loadTriage()
+                void loadRag()
               }}
               loading={loadingSummary || loadingTriage || loadingRag}
             >
               Làm mới số liệu
-            </Button>
-            <Button
-              type="primary"
-              danger
-              icon={<AlertOutlined />}
-              onClick={handleRunTriage}
-              loading={runningTriage}
-            >
-              Chạy đánh giá Triage
-            </Button>
-            <Button
-              type="primary"
-              icon={<DatabaseOutlined />}
-              onClick={handleRunRag}
-              loading={runningRag}
-            >
-              Chạy đánh giá RAG
             </Button>
           </Space>
         </div>
@@ -513,7 +525,11 @@ export default function CmsEvaluationPage() {
                     prefix={<SafetyCertificateOutlined />}
                   />
                   <div style={{ marginTop: 8 }}>
-                    <Tag color="success">Đạt chuẩn Đề cương (≥ 95%)</Tag>
+                    <Tag color={summary.triageSensitivityRecall >= 0.95 ? 'success' : 'error'}>
+                      {summary.triageSensitivityRecall >= 0.95
+                        ? 'Đạt ngưỡng an toàn (≥ 95%)'
+                        : 'Chưa đạt ngưỡng (≥ 95%)'}
+                    </Tag>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       {summary.triageTruePositives} / {summary.triageTruePositives + summary.triageFalseNegatives} ca
                     </Text>
@@ -537,7 +553,11 @@ export default function CmsEvaluationPage() {
                     prefix={<AlertOutlined />}
                   />
                   <div style={{ marginTop: 8 }}>
-                    <Tag color="gold">Kiểm soát tốt (≤ 20%)</Tag>
+                    <Tag color={summary.triageFalseAlarmRate <= 0.2 ? 'gold' : 'error'}>
+                      {summary.triageFalseAlarmRate <= 0.2
+                        ? 'Kiểm soát tốt (≤ 20%)'
+                        : 'Cần tối ưu (> 20%)'}
+                    </Tag>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       F2-Score: {summary.triageF2Score.toFixed(3)}
                     </Text>
@@ -674,104 +694,97 @@ export default function CmsEvaluationPage() {
                     ) : !triageReport ? (
                       <Empty description="Chưa có dữ liệu đánh giá Triage." />
                     ) : (
-                      <div>
+                      <div className="flex flex-col gap-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/70">
+                          <Text type="secondary" className="text-xs">
+                            Kiểm thử bộ {triageReport.totalCases} kịch bản lâm sàng ({triageReport.positiveCases} ca cấp cứu, {triageReport.negativeCases} ca an toàn/phân tâm).
+                          </Text>
+                          <Button
+                            type="primary"
+                            danger
+                            icon={<PlayCircleOutlined />}
+                            onClick={handleRunTriage}
+                            loading={runningTriage}
+                          >
+                            Chạy đánh giá Triage
+                          </Button>
+                        </div>
+
+                        {lastTriageRunInfo && (
+                          <Alert
+                            type="success"
+                            showIcon
+                            closable
+                            onClose={() => setLastTriageRunInfo(null)}
+                            message={`Đã hoàn tất đánh giá Triage lúc ${lastTriageRunInfo.timestamp}`}
+                            description={lastTriageRunInfo.summary}
+                          />
+                        )}
+
                         {/* Notice Banner */}
                         <Alert
-                          message="Mục tiêu cốt lõi của Đề cương đồ án (Mục 2.2 & 8)"
-                          description="Trong y tế cấp cứu tiêu hóa, chi phí cho việc bỏ sót một ca cấp cứu (False Negative) là khôn lường đối với tính mạng bệnh nhân. Vì vậy, hệ thống Triage được cấu hình ưu tiên tối đa cho Độ nhạy (Sensitivity/Recall ≥ 95%) và F2-score, chấp nhận tỷ lệ báo động giả (False Alarm Rate) ở mức kiểm soát được."
+                          message="Nguyên tắc an toàn tầng cảnh báo cấp cứu Triage"
+                          description="Trong y tế cấp cứu tiêu hóa, việc bỏ sót một ca nguy kịch (False Negative) tiềm ẩn rủi ro nghiêm trọng cho tính mạng người bệnh. Vì vậy, hệ thống Triage được cấu hình ưu tiên tối đa Độ nhạy (Sensitivity/Recall ≥ 95%) và F2-score, kiểm soát tỷ lệ báo động giả ở mức cho phép."
                           type="info"
                           showIcon
-                          style={{ marginBottom: 20 }}
                         />
 
                         {/* Confusion Matrix & Detailed Metrics */}
-                        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                        <Row gutter={[16, 16]}>
                           {/* Confusion Matrix Card */}
                           <Col xs={24} lg={12}>
                             <Card
                               title={<Text strong>Ma trận nhầm lẫn (Confusion Matrix)</Text>}
                               size="small"
-                              bordered
+                              className="h-full"
                             >
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 8 }}>
-                                <div
-                                  style={{
-                                    padding: '16px 20px',
-                                    borderRadius: 8,
-                                    background: '#ecfdf5',
-                                    border: '1px solid #10b981',
-                                    textAlign: 'center',
-                                  }}
-                                >
-                                  <Text style={{ fontSize: 12, color: '#047857' }}>
+                              <div className="grid grid-cols-2 gap-3 p-2">
+                                <div className="rounded-lg border border-emerald-500/40 bg-emerald-50 px-5 py-4 text-center dark:bg-emerald-950/35">
+                                  <div className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
                                     TRUE POSITIVE (TP)
-                                  </Text>
-                                  <div style={{ fontSize: 28, fontWeight: 700, color: '#047857', margin: '4px 0' }}>
+                                  </div>
+                                  <div className="my-1 text-3xl font-bold text-emerald-700 dark:text-emerald-400">
                                     {triageReport.truePositives}
                                   </div>
-                                  <Text style={{ fontSize: 12, color: '#047857' }}>
+                                  <div className="text-xs text-emerald-700 dark:text-emerald-300">
                                     Bắt đúng ca cấp cứu
-                                  </Text>
+                                  </div>
                                 </div>
 
-                                <div
-                                  style={{
-                                    padding: '16px 20px',
-                                    borderRadius: 8,
-                                    background: '#fef2f2',
-                                    border: '1px solid #ef4444',
-                                    textAlign: 'center',
-                                  }}
-                                >
-                                  <Text style={{ fontSize: 12, color: '#b91c1c' }}>
+                                <div className="rounded-lg border border-red-500/40 bg-red-50 px-5 py-4 text-center dark:bg-red-950/35">
+                                  <div className="text-xs font-medium text-red-700 dark:text-red-300">
                                     FALSE NEGATIVE (FN)
-                                  </Text>
-                                  <div style={{ fontSize: 28, fontWeight: 700, color: '#b91c1c', margin: '4px 0' }}>
+                                  </div>
+                                  <div className="my-1 text-3xl font-bold text-red-700 dark:text-red-400">
                                     {triageReport.falseNegatives}
                                   </div>
-                                  <Text style={{ fontSize: 12, color: '#b91c1c' }}>
+                                  <div className="text-xs text-red-700 dark:text-red-300">
                                     Ca cấp cứu bị bỏ sót
-                                  </Text>
+                                  </div>
                                 </div>
 
-                                <div
-                                  style={{
-                                    padding: '16px 20px',
-                                    borderRadius: 8,
-                                    background: '#fffbeb',
-                                    border: '1px solid #f59e0b',
-                                    textAlign: 'center',
-                                  }}
-                                >
-                                  <Text style={{ fontSize: 12, color: '#b45309' }}>
+                                <div className="rounded-lg border border-amber-500/40 bg-amber-50 px-5 py-4 text-center dark:bg-amber-950/35">
+                                  <div className="text-xs font-medium text-amber-700 dark:text-amber-300">
                                     FALSE POSITIVE (FP)
-                                  </Text>
-                                  <div style={{ fontSize: 28, fontWeight: 700, color: '#b45309', margin: '4px 0' }}>
+                                  </div>
+                                  <div className="my-1 text-3xl font-bold text-amber-700 dark:text-amber-400">
                                     {triageReport.falsePositives}
                                   </div>
-                                  <Text style={{ fontSize: 12, color: '#b45309' }}>
+                                  <div className="text-xs text-amber-700 dark:text-amber-300">
                                     Báo động giả an toàn
-                                  </Text>
+                                  </div>
                                 </div>
 
-                                <div
-                                  style={{
-                                    padding: '16px 20px',
-                                    borderRadius: 8,
-                                    background: '#eff6ff',
-                                    border: '1px solid #3b82f6',
-                                    textAlign: 'center',
-                                  }}
-                                >
-                                  <Text style={{ fontSize: 12, color: '#1d4ed8' }}>
+                                <div className="rounded-lg border border-blue-500/40 bg-blue-50 px-5 py-4 text-center dark:bg-blue-950/35">
+                                  <div className="text-xs font-medium text-blue-700 dark:text-blue-300">
                                     TRUE NEGATIVE (TN)
-                                  </Text>
-                                  <div style={{ fontSize: 28, fontWeight: 700, color: '#1d4ed8', margin: '4px 0' }}>
+                                  </div>
+                                  <div className="my-1 text-3xl font-bold text-blue-700 dark:text-blue-400">
                                     {triageReport.trueNegatives}
                                   </div>
-                                  <Text style={{ fontSize: 12, color: '#1d4ed8' }}>
+                                  <div className="text-xs text-blue-700 dark:text-blue-300">
                                     Nhận diện an toàn đúng
-                                  </Text>
+                                  </div>
                                 </div>
                               </div>
 
@@ -790,6 +803,7 @@ export default function CmsEvaluationPage() {
                               title={<Text strong>Chỉ số kiểm định lâm sàng</Text>}
                               size="small"
                               bordered
+                              className="h-full"
                             >
                               <div style={{ padding: '8px 12px' }}>
                                 <div style={{ marginBottom: 12 }}>
@@ -801,6 +815,7 @@ export default function CmsEvaluationPage() {
                                   </div>
                                   <Progress
                                     percent={Math.round(triageReport.sensitivityRecall * 100)}
+                                    showInfo={false}
                                     status={triageReport.sensitivityRecall >= 0.95 ? 'success' : 'normal'}
                                   />
                                 </div>
@@ -810,7 +825,7 @@ export default function CmsEvaluationPage() {
                                     <Text>Độ đặc hiệu (Specificity = TN / [TN + FP]):</Text>
                                     <Text strong>{(triageReport.specificity * 100).toFixed(1)}%</Text>
                                   </div>
-                                  <Progress percent={Math.round(triageReport.specificity * 100)} />
+                                  <Progress percent={Math.round(triageReport.specificity * 100)} showInfo={false} />
                                 </div>
 
                                 <div style={{ marginBottom: 12 }}>
@@ -822,6 +837,7 @@ export default function CmsEvaluationPage() {
                                   </div>
                                   <Progress
                                     percent={Math.round(triageReport.falseAlarmRate * 100)}
+                                    showInfo={false}
                                     strokeColor="#f59e0b"
                                   />
                                 </div>
@@ -936,22 +952,10 @@ export default function CmsEvaluationPage() {
                     ) : !ragReport ? (
                       <Empty description="Chưa có dữ liệu đánh giá RAG." />
                     ) : (
-                      <div>
+                      <div className="flex flex-col gap-5">
                         {/* Retrieval Mode & Settings Bar */}
-                        <div
-                          style={{
-                            padding: '12px 16px',
-                            background: '#f8fafc',
-                            borderRadius: 8,
-                            marginBottom: 20,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                            gap: 12,
-                          }}
-                        >
-                          <Space>
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/70">
+                          <Space wrap>
                             <Text strong>Cấu hình Top-K truy xuất:</Text>
                             <Select
                               value={ragTopK}
@@ -970,7 +974,7 @@ export default function CmsEvaluationPage() {
                               onClick={handleRunRag}
                               loading={runningRag}
                             >
-                              Thực thi kiểm tra Top-{ragTopK}
+                              Chạy đánh giá RAG (Top-{ragTopK})
                             </Button>
                           </Space>
 
@@ -999,11 +1003,21 @@ export default function CmsEvaluationPage() {
                           </Space>
                         </div>
 
+                        {lastRagRunInfo && (
+                          <Alert
+                            type="success"
+                            showIcon
+                            closable
+                            onClose={() => setLastRagRunInfo(null)}
+                            message={`Đã hoàn tất đánh giá RAG lúc ${lastRagRunInfo.timestamp}`}
+                            description={lastRagRunInfo.summary}
+                          />
+                        )}
+
                         {(ragReport.retrievalMode === 'NO_DATA' ||
                           ragReport.dataSource === 'SIMULATED' ||
                           Boolean(ragReport.warning)) && (
                           <Alert
-                            style={{ marginBottom: 20 }}
                             type="warning"
                             showIcon
                             message="Cảnh báo: Dữ liệu kiểm thử giả lập (NO_DATA / SIMULATED)"
@@ -1015,9 +1029,14 @@ export default function CmsEvaluationPage() {
                         )}
 
                         {/* RAG Key Metrics */}
-                        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                        <Row gutter={[16, 16]}>
                           <Col xs={24} sm={8} md={4}>
-                            <Card size="small" bordered style={{ textAlign: 'center' }}>
+                            <Card
+                              size="small"
+                              bordered
+                              className="h-full"
+                              styles={{ body: { height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'center' } }}
+                            >
                               <Statistic
                                 title="Hit Rate @ 1"
                                 value={(ragReport.hitRateAt1 * 100).toFixed(1)}
@@ -1031,7 +1050,12 @@ export default function CmsEvaluationPage() {
                           </Col>
 
                           <Col xs={24} sm={8} md={4}>
-                            <Card size="small" bordered style={{ textAlign: 'center' }}>
+                            <Card
+                              size="small"
+                              bordered
+                              className="h-full"
+                              styles={{ body: { height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'center' } }}
+                            >
                               <Statistic
                                 title="Hit Rate @ 3"
                                 value={(ragReport.hitRateAt3 * 100).toFixed(1)}
@@ -1045,7 +1069,12 @@ export default function CmsEvaluationPage() {
                           </Col>
 
                           <Col xs={24} sm={8} md={4}>
-                            <Card size="small" bordered style={{ textAlign: 'center' }}>
+                            <Card
+                              size="small"
+                              bordered
+                              className="h-full"
+                              styles={{ body: { height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'center' } }}
+                            >
                               <Statistic
                                 title={`Hit Rate @ ${ragReport.topK}`}
                                 value={(ragReport.hitRateAtK * 100).toFixed(1)}
@@ -1059,7 +1088,12 @@ export default function CmsEvaluationPage() {
                           </Col>
 
                           <Col xs={24} sm={8} md={4}>
-                            <Card size="small" bordered style={{ textAlign: 'center' }}>
+                            <Card
+                              size="small"
+                              bordered
+                              className="h-full"
+                              styles={{ body: { height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'center' } }}
+                            >
                               <Statistic
                                 title="Mean Reciprocal Rank"
                                 value={ragReport.mrr.toFixed(3)}
@@ -1072,7 +1106,12 @@ export default function CmsEvaluationPage() {
                           </Col>
 
                           <Col xs={24} sm={8} md={4}>
-                            <Card size="small" bordered style={{ textAlign: 'center' }}>
+                            <Card
+                              size="small"
+                              bordered
+                              className="h-full"
+                              styles={{ body: { height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'center' } }}
+                            >
                               <Statistic
                                 title="Độ tương đồng Cosine"
                                 value={(ragReport.averageSimilarity * 100).toFixed(1)}
@@ -1086,12 +1125,17 @@ export default function CmsEvaluationPage() {
                           </Col>
 
                           <Col xs={24} sm={8} md={4}>
-                            <Card size="small" bordered style={{ textAlign: 'center' }}>
+                            <Card
+                              size="small"
+                              bordered
+                              className="h-full"
+                              styles={{ body: { height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', textAlign: 'center' } }}
+                            >
                               <Statistic
                                 title="Độ trễ trung bình"
                                 value={ragReport.averageLatencyMs.toFixed(0)}
                                 suffix="ms"
-                                valueStyle={{ color: '#475569', fontWeight: 700 }}
+                                valueStyle={{ color: '#64748b', fontWeight: 700 }}
                               />
                               <Text type="secondary" style={{ fontSize: 11 }}>
                                 Thời gian truy xuất

@@ -1,6 +1,7 @@
 import { CommentOutlined, DeleteOutlined, FilePdfOutlined } from '@ant-design/icons'
 import { Button, Popconfirm, Tooltip } from 'antd'
 import type { ChatSessionSummary } from '../../api/chat'
+import { formatChatSessionTitle } from '../../lib/format'
 
 interface HistorySessionItemProps {
   session: ChatSessionSummary
@@ -53,19 +54,19 @@ export function HistorySessionItem({
         >
           <CommentOutlined />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 transition-all group-hover:pr-14">
           <p
             className={`m-0 line-clamp-2 text-sm leading-5 font-medium ${
               isSelected ? 'text-teal-800 dark:text-teal-200' : 'text-slate-700 dark:text-white'
             }`}
           >
-            {session.title}
+            {formatChatSessionTitle(session.title)}
           </p>
           <p className="m-0 mt-0.5 text-xs text-slate-400 dark:text-white">{formatRelativeTime(session.updatedAt)}</p>
         </div>
       </div>
 
-      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-lg bg-white/95 px-1 py-0.5 opacity-0 shadow-xs transition-opacity group-hover:opacity-100 dark:bg-neutral-900/95">
         <Tooltip title="Xuất PDF">
           <Button
             type="text"

@@ -62,9 +62,9 @@ export default function CmsChangePasswordPage() {
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
           <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
-          {error && <Alert type="error" title={error} showIcon className="my-4" />}
-          {success && <Alert type="success" title={success} showIcon className="my-4" />}
-          <Form<ChangePasswordFormValues> form={form} layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4">
+          {error && <Alert type="error" title={error} showIcon className="my-4!" />}
+          {success && <Alert type="success" title={success} showIcon className="my-4!" />}
+          <Form<ChangePasswordFormValues> form={form} layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4!">
             <Form.Item
               label="Mật khẩu hiện tại"
               name="currentPassword"

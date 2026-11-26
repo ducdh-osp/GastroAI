@@ -87,25 +87,22 @@ function KnowledgeArticleCard({ article }: { article: KnowledgeArticleSummary })
         className="h-full overflow-hidden rounded-2xl border-black/5 shadow-sm transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md"
         cover={
           illustration ? (
-            <div className="overflow-hidden border-b border-slate-100 bg-slate-50 transition-colors group-hover:bg-teal-50/40 dark:border-slate-700 dark:bg-slate-800">
-              <div className="flex h-48 w-full items-center justify-center p-3">
-                <img
-                  src={illustration.src}
-                  alt={illustration.alt}
-                  loading="lazy"
-                  className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                />
-              </div>
+            <div className="aspect-[9/5] w-full overflow-hidden border-b border-slate-100 bg-[#f8fafc] dark:border-slate-700">
+              <img
+                src={illustration.src}
+                alt={illustration.alt}
+                loading="lazy"
+                className="block h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              />
             </div>
           ) : undefined
         }
       >
         <Tag color="cyan">{article.category}</Tag>
-        <Text type="secondary" className="ml-2 text-xs">Khoảng {article.readingMinutes} phút đọc</Text>
         <h2 className="mb-2 mt-3 text-lg font-semibold text-slate-800 transition-colors group-hover:text-teal-700 dark:text-white dark:group-hover:text-teal-400">
           {cleanTitle(article.title)}
         </h2>
-        <p className="mb-2 text-sm leading-6 text-slate-600 line-clamp-3 dark:text-slate-300">
+        <p className="mb-0 text-sm leading-6 text-slate-600 line-clamp-3 dark:text-slate-300">
           {article.summary}
         </p>
       </Card>
@@ -140,7 +137,7 @@ function ArticleDetail({ slug }: { slug: string }) {
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/articles')} className="mb-4 px-0 text-teal-700">
+      <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/articles')} className="mb-4! px-0! text-teal-700 dark:text-teal-400">
         Quay lại thư viện
       </Button>
       {loading && <div className="py-20 text-center"><Spin size="large" /></div>}
@@ -155,7 +152,6 @@ function ArticleDetail({ slug }: { slug: string }) {
                 · Cập nhật {new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(article.updatedAt))}
               </span>
             )}
-            <span>· Khoảng {article.readingMinutes} phút đọc</span>
           </div>
           <p className="my-5 text-base leading-7 text-slate-600 dark:text-white">{article.summary}</p>
           {!article.content.includes('/images/articles/') && illustration && (
@@ -174,9 +170,9 @@ function ArticleDetail({ slug }: { slug: string }) {
           <div className="border-t border-slate-100 pt-5 text-slate-700 dark:text-white">
             <MarkdownContent content={article.content} />
           </div>
-          <div className="mt-8 rounded-xl bg-slate-50 p-4 text-sm">
+          <div className="mt-8 rounded-xl bg-slate-50 p-4 text-sm dark:border dark:border-white/10 dark:bg-neutral-800/80">
             <Text strong>Nguồn tham khảo</Text>
-            <p className="mb-1 mt-2"><a href={article.sourceUrl} target="_blank" rel="noreferrer" className="text-teal-700 underline">{article.sourceName}</a></p>
+            <p className="mb-1 mt-2"><a href={article.sourceUrl} target="_blank" rel="noreferrer" className="text-teal-700 underline dark:text-teal-400">{article.sourceName}</a></p>
             <Text type="secondary">Đường dẫn nguồn được kiểm tra ngày {new Intl.DateTimeFormat('vi-VN').format(new Date(`${article.sourceCheckedAt}T00:00:00`))}.</Text>
           </div>
           <p className="mt-3 text-xs text-slate-500 dark:text-slate-300">Nội dung tham khảo từ tài liệu y khoa đã công bố; không phải thẩm định của bác sĩ hành nghề.</p>
@@ -304,7 +300,7 @@ export default function KnowledgeLibraryPage() {
               </Button>
             ))}
           </div>
-          {error && <Alert type="error" showIcon message={error} className="mb-4" />}
+          {error && <Alert type="error" showIcon message={error} className="mb-4!" />}
           {loading ? <div className="py-20 text-center"><Spin size="large" /></div> : articles.length === 0 ? (
             <Empty image={<FileSearchOutlined className="text-4xl text-slate-300" />} description="Không tìm thấy bài viết phù hợp." />
           ) : (

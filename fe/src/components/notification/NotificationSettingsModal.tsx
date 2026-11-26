@@ -95,26 +95,26 @@ export function NotificationSettingsModal({ open, onClose }: Props) {
         </Button>,
       ]}
       centered
-      destroyOnClose
+      destroyOnHidden
     >
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <Spin tip="Đang tải cài đặt..." />
         </div>
       ) : (
-        <div className="py-2 space-y-4">
-          <Paragraph type="secondary" className="mb-4 text-xs">
+        <div className="flex flex-col gap-3 py-2">
+          <Paragraph type="secondary" className="mb-1! text-xs">
             Tùy chỉnh các loại thông báo và nhắc nhở bạn muốn nhận từ ứng dụng GastroAI. Các thiết lập sẽ có hiệu lực ngay lập tức.
           </Paragraph>
 
           {/* Nhắc nhở uống thuốc */}
-          <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-teal-200 transition-colors">
-            <div className="flex gap-3">
-              <div className="p-2.5 rounded-lg bg-purple-100 text-purple-600 text-lg flex items-center justify-center">
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-colors hover:border-teal-200 dark:border-white/10 dark:bg-neutral-800/80 dark:hover:border-teal-700">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-lg text-purple-600 dark:bg-purple-950/50 dark:text-purple-300">
                 <MedicineBoxOutlined />
               </div>
-              <div>
-                <Text strong className="text-slate-800 text-sm block">
+              <div className="min-w-0">
+                <Text strong className="block text-sm text-slate-800 dark:text-white">
                   Nhắc uống thuốc
                 </Text>
                 <Text type="secondary" className="text-xs">
@@ -123,6 +123,7 @@ export function NotificationSettingsModal({ open, onClose }: Props) {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               checked={settings.medicationReminderEnabled}
               onChange={(checked) =>
                 setSettings((prev) => ({ ...prev, medicationReminderEnabled: checked }))
@@ -131,13 +132,13 @@ export function NotificationSettingsModal({ open, onClose }: Props) {
           </div>
 
           {/* Nhắc nhở ghi nhật ký */}
-          <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-teal-200 transition-colors">
-            <div className="flex gap-3">
-              <div className="p-2.5 rounded-lg bg-emerald-100 text-emerald-600 text-lg flex items-center justify-center">
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-colors hover:border-teal-200 dark:border-white/10 dark:bg-neutral-800/80 dark:hover:border-teal-700">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-lg text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300">
                 <BookOutlined />
               </div>
-              <div>
-                <Text strong className="text-slate-800 text-sm block">
+              <div className="min-w-0">
+                <Text strong className="block text-sm text-slate-800 dark:text-white">
                   Nhắc ghi nhật ký sức khỏe
                 </Text>
                 <Text type="secondary" className="text-xs">
@@ -146,6 +147,7 @@ export function NotificationSettingsModal({ open, onClose }: Props) {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               checked={settings.journalReminderEnabled}
               onChange={(checked) =>
                 setSettings((prev) => ({ ...prev, journalReminderEnabled: checked }))
@@ -154,13 +156,13 @@ export function NotificationSettingsModal({ open, onClose }: Props) {
           </div>
 
           {/* Thông báo broadcast hệ thống */}
-          <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-teal-200 transition-colors">
-            <div className="flex gap-3">
-              <div className="p-2.5 rounded-lg bg-blue-100 text-blue-600 text-lg flex items-center justify-center">
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-colors hover:border-teal-200 dark:border-white/10 dark:bg-neutral-800/80 dark:hover:border-teal-700">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-lg text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
                 <BellOutlined />
               </div>
-              <div>
-                <Text strong className="text-slate-800 text-sm block">
+              <div className="min-w-0">
+                <Text strong className="block text-sm text-slate-800 dark:text-white">
                   Thông báo hệ thống & tin y khoa
                 </Text>
                 <Text type="secondary" className="text-xs">
@@ -169,6 +171,7 @@ export function NotificationSettingsModal({ open, onClose }: Props) {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               checked={settings.systemBroadcastEnabled}
               onChange={(checked) =>
                 setSettings((prev) => ({ ...prev, systemBroadcastEnabled: checked }))
@@ -177,13 +180,13 @@ export function NotificationSettingsModal({ open, onClose }: Props) {
           </div>
 
           {/* Cảnh báo an toàn & bảo mật */}
-          <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-teal-200 transition-colors">
-            <div className="flex gap-3">
-              <div className="p-2.5 rounded-lg bg-amber-100 text-amber-600 text-lg flex items-center justify-center">
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50 p-3 transition-colors hover:border-teal-200 dark:border-white/10 dark:bg-neutral-800/80 dark:hover:border-teal-700">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-lg text-amber-600 dark:bg-amber-950/50 dark:text-amber-300">
                 <SafetyCertificateOutlined />
               </div>
-              <div>
-                <Text strong className="text-slate-800 text-sm block">
+              <div className="min-w-0">
+                <Text strong className="block text-sm text-slate-800 dark:text-white">
                   Cảnh báo an toàn & bảo mật
                 </Text>
                 <Text type="secondary" className="text-xs">
@@ -192,6 +195,7 @@ export function NotificationSettingsModal({ open, onClose }: Props) {
               </div>
             </div>
             <Switch
+              className="shrink-0"
               checked={settings.securityAlertEnabled}
               onChange={(checked) =>
                 setSettings((prev) => ({ ...prev, securityAlertEnabled: checked }))

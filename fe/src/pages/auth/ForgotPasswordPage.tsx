@@ -34,13 +34,13 @@ export default function ForgotPasswordPage() {
       heroTitle="Lấy lại quyền truy cập tài khoản"
       heroDescription="Chúng tôi sẽ gửi một liên kết đặt lại mật khẩu tới email bạn đã đăng ký, có hiệu lực trong 30 phút."
     >
-      {error && <Alert type="error" message={error} showIcon className="mb-4" />}
-      {message && <Alert type="success" message={message} showIcon className="mb-4" />}
+      {error && <Alert type="error" message={error} showIcon className="mb-4!" />}
+      {message && <Alert type="success" message={message} showIcon className="mb-4!" />}
       <Form layout="vertical" onFinish={onFinish} disabled={loading}>
         <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 255, message: 'Email tối đa 255 ký tự' }]}>
           <Input maxLength={255} placeholder="ban@example.com" />
         </Form.Item>
-        <Button type="primary" htmlType="submit" block loading={loading}>Gửi liên kết đặt lại</Button>
+        <Button type="primary" htmlType="submit" block loading={loading} className="mt-2!">Gửi liên kết đặt lại</Button>
       </Form>
       <div className="text-center mt-4"><Link to="/login" className="text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300">Quay lại đăng nhập</Link></div>
     </AuthShell>

@@ -8,8 +8,16 @@ export function MarkdownContent({ content }: { content: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          strong: ({ children }) => <strong className="font-bold text-slate-900 dark:text-white">{children}</strong>,
-          p: ({ children }) => <p className="my-2 whitespace-pre-wrap">{children}</p>,
+          strong: ({ children }) => <strong className="font-bold text-inherit">{children}</strong>,
+          p: ({ node, children }) => {
+            const hasImage = node?.children?.some(
+              (child) => child.type === 'element' && child.tagName === 'img',
+            )
+            if (hasImage) {
+              return <div className="my-2">{children}</div>
+            }
+            return <p className="my-2 whitespace-pre-wrap">{children}</p>
+          },
           ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5">{children}</ul>,
           ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5">{children}</ol>,
           li: ({ children }) => <li className="pl-0.5">{children}</li>,

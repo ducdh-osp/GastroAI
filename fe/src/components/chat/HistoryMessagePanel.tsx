@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { downloadChatAttachment, loadAttachmentForDisplay } from '../../api/chat'
 import type { ChatAttachmentDto, ChatMessageDetail, ChatSessionSummary } from '../../api/chat'
 import { describeMatchedGroups } from '../../api/chat'
+import { formatChatSessionTitle } from '../../lib/format'
 import { MarkdownContent } from './MarkdownContent'
 import { SourceReferences } from './SourceReferences'
 
@@ -126,7 +127,7 @@ export function HistoryMessagePanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/10">
         <div className="min-w-0">
-          <p className="m-0 truncate font-semibold text-slate-800 dark:text-white">{session.title}</p>
+          <p className="m-0 truncate font-semibold text-slate-800 dark:text-white">{formatChatSessionTitle(session.title)}</p>
           <p className="m-0 text-xs text-slate-400 dark:text-white">
             {new Intl.DateTimeFormat('vi-VN', {
               day: '2-digit',

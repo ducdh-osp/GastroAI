@@ -27,6 +27,7 @@ import {
   rateMessage,
   streamMessage,
 } from '../../api/chat'
+import { formatChatSessionTitle } from '../../lib/format'
 import type { Attachment, ChatSessionSummary, Message, RatingValue, SendMessageRequest } from '../../api/chat'
 
 const { Text } = Typography
@@ -285,7 +286,7 @@ export function ChatContainer() {
             if (doneData.sessionId) {
               setCurrentSessionId(doneData.sessionId)
               if (!activeSessionTitle) {
-                setActiveSessionTitle(request.content.trim().slice(0, 80))
+                setActiveSessionTitle(formatChatSessionTitle(request.content))
               }
             }
             updateMessage(patientMessage.id, { status: 'sent' })
@@ -467,7 +468,7 @@ export function ChatContainer() {
             </span>
             <div className="min-w-0">
               <h1 className="m-0 truncate text-base font-semibold tracking-tight text-slate-800 dark:text-white">
-                {activeSessionTitle || 'Trợ lý GastroAI'}
+                {activeSessionTitle ? formatChatSessionTitle(activeSessionTitle) : 'Trợ lý GastroAI'}
               </h1>
               <span className="block text-xs font-medium text-emerald-600 dark:text-emerald-400">
                 {currentSessionId !== null ? 'Tư vấn tiêu hóa · Phiên đã lưu' : 'Sẵn sàng tư vấn'}

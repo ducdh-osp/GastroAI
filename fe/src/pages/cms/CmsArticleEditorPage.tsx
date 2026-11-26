@@ -8,10 +8,10 @@ import {
   Form,
   Input,
   InputNumber,
+  Radio,
   Row,
   Select,
   Spin,
-  Tabs,
   Typography,
   Upload,
   message,
@@ -29,6 +29,7 @@ import {
 import { listArticleTopics, type ArticleTopic } from '../../api/cmsArticleTopics'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
+import { RichTextEditor } from '../../components/editor/RichTextEditor'
 
 const { Title, Text } = Typography
 
@@ -56,7 +57,8 @@ export default function CmsArticleEditorPage() {
   const [saving, setSaving] = useState(false)
   const [submitMode, setSubmitMode] = useState<'draft' | 'review'>('review')
   const [error, setError] = useState<string | null>(null)
-  const [contentWatch, setContentWatch] = useState('')
+  const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit')
+  const watchedContent = Form.useWatch('content', form) || ''
 
   useEffect(() => {
     listArticleTopics()
@@ -88,17 +90,12 @@ export default function CmsArticleEditorPage() {
           sourceCheckedAt: article.sourceCheckedAt ? dayjs(article.sourceCheckedAt) : undefined,
           sortOrder: article.sortOrder,
         })
-        setContentWatch(article.content || '')
       })
       .catch((err: unknown) => {
         setError(extractArticleError(err, 'Không thể tải thông tin bài viết.'))
       })
       .finally(() => setLoading(false))
   }, [id, form])
-
-  function handleContentChange(val: string) {
-    setContentWatch(val)
-  }
 
   function handleIllustrationUpload(file: File) {
     if (!file.type.startsWith('image/')) {
@@ -117,7 +114,6 @@ export default function CmsArticleEditorPage() {
       const markdownImage = `![${file.name.replace(/\.[^.]+$/, '')}](${dataUrl})\n\n`
       const next = markdownImage + current
       form.setFieldsValue({ content: next })
-      setContentWatch(next)
       message.success('Đã chèn ảnh minh họa vào đầu bài viết.')
     }
     reader.readAsDataURL(file)
@@ -196,7 +192,7 @@ export default function CmsArticleEditorPage() {
           </Title>
         </div>
 
-        {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+        {error && <Alert type="error" message={error} showIcon className="mb-5!" />}
 
         {loading ? (
           <div className="py-24 text-center">
@@ -204,10 +200,11 @@ export default function CmsArticleEditorPage() {
           </div>
         ) : (
           <Form<FormValues> form={form} layout="vertical" onFinish={handleSubmit}>
-            <Row gutter={24}>
+            <Row gutter={[24, 24]}>
               {/* Cột trái: Thông tin chính & nội dung */}
               <Col xs={24} lg={16}>
-                <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Thông tin cơ bản">
+                <div className="flex flex-col gap-6">
+                  <Card className="rounded-2xl border-black/5 shadow-sm" title="Thông tin cơ bản">
                   <Form.Item
                     name="title"
                     label="Tiêu đề bài viết"
@@ -269,73 +266,73 @@ export default function CmsArticleEditorPage() {
                   </Form.Item>
                 </Card>
 
-                <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Nội dung chi tiết (Markdown)">
-                  <Tabs
-                    defaultActiveKey="edit"
-                    items={[
-                      {
-                        key: 'edit',
-                        label: (
-                          <span>
-                            <FormOutlined className="mr-1" />
-                            Soạn thảo
-                          </span>
-                        ),
-                        children: (
-                          <Form.Item
-                            name="content"
-                            rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập nội dung bài viết' }]}
-                            className="mb-0"
-                          >
-                            <Input.TextArea
-                              rows={18}
-                              className="font-mono text-sm leading-6"
-                              placeholder="# Tiêu đề chính&#10;&#10;Nội dung đoạn văn...&#10;&#10;## Phụ đề 1&#10;- Ý 1&#10;- Ý 2"
-                              onChange={(e) => handleContentChange(e.target.value)}
-                            />
-                          </Form.Item>
-                        ),
-                      },
-                      {
-                        key: 'preview',
-                        label: (
-                          <span>
-                            <EyeOutlined className="mr-1" />
-                            Xem trước
-                          </span>
-                        ),
-                        children: (
-                          <div className="min-h-[400px] rounded-xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-neutral-900">
-                            {contentWatch.trim() ? (
-                              <MarkdownContent content={contentWatch} />
-                            ) : (
-                              <div className="py-20 text-center text-slate-400 dark:text-white">Chưa có nội dung để xem trước</div>
-                            )}
-                          </div>
-                        ),
-                      },
-                    ]}
-                  />
+                <Card
+                  className="rounded-2xl border-black/5 shadow-sm"
+                  title="Nội dung chi tiết bài viết"
+                  extra={
+                    <Radio.Group
+                      size="small"
+                      value={editorMode}
+                      onChange={(e) => setEditorMode(e.target.value)}
+                    >
+                      <Radio.Button value="edit">
+                        <FormOutlined className="mr-1" />
+                        Soạn thảo
+                      </Radio.Button>
+                      <Radio.Button value="preview">
+                        <EyeOutlined className="mr-1" />
+                        Xem trước
+                      </Radio.Button>
+                    </Radio.Group>
+                  }
+                >
+                  <div className={editorMode === 'edit' ? '' : 'hidden'}>
+                    <Form.Item
+                      name="content"
+                      rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập nội dung bài viết' }]}
+                      className="mb-0"
+                    >
+                      <RichTextEditor
+                        enableHeadings
+                        enableImages
+                        minHeight={360}
+                        placeholder="Nhập nội dung bài viết, chọn tiêu đề hoặc định dạng chữ trực tiếp trên thanh công cụ..."
+                      />
+                    </Form.Item>
+                  </div>
+                  {editorMode === 'preview' && (
+                    <div className="min-h-[400px] rounded-xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-neutral-900">
+                      {watchedContent.trim() ? (
+                        <MarkdownContent content={watchedContent} />
+                      ) : (
+                        <div className="py-20 text-center text-slate-400 dark:text-white">Chưa có nội dung để xem trước</div>
+                      )}
+                    </div>
+                  )}
                 </Card>
+                </div>
               </Col>
 
               {/* Cột phải: Quy trình duyệt & nguồn */}
               <Col xs={24} lg={8}>
-                <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Quy trình duyệt & hiển thị">
-                  <Alert
-                    type="info"
-                    showIcon
-                    className="mb-4 text-xs"
-                    message="Tách biệt soạn thảo và duyệt đăng"
-                    description="Lưu nháp sẽ giữ bài viết ở trạng thái Bản nháp; Gửi duyệt sẽ chuyển sang trạng thái Chờ duyệt để Biên tập chuyên môn y khoa đối chiếu nguồn và bấm Duyệt riêng ở danh sách bài viết."
-                  />
+                <div className="flex flex-col gap-6">
+                  <Card className="rounded-2xl border-black/5 shadow-sm" title="Quy trình duyệt & hiển thị">
+                    <div className="mb-5">
+                      <Alert
+                        type="info"
+                        showIcon
+                        className="text-xs"
+                        message="Tách biệt soạn thảo và duyệt đăng"
+                        description="Lưu nháp sẽ giữ bài viết ở trạng thái Bản nháp; Gửi duyệt sẽ chuyển sang trạng thái Chờ duyệt để Biên tập chuyên môn y khoa đối chiếu nguồn và bấm Duyệt riêng ở danh sách bài viết."
+                      />
+                    </div>
 
-                  <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn sẽ hiển thị trước.">
-                    <InputNumber min={0} className="w-full" placeholder="0" />
-                  </Form.Item>
-                </Card>
+                    <Form.Item name="sortOrder" label="Thứ tự hiển thị" extra="Số nhỏ hơn sẽ hiển thị trước." className="mb-0!">
+                      <InputNumber min={0} className="w-full" placeholder="0" />
+                    </Form.Item>
+                  </Card>
 
-                <Card className="mb-6 rounded-2xl border-black/5 shadow-sm" title="Nguồn tài liệu y khoa">
+                  <Card className="rounded-2xl border-black/5 shadow-sm" title="Nguồn tài liệu y khoa">
                   <Form.Item
                     name="sourceName"
                     label="Tên tổ chức / nguồn tài liệu"
@@ -364,6 +361,7 @@ export default function CmsArticleEditorPage() {
                     />
                   </Form.Item>
                 </Card>
+                </div>
               </Col>
             </Row>
           </Form>

@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, TagsOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, InfoCircleOutlined, PlusOutlined, TagsOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Form, Input, Modal, Popconfirm, Select, Spin, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
@@ -89,6 +89,10 @@ export default function CmsTriageKeywordsPage() {
   }
 
   const visibleKeywords = groupFilter ? keywords.filter((k) => k.groupCode === groupFilter) : keywords
+  const countByGroup = keywords.reduce<Record<string, number>>((acc, item) => {
+    acc[item.groupCode] = (acc[item.groupCode] ?? 0) + 1
+    return acc
+  }, {})
 
   const columns: ColumnsType<TriageKeyword> = [
     {
@@ -101,11 +105,12 @@ export default function CmsTriageKeywordsPage() {
     { title: 'Từ khóa', dataIndex: 'keyword', key: 'keyword' },
     { title: 'Cập nhật lúc', dataIndex: 'updatedAt', key: 'updatedAt', width: 170, render: formatDateTime },
     {
-      title: '',
+      title: 'Thao tác',
       key: 'actions',
       width: 100,
+      align: 'center',
       render: (_, record) => (
-        <div className="flex gap-1">
+        <div className="flex justify-center gap-1">
           <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
           <Popconfirm
             title="Xóa từ khóa này?"
@@ -131,8 +136,8 @@ export default function CmsTriageKeywordsPage() {
 
   return (
     <CmsAppShell>
-      <div className="w-full">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="flex w-full flex-col gap-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <Text type="secondary">Cấu hình</Text>
             <Title level={2} className="mb-1! mt-1!">
@@ -140,24 +145,59 @@ export default function CmsTriageKeywordsPage() {
               Từ khóa Triage
             </Title>
             <Text type="secondary">
-              Quản lý các từ khóa/câu nói dùng để nhận diện dấu hiệu cấp cứu trong chat tự do (UC0034). Chỉ có thể
-              thêm/sửa/xóa từ khóa trong 1 nhóm cố định - không thể tạo nhóm mới.
+              Quản lý bộ từ khóa và cụm từ giúp AI nhận diện sớm dấu hiệu cấp cứu tiêu hóa trong cuộc trò chuyện của người bệnh và kích hoạt hướng dẫn gọi 115.
             </Text>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Select
               allowClear
-              placeholder="Lọc theo nhóm"
-              style={{ width: 220 }}
+              placeholder="Lọc theo nhóm dấu hiệu"
+              style={{ width: 240 }}
               value={groupFilter}
-              onChange={setGroupFilter}
+              onChange={(val) => setGroupFilter(val ?? null)}
               options={groups.map((g) => ({ value: g.code, label: g.label }))}
             />
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Thêm từ khóa</Button>
           </div>
         </div>
 
-        {error && <Alert type="error" message={error} showIcon className="mb-4" closable onClose={() => setError(null)} />}
+        <Card
+          size="small"
+          className="rounded-2xl border-black/5 shadow-sm"
+          title={
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <InfoCircleOutlined className="text-teal-600" />
+              Nhóm dấu hiệu cảnh báo cố định ({groups.length} nhóm theo chuẩn cấp cứu y khoa)
+            </span>
+          }
+        >
+          <Text type="secondary" className="mb-3! block text-xs">
+            Các nhóm dấu hiệu cấp cứu được cấu hình cố định theo bộ quy tắc sàng lọc khẩn cấp (NHS 111 &amp; Mayo Clinic) của hệ thống để đảm bảo an toàn y tế; quản trị viên không tự tạo/xóa nhóm mà quản lý danh sách từ khóa nhận diện bên trong từng nhóm. Nhấn vào một nhóm để lọc nhanh:
+          </Text>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="small"
+              type={groupFilter === null ? 'primary' : 'default'}
+              className="rounded-full"
+              onClick={() => setGroupFilter(null)}
+            >
+              Tất cả nhóm ({keywords.length})
+            </Button>
+            {groups.map((group) => (
+              <Button
+                key={group.code}
+                size="small"
+                type={groupFilter === group.code ? 'primary' : 'default'}
+                className="rounded-full"
+                onClick={() => setGroupFilter(groupFilter === group.code ? null : group.code)}
+              >
+                {group.label} ({countByGroup[group.code] ?? 0})
+              </Button>
+            ))}
+          </div>
+        </Card>
+
+        {error && <Alert type="error" message={error} showIcon closable onClose={() => setError(null)} />}
 
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Spin spinning={loading}>
@@ -179,10 +219,12 @@ export default function CmsTriageKeywordsPage() {
         onCancel={() => setModalOpen(false)}
         onOk={handleSubmit}
         okText={editing ? 'Lưu' : 'Thêm'}
+        cancelText="Huỷ"
         confirmLoading={saving}
+        forceRender
         destroyOnHidden
       >
-        {formError && <Alert type="error" message={formError} showIcon className="mb-4" />}
+        {formError && <Alert type="error" title={formError} showIcon className="mb-4!" />}
         <Form form={form} layout="vertical">
           <Form.Item
             name="groupCode"

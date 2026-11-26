@@ -272,8 +272,8 @@ export default function SymptomAssessmentPage() {
 
   return (
     <AppShell fixedViewport>
-      <div ref={containerRef} className="flex h-full min-h-0 w-full flex-col overflow-y-auto overscroll-contain pr-1">
-        <div className="mb-6 flex shrink-0 items-center justify-between gap-4">
+      <div ref={containerRef} className="flex h-full min-h-0 w-full flex-col gap-5 overflow-y-auto overscroll-contain pr-1">
+        <div className="flex shrink-0 items-center justify-between gap-4">
           <div>
             <Text type="secondary">Sàng lọc triệu chứng</Text>
             <Title level={2} className="mb-1! mt-1!">Đánh giá triệu chứng</Title>
@@ -283,14 +283,14 @@ export default function SymptomAssessmentPage() {
         </div>
 
         <Alert
-          className="mb-6 shrink-0 rounded-xl"
+          className="shrink-0 rounded-xl"
           type="info"
           showIcon
-          message="Công cụ sàng lọc tham khảo, không chẩn đoán bệnh và không thay thế bác sĩ."
+          title="Công cụ sàng lọc tham khảo, không chẩn đoán bệnh và không thay thế bác sĩ."
         />
 
         {!result && (
-          <div className="my-6 shrink-0 px-1 py-1">
+          <div className="shrink-0 px-1 py-2">
             <Steps
               current={step}
               responsive
@@ -305,17 +305,8 @@ export default function SymptomAssessmentPage() {
           </div>
         )}
 
-        {error && (
-          <Alert
-            type="error"
-            showIcon
-            message={error}
-            className="mb-6 mt-2 shrink-0 rounded-xl shadow-xs"
-          />
-        )}
-
         {result && careAdvice ? (
-          <div className="space-y-5 pb-6">
+          <div className="flex shrink-0 flex-col gap-5 pb-6">
             <Card className="rounded-2xl border-black/5 shadow-sm">
               <Result
                 status={result.careRecommendation === 'EMERGENCY_CARE' ? 'error' : result.careRecommendation === 'SEE_DOCTOR' ? 'warning' : 'success'}
@@ -390,9 +381,9 @@ export default function SymptomAssessmentPage() {
             </div>
           </div>
         ) : (
-          <Card className="rounded-2xl border-black/5 shadow-sm">
+          <Card className="mb-6 shrink-0 rounded-2xl border-black/5 shadow-sm">
             {step === 0 && (
-              <div className="space-y-6">
+              <div className="flex flex-col gap-6">
                 <div>
                   <Title level={4} className="mb-1!">Kiểm tra dấu hiệu cảnh báo trước tiên</Title>
                   <Text type="secondary">Chọn tất cả dấu hiệu bạn đang gặp để hệ thống sàng lọc nguy cơ khẩn cấp ngay. Nếu không có, cứ để trống và nhấn Tiếp tục.</Text>
@@ -403,7 +394,7 @@ export default function SymptomAssessmentPage() {
                     className="rounded-xl"
                     type="error"
                     showIcon
-                    message="Phát hiện dấu hiệu cần trợ giúp khẩn cấp"
+                    title="Phát hiện dấu hiệu cần trợ giúp khẩn cấp"
                     description={
                       <div className="space-y-2">
                         <div>
@@ -419,13 +410,13 @@ export default function SymptomAssessmentPage() {
                   />
                 )}
 
-                <section className="rounded-xl border border-red-200 bg-red-50/60 p-4.5">
-                  <div className="mb-3.5 flex items-start gap-2 text-red-900">
-                    <ExclamationCircleOutlined className="mt-1" />
-                    <div>
-                      <h3 className="m-0 font-semibold">Dấu hiệu cần trợ giúp khẩn cấp</h3>
-                      <p className="mb-0 mt-1 text-sm leading-5 text-red-800">Nếu đang gặp một trong các dấu hiệu này, hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay.</p>
-                    </div>
+                <section className="rounded-xl border border-red-200 bg-red-50/60 p-4.5 dark:border-red-900/60 dark:bg-red-950/35">
+                  <div className="mb-3.5 text-red-900 dark:text-red-200">
+                    <h3 className="m-0 flex items-center gap-2 font-semibold">
+                      <ExclamationCircleOutlined />
+                      <span>Dấu hiệu cần trợ giúp khẩn cấp</span>
+                    </h3>
+                    <p className="mb-0 mt-1 text-sm leading-5 text-red-800 dark:text-red-300">Nếu đang gặp một trong các dấu hiệu này, hãy gọi 115 hoặc đến cơ sở y tế gần nhất ngay.</p>
                   </div>
                   <Checkbox.Group
                     value={answers.warningSigns}
@@ -440,10 +431,10 @@ export default function SymptomAssessmentPage() {
                   </Checkbox.Group>
                 </section>
 
-                <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-4.5">
-                  <div className="mb-3.5 text-amber-950">
+                <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-4.5 dark:border-amber-900/60 dark:bg-amber-950/35">
+                  <div className="mb-3.5 text-amber-950 dark:text-amber-200">
                     <h3 className="m-0 font-semibold">Dấu hiệu nên được nhân viên y tế xem xét</h3>
-                    <p className="mb-0 mt-1 text-sm leading-5 text-amber-900">Các dấu hiệu này sẽ được ghi nhận trong kết quả để bạn trao đổi với nhân viên y tế.</p>
+                    <p className="mb-0 mt-1 text-sm leading-5 text-amber-900 dark:text-amber-300">Các dấu hiệu này sẽ được ghi nhận trong kết quả để bạn trao đổi với nhân viên y tế.</p>
                   </div>
                   <Checkbox.Group
                     value={answers.warningSigns}
@@ -554,10 +545,10 @@ export default function SymptomAssessmentPage() {
                   </p>
                   {answers.patientGroup === 'UNSURE' && (
                     <Alert
-                      className="mt-3.5 rounded-xl"
+                      className="mt-4! rounded-xl"
                       type="info"
                       showIcon
-                      message="Chưa thể đánh giá theo nhóm đối tượng"
+                      title="Chưa thể đánh giá theo nhóm đối tượng"
                       description="Công cụ hiện chưa áp dụng cách phân loại cho trường hợp này và sẽ khuyến nghị bạn trao đổi với nhân viên y tế."
                     />
                   )}
@@ -602,7 +593,7 @@ export default function SymptomAssessmentPage() {
                     {activityImpactOptions.map((option) => (
                       <button key={option.value} type="button" aria-pressed={answers.activityImpact === option.value}
                         onClick={() => update('activityImpact', option.value)}
-                        className={`rounded-xl border p-4 text-left transition-colors ${answers.activityImpact === option.value ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-800 dark:hover:bg-neutral-700'}`}>
+                        className={`min-h-28 rounded-xl border p-4 text-left transition-colors ${answers.activityImpact === option.value ? 'border-teal-600 bg-teal-50 ring-1 ring-teal-600 dark:bg-teal-900/30' : 'border-slate-200 bg-white hover:border-teal-300 hover:bg-slate-50 dark:border-white/10 dark:bg-neutral-800 dark:hover:bg-neutral-700'}`}>
                         <span className="block font-semibold text-slate-800 dark:text-white">{option.label}</span>
                         <span className="mt-2 block text-sm leading-5 text-slate-500 dark:text-white">{option.description}</span>
                       </button>

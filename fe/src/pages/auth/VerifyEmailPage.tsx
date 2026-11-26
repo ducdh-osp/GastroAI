@@ -64,16 +64,16 @@ export default function VerifyEmailPage() {
       heroTitle="Gần hoàn tất rồi"
       heroDescription="Xác thực email để kích hoạt tài khoản và bắt đầu sử dụng đầy đủ tính năng của GastroAI."
     >
-      <div className="text-center">
+      <div className="flex flex-col gap-4 text-center">
         {state === 'loading' && <Spin />}
         {state !== 'loading' && (
-          <Alert type={state === 'success' ? 'success' : 'error'} message={message} showIcon />
+          <Alert type={state === 'success' ? 'success' : 'error'} title={message} showIcon className="text-left" />
         )}
         {state === 'success' && (
-          <Button type="primary" className="mt-4" href="/login">Đến trang đăng nhập</Button>
+          <Button type="primary" className="self-center" href="/login">Đến trang đăng nhập</Button>
         )}
         {state === 'error' && (
-          <div className="mt-4 space-y-3 text-left">
+          <div className="flex flex-col gap-3 text-left">
             <Text type="secondary">Nhập email đã đăng ký để yêu cầu gửi lại link xác thực.</Text>
             <Input
               type="email"

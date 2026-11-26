@@ -25,6 +25,10 @@ body {
   margin: 0;
 }
 
+.ant-form-item-explain-error {
+  padding-bottom: 6px;
+}
+
 /* Tong mau chinh cua che do toi: den-xam trung tinh (neutral), khong nghieng xanh/navy nhu
    slate - dung lai o day (body + scrollbar) de khop voi dark:bg-neutral-* dang dung trong
    cac trang. */

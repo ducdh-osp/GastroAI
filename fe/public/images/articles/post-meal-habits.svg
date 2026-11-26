@@ -27,22 +27,31 @@
     <!-- Do 1 -->
     <g transform="translate(15, 52)">
       <rect width="290" height="66" rx="6" fill="#f0fdf4" stroke="#a7f3d0" />
-      <text x="12" y="22" fill="#047857" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">1. Ngồi thẳng hoặc đứng nhẹ nhàng 30-60 phút</text>
-      <text x="12" y="40" fill="#065f46" font-family="system-ui, sans-serif" font-size="10.5">Trọng lực giúp thức ăn lưu lại trong dạ dày và đi xuống ruột non, không trào ngược lên thực quản.</text>
+      <text x="12" y="20" fill="#047857" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">1. Ngồi thẳng hoặc đứng nhẹ nhàng 30-60 phút</text>
+      <text x="12" y="37" fill="#065f46" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Trọng lực giúp thức ăn đi xuống ruột non,</tspan>
+        <tspan x="12" dy="14">hạn chế acid trào ngược lên thực quản.</tspan>
+      </text>
     </g>
 
     <!-- Do 2 -->
     <g transform="translate(15, 126)">
       <rect width="290" height="66" rx="6" fill="#f0fdf4" stroke="#a7f3d0" />
-      <text x="12" y="22" fill="#047857" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">2. Đi dạo chậm rãi (10 - 15 phút)</text>
-      <text x="12" y="40" fill="#065f46" font-family="system-ui, sans-serif" font-size="10.5">Vận động nhẹ kích thích nhu động dạ dày, giảm đầy trướng hơi và cải thiện chuyển hóa đường huyết.</text>
+      <text x="12" y="20" fill="#047857" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">2. Đi dạo chậm rãi (10 - 15 phút)</text>
+      <text x="12" y="37" fill="#065f46" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Vận động nhẹ kích thích nhu động dạ dày,</tspan>
+        <tspan x="12" dy="14">giảm đầy trướng hơi và ổn định đường huyết.</tspan>
+      </text>
     </g>
 
     <!-- Do 3 -->
     <g transform="translate(15, 200)">
       <rect width="290" height="66" rx="6" fill="#f0fdf4" stroke="#a7f3d0" />
-      <text x="12" y="22" fill="#047857" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">3. Mặc quần áo thoải mái, nới lỏng cạp quần</text>
-      <text x="12" y="40" fill="#065f46" font-family="system-ui, sans-serif" font-size="10.5">Tránh thắt lưng quá chật gây ép ổ bụng, tăng áp lực đẩy dịch acid lên ngực.</text>
+      <text x="12" y="20" fill="#047857" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">3. Mặc quần áo thoải mái, nới lỏng cạp quần</text>
+      <text x="12" y="37" fill="#065f46" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Tránh thắt lưng chật gây ép ổ bụng,</tspan>
+        <tspan x="12" dy="14">giảm áp lực đẩy dịch acid trào lên ngực.</tspan>
+      </text>
     </g>
   </g>
 
@@ -57,22 +66,31 @@
     <!-- Don't 1 -->
     <g transform="translate(15, 52)">
       <rect width="290" height="66" rx="6" fill="#fef2f2" stroke="#fca5a5" />
-      <text x="12" y="22" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">1. NẰM NGAY HOẶC ĐI NGỦ LIỀN</text>
-      <text x="12" y="40" fill="#991b1b" font-family="system-ui, sans-serif" font-size="10.5">Mất tác dụng của trọng lực, cơ thắt LES bị acid tràn vào gây ợ nóng dữ dội và viêm thực quản.</text>
+      <text x="12" y="20" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">1. NẰM NGAY HOẶC ĐI NGỦ LIỀN</text>
+      <text x="12" y="37" fill="#991b1b" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Mất tác dụng trọng lực, cơ thắt LES bị acid</tspan>
+        <tspan x="12" dy="14">tràn vào gây ợ nóng dữ dội và viêm thực quản.</tspan>
+      </text>
     </g>
 
     <!-- Don't 2 -->
     <g transform="translate(15, 126)">
       <rect width="290" height="66" rx="6" fill="#fffbeb" stroke="#fcd34d" />
-      <text x="12" y="22" fill="#b45309" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">2. TẬP THỂ DỤC MẠNH, CHẠY NHẢY, GẬP BỤNG</text>
-      <text x="12" y="40" fill="#78350f" font-family="system-ui, sans-serif" font-size="10.5">Máu dồn về cơ bắp thay vì hệ tiêu hóa, dạ dày rung lắc gây xóc bụng, buồn nôn và nôn trớ.</text>
+      <text x="12" y="20" fill="#b45309" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">2. TẬP THỂ DỤC MẠNH, GẬP BỤNG</text>
+      <text x="12" y="37" fill="#78350f" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Máu dồn về cơ bắp thay vì tiêu hóa,</tspan>
+        <tspan x="12" dy="14">dạ dày rung lắc gây xóc bụng và buồn nôn.</tspan>
+      </text>
     </g>
 
     <!-- Don't 3 -->
     <g transform="translate(15, 200)">
       <rect width="290" height="66" rx="6" fill="#fef2f2" stroke="#fca5a5" />
-      <text x="12" y="22" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">3. HÚT THUỐC LÁ &amp; UỐNG TRÀ ĐẬM / CÀ PHÊ</text>
-      <text x="12" y="40" fill="#991b1b" font-family="system-ui, sans-serif" font-size="10.5">Nicotine và caffeine làm giãn nhão cơ thắt LES, kích thích dạ dày tăng tiết acid mạnh.</text>
+      <text x="12" y="20" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">3. HÚT THUỐC LÁ &amp; TRÀ ĐẬM / CÀ PHÊ</text>
+      <text x="12" y="37" fill="#991b1b" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Nicotine và caffeine làm giãn cơ thắt LES,</tspan>
+        <tspan x="12" dy="14">kích thích dạ dày tăng tiết acid mạnh hơn.</tspan>
+      </text>
     </g>
   </g>
 </svg>

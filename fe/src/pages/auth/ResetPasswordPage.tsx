@@ -22,7 +22,7 @@ function PasswordChecklist({ value }: { value: string }) {
     { ok: /[^A-Za-z0-9]/.test(value), label: 'Ít nhất 1 ký tự đặc biệt' },
   ]
   return (
-    <ul className="mt-2 mb-0 list-none space-y-1 p-0 text-xs">
+    <ul className="mt-2 mb-2! list-none space-y-1 p-0 text-xs">
       {checks.map((item) => (
         <li
           key={item.label}
@@ -97,10 +97,10 @@ export default function ResetPasswordPage() {
             ) : undefined
           }
           showIcon
-          className="mb-4"
+          className="mb-4!"
         />
       )}
-      {success && <Alert type="success" message={success} showIcon className="mb-4" />}
+      {success && <Alert type="success" message={success} showIcon className="mb-4!" />}
       <Form<ResetPasswordFormValues> form={form} layout="vertical" onFinish={onFinish} disabled={loading || !token}>
         <Form.Item
           label="Mật khẩu mới"
@@ -125,7 +125,7 @@ export default function ResetPasswordPage() {
         >
           <Input.Password maxLength={72} autoComplete="new-password" />
         </Form.Item>
-        <Button type="primary" htmlType="submit" block loading={loading} disabled={!token}>Đặt lại mật khẩu</Button>
+        <Button type="primary" htmlType="submit" block loading={loading} disabled={!token} className="mt-2!">Đặt lại mật khẩu</Button>
       </Form>
       <div className="text-center mt-4">
         <Link to="/login" className="text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300">

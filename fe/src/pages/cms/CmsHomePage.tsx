@@ -20,6 +20,7 @@ import type { CmsRole } from '../../api/cmsAuth'
 import { getDashboardStats, type DashboardStatsResponse } from '../../api/cmsDashboard'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { canAccessCmsPath, CMS_ROLE_LABEL, filterCmsNavGroups } from '../../components/cms/cmsNav'
+import { formatSymptomLabel } from '../../lib/format'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 const { Title, Paragraph, Text } = Typography
@@ -71,6 +72,10 @@ export default function CmsHomePage() {
   const chartData = (data?.dailyChats ?? []).map((item) => ({
     ...item,
     shortDay: item.day.length >= 10 ? `${item.day.slice(8, 10)}/${item.day.slice(5, 7)}` : item.day,
+  }))
+  const symptomChartData = (data?.topSymptoms ?? []).map((item) => ({
+    ...item,
+    symptomName: formatSymptomLabel(item.symptomName),
   }))
 
   return (
@@ -168,7 +173,7 @@ export default function CmsHomePage() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <Card className="rounded-2xl border-black/5 shadow-sm" title={`Lượt chat theo ngày (${PREVIEW_DAYS} ngày gần nhất)`}>
                 <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={chartData} margin={{ left: -20, right: 8, top: 8 }}>
+                  <AreaChart data={chartData} margin={{ left: 0, right: 8, top: 8 }}>
                     <defs>
                       <linearGradient id="homeColorTotal" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
@@ -177,7 +182,7 @@ export default function CmsHomePage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                     <XAxis dataKey="shortDay" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94a3b8" width={24} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94a3b8" width={36} />
                     <RechartsTooltip formatter={(value) => [`${value}`, 'Tổng tin nhắn']} labelFormatter={(label) => `Ngày ${label}`} />
                     <Area type="monotone" dataKey="totalMessages" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#homeColorTotal)" />
                   </AreaChart>
@@ -213,14 +218,14 @@ export default function CmsHomePage() {
                 </Link>
               }
             >
-              {data.topSymptoms.length === 0 ? (
+              {symptomChartData.length === 0 ? (
                 <Empty description="Chưa có ghi nhận triệu chứng trong khoảng thời gian này." image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.topSymptoms} margin={{ top: 8, right: 20, left: 0, bottom: 20 }}>
+                  <BarChart data={symptomChartData} margin={{ top: 8, right: 20, left: 0, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
                     <XAxis dataKey="symptomName" tick={{ fontSize: 11 }} interval={0} angle={-10} textAnchor="end" stroke="#94a3b8" />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94a3b8" width={24} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#94a3b8" width={36} />
                     <RechartsTooltip formatter={(val) => [`${val} ca`, 'Tổng số ca']} />
                     <Bar dataKey="totalCount" fill="#0d9488" radius={[6, 6, 0, 0]} maxBarSize={44} />
                   </BarChart>

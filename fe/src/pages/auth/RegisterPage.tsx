@@ -32,7 +32,7 @@ function PasswordChecklist({ value }: { value: string }) {
     { ok: /[^A-Za-z0-9]/.test(value), label: 'Ít nhất 1 ký tự đặc biệt' },
   ]
   return (
-    <ul className="mt-2 mb-0 list-none space-y-1 p-0 text-xs">
+    <ul className="mt-2 mb-2! list-none space-y-1 p-0 text-xs">
       {checks.map((item) => (
         <li
           key={item.label}
@@ -106,7 +106,7 @@ export default function RegisterPage() {
       trustItems={REGISTER_TRUST_ITEMS}
     >
       {registeredEmail ? (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-100">
             <div className="mb-1.5 flex items-center gap-2 font-semibold">
               <MailOutlined />
@@ -145,7 +145,7 @@ export default function RegisterPage() {
                 ) : undefined
               }
               showIcon
-              className="mb-4"
+              className="mb-4!"
             />
           )}
           <Form<RegisterFormValues> form={form} layout="vertical" onFinish={onFinish} disabled={loading}>
@@ -186,7 +186,7 @@ export default function RegisterPage() {
             >
               <Input.Password maxLength={72} autoComplete="new-password" />
             </Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>Đăng ký</Button>
+            <Button type="primary" htmlType="submit" block loading={loading} className="mt-2!">Đăng ký</Button>
           </Form>
           <div className="text-center mt-4">
             <Text type="secondary">Đã có tài khoản? </Text>

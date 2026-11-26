@@ -59,9 +59,9 @@ export default function ChangePasswordPage() {
         <Card className="rounded-2xl border-black/5 shadow-sm">
           <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
           <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
-          {error && <Alert type="error" message={error} showIcon className="my-4" />}
-          {success && <Alert type="success" message={success} showIcon className="my-4" />}
-          <Form<ChangePasswordFormValues> layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4">
+          {error && <Alert type="error" message={error} showIcon className="my-4!" />}
+          {success && <Alert type="success" message={success} showIcon className="my-4!" />}
+          <Form<ChangePasswordFormValues> layout="vertical" onFinish={onFinish} disabled={loading} className="mt-4!">
             <Form.Item label="Mật khẩu hiện tại" name="currentPassword" rules={[{ required: true, message: 'Nhập mật khẩu hiện tại' }, { max: 72, message: 'Mật khẩu tối đa 72 ký tự' }, { validator: (_, value: string) => !value || isAtMostUtf8Bytes(value, 72) ? Promise.resolve() : Promise.reject(new Error('Mật khẩu tối đa 72 byte UTF-8')) }]}>
               <Input.Password maxLength={72} autoComplete="current-password" />
             </Form.Item>
@@ -113,9 +113,9 @@ export default function ChangePasswordPage() {
             >
               <Input.Password maxLength={72} autoComplete="new-password" />
             </Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>Đổi mật khẩu</Button>
+            <Button type="primary" htmlType="submit" block loading={loading} className="mt-2!">Đổi mật khẩu</Button>
           </Form>
-          <div className="text-center mt-4"><Link to="/" className="text-teal-700 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-300">Quay lại trang chủ</Link></div>
+          <div className="text-center mt-4"><Link to="/" className="text-teal-700! hover:text-teal-800! dark:text-teal-400! dark:hover:text-teal-300!">Quay lại trang chủ</Link></div>
         </Card>
       </div>
     </AppShell>

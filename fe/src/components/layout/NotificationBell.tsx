@@ -135,8 +135,8 @@ export function NotificationBell({
         onClick={() => navigate(allUrl)}
         className="flex h-9 w-9 items-center justify-center rounded-full text-white/80 hover:bg-white/10"
       >
-        <Badge count={unreadCount} overflowCount={99} size="small">
-          <BellOutlined className="text-lg text-white/80" />
+        <Badge count={unreadCount} overflowCount={99} size="small" style={{ color: 'inherit' }} className="text-current!">
+          <BellOutlined className="text-lg text-current!" />
         </Badge>
       </button>
     </Popover>

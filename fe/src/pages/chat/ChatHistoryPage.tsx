@@ -142,7 +142,7 @@ export default function ChatHistoryPage() {
           </Text>
         </div>
 
-        {deleteError && <Alert type="error" message={deleteError} showIcon className="mb-4 shrink-0" />}
+        {deleteError && <Alert type="error" message={deleteError} showIcon className="mb-4! shrink-0" />}
 
         <div className="flex min-h-0 flex-1 gap-6">
           {/* ── Cột trái: danh sách phiên ── */}

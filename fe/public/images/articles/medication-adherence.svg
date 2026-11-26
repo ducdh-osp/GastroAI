@@ -27,25 +27,31 @@
     <!-- Group 1: PPI -->
     <g transform="translate(15, 52)">
       <rect width="290" height="66" rx="6" fill="#fdf4ff" stroke="#d8b4fe" />
-      <text x="12" y="22" fill="#7e22ce" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">1. Thuốc ức chế bơm Proton (PPI - Omeprazole, Esomeprazole...)</text>
-      <text x="12" y="40" fill="#581c87" font-family="system-ui, sans-serif" font-size="10.5">Uống 30 - 60 phút TRƯỚC bữa ăn sáng (hoặc bữa tối nếu uống 2 lần).</text>
-      <text x="12" y="54" fill="#6b21a8" font-family="system-ui, sans-serif" font-size="9.5" font-style="italic">Bơm acid hoạt động mạnh nhất khi ăn, thuốc cần ngấm trước.</text>
+      <text x="12" y="19" fill="#7e22ce" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">1. Nhóm PPI (Omeprazole, Esomeprazole...)</text>
+      <text x="12" y="35" fill="#581c87" font-family="system-ui, sans-serif" font-size="9.5">
+        <tspan x="12" dy="0">Uống 30-60 phút TRƯỚC ăn sáng (hoặc tối nếu 2 lần).</tspan>
+        <tspan x="12" dy="14" fill="#6b21a8" font-style="italic">Bơm acid hoạt động mạnh khi ăn, thuốc cần ngấm trước.</tspan>
+      </text>
     </g>
 
     <!-- Group 2: Antacids -->
     <g transform="translate(15, 126)">
       <rect width="290" height="66" rx="6" fill="#eff6ff" stroke="#bfdbfe" />
-      <text x="12" y="22" fill="#1d4ed8" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">2. Thuốc kháng acid dạng sữa / gói (Antacid, Gaviscon...)</text>
-      <text x="12" y="40" fill="#1e40af" font-family="system-ui, sans-serif" font-size="10.5">Uống 1 - 2 tiếng SAU bữa ăn hoặc ngay khi có cơn đau/ợ nóng.</text>
-      <text x="12" y="54" fill="#1d4ed8" font-family="system-ui, sans-serif" font-size="9.5" font-style="italic">Tác dụng trung hòa acid tức thời và tạo màng ngăn trào ngược.</text>
+      <text x="12" y="19" fill="#1d4ed8" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">2. Kháng acid dạng gói/sữa (Antacid, Gaviscon)</text>
+      <text x="12" y="35" fill="#1e40af" font-family="system-ui, sans-serif" font-size="9.5">
+        <tspan x="12" dy="0">Uống 1-2 tiếng SAU ăn hoặc ngay khi đau/ợ nóng.</tspan>
+        <tspan x="12" dy="14" fill="#1d4ed8" font-style="italic">Trung hòa acid tức thời và tạo màng ngăn trào ngược.</tspan>
+      </text>
     </g>
 
     <!-- Group 3: Probiotics -->
     <g transform="translate(15, 200)">
       <rect width="290" height="66" rx="6" fill="#f0fdf4" stroke="#a7f3d0" />
-      <text x="12" y="22" fill="#047857" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">3. Men vi sinh (Probiotics) &amp; Kháng sinh</text>
-      <text x="12" y="40" fill="#065f46" font-family="system-ui, sans-serif" font-size="10.5">Nếu có kháng sinh diệt HP, uống men vi sinh CÁCH 2 TIẾNG.</text>
-      <text x="12" y="54" fill="#047857" font-family="system-ui, sans-serif" font-size="9.5" font-style="italic">Tránh để kháng sinh tiêu diệt luôn vi khuẩn có lợi của men.</text>
+      <text x="12" y="19" fill="#047857" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">3. Men vi sinh (Probiotics) &amp; Kháng sinh</text>
+      <text x="12" y="35" fill="#065f46" font-family="system-ui, sans-serif" font-size="9.5">
+        <tspan x="12" dy="0">Đang uống kháng sinh diệt HP: uống men CÁCH 2 GIỜ.</tspan>
+        <tspan x="12" dy="14" fill="#047857" font-style="italic">Tránh để kháng sinh diệt luôn lợi khuẩn đường ruột.</tspan>
+      </text>
     </g>
   </g>
 
@@ -60,22 +66,31 @@
     <!-- Rule 1 -->
     <g transform="translate(15, 52)">
       <rect width="290" height="66" rx="6" fill="#fef2f2" stroke="#fca5a5" />
-      <text x="12" y="22" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">KHÔNG TỰ Ý BỎ THUỐC KHI VỪA HẾT ĐAU</text>
-      <text x="12" y="40" fill="#7f1d1d" font-family="system-ui, sans-serif" font-size="10.5">Vết loét niêm mạc cần 4-8 tuần để lành sẹo hoàn toàn. Dừng sớm khiến bệnh tái phát và tăng nguy cơ kháng thuốc.</text>
+      <text x="12" y="20" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">KHÔNG TỰ Ý BỎ THUỐC KHI VỪA HẾT ĐAU</text>
+      <text x="12" y="37" fill="#7f1d1d" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Ổ loét niêm mạc cần 4-8 tuần để lành hẳn.</tspan>
+        <tspan x="12" dy="14">Ngừng sớm khiến bệnh tái phát và kháng thuốc.</tspan>
+      </text>
     </g>
 
     <!-- Rule 2 -->
     <g transform="translate(15, 126)">
       <rect width="290" height="66" rx="6" fill="#fffbeb" stroke="#fcd34d" />
-      <text x="12" y="22" fill="#b45309" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">UỐNG NGUYÊN VIÊN VỚI NHIỀU NƯỚC LỌC</text>
-      <text x="12" y="40" fill="#78350f" font-family="system-ui, sans-serif" font-size="10.5">Không nhai, bẻ hoặc nghiền viên bao tan trong ruột. Không uống cùng sữa, nước ngọt có ga hay nước bưởi.</text>
+      <text x="12" y="20" fill="#b45309" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">UỐNG NGUYÊN VIÊN VỚI NHIỀU NƯỚC LỌC</text>
+      <text x="12" y="37" fill="#78350f" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Không nhai, bẻ viên bao tan trong ruột.</tspan>
+        <tspan x="12" dy="14">Tránh uống cùng sữa, nước có ga hoặc bưởi.</tspan>
+      </text>
     </g>
 
     <!-- Rule 3 -->
     <g transform="translate(15, 200)">
       <rect width="290" height="66" rx="6" fill="#ecfdf5" stroke="#6ee7b7" />
-      <text x="12" y="22" fill="#047857" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">SỬ DỤNG TÍNH NĂNG NHẮC UỐNG THUỐC</text>
-      <text x="12" y="40" fill="#065f46" font-family="system-ui, sans-serif" font-size="10.5">Cài đặt giờ uống cố định trên ứng dụng GastroAI để không quên liều, hỗ trợ theo dõi tỷ lệ tuân thủ điều trị.</text>
+      <text x="12" y="20" fill="#047857" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold">SỬ DỤNG TÍNH NĂNG NHẮC UỐNG THUỐC</text>
+      <text x="12" y="37" fill="#065f46" font-family="system-ui, sans-serif" font-size="10">
+        <tspan x="12" dy="0">Cài đặt giờ uống cố định trên GastroAI</tspan>
+        <tspan x="12" dy="14">để không quên liều và giữ hiệu quả điều trị.</tspan>
+      </text>
     </g>
   </g>
 </svg>

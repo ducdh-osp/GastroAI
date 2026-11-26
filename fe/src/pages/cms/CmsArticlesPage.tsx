@@ -247,7 +247,7 @@ export default function CmsArticlesPage() {
       dataIndex: 'category',
       key: 'category',
       width: 150,
-      render: (cat: string) => <Tag color="cyan">{cat}</Tag>,
+      render: (cat: string) => <Tag color="cyan" className="m-0">{cat}</Tag>,
     },
     {
       title: 'Trạng thái',
@@ -392,9 +392,10 @@ export default function CmsArticlesPage() {
           </Button>
         </div>
 
-        {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+        {error && <Alert type="error" message={error} showIcon className="mb-4!" />}
 
-        <Card className="mb-4 rounded-2xl border-black/5 shadow-sm">
+        <div className="flex flex-col gap-4">
+        <Card className="rounded-2xl border-black/5 shadow-sm">
           <div className="flex flex-wrap items-center gap-3">
             <Input.Search
               placeholder="Tìm theo tiêu đề bài viết"
@@ -475,6 +476,7 @@ export default function CmsArticlesPage() {
             }}
           />
         </Card>
+        </div>
 
         <Modal
           title={
@@ -487,14 +489,14 @@ export default function CmsArticlesPage() {
           onCancel={() => setReviewArticle(null)}
           footer={null}
           width={560}
-          destroyOnClose
+          destroyOnHidden
         >
           {reviewArticle && (
             <Form<ArticleReviewFormValues> form={reviewForm} layout="vertical" onFinish={handleReviewSubmit} className="mt-2">
               <Alert
                 type="warning"
                 showIcon
-                className="mb-4"
+                className="mb-4!"
                 message="Nội dung sẽ hiển thị tới bệnh nhân trong Thư viện kiến thức"
                 description="Chỉ duyệt đăng khi Biên tập chuyên môn y khoa đã đối chiếu nội dung bài viết với tài liệu y khoa đã công bố. Đây không phải thẩm định của bác sĩ hành nghề."
               />

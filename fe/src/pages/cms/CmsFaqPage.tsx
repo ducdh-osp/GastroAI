@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons'
 import {
   Alert,
+  AutoComplete,
   Button,
   Card,
   Checkbox,
@@ -45,6 +46,7 @@ import {
 import { listArticleTopics } from '../../api/cmsArticleTopics'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
 import { MarkdownContent } from '../../components/chat/MarkdownContent'
+import { RichTextEditor } from '../../components/editor/RichTextEditor'
 import { useCmsAuth } from '../../stores/cmsAuthStore'
 
 const { Title, Text, Paragraph } = Typography
@@ -99,7 +101,8 @@ export default function CmsFaqPage() {
   const [submitting, setSubmitting] = useState(false)
   const [previewTab, setPreviewTab] = useState<'edit' | 'preview'>('edit')
   const [form] = Form.useForm<FaqFormValues>()
-  const answerValue = Form.useWatch('answer', form)
+  const answerValue = Form.useWatch('answer', form) ?? editingItem?.answer ?? ''
+  const questionValue = Form.useWatch('question', form) ?? editingItem?.question ?? ''
 
   // Modal Xem chi tiết
   const [detailItem, setDetailItem] = useState<CmsFaqItem | null>(null)
@@ -178,21 +181,6 @@ export default function CmsFaqPage() {
       published: item.published,
     })
     setModalOpen(true)
-  }
-
-  function handleInsertFormatting(prefix: string, suffix: string = prefix, placeholder: string = 'chữ in đậm') {
-    const textarea = document.getElementById('faq-answer-textarea') as HTMLTextAreaElement | null
-    if (!textarea) return
-    const start = textarea.selectionStart || 0
-    const end = textarea.selectionEnd || 0
-    const value = form.getFieldValue('answer') || ''
-    const selected = value.substring(start, end) || placeholder
-    const nextValue = value.substring(0, start) + prefix + selected + suffix + value.substring(end)
-    form.setFieldsValue({ answer: nextValue })
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length)
-    }, 0)
   }
 
   async function handleFormSubmit(values: FaqFormValues) {
@@ -469,7 +457,7 @@ export default function CmsFaqPage() {
 
   return (
     <CmsAppShell>
-      <div className="w-full space-y-6">
+      <div className="flex w-full flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -492,7 +480,7 @@ export default function CmsFaqPage() {
       </div>
 
       {/* Filter bar */}
-      <Card bodyStyle={{ padding: 16 }}>
+      <Card styles={{ body: { padding: 16 } }}>
         <div className="flex flex-wrap items-center gap-3">
           <Input
             placeholder="Tìm kiếm theo câu hỏi hoặc câu trả lời..."
@@ -541,7 +529,7 @@ export default function CmsFaqPage() {
       </Card>
 
       {/* Table */}
-      <Card bodyStyle={{ padding: 0 }}>
+      <Card styles={{ body: { padding: 0 } }}>
         <Table
           rowKey="id"
           columns={columns}
@@ -580,13 +568,15 @@ export default function CmsFaqPage() {
         onCancel={() => setModalOpen(false)}
         footer={null}
         width={720}
-        destroyOnClose
+        centered
+        destroyOnHidden
+        styles={{ body: { maxHeight: '74vh', overflowY: 'auto', paddingRight: 4 } }}
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={handleFormSubmit}
-          className="mt-4"
+          className="mt-4!"
         >
           <Form.Item
             label="Câu hỏi"
@@ -609,13 +599,16 @@ export default function CmsFaqPage() {
               label="Chủ đề / Danh mục"
               name="category"
               className="sm:col-span-3"
-              rules={[{ required: true, message: 'Vui lòng chọn hoặc nhập chủ đề' }]}
+              rules={[{ required: true, whitespace: true, message: 'Vui lòng chọn hoặc nhập chủ đề' }]}
             >
-              <Select
+              <AutoComplete
                 placeholder="Chọn hoặc nhập chủ đề mới"
-                mode="tags"
-                maxCount={1}
                 options={categoryOptions.map((c) => ({ label: c, value: c }))}
+                filterOption={(inputValue, option) =>
+                  String(option?.value ?? '')
+                    .toLowerCase()
+                    .includes(inputValue.trim().toLowerCase())
+                }
               />
             </Form.Item>
 
@@ -632,8 +625,8 @@ export default function CmsFaqPage() {
           <Alert
             type="info"
             showIcon
-            className="mb-5"
-            message="Quy trình duyệt nội dung FAQ"
+            className="mb-5!"
+            title="Quy trình duyệt nội dung FAQ"
             description={
               editingItem
                 ? 'Khi chỉnh sửa nội dung câu hỏi hoặc câu trả lời, câu hỏi sẽ tự động quay về trạng thái Chờ duyệt. Biên tập chuyên môn y khoa cần đối chiếu với tài liệu y khoa đã công bố và bấm Duyệt riêng trước khi hiển thị cho bệnh nhân.'
@@ -643,7 +636,7 @@ export default function CmsFaqPage() {
 
           <div className="mb-2 flex items-center justify-between">
             <span className="font-semibold text-slate-700 dark:text-white text-sm">
-              Câu trả lời y khoa (Định dạng in đậm với **chữ**):
+              Câu trả lời y khoa <span className="text-red-500">*</span>
             </span>
             <Radio.Group
               size="small"
@@ -651,68 +644,35 @@ export default function CmsFaqPage() {
               onChange={(e) => setPreviewTab(e.target.value)}
             >
               <Radio.Button value="edit">Soạn thảo</Radio.Button>
-              <Radio.Button value="preview">Xem toàn màn</Radio.Button>
+              <Radio.Button value="preview">Xem hiển thị</Radio.Button>
             </Radio.Group>
           </div>
 
-          {previewTab === 'edit' ? (
-            <div>
-              {/* Thanh công cụ định dạng in đậm / gạch đầu dòng */}
-              <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
-                <Button
-                  size="small"
-                  type="default"
-                  onClick={() => handleInsertFormatting('**', '**', 'từ cần in đậm')}
-                  className="font-bold px-2.5 h-6 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700"
-                  title="In đậm từ được chọn"
-                >
-                  <span className="font-black text-sm mr-1">B</span> In đậm
-                </Button>
-                <Button
-                  size="small"
-                  type="default"
-                  onClick={() => handleInsertFormatting('- ', '', 'Mục danh sách')}
-                  className="px-2.5 h-6 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700"
-                  title="Thêm gạch đầu dòng"
-                >
-                  • Danh sách
-                </Button>
-                <span className="text-slate-400 dark:text-slate-500 text-[11px]">
-                  (Bôi đen từ rồi bấm <b>B In đậm</b> hoặc gõ <b>**từ cần in đậm**</b>)
-                </span>
-              </div>
+          <div className={previewTab === 'edit' ? 'mb-4' : 'hidden'}>
+            <Form.Item
+              name="answer"
+              className="!mb-0"
+              rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập câu trả lời' }]}
+            >
+              <RichTextEditor
+                id="faq-answer-editor"
+                minHeight={180}
+                placeholder="Nhập nội dung câu trả lời y khoa (dùng thanh công cụ phía trên để in đậm, in nghiêng hoặc tạo danh sách)..."
+              />
+            </Form.Item>
+          </div>
 
-              <Form.Item
-                name="answer"
-                className="!mb-2"
-                rules={[{ required: true, message: 'Vui lòng nhập câu trả lời' }]}
-              >
-                <Input.TextArea
-                  id="faq-answer-textarea"
-                  rows={6}
-                  placeholder="Nhập nội dung câu trả lời. Bạn có thể dùng Markdown như gạch đầu dòng (-), in đậm (**chữ đậm**)..."
-                />
-              </Form.Item>
-
-              {/* Khung hiển thị thực tế: chữ trong ** tự động in đậm trực quan */}
-              <div className="mb-4 rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/50">
-                <div className="text-[11px] font-medium text-slate-400 dark:text-slate-400 mb-1 flex items-center gap-1.5">
-                  <EyeOutlined className="text-teal-600 dark:text-teal-400" />
-                  <span>Hiển thị thực tế cho bệnh nhân (các từ trong ** được in đậm hoàn toàn):</span>
+          {previewTab === 'preview' && (
+            <div className="mb-6 max-h-[340px] min-h-[220px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-neutral-700 dark:bg-neutral-900/70">
+              {questionValue.trim() && (
+                <div className="mb-3 border-b border-slate-200 pb-2 text-sm font-semibold text-slate-800 dark:border-neutral-700 dark:text-white">
+                  {questionValue}
                 </div>
-                <div className="text-xs text-slate-700 dark:text-slate-200 max-h-40 overflow-y-auto pr-1">
-                  {answerValue ? (
-                    <MarkdownContent content={answerValue} />
-                  ) : (
-                    <span className="text-slate-400 italic">Chưa có nội dung</span>
-                  )}
+              )}
+              {(form.getFieldValue('answer') ?? answerValue)?.trim() ? (
+                <div className="text-sm leading-relaxed text-slate-700 dark:text-slate-100">
+                  <MarkdownContent content={(form.getFieldValue('answer') ?? answerValue) as string} />
                 </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mb-6 min-h-[180px] max-h-[300px] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
-              {answerValue ? (
-                <MarkdownContent content={answerValue} />
               ) : (
                 <Text type="secondary">Chưa có nội dung xem trước</Text>
               )}
@@ -810,7 +770,7 @@ export default function CmsFaqPage() {
               <Text type="secondary" className="text-xs uppercase font-medium">
                 Câu trả lời
               </Text>
-              <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50 p-4">
+              <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-neutral-700 dark:bg-neutral-900/60">
                 <MarkdownContent content={detailItem.answer} />
               </div>
             </div>
@@ -835,14 +795,14 @@ export default function CmsFaqPage() {
         onCancel={() => setReviewItem(null)}
         footer={null}
         width={640}
-        destroyOnClose
+        destroyOnHidden
       >
         {reviewItem && (
-          <Form form={reviewForm} layout="vertical" onFinish={handleReviewSubmit} className="mt-2">
+          <Form form={reviewForm} layout="vertical" onFinish={handleReviewSubmit} className="mt-2!">
             <Alert
               type="warning"
               showIcon
-              className="mb-4"
+              className="mb-4!"
               message="Nội dung này sẽ hiển thị cho bệnh nhân"
               description="Chỉ duyệt khi Biên tập chuyên môn y khoa đã đối chiếu câu trả lời với tài liệu y khoa đã công bố (phác đồ, hướng dẫn điều trị chính thức). Nội dung này không phải thẩm định của bác sĩ hành nghề."
             />

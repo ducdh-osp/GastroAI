@@ -294,7 +294,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
         </div>
       </div>
 
-      <Card className="mb-4 rounded-2xl border-black/5 shadow-sm" size="small">
+      <Card className="mb-4! rounded-2xl border-black/5 shadow-sm" size="small">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Segmented
             value={unreadOnly ? 'unread' : 'all'}
@@ -316,7 +316,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
       </Card>
 
       {loading && !data ? <Card><Skeleton active /></Card> : data?.items.length ? (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {data.items.map((item) => (
             <Card
               key={item.id}

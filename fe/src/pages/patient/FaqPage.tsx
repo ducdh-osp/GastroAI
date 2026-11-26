@@ -113,7 +113,7 @@ export default function FaqPage() {
 
   return (
     <AppShell>
-      <div className="w-full space-y-6">
+      <div className="flex w-full flex-col gap-6">
         {/* Hero Banner */}
         <div className="rounded-2xl bg-gradient-to-br from-teal-900 via-teal-800 to-emerald-900 text-white p-6 sm:p-8 shadow-sm">
           <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-medium text-teal-300 mb-3 border border-teal-400/20">
@@ -223,7 +223,7 @@ export default function FaqPage() {
 
         {/* Call to action: Chat bot & Articles */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <Card className="rounded-xl border-teal-100 bg-teal-50/50 hover:bg-teal-50 transition-colors dark:border-teal-800 dark:bg-teal-900/30 dark:hover:bg-teal-900/50">
+          <Card className="h-full rounded-xl border-teal-100 bg-teal-50/50 hover:bg-teal-50 transition-colors dark:border-teal-800 dark:bg-teal-900/30 dark:hover:bg-teal-900/50">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-teal-600 p-2.5 text-white">
                 <CommentOutlined className="text-lg" />
@@ -250,7 +250,7 @@ export default function FaqPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border-slate-200 bg-white hover:bg-slate-50/50 transition-colors dark:border-white/10 dark:bg-neutral-900 dark:hover:bg-neutral-800/50">
+          <Card className="h-full rounded-xl border-slate-200 bg-white hover:bg-slate-50/50 transition-colors dark:border-white/10 dark:bg-neutral-900 dark:hover:bg-neutral-800/50">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-slate-800 p-2.5 text-white">
                 <BookOutlined className="text-lg" />
