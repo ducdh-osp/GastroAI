@@ -106,7 +106,7 @@ public class AuditAnomalyDetector {
         }
     }
 
-        private void saveAnomalyLog(AuditLog saved, String ruleCode, String detail) {
+    private void saveAnomalyLog(AuditLog saved, String ruleCode, String detail) {
         auditLogRepository.save(new AuditLog(
                 Instant.now(),
                 saved.getActorType(),
@@ -118,7 +118,9 @@ public class AuditAnomalyDetector {
                 ruleCode,
                 detail,
                 saved.getIpAddress(),
-                saved.getUserAgent()));
+                saved.getUserAgent(),
+                // Cùng IP với log gốc vừa ghi -> chép lại vị trí đã tra, không tra lần 2.
+                saved.getIpLocation()));
     }
 
     private String actorText(AuditLog saved) {

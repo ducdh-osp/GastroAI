@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.gastroai.be.application.commands.CmsLoginCommand;
 import vn.gastroai.be.application.readmodel.CmsAuthResult;
+import vn.gastroai.be.application.geo.IpLocationService;
 import vn.gastroai.be.application.readmodel.LoginHistoryItem;
 import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.admin.AdminLoginHistory;
@@ -48,6 +49,7 @@ public class CmsAuthService {
     private final PasswordEncoder passwordEncoder;
     private final LoginSecurityPolicy loginSecurityPolicy;
     private final ClientRequestInfoResolver clientRequestInfoResolver;
+    private final IpLocationService ipLocationService;
 
     public CmsAuthService(
             AdminRepository adminRepository,
@@ -55,13 +57,15 @@ public class CmsAuthService {
             AdminPasswordHistoryRepository passwordHistoryRepository,
             PasswordEncoder passwordEncoder,
             LoginSecurityPolicy loginSecurityPolicy,
-            ClientRequestInfoResolver clientRequestInfoResolver) {
+            ClientRequestInfoResolver clientRequestInfoResolver,
+            IpLocationService ipLocationService) {
         this.adminRepository = adminRepository;
         this.loginHistoryRepository = loginHistoryRepository;
         this.passwordHistoryRepository = passwordHistoryRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginSecurityPolicy = loginSecurityPolicy;
         this.clientRequestInfoResolver = clientRequestInfoResolver;
+        this.ipLocationService = ipLocationService;
     }
 
     @Transactional(value = "mysqlTransactionManager", noRollbackFor = {
@@ -172,7 +176,8 @@ public class CmsAuthService {
                         history.getFailureReason(),
                         history.getIpAddress(),
                         history.getUserAgent(),
-                        DeviceLabel.of(history.getUserAgent())));
+                        DeviceLabel.of(history.getUserAgent()),
+                        ipLocationService.locate(history.getIpAddress())));
     }
 
     /** Số lần đăng nhập hoặc đổi mật khẩu không thành công trong 7 ngày qua, tính trên toàn bộ lịch sử. */

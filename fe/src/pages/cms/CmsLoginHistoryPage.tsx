@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getCmsLoginHistory } from '../../api/cmsAuth'
 import type { LoginHistoryItem } from '../../api/auth'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
+import { DbIpAttribution, IpLocationText } from '../../components/cms/IpLocation'
 import { KeyOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 const { Title, Text } = Typography
@@ -64,7 +65,12 @@ const columns: ColumnsType<LoginHistoryItem> = [
     title: 'Địa chỉ IP',
     key: 'ip',
     width: 160,
-    render: (_, record) => <Text code>{record.ipAddress ?? '—'}</Text>,
+    render: (_, record) => (
+      <>
+        <Text code>{record.ipAddress ?? '—'}</Text>
+        <IpLocationText location={record.ipLocation} />
+      </>
+    ),
   },
   {
     title: 'Lý do thất bại',
@@ -208,6 +214,10 @@ export default function CmsLoginHistoryPage() {
                 locale={{ emptyText: error ? 'Lỗi tải dữ liệu' : 'Chưa có lịch sử đăng nhập' }}
               />
             </Spin>
+          </div>
+
+          <div className="shrink-0 pt-3">
+            <DbIpAttribution />
           </div>
 
           {totalElements > pageSize && (

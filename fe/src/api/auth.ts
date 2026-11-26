@@ -125,6 +125,8 @@ export interface LoginHistoryItem {
   ipAddress: string | null
   userAgent: string | null
   deviceLabel: string | null
+  // Vị trí ước tính theo IP, BE tính lúc xem; null nếu IP không tra được.
+  ipLocation: string | null
 }
 
 export interface LoginHistoryResponse {

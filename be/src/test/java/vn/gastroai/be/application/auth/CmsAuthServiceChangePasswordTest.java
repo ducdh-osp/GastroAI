@@ -1,5 +1,6 @@
 package vn.gastroai.be.application.auth;
 
+import vn.gastroai.be.application.geo.IpLocationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class CmsAuthServiceChangePasswordTest {
@@ -46,7 +48,7 @@ class CmsAuthServiceChangePasswordTest {
         // Toi da 5 lan sai, khoa 10 phut - giong cau hinh mac dinh.
         service = new CmsAuthService(adminRepository, adminLoginHistoryRepository, passwordHistoryRepository,
                 passwordEncoder, new LoginSecurityPolicy(5, 10, 90),
-                new ClientRequestInfoResolver(""));
+                new ClientRequestInfoResolver(""), mock(IpLocationService.class));
     }
 
     private Admin admin() {
