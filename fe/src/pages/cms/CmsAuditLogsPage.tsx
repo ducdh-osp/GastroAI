@@ -39,6 +39,7 @@ import {
 import { listCmsAccounts } from '../../api/cmsRbac'
 import { AuditAnomalyRulesTab } from '../../components/cms/AuditAnomalyRulesTab'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
+import { DbIpAttribution, IpLocationText } from '../../components/cms/IpLocation'
 import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
@@ -296,9 +297,12 @@ export default function CmsAuditLogsPage() {
       key: 'ipAddress',
       width: 140,
       render: (ip: string, log) => (
-        <Tooltip title={log.userAgent} placement="topLeft">
-          <span>{ip}</span>
-        </Tooltip>
+        <>
+          <Tooltip title={log.userAgent} placement="topLeft">
+            <span>{ip}</span>
+          </Tooltip>
+          <IpLocationText location={log.ipLocation} />
+        </>
       ),
     },
     {
@@ -419,6 +423,9 @@ export default function CmsAuditLogsPage() {
           },
         ]}
       />
+      <div className="mt-4">
+        <DbIpAttribution />
+      </div>
     </Card>
 
     <Drawer
@@ -449,7 +456,10 @@ export default function CmsAuditLogsPage() {
           <Descriptions.Item label="Chi tiết">
             <div className="whitespace-pre-wrap break-words">{selected.detail ?? '—'}</div>
           </Descriptions.Item>
-          <Descriptions.Item label="Địa chỉ IP">{selected.ipAddress}</Descriptions.Item>
+          <Descriptions.Item label="Địa chỉ IP">
+            <span>{selected.ipAddress}</span>
+            <IpLocationText location={selected.ipLocation} />
+          </Descriptions.Item>
           <Descriptions.Item label="Thiết bị">
             <div className="break-words text-xs">{selected.userAgent}</div>
           </Descriptions.Item>

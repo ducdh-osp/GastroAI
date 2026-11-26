@@ -17,6 +17,7 @@ public record AuditLogResponse(
         String targetId,
         String detail,
         String ipAddress,
+        String ipLocation,
         String userAgent
 ) {
     public static AuditLogResponse from(AuditLog log) {
@@ -32,6 +33,7 @@ public record AuditLogResponse(
                 log.getTargetId(),
                 log.getDetail(),
                 log.getIpAddress(),
+                log.getIpLocation(),
                 log.getUserAgent());
     }
 }

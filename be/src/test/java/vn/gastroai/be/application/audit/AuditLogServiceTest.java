@@ -15,6 +15,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import vn.gastroai.be.application.auth.ClientRequestInfoResolver;
 import vn.gastroai.be.application.auth.CmsAuthService;
+import vn.gastroai.be.application.geo.IpLocationService;
 import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.admin.CmsRole;
 import vn.gastroai.be.domain.audit.AuditAction;
@@ -46,13 +47,14 @@ class AuditLogServiceTest {
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private AdminRepository adminRepository;
     @Mock private AuditAnomalyDetector anomalyDetector;
+    @Mock private IpLocationService ipLocationService;
 
     private AuditLogService service;
 
     @BeforeEach
     void setUp() {
         service = new AuditLogService(auditLogRepository, adminRepository,
-                new ClientRequestInfoResolver(""), anomalyDetector);
+                new ClientRequestInfoResolver(""), anomalyDetector, ipLocationService);
     }
 
     @AfterEach
@@ -98,6 +100,20 @@ class AuditLogServiceTest {
         assertEquals("10.0.0.5", saved.getIpAddress());
         assertEquals("JUnit-Browser", saved.getUserAgent());
         verify(anomalyDetector).check(saved);
+    }
+
+    @Test
+    void recordStoresEstimatedLocationOfRequestIp() {
+        loginAs(1L);
+        when(adminRepository.findById(1L)).thenReturn(Optional.empty());
+        when(ipLocationService.locate("10.0.0.5")).thenReturn("Thanh Hoa Province, Việt Nam");
+        when(auditLogRepository.save(any(AuditLog.class))).then(returnsFirstArg());
+
+        service.record(AuditAction.PATIENT_LOCK, "PATIENT", 7L, null);
+
+        AuditLog saved = captureSaved();
+        assertEquals("10.0.0.5", saved.getIpAddress());
+        assertEquals("Thanh Hoa Province, Việt Nam", saved.getIpLocation());
     }
 
     @Test

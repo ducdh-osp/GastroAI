@@ -68,6 +68,8 @@ export interface AuditLog {
   targetId: string | null
   detail: string | null
   ipAddress: string
+  // Vị trí ước tính theo IP, chụp lúc ghi log; null với log cũ (trước V22) hoặc IP không tra được.
+  ipLocation: string | null
   userAgent: string
 }
 

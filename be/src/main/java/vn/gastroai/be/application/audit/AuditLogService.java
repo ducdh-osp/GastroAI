@@ -16,6 +16,7 @@ import vn.gastroai.be.api.cms.audit.AuditLogResponse;
 import vn.gastroai.be.application.auth.ClientRequestInfo;
 import vn.gastroai.be.application.auth.ClientRequestInfoResolver;
 import vn.gastroai.be.application.auth.CmsAuthService;
+import vn.gastroai.be.application.geo.IpLocationService;
 import vn.gastroai.be.domain.admin.Admin;
 import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.domain.audit.AuditLog;
@@ -45,15 +46,18 @@ public class AuditLogService {
     private final AdminRepository adminRepository;
     private final ClientRequestInfoResolver requestInfoResolver;
     private final AuditAnomalyDetector anomalyDetector;
+    private final IpLocationService ipLocationService;
 
     public AuditLogService(AuditLogRepository auditLogRepository,
             AdminRepository adminRepository,
             ClientRequestInfoResolver requestInfoResolver,
-            AuditAnomalyDetector anomalyDetector) {
+            AuditAnomalyDetector anomalyDetector,
+            IpLocationService ipLocationService) {
         this.auditLogRepository = auditLogRepository;
         this.adminRepository = adminRepository;
         this.requestInfoResolver = requestInfoResolver;
         this.anomalyDetector = anomalyDetector;
+        this.ipLocationService = ipLocationService;
     }
 
     public void record(AuditAction action, String targetType, Object targetId, String detail) {
@@ -86,7 +90,7 @@ public class AuditLogService {
             AuditLog saved = auditLogRepository.save(new AuditLog(
                     Instant.now(), actorType, actorRole, actorId, actorEmail, action,
                     targetType, targetId == null ? null : targetId.toString(),
-                    truncate(detail), ip, truncate(userAgent)));
+                    truncate(detail), ip, truncate(userAgent), ipLocationService.locate(ip)));
             anomalyDetector.check(saved);
         } catch (RuntimeException exception) {
             // Khong de loi ghi audit lam hong thao tac chinh da thanh cong.

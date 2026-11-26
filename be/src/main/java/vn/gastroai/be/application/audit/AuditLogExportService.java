@@ -32,10 +32,10 @@ public class AuditLogExportService {
     static final String[] HEADERS = {
             "Mã log", "Thời gian", "Vai trò", "Mã tài khoản", "Email",
             "Hành động", "Mã hành động", "Loại đối tượng", "Mã đối tượng",
-            "Chi tiết", "Địa chỉ IP", "Thiết bị"
+            "Chi tiết", "Địa chỉ IP", "Vị trí ước tính", "Thiết bị"
     };
 
-    private static final int[] COLUMN_WIDTHS = {10, 20, 14, 12, 30, 26, 26, 16, 22, 60, 18, 50};
+    private static final int[] COLUMN_WIDTHS = {10, 20, 14, 12, 30, 26, 26, 16, 22, 60, 18, 30, 50};
 
     public byte[] toCsv(List<AuditLogResponse> logs) {
         StringBuilder csv = new StringBuilder();
@@ -99,6 +99,7 @@ public class AuditLogExportService {
                 nullToEmpty(log.targetId()),
                 nullToEmpty(log.detail()),
                 nullToEmpty(log.ipAddress()),
+                nullToEmpty(log.ipLocation()),
                 nullToEmpty(log.userAgent())
         };
     }

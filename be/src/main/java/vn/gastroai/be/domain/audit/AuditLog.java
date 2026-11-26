@@ -54,12 +54,26 @@ public class AuditLog {
     @Column(name = "user_agent", nullable = false, length = 1024)
     private String userAgent;
 
+    /**
+     * Vị trí ước tính theo IP, chụp LÚC GHI (giống actorEmail): dữ liệu vị trí đổi theo thời gian, nhật ký
+     * phải giữ đúng như lúc thao tác. Dòng ghi trước khi có cột này (V22) để NULL.
+     */
+    @Column(name = "ip_location", length = 150)
+    private String ipLocation;
+
     protected AuditLog() {
     }
 
     public AuditLog(Instant occurredAt, String actorType, String actorRole, Long actorId, String actorEmail,
                     AuditAction action, String targetType, String targetId, String detail,
                     String ipAddress, String userAgent) {
+        this(occurredAt, actorType, actorRole, actorId, actorEmail, action, targetType, targetId, detail,
+                ipAddress, userAgent, null);
+    }
+
+    public AuditLog(Instant occurredAt, String actorType, String actorRole, Long actorId, String actorEmail,
+                    AuditAction action, String targetType, String targetId, String detail,
+                    String ipAddress, String userAgent, String ipLocation) {
         this.occurredAt = occurredAt;
         this.actorType = actorType;
         this.actorRole = actorRole;
@@ -71,6 +85,7 @@ public class AuditLog {
         this.detail = detail;
         this.ipAddress = ipAddress;
         this.userAgent = userAgent;
+        this.ipLocation = ipLocation;
     }
 
     public Long getId() { return id; }
@@ -85,4 +100,5 @@ public class AuditLog {
     public String getDetail() { return detail; }
     public String getIpAddress() { return ipAddress; }
     public String getUserAgent() { return userAgent; }
+    public String getIpLocation() { return ipLocation; }
 }

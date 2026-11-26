@@ -24,7 +24,7 @@ class AuditLogExportServiceTest {
 
     private AuditLogResponse log(long id, AuditAction action, String detail) {
         return new AuditLogResponse(id, Instant.parse("2026-10-29T18:02:11Z"), "ADMIN", "ADMIN", 1L,
-                "admin@gastroai.vn", action, "DOCUMENT", "42", detail, "10.0.0.1", "Mozilla/5.0");
+                "admin@gastroai.vn", action, "DOCUMENT", "42", detail, "10.0.0.1", "Hanoi, Việt Nam", "Mozilla/5.0");
     }
 
     @Test
@@ -42,7 +42,7 @@ class AuditLogExportServiceTest {
         String row = csv.split("\r\n")[1];
 
         assertEquals("7,30/10/2026 01:02:11,Admin,1,admin@gastroai.vn,Xoá tài liệu,DOCUMENT_DELETE,"
-                + "DOCUMENT,42,,10.0.0.1,Mozilla/5.0", row);
+                + "DOCUMENT,42,,10.0.0.1,\"Hanoi, Việt Nam\",Mozilla/5.0", row);
     }
 
     @Test
@@ -65,7 +65,7 @@ class AuditLogExportServiceTest {
     @Test
     void nullFieldsBecomeEmptyCells() {
         AuditLogResponse systemLog = new AuditLogResponse(9L, Instant.parse("2026-10-29T18:02:11Z"),
-                "SYSTEM", null, null, null, AuditAction.SYSTEM_RESTORE, null, null, null, "unknown", "unknown");
+                "SYSTEM", null, null, null, AuditAction.SYSTEM_RESTORE, null, null, null, "unknown", null, "unknown");
 
         String[] row = service.toRow(systemLog);
 
@@ -74,6 +74,7 @@ class AuditLogExportServiceTest {
         assertEquals("", row[4]);
         assertEquals("", row[7]);
         assertEquals("", row[9]);
+        assertEquals("", row[11]);
     }
 
     @Test
@@ -89,6 +90,7 @@ class AuditLogExportServiceTest {
 
             Row header = sheet.getRow(0);
             assertEquals("Mã log", header.getCell(0).getStringCellValue());
+            assertEquals("Vị trí ước tính", header.getCell(11).getStringCellValue());
             assertEquals("Thiết bị", header.getCell(AuditLogExportService.HEADERS.length - 1).getStringCellValue());
 
             Row second = sheet.getRow(2);
