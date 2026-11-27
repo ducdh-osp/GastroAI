@@ -110,7 +110,7 @@ class TriageAlertAdminControllerTest {
     @Test
     @WithMockUser(username = "9", roles = "ADMIN")
     void detailReturnsAlertActionsAndMessages() throws Exception {
-        when(triageAlertService.getDetail(10L, 9L, "ADMIN")).thenReturn(new TriageAlertDetailResponse(
+        when(triageAlertService.getDetail(10L, 9L)).thenReturn(new TriageAlertDetailResponse(
                 alert("NEEDS_INTERVENTION", 9L, "ADMIN", null, null),
                 List.of(new TriageAlertDetailResponse.ActionItem(1L, "CREATED", null, null, null,
                         Instant.parse("2026-09-30T00:00:00Z"))),
@@ -121,20 +121,32 @@ class TriageAlertAdminControllerTest {
                 .andExpect(jsonPath("$.alert.id").value(10))
                 .andExpect(jsonPath("$.actions[0].actionType").value("CREATED"));
 
-        verify(triageAlertService).getDetail(10L, 9L, "ADMIN");
+        verify(triageAlertService).getDetail(10L, 9L);
         verify(auditLogService, never()).record(any(), any(), any(), any());
     }
 
     @Test
     @WithMockUser(username = "7", roles = "ADMIN")
     void detailPassesAdminAsViewer() throws Exception {
-        when(triageAlertService.getDetail(10L, 7L, "ADMIN")).thenReturn(new TriageAlertDetailResponse(
+        when(triageAlertService.getDetail(10L, 7L)).thenReturn(new TriageAlertDetailResponse(
                 alert("NEEDS_INTERVENTION", 9L, "ADMIN", null, null), List.of(), List.of()));
 
         mockMvc.perform(get("/api/v1/cms/triage-alerts/10"))
                 .andExpect(status().isOk());
 
-        verify(triageAlertService).getDetail(10L, 7L, "ADMIN");
+        verify(triageAlertService).getDetail(10L, 7L);
+    }
+
+    @Test
+    @WithMockUser(username = "4", roles = "OPERATIONS")
+    void operationsCanViewDetail() throws Exception {
+        when(triageAlertService.getDetail(10L, 4L)).thenReturn(new TriageAlertDetailResponse(
+                alert("NEEDS_INTERVENTION", null, null, null, null), List.of(), List.of()));
+
+        mockMvc.perform(get("/api/v1/cms/triage-alerts/10"))
+                .andExpect(status().isOk());
+
+        verify(triageAlertService).getDetail(10L, 4L);
     }
 
     @Test

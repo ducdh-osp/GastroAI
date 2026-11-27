@@ -18,13 +18,12 @@ import {
 import type { ComponentType } from 'react'
 import type { CmsRole } from '../../api/cmsAuth'
 
-/** Tên hiển thị vai trò CMS — đúng tên trong SCR-AD-03 §3. DOCTOR là vai trò cũ, giữ để tài khoản cũ còn hiển thị. */
+/** Tên hiển thị vai trò CMS — đúng tên trong SCR-AD-03 §3. */
 export const CMS_ROLE_LABEL: Record<CmsRole, string> = {
   ADMIN: 'Admin',
   CONTENT_EDITOR: 'Biên tập chuyên môn y khoa',
   CONTENT_AUTHOR: 'Cộng tác viên nội dung',
   OPERATIONS: 'Giám sát vận hành',
-  DOCTOR: 'Bác sĩ',
 }
 
 export interface CmsNavItem {
@@ -112,6 +111,10 @@ function findCmsNavItem(path: string): CmsNavItem | undefined {
 export function canAccessCmsPath(userType: CmsRole | undefined, path: string): boolean {
   const item = findCmsNavItem(path)
   return item !== undefined && canAccessItem(userType, item)
+}
+
+export function isRoleRestrictedCmsPath(path: string): boolean {
+  return findCmsNavItem(path) !== undefined
 }
 
 export function filterCmsNavGroups(userType: CmsRole | undefined): CmsNavGroup[] {

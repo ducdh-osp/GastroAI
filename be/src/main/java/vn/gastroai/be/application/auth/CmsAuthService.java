@@ -187,6 +187,14 @@ public class CmsAuthService {
                 accountId, LoginOutcome.SUCCESS, sevenDaysAgo);
     }
 
+    /** Vai trò đọc lại từ database - có thể đã bị Admin đổi sau lúc đăng nhập. */
+    @Transactional(value = "mysqlTransactionManager", readOnly = true)
+    public CmsAuthResult currentAccount(Long accountId) {
+        Admin user = adminRepository.findById(accountId)
+                .orElseThrow(() -> new AccessDeniedException("Tài khoản không tồn tại hoặc đã bị xóa"));
+        return new CmsAuthResult(user.getId(), user.getEmail(), user.getFullName(), user.getRole().name());
+    }
+
     /** Mã tài khoản CMS đang đăng nhập trong phiên, null nếu phiên chưa đăng nhập. */
     public static Long sessionUserId(HttpSession session) {
         if (session == null) {

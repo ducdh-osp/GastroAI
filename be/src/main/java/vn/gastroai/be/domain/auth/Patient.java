@@ -21,7 +21,7 @@ import java.time.Instant;
  * role='PATIENT'
  * ở DB (migration V6) vì trước đây bảng này từng bị dùng chung cho cả Admin/Bác
  * sĩ, giờ
- * đã tách hẳn sang MySQL (Admin/Doctor) theo đúng kiến trúc đa cơ sở dữ liệu.
+ * đã tách hẳn sang MySQL (bảng admins) theo đúng kiến trúc đa cơ sở dữ liệu.
  */
 @Entity
 @Table(name = "patients")

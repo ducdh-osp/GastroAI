@@ -161,7 +161,7 @@ public class AuditLogExportService {
         return switch (value) {
             case "ADMIN" -> "Admin";
             case "CONTENT_EDITOR" -> "Biên tập";
-            case "DOCTOR" -> "Bác sĩ";
+            case "DOCTOR" -> "Bác sĩ"; // nhat ky cu truoc khi bo vai tro Bac si - nhat ky khong duoc sua
             case "SYSTEM" -> "Hệ thống";
             default -> value;
         };

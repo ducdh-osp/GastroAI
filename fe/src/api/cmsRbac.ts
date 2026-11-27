@@ -1,12 +1,10 @@
 import { cmsApiClient } from '../lib/cmsAxios'
 import { extractErrorMessage } from '../lib/errors'
 
-export type CmsAccountType = 'ADMIN' | 'DOCTOR'
-export type CmsPermissionRole = 'ADMIN' | 'DOCTOR' | 'CONTENT_EDITOR' | 'CONTENT_AUTHOR' | 'OPERATIONS'
+export type CmsPermissionRole = 'ADMIN' | 'CONTENT_EDITOR' | 'CONTENT_AUTHOR' | 'OPERATIONS'
 
 export interface CmsAccount {
   id: number
-  accountType: CmsAccountType
   email: string
   fullName: string | null
   role: CmsPermissionRole
@@ -40,10 +38,7 @@ export async function listCmsAccounts(params: { q?: string; page?: number; size?
 
 export async function assignCmsRole(account: CmsAccount, role: CmsPermissionRole) {
   try {
-    const { data } = await cmsApiClient.put<CmsAccount>(
-      `/cms/rbac/accounts/${account.accountType}/${account.id}/role`,
-      { role },
-    )
+    const { data } = await cmsApiClient.put<CmsAccount>(`/cms/rbac/accounts/${account.id}/role`, { role })
     return data
   } catch (error) {
     throw extractErrorMessage(error, 'Không thể cập nhật vai trò.')

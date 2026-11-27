@@ -6,7 +6,7 @@ export type TriageAlertStatus = 'AUTO_HANDLING' | 'NEEDS_INTERVENTION' | 'RESOLV
 export type TriageAlertOutcome = 'HANDLED' | 'FALSE_ALARM' | 'PATIENT_SAFE'
 /** 3 tab SCR-AD-13; OPEN = 2 trạng thái còn mở (dùng cho đếm ở menu). */
 export type TriageAlertView = 'INTERVENTION' | 'AUTO' | 'CLOSED' | 'OPEN' | 'ALL'
-export type TriageStaffType = 'ADMIN' | 'DOCTOR'
+export type TriageStaffType = 'ADMIN'
 /** Ai làm 1 bước trên timeline: nhân sự, bệnh nhân hoặc hệ thống (bộ hẹn giờ). */
 export type TriageActorType = TriageStaffType | 'PATIENT' | 'SYSTEM'
 export type TriagePatientResponse = 'SAFE' | 'NEED_HELP'

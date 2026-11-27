@@ -126,9 +126,8 @@ class PatientTriageAlertControllerTest {
 
     @Test
     void anonymousIsRejected() throws Exception {
-        // SecurityConfig hien tra 403 cho request chua dang nhap.
         mockMvc.perform(post("/api/v1/patient/triage-alerts/10/check-in").with(csrf())
                         .contentType("application/json").content("{\"response\":\"SAFE\"}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

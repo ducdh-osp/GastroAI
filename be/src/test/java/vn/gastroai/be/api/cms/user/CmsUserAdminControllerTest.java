@@ -126,7 +126,7 @@ class CmsUserAdminControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"DOCTOR", "CONTENT_EDITOR", "CONTENT_AUTHOR", "OPERATIONS", "PATIENT"})
+    @ValueSource(strings = {"CONTENT_EDITOR", "CONTENT_AUTHOR", "OPERATIONS", "PATIENT"})
     void nonAdminsCannotLockOrUnlockEvenWithValidReason(String role) throws Exception {
         mockMvc.perform(post("/api/v1/cms/users/7/lock")
                         .with(user("non-admin").roles(role))

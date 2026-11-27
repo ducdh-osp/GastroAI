@@ -101,7 +101,7 @@ class CmsEvaluationControllerTest {
     @Test
     void getSummary_rejectsUnauthenticated() throws Exception {
         mockMvc.perform(get("/api/v1/cms/evaluation/summary"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

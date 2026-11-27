@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Lưu file/ảnh bệnh nhân đính kèm khi chat - khác FileStorageService (chỉ pdf/docx, dành cho
- * tài liệu CMS) vì ở đây còn nhận cả ảnh, và người gửi là BỆNH NHÂN (không phải Doctor/Admin)
+ * tài liệu CMS) vì ở đây còn nhận cả ảnh, và người gửi là BỆNH NHÂN (không phải nhân sự CMS)
  * nên không tin tưởng content-type/extension client khai báo.
  *
  * Validate bằng magic bytes (vài byte đầu file) thay vì chỉ tin đuôi file/content-type do

@@ -2,7 +2,6 @@ package vn.gastroai.be.api.cms.triage;
 
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,8 +46,7 @@ public class TriageAlertAdminController {
     public TriageAlertDetailResponse detail(
             @PathVariable Long alertId,
             Authentication authentication) {
-        return triageAlertService.getDetail(
-                alertId, Long.valueOf(authentication.getName()), resolveRole(authentication));
+        return triageAlertService.getDetail(alertId, Long.valueOf(authentication.getName()));
     }
 
     @PostMapping("/{alertId}/claim")
@@ -57,7 +55,7 @@ public class TriageAlertAdminController {
             Authentication authentication) {
 
         Long claimerId = Long.valueOf(authentication.getName());
-        String claimerType = resolveRole(authentication);
+        String claimerType = TriageAlertService.ACTOR_STAFF;
         TriageAlertResponse alert = triageAlertService.claim(alertId, claimerId, claimerType);
         auditLogService.record(AuditAction.TRIAGE_ALERT_CLAIM, TARGET, alertId,
                 "Bệnh nhân #" + alert.patientId() + " · Tôi đang liên hệ");
@@ -70,7 +68,7 @@ public class TriageAlertAdminController {
             Authentication authentication) {
 
         Long actorId = Long.valueOf(authentication.getName());
-        TriageAlertResponse alert = triageAlertService.release(alertId, actorId, resolveRole(authentication));
+        TriageAlertResponse alert = triageAlertService.release(alertId, actorId, TriageAlertService.ACTOR_STAFF);
         auditLogService.record(AuditAction.TRIAGE_ALERT_RELEASE, TARGET, alertId,
                 "Bệnh nhân #" + alert.patientId() + " · Trả lại, failsafe tính lại từ lúc này");
         return alert;
@@ -85,7 +83,7 @@ public class TriageAlertAdminController {
 
         Long actorId = Long.valueOf(authentication.getName());
         TriageAlertResponse alert = triageAlertService.recordContact(
-                alertId, actorId, resolveRole(authentication), request.result(), request.note());
+                alertId, actorId, TriageAlertService.ACTOR_STAFF, request.result(), request.note());
         // Chi ghi loai ket qua, khong ghi ghi chu (co the chua thong tin y te / so dien thoai).
         auditLogService.record(AuditAction.TRIAGE_ALERT_CONTACT, TARGET, alertId,
                 "Bệnh nhân #" + alert.patientId() + " · " + request.result().label());
@@ -99,7 +97,7 @@ public class TriageAlertAdminController {
             Authentication authentication) {
 
         Long resolverId = Long.valueOf(authentication.getName());
-        String resolverType = resolveRole(authentication);
+        String resolverType = TriageAlertService.ACTOR_STAFF;
         String note = request == null ? null : request.note();
         TriageAlertResponse alert = triageAlertService.resolve(alertId, resolverId, resolverType, note);
         auditLogService.record(AuditAction.TRIAGE_ALERT_RESOLVE, TARGET, alertId,
@@ -114,7 +112,7 @@ public class TriageAlertAdminController {
             Authentication authentication) {
 
         Long actorId = Long.valueOf(authentication.getName());
-        String actorType = resolveRole(authentication);
+        String actorType = TriageAlertService.ACTOR_STAFF;
         TriageAlertResponse alert = triageAlertService.markFalseAlarm(alertId, actorId, actorType, request.reason());
         auditLogService.record(AuditAction.TRIAGE_ALERT_FALSE_ALARM, TARGET, alertId,
                 describeClose(alert, actorId, actorType, "Báo nhầm/Spam"));
@@ -134,14 +132,5 @@ public class TriageAlertAdminController {
             detail += " (người đang liên hệ: " + alert.claimedByType() + " #" + alert.claimedById() + ")";
         }
         return detail;
-    }
-
-    private String resolveRole(Authentication authentication) {
-        for (GrantedAuthority authority : authentication.getAuthorities()) {
-            if ("ROLE_DOCTOR".equals(authority.getAuthority())) {
-                return "DOCTOR";
-            }
-        }
-        return "ADMIN";
     }
 }

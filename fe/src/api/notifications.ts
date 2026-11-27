@@ -30,7 +30,6 @@ export type NotificationType =
   | 'SECURITY_ALERT'
   | 'TRIAGE_ALERT'
   | 'SYSTEM'
-  | 'TRIAGE_DOCTOR_MESSAGE'
   | 'TRIAGE_CHECK_IN'
   | 'TRIAGE_INTERVENTION'
 

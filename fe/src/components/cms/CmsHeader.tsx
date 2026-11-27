@@ -7,7 +7,7 @@ import {
   KeyOutlined,
   LogoutOutlined,
 } from '@ant-design/icons'
-import { Badge, Dropdown, notification, Switch } from 'antd'
+import { Badge, Dropdown, message, notification, Switch } from 'antd'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Logo } from '../brand/Logo'
@@ -19,6 +19,7 @@ import { getUnreadNotificationCount } from '../../api/notifications'
 import { useNotificationSocket } from '../../hooks/useNotificationSocket'
 import { listTriageAlerts } from '../../api/cmsTriage'
 import { useTriageAlertSocket, type TriageAlertStatusChangedSocketEvent } from '../../hooks/useTriageAlertSocket'
+import { takeCmsFlash } from '../../lib/cmsFlash'
 
 /** Phòng khi mất kết nối socket: vẫn tự cập nhật số ca cần can thiệp sau mỗi khoảng này. */
 const TRIAGE_COUNT_POLL_MS = 60_000
@@ -47,6 +48,11 @@ export function CmsHeader() {
   const { mode, toggle: toggleTheme } = useTheme()
   const [unreadCount, setUnreadCount] = useState(0)
   const navGroups = filterCmsNavGroups(user?.userType)
+
+  useEffect(() => {
+    const flash = takeCmsFlash()
+    if (flash) void message.warning(flash)
+  }, [location.pathname])
 
   useEffect(() => {
     if (user?.userType !== 'ADMIN') return

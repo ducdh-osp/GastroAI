@@ -91,9 +91,8 @@ class FaqAdminControllerTest {
 
     @Test
     void listRejectedWithoutLogin() throws Exception {
-        // SecurityConfig hiện không cấu hình AuthenticationEntryPoint riêng nên request ẩn danh nhận 403
         mockMvc.perform(get("/api/v1/cms/faqs"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
         verifyNoInteractions(service);
     }
 

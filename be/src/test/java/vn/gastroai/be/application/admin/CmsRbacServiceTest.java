@@ -7,12 +7,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.gastroai.be.api.cms.rbac.CreateCmsAccountRequest;
-import vn.gastroai.be.domain.admin.CmsAccountType;
 import vn.gastroai.be.domain.admin.CmsRole;
 import vn.gastroai.be.domain.admin.Admin;
-import vn.gastroai.be.domain.admin.Doctor;
 import vn.gastroai.be.infrastructure.persistence.mysql.AdminRepository;
-import vn.gastroai.be.infrastructure.persistence.mysql.DoctorRepository;
 
 import java.util.Optional;
 
@@ -21,13 +18,12 @@ import static org.mockito.Mockito.*;
 
 class CmsRbacServiceTest {
     private final AdminRepository admins = mock(AdminRepository.class);
-    private final DoctorRepository doctors = mock(DoctorRepository.class);
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private CmsRbacService service;
 
     @BeforeEach
     void setUp() {
-        service = new CmsRbacService(admins, doctors, passwordEncoder);
+        service = new CmsRbacService(admins, passwordEncoder);
     }
 
     @Test
@@ -37,7 +33,7 @@ class CmsRbacServiceTest {
         admin.setEmail("editor@gastroai.vn");
         when(admins.findByIdForUpdate(9L)).thenReturn(Optional.of(admin));
 
-        var result = service.assignRole(CmsAccountType.ADMIN, 9L, CmsRole.CONTENT_EDITOR);
+        var result = service.assignRole(9L, CmsRole.CONTENT_EDITOR);
 
         assertEquals(CmsRole.CONTENT_EDITOR, admin.getRole());
         assertEquals(CmsRole.CONTENT_EDITOR, result.role());
@@ -45,29 +41,15 @@ class CmsRbacServiceTest {
     }
 
     @Test
-    void rejectsAssigningContentEditorToDoctorAccount() {
-        assertEquals("Tai khoan Bac si phai giu vai tro DOCTOR",
-                assertThrows(IllegalArgumentException.class,
-                        () -> service.assignRole(CmsAccountType.DOCTOR, 9L, CmsRole.CONTENT_EDITOR)).getMessage());
-        verifyNoInteractions(doctors);
-    }
-
-    @Test
     void escapesLikeWildcardsBeforeSearchingAccounts() {
         String escaped = "100!%!_!\\!!";
-        when(admins.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
-                escaped, escaped, org.springframework.data.domain.Pageable.unpaged()))
-                .thenReturn(Page.empty());
-        when(doctors.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
-                escaped, escaped, org.springframework.data.domain.Pageable.unpaged()))
-                .thenReturn(Page.empty());
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(admins.findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(escaped, escaped, pageable))
+                .thenReturn(Page.empty(pageable));
 
-        service.list("100%_\\!", PageRequest.of(0, 20));
+        service.list("100%_\\!", pageable);
 
-        verify(admins).findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
-                escaped, escaped, org.springframework.data.domain.Pageable.unpaged());
-        verify(doctors).findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(
-                escaped, escaped, org.springframework.data.domain.Pageable.unpaged());
+        verify(admins).findByEmailContainingIgnoreCaseOrFullNameContainingIgnoreCase(escaped, escaped, pageable);
     }
 
     @Test
@@ -76,16 +58,9 @@ class CmsRbacServiceTest {
         admin.setId(11L);
         when(admins.findByIdForUpdate(11L)).thenReturn(Optional.of(admin));
 
-        var result = service.assignRole(CmsAccountType.ADMIN, 11L, CmsRole.OPERATIONS);
+        var result = service.assignRole(11L, CmsRole.OPERATIONS);
 
         assertEquals(CmsRole.OPERATIONS, result.role());
-    }
-
-    @Test
-    void rejectsAssigningDoctorRoleToCmsAdminAccount() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.assignRole(CmsAccountType.ADMIN, 11L, CmsRole.DOCTOR));
-        verifyNoInteractions(admins);
     }
 
     @Test

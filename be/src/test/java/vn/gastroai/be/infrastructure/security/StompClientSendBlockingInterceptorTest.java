@@ -44,7 +44,7 @@ class StompClientSendBlockingInterceptorTest {
     @Test
     void cmsCanSubscribeToTriageActivityButPatientCannot() {
         Message<byte[]> cms = stompMessage(StompCommand.SUBSCRIBE, "/topic/triage-alerts-activity",
-                Map.of("HTTP_SESSION_ID", "s1", "CMS_USER_TYPE", "DOCTOR"));
+                Map.of("HTTP_SESSION_ID", "s1", "CMS_USER_TYPE", "OPERATIONS"));
         Message<byte[]> patient = stompMessage(StompCommand.SUBSCRIBE, "/topic/triage-alerts-activity",
                 Map.of("PATIENT_ID", 7L));
 
@@ -77,11 +77,11 @@ class StompClientSendBlockingInterceptorTest {
     void onlyAdminCmsSessionCanSubscribeToAdminNotifications() {
         Message<byte[]> admin = stompMessage(StompCommand.SUBSCRIBE, "/topic/notifications/admin",
                 Map.of("HTTP_SESSION_ID", "s1", "CMS_USER_TYPE", "ADMIN"));
-        Message<byte[]> doctor = stompMessage(StompCommand.SUBSCRIBE, "/topic/notifications/admin",
-                Map.of("HTTP_SESSION_ID", "s2", "CMS_USER_TYPE", "DOCTOR"));
+        Message<byte[]> editor = stompMessage(StompCommand.SUBSCRIBE, "/topic/notifications/admin",
+                Map.of("HTTP_SESSION_ID", "s2", "CMS_USER_TYPE", "CONTENT_EDITOR"));
 
         assertSame(admin, interceptor.preSend(admin, null));
-        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(doctor, null));
+        assertThrows(MessageDeliveryException.class, () -> interceptor.preSend(editor, null));
     }
 
     @Test

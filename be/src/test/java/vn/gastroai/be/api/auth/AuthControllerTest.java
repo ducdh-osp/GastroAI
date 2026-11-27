@@ -143,12 +143,12 @@ class AuthControllerTest {
     }
 
     @Test
-    void doctorSessionCannotChangePatientPassword() throws Exception {
+    void cmsSessionCannotChangePatientPassword() throws Exception {
         mockMvc.perform(post("/api/v1/auth/change-password")
-                        .session(cmsSession("DOCTOR", 1L))
+                        .session(cmsSession("CONTENT_EDITOR", 1L))
                         .contentType("application/json")
                         .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"new-password\"}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     private MockHttpSession cmsSession(String role, Long id) {

@@ -21,8 +21,7 @@ import java.util.Map;
  * Datasource nội bộ — quản trị (Admin/Bác sĩ/CMS), RBAC, audit log (mục 6 đề
  * cương).
  * Song song với config/PostgresConfig (dữ liệu Bệnh nhân). Domain.admin (Admin,
- * Doctor,
- * AdminLoginHistory, DoctorLoginHistory) chỉ scan/lưu ở đây, hoàn toàn tách
+ * AdminLoginHistory) chỉ scan/lưu ở đây, hoàn toàn tách
  * biệt khỏi
  * PostgresConfig — 2 EntityManagerFactory/TransactionManager/Flyway độc lập,
  * không JOIN

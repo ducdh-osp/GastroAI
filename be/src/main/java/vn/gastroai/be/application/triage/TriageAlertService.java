@@ -56,6 +56,8 @@ public class TriageAlertService {
     /** actorType cua cac buoc he thong tu lam (bo hen gio, failsafe) tren timeline. */
     public static final String ACTOR_SYSTEM = "SYSTEM";
     public static final String ACTOR_PATIENT = "PATIENT";
+    /** Loai tai khoan (bang admins), khong phai vai tro. */
+    public static final String ACTOR_STAFF = "ADMIN";
 
     /**
      * Ket qua benh nhan tra loi "Ban co on khong?". alreadyClosed = ca da dong tu truoc
@@ -225,13 +227,12 @@ public class TriageAlertService {
 
     /**
      * Chi tiet cho CMS. Chi nguoi dang tiep nhan xem moi danh dau da doc tin cua benh nhan;
-     * nguoi khac (ke ca ADMIN) xem khong lam mat trang thai chua doc.
+     * nguoi khac xem khong lam mat trang thai chua doc.
      */
     @Transactional(TX)
-    public TriageAlertDetailResponse getDetail(Long alertId, Long viewerId, String viewerType) {
+    public TriageAlertDetailResponse getDetail(Long alertId, Long viewerId) {
         TriageAlert alert = findAlertOrThrow(alertId);
-        boolean viewerIsClaimer = viewerId.equals(alert.getClaimedById())
-                && viewerType.equals(alert.getClaimedByType());
+        boolean viewerIsClaimer = viewerId.equals(alert.getClaimedById());
         if (viewerIsClaimer) {
             // Query @Modifying xoa persistence context -> doc lai entity sau UPDATE.
             messageRepository.markPatientMessagesRead(alertId, Instant.now());
@@ -261,8 +262,8 @@ public class TriageAlertService {
                 .toList();
 
         TriageAlertDetailResponse.EmergencyContact contact = null;
-        // SCR-AD-13 buoc 3: moi Admin dang truc deu can thay so nguoi than de goi, khong chi nguoi tiep nhan.
-        if ("ADMIN".equals(viewerType) && alert.getStatus() == TriageAlertStatus.NEEDS_INTERVENTION) {
+        // SCR-AD-13 buoc 3: moi nhan su vao duoc man nay deu thay so lien he.
+        if (alert.getStatus() == TriageAlertStatus.NEEDS_INTERVENTION) {
             contact = medicalProfileRepository.findByPatientId(alert.getPatient().getId())
                     .filter(profile -> profile.getEmergencyContactPhone() != null)
                     .map(profile -> new TriageAlertDetailResponse.EmergencyContact(
@@ -403,11 +404,10 @@ public class TriageAlertService {
         if (claimerId.equals(alert.getClaimedById()) && claimerType.equals(alert.getClaimedByType())) {
             return toResponse(alert);
         }
-        throw new IllegalStateException(
-                claimerLabel(alert) + " #" + alert.getClaimedById() + " đang liên hệ cho ca này");
+        throw new IllegalStateException("Admin #" + alert.getClaimedById() + " đang liên hệ cho ca này");
     }
 
-    /** Bo "Toi dang lien he" - dong ho failsafe tinh lai tu luc tra. ADMIN duoc tra lai ho. */
+    /** Bo "Toi dang lien he" - dong ho failsafe tinh lai tu luc tra. Nhan su khac duoc tra lai ho. */
     @Transactional(TX)
     public TriageAlertResponse release(Long alertId, Long actorId, String actorType) {
         TriageAlert before = findAlertOrThrow(alertId);
@@ -415,16 +415,12 @@ public class TriageAlertService {
             throw new IllegalStateException("Cảnh báo id=" + alertId + " chưa có ai tiếp nhận để trả lại");
         }
         boolean isClaimer = actorId.equals(before.getClaimedById()) && actorType.equals(before.getClaimedByType());
-        if (!isClaimer && !"ADMIN".equals(actorType)) {
-            throw new IllegalStateException(
-                    "Chỉ " + claimerLabel(before) + " #" + before.getClaimedById() + " mới được trả lại ca này");
-        }
         String previousClaimerType = before.getClaimedByType();
         Long previousClaimerId = before.getClaimedById();
 
         Instant now = Instant.now();
         int rows = triageAlertRepository.releaseIfClaimedBy(alertId, actorId, actorType, now);
-        if (rows == 0 && "ADMIN".equals(actorType)) {
+        if (rows == 0) {
             rows = triageAlertRepository.releaseAsAdmin(alertId, now);
         }
         if (rows == 0) {
@@ -536,25 +532,6 @@ public class TriageAlertService {
         if (alert.getStatus() == TriageAlertStatus.RESOLVED) {
             throw new IllegalStateException("Cảnh báo id=" + alert.getId() + " đã được đóng trước đó");
         }
-    }
-
-    /**
-     * Nhan tin cho benh nhan: ca con mo; neu dang co nguoi tiep nhan thi chi nguoi do hoac ADMIN.
-     * (SCR-AD-13 khong bat buoc tiep nhan truoc - 1 Admin bat ky deu xu ly duoc.)
-     */
-    static void requireHandler(TriageAlert alert, Long actorId, String actorType, String actionLabel) {
-        requireOpen(alert);
-        boolean claimedByOther = alert.getClaimedById() != null
-                && (!actorId.equals(alert.getClaimedById()) || !actorType.equals(alert.getClaimedByType()));
-        if (claimedByOther && !"ADMIN".equals(actorType)) {
-            throw new IllegalStateException(
-                    "Chỉ " + claimerLabel(alert) + " #" + alert.getClaimedById()
-                            + " (người đang liên hệ) mới được " + actionLabel + " ca này");
-        }
-    }
-
-    private static String claimerLabel(TriageAlert alert) {
-        return "DOCTOR".equals(alert.getClaimedByType()) ? "Bác sĩ" : "Admin";
     }
 
     private static IllegalStateException concurrentUpdate(Long alertId) {
