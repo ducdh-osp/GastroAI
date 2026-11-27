@@ -9,16 +9,18 @@ import {
   Button,
   Card,
   Empty,
+  Input,
   Pagination,
   Popconfirm,
   Segmented,
+  Select,
   Spin,
   Tag,
   Typography,
   message,
   notification,
 } from 'antd'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   deleteFoodDiaryEntry,
   listFoodDiary,
@@ -90,6 +92,8 @@ interface FoodDiaryJournalTabProps {
   reloadVersion: number
   onViewChange: (view: 'list' | 'trash') => void
   onClearFilters: () => void
+  onKeywordChange: (keyword: string) => void
+  onKeywordDaysChange: (days: 30 | 90 | 180) => void
   onEdit: (entry: FoodDiaryEntry) => void
   onMutated: () => void
 }
@@ -102,6 +106,8 @@ export function FoodDiaryJournalTab({
   reloadVersion,
   onViewChange,
   onClearFilters,
+  onKeywordChange,
+  onKeywordDaysChange,
   onEdit,
   onMutated,
 }: FoodDiaryJournalTabProps) {
@@ -129,6 +135,11 @@ export function FoodDiaryJournalTab({
   })
   const deleteGuard = useInFlightGuard<number>()
   const previousReloadVersion = useRef(reloadVersion)
+  const [keywordInput, setKeywordInput] = useState(keyword ?? '')
+
+  useEffect(() => {
+    setKeywordInput(keyword ?? '')
+  }, [keyword])
 
   useEffect(() => {
     if (previousReloadVersion.current === reloadVersion) return
@@ -194,9 +205,15 @@ export function FoodDiaryJournalTab({
     keyword ? `có món chứa từ khóa “${keyword}” trong ${keywordDays} ngày gần nhất` : null,
   ].filter(Boolean).join(' và ')
 
+  function applyKeywordFilter(value: string) {
+    const nextKeyword = value.trim()
+    setKeywordInput(nextKeyword)
+    onKeywordChange(nextKeyword)
+  }
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <Segmented
           value={view}
           options={[
@@ -205,7 +222,37 @@ export function FoodDiaryJournalTab({
           ]}
           onChange={(value) => onViewChange(value as 'list' | 'trash')}
         />
-        {view === 'list' && <Text type="secondary">{totalElements} bữa ăn</Text>}
+        {view === 'list' && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Input.Search
+              allowClear
+              className="w-full sm:w-72"
+              enterButton="Lọc"
+              maxLength={100}
+              placeholder="Lọc theo tên món ăn"
+              value={keywordInput}
+              onChange={(event) => {
+                const value = event.target.value
+                setKeywordInput(value)
+                if (!value && keyword) onKeywordChange('')
+              }}
+              onSearch={applyKeywordFilter}
+            />
+            <Select
+              aria-label="Khoảng thời gian lọc món ăn"
+              className="w-full sm:w-32"
+              disabled={!keyword}
+              value={keywordDays as 30 | 90 | 180}
+              options={[
+                { value: 30, label: '30 ngày' },
+                { value: 90, label: '90 ngày' },
+                { value: 180, label: '180 ngày' },
+              ]}
+              onChange={onKeywordDaysChange}
+            />
+            <Text type="secondary" className="whitespace-nowrap sm:ml-1">{totalElements} bữa ăn</Text>
+          </div>
+        )}
       </div>
 
       {view === 'trash' ? (

@@ -1,5 +1,5 @@
-import { ExperimentOutlined, LineChartOutlined, PlusOutlined } from '@ant-design/icons'
-import { Alert, Button, Tabs, Typography } from 'antd'
+import { ExperimentOutlined, LineChartOutlined } from '@ant-design/icons'
+import { Alert, Tabs, Typography } from 'antd'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { createBristolLog, updateBristolLog } from '../../api/bristol'
@@ -7,7 +7,7 @@ import type { BristolLog, BristolLogRequest } from '../../api/bristol'
 import { BristolJournalTab } from '../../components/bristol/BristolJournalTab'
 import { BristolLogModal } from '../../components/bristol/BristolLogModal'
 import { BristolTrendTab } from '../../components/bristol/BristolTrendTab'
-import { HealthReportButton } from '../../components/healthReport/HealthReportButton'
+import { JournalActions } from '../../components/healthReport/JournalActions'
 import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
@@ -95,7 +95,7 @@ export default function BristolPage() {
   return (
     <AppShell>
       <div className="w-full">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhật ký Bristol</Title>
@@ -103,12 +103,7 @@ export default function BristolPage() {
               Ghi nhận tình trạng tiêu hóa và theo dõi diễn biến theo thang Bristol tại một nơi.
             </Text>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <HealthReportButton />
-            <Button type="primary" size="large" icon={<PlusOutlined />} onClick={openCreate}>
-              Ghi nhận mới
-            </Button>
-          </div>
+          <JournalActions createLabel="Ghi nhận mới" onCreate={openCreate} />
         </div>
 
         {actionError && (
@@ -123,6 +118,7 @@ export default function BristolPage() {
         )}
 
         <Tabs
+          className="[&_.ant-tabs-content-holder]:pt-2"
           activeKey={activeTab}
           destroyOnHidden
           size="large"

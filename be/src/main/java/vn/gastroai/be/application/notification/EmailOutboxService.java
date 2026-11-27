@@ -16,7 +16,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class EmailOutboxService {
@@ -94,14 +93,6 @@ public class EmailOutboxService {
         outbox.setMedicationReminderId(reminder.getId());
         outbox.setScheduledDate(date);
         outbox.setScheduledTime(scheduledTime);
-        return repository.save(outbox);
-    }
-
-    @Transactional("postgresTransactionManager")
-    public EmailOutbox enqueueTest(EmailTemplateCode code, String recipientEmail) {
-        EmailOutbox outbox = new EmailOutbox(
-                code, recipientEmail.trim().toLowerCase(), cipher.encrypt(code.sampleVariables()),
-                "EMAIL_TEMPLATE_TEST:" + UUID.randomUUID(), Instant.now());
         return repository.save(outbox);
     }
 

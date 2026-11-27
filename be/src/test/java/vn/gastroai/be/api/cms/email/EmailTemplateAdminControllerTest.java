@@ -8,7 +8,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.gastroai.be.application.audit.AuditLogService;
-import vn.gastroai.be.application.notification.EmailOutboxService;
 import vn.gastroai.be.application.notification.EmailTemplateContent;
 import vn.gastroai.be.application.notification.EmailTemplateService;
 import vn.gastroai.be.application.notification.EmailTemplateView;
@@ -38,9 +37,6 @@ class EmailTemplateAdminControllerTest {
 
     @MockitoBean
     private EmailTemplateService templateService;
-
-    @MockitoBean
-    private EmailOutboxService outboxService;
 
     @MockitoBean
     private AuditLogService auditLogService;
@@ -113,26 +109,6 @@ class EmailTemplateAdminControllerTest {
 
         verifyNoInteractions(templateService);
         verifyNoInteractions(auditLogService);
-    }
-
-    @Test
-    @WithMockUser(username = "7", roles = "ADMIN")
-    void sendTestValidatesRecipientQueuesEmailAndIsAudited() throws Exception {
-        mockMvc.perform(post("/api/v1/cms/email-templates/PASSWORD_RESET/test")
-                        .contentType("application/json")
-                        .content("{\"recipientEmail\":\"admin@example.com\"}"))
-                .andExpect(status().isAccepted());
-
-        verify(outboxService).enqueueTest(EmailTemplateCode.PASSWORD_RESET, "admin@example.com");
-        verify(auditLogService).record(AuditAction.EMAIL_TEMPLATE_TEST_SEND, "EMAIL_TEMPLATE", "PASSWORD_RESET",
-                "Gửi thử tới: admin@example.com");
-
-        mockMvc.perform(post("/api/v1/cms/email-templates/PASSWORD_RESET/test")
-                        .contentType("application/json")
-                        .content("{\"recipientEmail\":\"not-an-email\"}"))
-                .andExpect(status().isBadRequest());
-
-        verify(auditLogService, times(1)).record(any(), any(), any(), any());
     }
 
     @Test

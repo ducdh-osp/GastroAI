@@ -70,14 +70,3 @@ export async function previewEmailTemplate(
     throw extractErrorMessage(error, 'Không thể tạo bản xem trước.')
   }
 }
-
-export async function sendTestEmail(code: EmailTemplateCode, recipientEmail: string): Promise<string> {
-  try {
-    const { data } = await cmsApiClient.post<{ message: string }>(`/cms/email-templates/${code}/test`, {
-      recipientEmail,
-    })
-    return data.message
-  } catch (error) {
-    throw extractErrorMessage(error, 'Không thể đưa email thử vào hàng đợi.')
-  }
-}

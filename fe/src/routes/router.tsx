@@ -11,6 +11,7 @@ import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
+import FoodSensitivityPage from '../pages/patient/FoodSensitivityPage'
 import BristolPage from '../pages/patient/BristolPage'
 import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
 import ChatPage from '../pages/chat/ChatPage'
@@ -112,7 +113,7 @@ export const router = createBrowserRouter([
         path: '/food-sensitivity',
         element: (
           <ProtectedRoute>
-            <Navigate to="/food-diary?tab=sensitivity" replace />
+            <FoodSensitivityPage />
           </ProtectedRoute>
         ),
       },

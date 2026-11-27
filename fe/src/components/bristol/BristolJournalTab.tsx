@@ -172,7 +172,7 @@ export function BristolJournalTab({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Segmented
           value={view}
           options={[
@@ -192,14 +192,14 @@ export function BristolJournalTab({
         <>
           {date && (
             <Alert
-              className="mb-4"
+              className="mb-6"
               type="info"
               showIcon
               message={`Đang hiển thị các ghi nhận ngày ${formatFilterDate(date)}`}
               action={<Button size="small" onClick={onClearFilter}>Bỏ lọc</Button>}
             />
           )}
-          {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+          {error && <Alert type="error" message={error} showIcon className="mb-6" />}
 
           <Spin spinning={loading}>
             {!loading && groups.length === 0 ? (

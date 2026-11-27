@@ -92,17 +92,17 @@ class FoodDiaryServiceTest {
     }
 
     @Test
-    void listFiltersSensitivityKeywordWithoutDependingOnVietnameseDiacritics() {
+    void listFiltersFoodNamePhraseWithoutDependingOnVietnameseDiacritics() {
         Patient patient = new Patient();
         patient.setId(1L);
-        FoodDiaryEntry matching = new FoodDiaryEntry(patient, Instant.now(), "Sữa chua", null);
+        FoodDiaryEntry matching = new FoodDiaryEntry(patient, Instant.now(), "Sữa chua Hy Lạp", null);
         matching.setId(10L);
         FoodDiaryEntry other = new FoodDiaryEntry(patient, Instant.now().minusSeconds(60), "Cơm gà", null);
         other.setId(11L);
         when(foodDiaryEntryRepository.findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(anyLong(), any(), any()))
                 .thenReturn(List.of(other, matching));
 
-        FoodDiaryListResponse result = service.list(1L, 0, 10, null, "sua", 90);
+        FoodDiaryListResponse result = service.list(1L, 0, 10, null, "sua chua", 90);
 
         assertEquals(1, result.totalElements());
         assertEquals(10L, result.items().getFirst().id());

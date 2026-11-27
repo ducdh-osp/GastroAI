@@ -87,17 +87,16 @@ public class EmailDeliveryService {
     }
 
     private boolean eligible(EmailOutbox outbox, Instant now) {
-        if (outbox.getDedupeKey().startsWith("EMAIL_TEMPLATE_TEST:")) {
-            return true;
-        }
         return switch (outbox.getTemplateCode()) {
-            case ACCOUNT_VERIFICATION -> patientRepository.findById(outbox.getPatientId())
+            case ACCOUNT_VERIFICATION -> outbox.getPatientId() != null
+                    && patientRepository.findById(outbox.getPatientId())
                     .filter(patient -> !patient.isEmailVerified())
                     .filter(patient -> tokenMatches(outbox, patient.getVerificationTokenHash()))
                     .filter(patient -> patient.getVerificationTokenExpiresAt() != null
                             && patient.getVerificationTokenExpiresAt().isAfter(now))
                     .isPresent();
-            case PASSWORD_RESET -> patientRepository.findById(outbox.getPatientId())
+            case PASSWORD_RESET -> outbox.getPatientId() != null
+                    && patientRepository.findById(outbox.getPatientId())
                     .filter(patient -> tokenMatches(outbox, patient.getPasswordResetTokenHash()))
                     .filter(patient -> patient.getPasswordResetTokenExpiresAt() != null
                             && patient.getPasswordResetTokenExpiresAt().isAfter(now))

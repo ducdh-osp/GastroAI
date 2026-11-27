@@ -150,6 +150,20 @@ class EmailDeliveryServiceTest {
         verifyNoInteractions(transport);
     }
 
+    @Test
+    void skipsLegacyTestEmailStillPendingInOutbox() {
+        EmailOutbox outbox = new EmailOutbox(
+                EmailTemplateCode.PASSWORD_RESET, "admin@example.com", "encrypted",
+                "EMAIL_TEMPLATE_TEST:legacy", now);
+        when(outboxes.findFirstByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAscIdAsc(
+                EmailOutboxStatus.PENDING, now)).thenReturn(Optional.of(outbox));
+
+        service.processNext(now);
+
+        assertEquals(EmailOutboxStatus.SKIPPED, outbox.getStatus());
+        verifyNoInteractions(transport);
+    }
+
     private EmailOutbox medicationOutbox() {
         EmailOutbox outbox = new EmailOutbox(
                 EmailTemplateCode.MEDICATION_REMINDER_OFFLINE, "user@example.com", "encrypted",

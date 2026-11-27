@@ -1,10 +1,9 @@
-import { EyeOutlined, MailOutlined, SaveOutlined, SendOutlined } from '@ant-design/icons'
+import { EyeOutlined, MailOutlined, SaveOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Form, Input, Modal, Select, Space, Spin, Tag, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import {
   listEmailTemplates,
   previewEmailTemplate,
-  sendTestEmail,
   updateEmailTemplate,
   type EmailTemplate,
   type EmailTemplateCode,
@@ -12,6 +11,7 @@ import {
   type RenderedEmail,
 } from '../../api/cmsEmailTemplates'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
+import { RichTextEditor } from '../../components/editor/RichTextEditor'
 
 const { Title, Text, Paragraph } = Typography
 
@@ -21,8 +21,6 @@ export default function CmsEmailTemplatesPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [previewing, setPreviewing] = useState(false)
-  const [sendingTest, setSendingTest] = useState(false)
-  const [testRecipient, setTestRecipient] = useState('')
   const [preview, setPreview] = useState<RenderedEmail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -101,26 +99,6 @@ export default function CmsEmailTemplatesPage() {
     }
   }
 
-  async function handleSendTest() {
-    if (!selected) return
-    const recipient = testRecipient.trim()
-    if (!recipient) {
-      setError('Vui lòng nhập email nhận bản thử.')
-      return
-    }
-    setSendingTest(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const message = await sendTestEmail(selected.code, recipient)
-      setSuccess(message)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Không thể gửi email thử.')
-    } finally {
-      setSendingTest(false)
-    }
-  }
-
   return (
     <CmsAppShell>
       <div className="w-full">
@@ -181,12 +159,17 @@ export default function CmsEmailTemplatesPage() {
                     <Input maxLength={255} showCount />
                   </Form.Item>
                   <Form.Item
-                    label="Nội dung HTML"
+                    label="Nội dung email"
                     name="htmlBodyTemplate"
-                    extra="Chỉ cho phép HTML email an toàn và liên kết http/https; không cho phép CSS, script, iframe, form hoặc thuộc tính sự kiện."
-                    rules={[{ required: true, message: 'Nhập nội dung HTML' }, { max: 100000, message: 'Tối đa 100.000 ký tự' }]}
+                    extra="Soạn nội dung như văn bản thông thường. Có thể in đậm, in nghiêng, tạo danh sách và chèn liên kết; các placeholder bên trái vẫn dùng được trong nội dung."
+                    rules={[{ required: true, message: 'Nhập nội dung email' }, { max: 100000, message: 'Tối đa 100.000 ký tự' }]}
                   >
-                    <Input.TextArea rows={11} className="font-mono text-sm" maxLength={100000} />
+                    <RichTextEditor
+                      disabled={!selected || saving}
+                      format="html"
+                      minHeight={280}
+                      placeholder="Nhập nội dung email..."
+                    />
                   </Form.Item>
                   <Form.Item
                     label="Nội dung text dự phòng"
@@ -201,25 +184,6 @@ export default function CmsEmailTemplatesPage() {
                     <Button icon={<EyeOutlined />} onClick={() => void handlePreview()} loading={previewing}>Xem trước</Button>
                   </Space>
                 </Form>
-              </Card>
-
-              <Card title="Gửi email thử" className="rounded-2xl border-black/5 shadow-sm">
-                <Space.Compact className="w-full">
-                  <Input
-                    type="email"
-                    value={testRecipient}
-                    onChange={(event) => setTestRecipient(event.target.value)}
-                    onPressEnter={() => void handleSendTest()}
-                    placeholder="admin@example.com"
-                    maxLength={255}
-                  />
-                  <Button icon={<SendOutlined />} loading={sendingTest} onClick={() => void handleSendTest()}>
-                    Gửi thử
-                  </Button>
-                </Space.Compact>
-                <Text type="secondary" className="mt-2 block text-xs">
-                  Email thử dùng nội dung đã lưu gần nhất và dữ liệu placeholder mẫu.
-                </Text>
               </Card>
             </div>
           </div>
