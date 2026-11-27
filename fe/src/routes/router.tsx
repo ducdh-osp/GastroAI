@@ -200,7 +200,7 @@ export const router = createBrowserRouter([
         ),
       },
 
-      // CMS - Admin / Doctor. Dùng 1 CmsAuthProvider chung cho cả nhánh /cms/* — nếu mỗi route
+      // CMS - nhân sự CMS (4 vai trò). Dùng 1 CmsAuthProvider chung cho cả nhánh /cms/* — nếu mỗi route
       // tự bọc provider riêng, state đăng nhập ở /cms/login sẽ mất ngay khi điều hướng sang /cms
       // (mỗi provider là 1 instance context độc lập, không chia sẻ được cho nhau).
       {
@@ -387,8 +387,10 @@ export const router = createBrowserRouter([
               </CmsRoleRoute>
             ),
           },
+          { path: '/cms/*', element: <Navigate to="/cms" replace /> },
         ],
       },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ])

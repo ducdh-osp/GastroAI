@@ -807,7 +807,7 @@ class TriageAlertServiceTest {
     void getDetailByClaimerMarksPatientMessagesRead() {
         interventionAlert(7L, "ADMIN");
 
-        TriageAlertDetailResponse detail = service.getDetail(10L, 7L, "ADMIN");
+        TriageAlertDetailResponse detail = service.getDetail(10L, 7L);
 
         assertEquals(10L, detail.alert().id());
         verify(messageRepository).markPatientMessagesRead(eq(10L), any());
@@ -817,14 +817,13 @@ class TriageAlertServiceTest {
     void getDetailByOtherAdminKeepsMessagesUnread() {
         interventionAlert(7L, "ADMIN");
 
-        service.getDetail(10L, 5L, "ADMIN");
+        service.getDetail(10L, 5L);
 
         verify(messageRepository, never()).markPatientMessagesRead(any(), any());
     }
 
     @Test
-    void everyAdminSeesEmergencyContactOnceInterventionIsNeeded() {
-        // SCR-AD-13: bao toi TOAN BO Admin dang truc - ai cung phai thay so de goi.
+    void everyStaffSeesEmergencyContactOnceInterventionIsNeeded() {
         interventionAlert(7L, "ADMIN");
         MedicalProfile profile = new MedicalProfile();
         profile.setEmergencyContactName("Nguyen Van B");
@@ -832,8 +831,8 @@ class TriageAlertServiceTest {
         profile.setEmergencyContactRelationship("Cha");
         when(medicalProfileRepository.findByPatientId(1L)).thenReturn(Optional.of(profile));
 
-        TriageAlertDetailResponse claimer = service.getDetail(10L, 7L, "ADMIN");
-        TriageAlertDetailResponse other = service.getDetail(10L, 8L, "ADMIN");
+        TriageAlertDetailResponse claimer = service.getDetail(10L, 7L);
+        TriageAlertDetailResponse other = service.getDetail(10L, 8L);
 
         assertEquals("0901234567", claimer.emergencyContact().phone());
         assertEquals("0901234567", other.emergencyContact().phone());
@@ -843,20 +842,10 @@ class TriageAlertServiceTest {
     void emergencyContactHiddenWhileSystemIsStillHandling() {
         alertIn(TriageAlertStatus.AUTO_HANDLING);
 
-        TriageAlertDetailResponse detail = service.getDetail(10L, 7L, "ADMIN");
+        TriageAlertDetailResponse detail = service.getDetail(10L, 7L);
 
         assertNull(detail.emergencyContact());
         verify(medicalProfileRepository, never()).findByPatientId(any());
-    }
-
-    @Test
-    void getDetailComparesBothIdAndAccountType() {
-        // Admin #7 va Bac si #7 la 2 tai khoan khac nhau (2 bang MySQL rieng).
-        interventionAlert(7L, "DOCTOR");
-
-        service.getDetail(10L, 7L, "ADMIN");
-
-        verify(messageRepository, never()).markPatientMessagesRead(any(), any());
     }
 
     @Test
@@ -864,7 +853,7 @@ class TriageAlertServiceTest {
         when(triageAlertRepository.findById(404L)).thenReturn(Optional.empty());
 
         assertThrows(vn.gastroai.be.application.support.ResourceNotFoundException.class,
-                () -> service.getDetail(404L, 7L, "ADMIN"));
+                () -> service.getDetail(404L, 7L));
         verify(messageRepository, never()).markPatientMessagesRead(any(), any());
     }
 }

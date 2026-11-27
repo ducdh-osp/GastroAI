@@ -114,7 +114,7 @@ const TARGET_LABEL: Record<AuditTargetType, string> = {
   DOCUMENT: 'Tài liệu',
   PATIENT: 'Bệnh nhân',
   ADMIN: 'Tài khoản Admin',
-  DOCTOR: 'Tài khoản bác sĩ',
+  DOCTOR: 'Tài khoản bác sĩ', // chỉ cho log cũ - vai trò DOCTOR đã xoá
   SYSTEM: 'Hệ thống',
   RULE: 'Quy tắc cảnh báo',
   CONFIG: 'Cấu hình hệ thống',
@@ -130,7 +130,7 @@ const TARGET_LABEL: Record<AuditTargetType, string> = {
 const ACTOR_LABEL: Record<string, string> = {
   ADMIN: 'Admin',
   CONTENT_EDITOR: 'Biên tập',
-  DOCTOR: 'Bác sĩ',
+  DOCTOR: 'Bác sĩ', // chỉ cho log cũ - vai trò DOCTOR đã xoá
   SYSTEM: 'Hệ thống',
 }
 
@@ -180,7 +180,6 @@ export default function CmsAuditLogsPage() {
       .then((result) => {
         if (!active) return
         setActorOptions(result.items
-          .filter((account) => account.accountType === 'ADMIN')
           .map((account) => ({
             value: account.id,
             label: account.fullName ? `${account.fullName} (${account.email})` : account.email,

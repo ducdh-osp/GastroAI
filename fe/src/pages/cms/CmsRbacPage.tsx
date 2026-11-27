@@ -18,7 +18,6 @@ const { Title, Text } = Typography
 const PAGE_SIZE = 20
 const ROLE_LABEL: Record<CmsPermissionRole, string> = {
   ADMIN: 'Admin',
-  DOCTOR: 'Bác sĩ',
   CONTENT_EDITOR: 'Biên tập chuyên môn y khoa',
   CONTENT_AUTHOR: 'Cộng tác viên nội dung',
   OPERATIONS: 'Giám sát vận hành',
@@ -26,16 +25,11 @@ const ROLE_LABEL: Record<CmsPermissionRole, string> = {
 
 type PendingRoleChange = { account: CmsAccount; role: CmsPermissionRole }
 
-function roleOptions(account: CmsAccount) {
-  const allowedRoles: CmsPermissionRole[] = account.accountType === 'ADMIN'
-    ? ['ADMIN', 'CONTENT_EDITOR', 'CONTENT_AUTHOR', 'OPERATIONS']
-    : ['DOCTOR']
-
-  return allowedRoles.map((value) => ({ value, label: ROLE_LABEL[value] }))
-}
+const ROLE_OPTIONS = (Object.keys(ROLE_LABEL) as CmsPermissionRole[])
+  .map((value) => ({ value, label: ROLE_LABEL[value] }))
 
 function accountKey(account: CmsAccount) {
-  return `${account.accountType}-${account.id}`
+  return String(account.id)
 }
 
 export default function CmsRbacPage() {
@@ -101,11 +95,10 @@ export default function CmsRbacPage() {
 
   const columns: ColumnsType<CmsAccount> = [
     { title: 'Tài khoản', key: 'account', render: (_, a) => <div><div className="font-medium">{a.fullName || 'Chưa cập nhật'}</div><Text type="secondary">{a.email}</Text></div> },
-    { title: 'Loại tài khoản', dataIndex: 'accountType', key: 'accountType', render: (v: string) => <Tag>{v === 'ADMIN' ? 'Admin' : 'Tài khoản bác sĩ'}</Tag> },
     {
       title: 'Vai trò RBAC', key: 'role', render: (_, a) => {
         const key = accountKey(a)
-        const isPending = pending?.account.accountType === a.accountType && pending.account.id === a.id
+        const isPending = pending?.account.id === a.id
         const pendingLabel = isPending && pending ? ROLE_LABEL[pending.role] : ROLE_LABEL[a.role]
         return <Popconfirm
           title={`Xác nhận đổi vai trò thành ${pendingLabel}?`}
@@ -126,9 +119,9 @@ export default function CmsRbacPage() {
           <Select
             value={a.role}
             loading={busy.has(key)}
-            disabled={a.accountType === 'DOCTOR' || busy.has(key)}
+            disabled={busy.has(key)}
             onChange={(role: CmsPermissionRole) => setPending({ account: a, role })}
-            options={roleOptions(a)}
+            options={ROLE_OPTIONS}
             style={{ width: 220 }}
           />
         </Popconfirm>
@@ -141,7 +134,6 @@ export default function CmsRbacPage() {
     },
     {
       title: 'Thao tác', key: 'actions', render: (_, a) => {
-        if (a.accountType !== 'ADMIN') return null
         const key = accountKey(a)
         return (
           <Popconfirm
@@ -182,7 +174,7 @@ export default function CmsRbacPage() {
     {error && <Alert type="error" message={error} showIcon className="mb-4" closable onClose={() => setError(null)} />}
     <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
       <Space className="mb-4" wrap><Input.Search placeholder="Tìm theo tên hoặc email" allowClear value={query} onChange={(e) => setQuery(e.target.value)} onSearch={() => void reload(1)} style={{ width: 300 }} /></Space>
-      <Table<CmsAccount> rowKey={(a) => `${a.accountType}-${a.id}`} loading={loading} columns={columns} dataSource={data} pagination={{ current: page, pageSize: PAGE_SIZE, total, showSizeChanger: false, onChange: (next) => void reload(next) }} />
+      <Table<CmsAccount> rowKey={(a) => a.id} loading={loading} columns={columns} dataSource={data} pagination={{ current: page, pageSize: PAGE_SIZE, total, showSizeChanger: false, onChange: (next) => void reload(next) }} />
     </Card>
   </div></CmsAppShell>
 }

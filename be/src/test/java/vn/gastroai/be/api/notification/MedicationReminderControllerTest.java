@@ -85,7 +85,7 @@ class MedicationReminderControllerTest {
     @Test
     void checkDueDosesRequiresAuthentication() throws Exception {
         mockMvc.perform(post("/api/v1/patient/medications/check-due").with(csrf()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
 
         verify(medicationDueNotificationService, never()).notifyDueDosesForPatient(any(), any(), any());
     }

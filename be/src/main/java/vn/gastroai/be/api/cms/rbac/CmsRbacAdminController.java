@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.admin.CmsRbacService;
-import vn.gastroai.be.domain.admin.CmsAccountType;
 import vn.gastroai.be.domain.audit.AuditAction;
 import vn.gastroai.be.application.audit.AuditLogService;
 
@@ -20,6 +19,8 @@ import vn.gastroai.be.application.audit.AuditLogService;
 @RestController
 @RequestMapping("/api/v1/cms/rbac/accounts")
 public class CmsRbacAdminController {
+    private static final String AUDIT_TARGET = "ADMIN";
+
     private final CmsRbacService service;
     private final AuditLogService auditLogService;
 
@@ -37,13 +38,12 @@ public class CmsRbacAdminController {
         return service.list(q, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
     }
 
-    @PutMapping("/{accountType}/{accountId}/role")
+    @PutMapping("/{accountId}/role")
     public CmsAccountResponse assignRole(
-            @PathVariable CmsAccountType accountType,
             @PathVariable Long accountId,
             @Valid @RequestBody UpdateCmsAccountRoleRequest request) {
-        CmsAccountResponse response = service.assignRole(accountType, accountId, request.role());
-        auditLogService.record(AuditAction.RBAC_ROLE_CHANGE, accountType.name(), accountId,
+        CmsAccountResponse response = service.assignRole(accountId, request.role());
+        auditLogService.record(AuditAction.RBAC_ROLE_CHANGE, AUDIT_TARGET, accountId,
                 "Vai trò mới: " + request.role());
         return response;
     }
@@ -52,7 +52,7 @@ public class CmsRbacAdminController {
     @PostMapping
     public CmsAccountResponse create(@Valid @RequestBody CreateCmsAccountRequest request) {
         CmsAccountResponse response = service.createAccount(request);
-        auditLogService.record(AuditAction.CMS_ACCOUNT_CREATE, CmsAccountType.ADMIN.name(), response.id(),
+        auditLogService.record(AuditAction.CMS_ACCOUNT_CREATE, AUDIT_TARGET, response.id(),
                 "Tạo tài khoản mới, vai trò: " + response.role());
         return response;
     }
@@ -61,14 +61,14 @@ public class CmsRbacAdminController {
     @PutMapping("/{accountId}/lock")
     public CmsAccountResponse lock(@PathVariable Long accountId) {
         CmsAccountResponse response = service.lock(accountId);
-        auditLogService.record(AuditAction.CMS_ACCOUNT_LOCK, CmsAccountType.ADMIN.name(), accountId, null);
+        auditLogService.record(AuditAction.CMS_ACCOUNT_LOCK, AUDIT_TARGET, accountId, null);
         return response;
     }
 
     @PutMapping("/{accountId}/unlock")
     public CmsAccountResponse unlock(@PathVariable Long accountId) {
         CmsAccountResponse response = service.unlock(accountId);
-        auditLogService.record(AuditAction.CMS_ACCOUNT_UNLOCK, CmsAccountType.ADMIN.name(), accountId, null);
+        auditLogService.record(AuditAction.CMS_ACCOUNT_UNLOCK, AUDIT_TARGET, accountId, null);
         return response;
     }
 

@@ -4,7 +4,6 @@ import {
   DeleteOutlined,
   ExclamationCircleOutlined,
   MedicineBoxOutlined,
-  MessageOutlined,
   ReloadOutlined,
   RightOutlined,
   SafetyCertificateOutlined,
@@ -43,7 +42,6 @@ const TYPE_META: Record<NotificationType, { label: string; color: string }> = {
   SECURITY_ALERT: { label: 'An toàn & bảo mật', color: 'gold' },
   TRIAGE_ALERT: { label: 'Cảnh báo triage', color: 'red' },
   SYSTEM: { label: 'Hệ thống', color: 'blue' },
-  TRIAGE_DOCTOR_MESSAGE: { label: 'Cập nhật cảnh báo', color: 'volcano' },
   TRIAGE_CHECK_IN: { label: 'Hỏi thăm sức khỏe', color: 'red' },
   TRIAGE_INTERVENTION: { label: 'Cần can thiệp', color: 'red' },
 }
@@ -52,7 +50,6 @@ function notificationIcon(type: NotificationType) {
   if (type === 'TRIAGE_ALERT' || type === 'TRIAGE_INTERVENTION' || type === 'TRIAGE_CHECK_IN') {
     return <ExclamationCircleOutlined />
   }
-  if (type === 'TRIAGE_DOCTOR_MESSAGE') return <MessageOutlined />
   if (type === 'MEDICATION_REMINDER') return <MedicineBoxOutlined />
   if (type === 'SECURITY_ALERT') return <SafetyCertificateOutlined />
   return <BellOutlined />
@@ -62,7 +59,6 @@ function iconClass(type: NotificationType) {
   if (type === 'TRIAGE_ALERT' || type === 'TRIAGE_INTERVENTION' || type === 'TRIAGE_CHECK_IN') {
     return 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300'
   }
-  if (type === 'TRIAGE_DOCTOR_MESSAGE') return 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300'
   if (type === 'MEDICATION_REMINDER') return 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300'
   if (type === 'SECURITY_ALERT') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
   return 'bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300'
@@ -253,7 +249,6 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
         { value: 'MEDICATION_REMINDER', label: 'Nhắc uống thuốc' },
         { value: 'SECURITY_ALERT', label: 'An toàn & bảo mật' },
         { value: 'TRIAGE_CHECK_IN', label: 'Hỏi thăm sức khỏe' },
-        { value: 'TRIAGE_DOCTOR_MESSAGE', label: 'Cập nhật cảnh báo' },
         { value: 'SYSTEM', label: 'Hệ thống' },
       ]
     : [

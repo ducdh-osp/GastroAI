@@ -97,7 +97,7 @@ const ACTION_COLORS: Partial<Record<TriageAlertActionType, string>> = {
   FALSE_ALARM: 'gray',
 }
 
-const STAFF_LABELS: Record<string, string> = { ADMIN: 'Admin', DOCTOR: 'Bác sĩ' }
+const STAFF_LABELS: Record<string, string> = { ADMIN: 'Admin' }
 
 const POLL_INTERVAL_MS = 10000
 
@@ -205,10 +205,7 @@ export function TriageAlertDetailDrawer({ alertId, reloadKey, onClose, onAlertCh
   }, [alertId, load])
 
   const alert = detail?.alert ?? null
-  // claimedByType là LOẠI TÀI KHOẢN (bảng admins -> "ADMIN", bảng doctors -> "DOCTOR"), không phải vai
-  // trò: Giám sát vận hành nằm ở bảng admins nên ca họ nhận vẫn ghi "ADMIN" (xem resolveRole ở BE).
-  const accountType = user?.userType === 'DOCTOR' ? 'DOCTOR' : 'ADMIN'
-  const isClaimer = alert !== null && user?.userId === alert.claimedById && accountType === alert.claimedByType
+  const isClaimer = alert !== null && user?.userId === alert.claimedById
   // SCR-AD-13: Admin/Giám sát vận hành bất kỳ xử lý được, không bắt buộc "tiếp nhận" trước - khớp
   // TriageAlertService (cho phép mọi tài khoản loại ADMIN xử lý thay).
   const canOverride = canAccessCmsPath(user?.userType, '/cms/triage-alerts')

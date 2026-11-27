@@ -18,7 +18,7 @@ import vn.gastroai.be.domain.audit.AuditAction;
 import java.util.ArrayList;
 import java.util.List;
 
-/** UC0066 - quan ly chu de bai viet. Quyen ADMIN/DOCTOR duoc khai bao trong SecurityConfig. */
+/** UC0066 - quan ly chu de bai viet. Quyen theo vai tro duoc khai bao trong SecurityConfig. */
 @RestController
 @RequestMapping("/api/v1/cms/article-topics")
 public class ArticleTopicAdminController {

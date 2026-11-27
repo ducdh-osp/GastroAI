@@ -1,6 +1,7 @@
 package vn.gastroai.be.config;
 
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,6 +17,7 @@ import vn.gastroai.be.infrastructure.security.AdminSessionFilter;
 import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -29,6 +31,11 @@ import java.util.List;
  */
 @Configuration
 public class SecurityConfig {
+    static final String ROLE_FORBIDDEN_BODY =
+            "{\"code\":\"ROLE_FORBIDDEN\",\"message\":\"Bạn không có quyền truy cập chức năng này\"}";
+    static final String UNAUTHENTICATED_BODY =
+            "{\"code\":\"UNAUTHENTICATED\",\"message\":\"Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại\"}";
+
     @Value("${app.cors.allowed-origin}")
     private String allowedOrigin;
 
@@ -49,9 +56,13 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // IF_REQUIRED (không phải STATELESS): Bệnh nhân dùng JWT nên không cần session,
-                // nhưng luồng CMS login (Admin/Bác sĩ) của Thăng dùng HttpSession thật —
+                // nhưng luồng CMS login dùng HttpSession thật —
                 // STATELESS sẽ chặn Spring Security lưu session cho nhánh đó.
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                // sessionFixation none: không đổi mã phiên ở mỗi request (CmsAuthService.login đã tự cấp phiên mới);
+                // nếu đổi, các request gửi song song bằng mã cũ sẽ bị coi là chưa đăng nhập.
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        .sessionFixation(fixation -> fixation.none()))
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         // Các endpoint không cần đăng nhập trước: đăng ký, xác thực email,
@@ -102,7 +113,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/cms/faqs/**")
                         .hasAnyRole("ADMIN", "CONTENT_EDITOR", "CONTENT_AUTHOR")
                         .requestMatchers("/api/v1/cms/catalogs/**").hasAnyRole("ADMIN", "CONTENT_EDITOR")
-                        .requestMatchers("/api/v1/cms/doctors/**").hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/documents/**")
                         .hasAnyRole("ADMIN", "CONTENT_EDITOR")
                         .requestMatchers("/api/v1/cms/dashboard/**")
@@ -124,9 +134,21 @@ public class SecurityConfig {
                         // Các endpoint còn lại phải có Authentication hợp lệ theo quyền riêng
                         // của từng nhóm API ở trên.
                         .anyRequest().authenticated())
+                // Chưa đăng nhập -> 401; sai vai trò -> 403 ROLE_FORBIDDEN (khác 403 nghiệp vụ).
+                .exceptionHandling(ex -> ex
+                        .accessDeniedHandler((request, response, denied) ->
+                                writeJson(response, HttpServletResponse.SC_FORBIDDEN, ROLE_FORBIDDEN_BODY))
+                        .authenticationEntryPoint((request, response, authException) ->
+                                writeJson(response, HttpServletResponse.SC_UNAUTHORIZED, UNAUTHENTICATED_BODY)))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(adminSessionFilter, JwtAuthenticationFilter.class);
         return http.build();
+    }
+
+    private static void writeJson(HttpServletResponse response, int status, String body) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(body);
     }
 
     private UrlBasedCorsConfigurationSource corsConfigurationSource() {

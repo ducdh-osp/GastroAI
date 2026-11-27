@@ -20,7 +20,7 @@ export interface TriageAlertStatusChangedSocketEvent {
   id: number
   status: TriageAlertStatus
   claimedById: number | null
-  claimedByType: 'ADMIN' | 'DOCTOR' | null
+  claimedByType: 'ADMIN' | null
   resolvedById: number | null
   resolvedByType: TriageActorType | null
   statusChangedAt: string

@@ -15,7 +15,6 @@ const TYPE_LABEL: Record<string, string> = {
   SECURITY_ALERT: 'An toàn & bảo mật',
   TRIAGE_ALERT: 'Cảnh báo triage',
   SYSTEM: 'Hệ thống',
-  TRIAGE_DOCTOR_MESSAGE: 'Tin nhắn',
 }
 
 function timeAgo(iso: string): string {

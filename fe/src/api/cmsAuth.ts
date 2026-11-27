@@ -1,11 +1,8 @@
 import { cmsApiClient } from '../lib/cmsAxios'
 import type { LoginHistoryResponse } from './auth'
 
-// Vai trò là thuộc tính của tài khoản, BE tự đọc ra và trả về sau khi đăng nhập. DOCTOR là vai
-// trò cũ (đã cắt khỏi sản phẩm 2026-11-17, chưa dọn hẳn khỏi code) - giữ lại trong type để các
-// tài khoản DOCTOR cũ còn đăng nhập/hiển thị đúng. CONTENT_AUTHOR/OPERATIONS thêm theo
-// SCR-AD-03 v1.2 (RBAC 4 vai trò).
-export type CmsRole = 'ADMIN' | 'DOCTOR' | 'CONTENT_EDITOR' | 'CONTENT_AUTHOR' | 'OPERATIONS'
+// 4 vai trò theo SCR-AD-03 v1.2.
+export type CmsRole = 'ADMIN' | 'CONTENT_EDITOR' | 'CONTENT_AUTHOR' | 'OPERATIONS'
 
 export interface CmsLoginRequest {
   email: string
@@ -30,6 +27,11 @@ export async function cmsLogin(
   )
 
   return response.data
+}
+
+export async function getCmsMe(): Promise<CmsAuthResponse> {
+  const { data } = await cmsApiClient.get<CmsAuthResponse>('/cms/auth/me')
+  return data
 }
 
 export async function cmsLogout(): Promise<void> {

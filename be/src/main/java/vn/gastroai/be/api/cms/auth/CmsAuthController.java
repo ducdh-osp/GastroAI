@@ -58,6 +58,11 @@ public class CmsAuthController {
         cmsAuthService.logout(request);
     }
 
+    @GetMapping("/api/v1/cms/auth/me")
+    public CmsAuthResult me(HttpServletRequest request) {
+        return cmsAuthService.currentAccount(currentAccountId(request.getSession(false)));
+    }
+
     /**
      * Lịch sử đăng nhập của chính tài khoản đang đăng nhập. Mã tài khoản lấy từ phiên,
      * không nhận từ request, nên không ai xem được lịch sử của người khác.

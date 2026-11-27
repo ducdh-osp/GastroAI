@@ -28,7 +28,7 @@ public class TriageAlertMessage {
     @Column(name = "alert_id", nullable = false)
     private Long alertId;
 
-    // PATIENT | DOCTOR | ADMIN - luu String giong TriageAlert.claimedByType
+    // PATIENT | ADMIN (nhan su CMS) - luu String giong TriageAlert.claimedByType
     @Column(name = "sender_type", nullable = false, length = 20)
     private String senderType;
 

@@ -35,7 +35,7 @@ const PAGE_SIZE = 20
 /** SCR-AD-13: 3 tab, "Cần can thiệp" đầu tiên - đó là toàn bộ việc Admin phải làm. */
 type TabView = Extract<TriageAlertView, 'INTERVENTION' | 'AUTO' | 'CLOSED'>
 
-const CLAIMER_TYPE_LABELS: Record<string, string> = { ADMIN: 'Admin', DOCTOR: 'Bác sĩ' }
+const CLAIMER_TYPE_LABELS: Record<string, string> = { ADMIN: 'Admin' }
 
 interface OpenCounts {
   intervention: number
