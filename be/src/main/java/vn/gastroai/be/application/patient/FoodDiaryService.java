@@ -123,7 +123,7 @@ public class FoodDiaryService {
     public FoodDiaryListResponse list(Long patientId, int page, int size,
                                       LocalDate date, String keyword, int days) {
         Pageable pageable = PageRequest.of(page, size);
-        String normalizedKeyword = keyword == null ? "" : VietnameseText.normalize(keyword).trim();
+        String normalizedKeyword = normalizeSearchText(keyword);
 
         if (!normalizedKeyword.isEmpty()) {
             VietnamDateRange.Range range = date == null
@@ -133,7 +133,7 @@ public class FoodDiaryService {
                     .findByPatientIdAndEatenAtBetweenOrderByEatenAtAsc(
                             patientId, range.fromInclusive(), range.toExclusive())
                     .stream()
-                    .filter(entry -> VietnameseText.tokenize(entry.getDescription()).contains(normalizedKeyword))
+                    .filter(entry -> containsFoodName(entry.getDescription(), normalizedKeyword))
                     .sorted(Comparator.comparing(FoodDiaryEntry::getEatenAt).reversed())
                     .toList();
             return page(matches, page, size);
@@ -158,6 +158,17 @@ public class FoodDiaryService {
         return new VietnamDateRange.Range(date, endExclusive,
                 date.atStartOfDay(VietnamDateRange.ZONE).toInstant(),
                 endExclusive.atStartOfDay(VietnamDateRange.ZONE).toInstant());
+    }
+
+    private static String normalizeSearchText(String value) {
+        return VietnameseText.normalize(value)
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim();
+    }
+
+    private static boolean containsFoodName(String description, String normalizedKeyword) {
+        String normalizedDescription = normalizeSearchText(description);
+        return (" " + normalizedDescription + " ").contains(" " + normalizedKeyword + " ");
     }
 
     private FoodDiaryListResponse page(List<FoodDiaryEntry> entries, int page, int size) {

@@ -199,7 +199,7 @@ export default function CmsLoginHistoryPage() {
         )}
 
         <Card
-          className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm"
+          className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!"
           styles={{ body: { display: 'flex', height: '100%', minHeight: 0, flexDirection: 'column', overflow: 'hidden' } }}
         >
           <div className="min-h-0 flex-1 overflow-y-auto">

@@ -60,12 +60,12 @@ function notificationIcon(type: NotificationType) {
 
 function iconClass(type: NotificationType) {
   if (type === 'TRIAGE_ALERT' || type === 'TRIAGE_INTERVENTION' || type === 'TRIAGE_CHECK_IN') {
-    return 'bg-red-100 text-red-600'
+    return 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300'
   }
-  if (type === 'TRIAGE_DOCTOR_MESSAGE') return 'bg-orange-100 text-orange-700'
-  if (type === 'MEDICATION_REMINDER') return 'bg-purple-100 text-purple-700'
-  if (type === 'SECURITY_ALERT') return 'bg-amber-100 text-amber-700'
-  return 'bg-teal-100 text-teal-700'
+  if (type === 'TRIAGE_DOCTOR_MESSAGE') return 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300'
+  if (type === 'MEDICATION_REMINDER') return 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300'
+  if (type === 'SECURITY_ALERT') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+  return 'bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300'
 }
 
 /** Trang trao đổi cảnh báo của bệnh nhân đã bỏ - thông báo cũ trỏ về đó thì không hiện nút "Xem chi tiết". */
@@ -294,7 +294,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
         </div>
       </div>
 
-      <Card className="mb-4! rounded-2xl border-black/5 shadow-sm" size="small">
+      <Card className="mb-4! rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" size="small">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Segmented
             value={unreadOnly ? 'unread' : 'all'}
@@ -320,7 +320,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
           {data.items.map((item) => (
             <Card
               key={item.id}
-              className={`rounded-2xl shadow-sm ${item.readAt ? 'border-black/5' : 'border-teal-200 bg-teal-50/40 dark:border-teal-800 dark:bg-teal-900/30'}`}
+              className={`rounded-2xl shadow-sm ${item.readAt ? 'border-black/5 dark:border-neutral-700! dark:bg-neutral-800!' : 'border-teal-200 bg-teal-50/40 dark:border-teal-800! dark:bg-teal-900/30!'}`}
             >
               <div className="flex items-start gap-3">
                 <span className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClass(item.type)}`}>
@@ -399,7 +399,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
           )}
         </div>
       ) : (
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={unreadOnly || type ? 'Không có thông báo phù hợp với bộ lọc' : 'Chưa có thông báo nào'}

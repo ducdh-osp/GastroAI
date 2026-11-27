@@ -65,7 +65,7 @@ export default function CmsCreateAccountPage() {
     return (
       <CmsAppShell>
         <div className="mx-auto w-full max-w-xl">
-          <Card className="rounded-2xl border-black/5 shadow-sm">
+          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
             <Title level={4} className="mb-1!">✓ Đã tạo tài khoản cho "{created.fullName}"</Title>
             <Paragraph type="secondary" className="mb-4!">
               Mật khẩu ban đầu chỉ hiện <strong>duy nhất 1 lần</strong> ngay tại đây — hãy gửi cho nhân sự này ngay,
@@ -95,7 +95,7 @@ export default function CmsCreateAccountPage() {
         <Title level={3} className="mb-1! mt-1!"><UserAddOutlined className="mr-2" />Tạo tài khoản nhân sự CMS</Title>
         <Text type="secondary">Chỉ Admin tạo được tài khoản mới — xem SCR-AD-14.</Text>
         {error && <Alert type="error" message={error} showIcon className="mt-4" closable onClose={() => setError(null)} />}
-        <Card className="mt-4 rounded-2xl border-black/5 shadow-sm">
+        <Card className="mt-4 rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <Form<FormValues> form={form} layout="vertical" onFinish={onFinish} disabled={submitting}>
             <Form.Item label="Họ và tên" name="fullName" rules={[{ required: true, message: 'Nhập họ và tên' }]}>
               <Input placeholder="Vd: Lê Văn E" />

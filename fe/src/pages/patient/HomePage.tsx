@@ -92,7 +92,7 @@ export default function HomePage() {
   return (
     <AppShell>
       <div className="w-full grid gap-10 pb-2">
-        <Card className="overflow-hidden rounded-2xl border border-teal-200/70 bg-gradient-to-br from-white via-teal-50/70 to-emerald-100/60 shadow-[0_10px_30px_rgba(15,118,110,0.08)] dark:border-teal-500/20 dark:from-slate-950 dark:via-teal-950/30 dark:to-emerald-950/30">
+        <Card className="overflow-hidden rounded-2xl border border-teal-200/70 bg-gradient-to-br from-white via-teal-50/70 to-emerald-100/60 shadow-[0_10px_30px_rgba(15,118,110,0.08)] dark:border-teal-500/20! dark:from-slate-950 dark:via-teal-950/30 dark:to-emerald-950/30">
           <div className="flex items-start gap-4 py-2">
             <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-xl text-white shadow-lg shadow-teal-600/20 sm:flex">
               <HeartOutlined />
@@ -111,7 +111,7 @@ export default function HomePage() {
         <HealthTrackingProgress />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card className="rounded-2xl border-black/5 shadow-sm" title="Xu hướng Bristol (14 ngày gần nhất)">
+          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Xu hướng Bristol (14 ngày gần nhất)">
             {bristolTrend === null ? (
               <Skeleton active paragraph={{ rows: 3 }} />
             ) : (
@@ -137,7 +137,7 @@ export default function HomePage() {
             )}
           </Card>
 
-          <Card className="rounded-2xl border-black/5 shadow-sm" title="Nhật ký ăn uống (14 ngày gần nhất)">
+          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Nhật ký ăn uống (14 ngày gần nhất)">
             {foodTrend === null ? (
               <Skeleton active paragraph={{ rows: 3 }} />
             ) : (
@@ -155,7 +155,7 @@ export default function HomePage() {
         </div>
 
         <Card
-          className="mt-12! rounded-2xl border-black/5 shadow-sm"
+          className="mt-12! rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!"
           title="Nhạy cảm thực phẩm trong 90 ngày"
           extra={
             <Link to="/food-sensitivity">

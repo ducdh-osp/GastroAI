@@ -161,7 +161,7 @@ export function CmsBroadcastPage() {
     Modal.confirm({
       title: 'Xác nhận gửi broadcast',
       content: (
-        <div className="space-y-1.5 text-sm text-slate-700">
+        <div className="space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
           <p className="mb-0">
             Tiêu đề: <strong>{values.title}</strong>
           </p>
@@ -202,8 +202,8 @@ export function CmsBroadcastPage() {
       key: 'title',
       render: (title: string, record: BroadcastAnnouncement) => (
         <div>
-          <div className="font-medium text-slate-900">{title}</div>
-          <div className="text-xs text-slate-500 line-clamp-1 max-w-md">{record.message}</div>
+          <div className="font-medium text-slate-900 dark:text-slate-100">{title}</div>
+          <div className="text-xs text-slate-500 line-clamp-1 max-w-md dark:text-slate-400">{record.message}</div>
         </div>
       ),
     },
@@ -225,7 +225,7 @@ export function CmsBroadcastPage() {
       width: 130,
       align: 'right',
       render: (count: number) => (
-        <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-xs">
+        <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-xs dark:text-emerald-300 dark:bg-emerald-500/15 dark:border-emerald-800">
           {count.toLocaleString('vi-VN')} người
         </span>
       ),
@@ -236,7 +236,7 @@ export function CmsBroadcastPage() {
       key: 'createdAt',
       width: 170,
       render: (dateStr: string) => (
-        <span className="text-xs text-slate-600">
+        <span className="text-xs text-slate-600 dark:text-slate-400">
           {new Intl.DateTimeFormat('vi-VN', {
             dateStyle: 'short',
             timeStyle: 'short',
@@ -269,11 +269,11 @@ export function CmsBroadcastPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-teal-50 border border-teal-100 text-teal-600 text-xl flex items-center justify-center">
+              <div className="p-2.5 rounded-xl bg-teal-50 border border-teal-100 text-teal-600 text-xl flex items-center justify-center dark:bg-teal-500/15 dark:border-teal-800 dark:text-teal-300">
                 <SoundOutlined />
               </div>
               <div>
-                <Title level={3} className="!mb-0 text-slate-900">
+                <Title level={3} className="!mb-0 text-slate-900 dark:text-white">
                   Thông báo Broadcast
                 </Title>
                 <Text type="secondary" className="text-xs">
@@ -303,22 +303,22 @@ export function CmsBroadcastPage() {
 
         {/* Stats banner */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="rounded-xl border-slate-200/80 shadow-xs">
-            <div className="text-xs text-slate-500 font-medium">Tổng đợt broadcast</div>
-            <div className="text-2xl font-bold text-slate-800 mt-1">{totalElements}</div>
+          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-neutral-700! dark:bg-neutral-800!">
+            <div className="text-xs text-slate-500 font-medium dark:text-slate-400">Tổng đợt broadcast</div>
+            <div className="text-2xl font-bold text-slate-800 mt-1 dark:text-slate-100">{totalElements}</div>
           </Card>
-          <Card className="rounded-xl border-slate-200/80 shadow-xs">
-            <div className="text-xs text-slate-500 font-medium">Đối tượng hỗ trợ</div>
-            <div className="text-base font-semibold text-teal-700 mt-1">Toàn bộ bệnh nhân</div>
+          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-neutral-700! dark:bg-neutral-800!">
+            <div className="text-xs text-slate-500 font-medium dark:text-slate-400">Đối tượng hỗ trợ</div>
+            <div className="text-base font-semibold text-teal-700 mt-1 dark:text-teal-300">Toàn bộ bệnh nhân</div>
           </Card>
-          <Card className="rounded-xl border-slate-200/80 shadow-xs">
-            <div className="text-xs text-slate-500 font-medium">Kênh phát sóng</div>
-            <div className="text-base font-semibold text-blue-600 mt-1">WebSocket + In-App Notification</div>
+          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-neutral-700! dark:bg-neutral-800!">
+            <div className="text-xs text-slate-500 font-medium dark:text-slate-400">Kênh phát sóng</div>
+            <div className="text-base font-semibold text-blue-600 mt-1 dark:text-blue-300">WebSocket + In-App Notification</div>
           </Card>
         </div>
 
         {/* Announcements Table */}
-        <Card className="rounded-xl border-slate-200/80 shadow-sm" bodyStyle={{ padding: 0 }}>
+        <Card className="rounded-xl border-slate-200/80 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" bodyStyle={{ padding: 0 }}>
           <Table
             columns={columns}
             dataSource={data}
@@ -369,7 +369,7 @@ export function CmsBroadcastPage() {
               <div className="space-y-4">
                 <Form.Item
                   name="title"
-                  label={<span className="font-medium text-slate-700">Tiêu đề thông báo</span>}
+                  label={<span className="font-medium text-slate-700 dark:text-slate-300">Tiêu đề thông báo</span>}
                   rules={[
                     { required: true, message: 'Vui lòng nhập tiêu đề thông báo' },
                     { max: 160, message: 'Tiêu đề tối đa 160 ký tự' },
@@ -380,7 +380,7 @@ export function CmsBroadcastPage() {
 
                 <Form.Item
                   name="message"
-                  label={<span className="font-medium text-slate-700">Nội dung thông báo</span>}
+                  label={<span className="font-medium text-slate-700 dark:text-slate-300">Nội dung thông báo</span>}
                   rules={[
                     { required: true, message: 'Vui lòng nhập nội dung thông báo' },
                     { max: 2000, message: 'Nội dung tối đa 2000 ký tự' },
@@ -394,7 +394,7 @@ export function CmsBroadcastPage() {
                   />
                 </Form.Item>
 
-                <Form.Item label={<span className="font-medium text-slate-700">Đối tượng nhận</span>}>
+                <Form.Item label={<span className="font-medium text-slate-700 dark:text-slate-300">Đối tượng nhận</span>}>
                   <Radio.Group
                     value={audienceMode}
                     onChange={(e) => {
@@ -411,7 +411,7 @@ export function CmsBroadcastPage() {
                 <Form.Item
                   name="targetGroup"
                   hidden={audienceMode === 'ALL'}
-                  label={<span className="font-medium text-slate-700">Nhóm bệnh nhân cụ thể</span>}
+                  label={<span className="font-medium text-slate-700 dark:text-slate-300">Nhóm bệnh nhân cụ thể</span>}
                   rules={[{ required: true }]}
                 >
                   <Select
@@ -440,7 +440,7 @@ export function CmsBroadcastPage() {
                 <Form.Item
                   name="actionUrl"
                   label={
-                    <span className="font-medium text-slate-700">
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
                       Đường dẫn liên kết (tùy chọn)
                     </span>
                   }
@@ -456,7 +456,7 @@ export function CmsBroadcastPage() {
                   valuePropName="checked"
                   label={
                     <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-slate-700">Phát sóng realtime (WebSocket)</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">Phát sóng realtime (WebSocket)</span>
                       <Tooltip title="Gửi thông báo tức thời tới các bệnh nhân đang trực tuyến">
                         <InfoCircleOutlined className="text-slate-400 text-xs" />
                       </Tooltip>
@@ -469,26 +469,26 @@ export function CmsBroadcastPage() {
 
               {/* Cột phải: Xem trước giao diện bệnh nhân */}
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 dark:text-slate-400">
                   Xem trước thông báo (Notification Preview)
                 </div>
-                <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-3">
+                <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-3 dark:border-teal-800 dark:bg-teal-950/20">
                   <div className="flex items-start gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
                       <BellOutlined />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-slate-900 text-sm">
+                        <span className="font-semibold text-slate-900 text-sm dark:text-white">
                           {previewTitle || 'Tiêu đề thông báo mẫu'}
                         </span>
                         <Tag color="blue">Hệ thống</Tag>
                         <span className="h-2 w-2 rounded-full bg-teal-500" />
                       </div>
-                      <p className="mt-1.5 mb-1 text-xs text-slate-700 whitespace-pre-line">
+                      <p className="mt-1.5 mb-1 text-xs text-slate-700 whitespace-pre-line dark:text-slate-300">
                         {previewMessage || 'Nội dung thông báo sẽ xuất hiện ở đây sau khi người quản trị soạn thảo...'}
                       </p>
-                      <span className="text-[11px] text-slate-400">Vừa xong</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500">Vừa xong</span>
                     </div>
                   </div>
                 </div>
@@ -503,7 +503,7 @@ export function CmsBroadcastPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
+            <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-100 dark:border-white/10!">
               <Button onClick={() => setCreateModalOpen(false)} disabled={submitting}>
                 Hủy bỏ
               </Button>
@@ -535,22 +535,22 @@ export function CmsBroadcastPage() {
           ]}
           centered
         >
-          <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-3 mt-2">
+          <div className="p-4 rounded-xl border border-teal-200 bg-teal-50/40 space-y-3 mt-2 dark:border-teal-800 dark:bg-teal-950/20">
             <div className="flex items-start gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
                 <BellOutlined />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-slate-900 text-sm">
+                  <span className="font-semibold text-slate-900 text-sm dark:text-white">
                     {previewTitle || 'Tiêu đề thông báo mẫu'}
                   </span>
                   <Tag color="blue">Hệ thống</Tag>
                 </div>
-                <p className="mt-1.5 mb-1 text-xs text-slate-700 whitespace-pre-line">
+                <p className="mt-1.5 mb-1 text-xs text-slate-700 whitespace-pre-line dark:text-slate-300">
                   {previewMessage || 'Chưa nhập nội dung thông báo...'}
                 </p>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">
                   Đối tượng: {targetGroupLabel(watchedTargetGroup)} · Ước tính {estimate?.estimatedRecipients ?? 0} người nhận
                 </span>
               </div>
@@ -575,7 +575,7 @@ export function CmsBroadcastPage() {
               <Descriptions.Item label="Mã thông báo">#{selectedItem.id}</Descriptions.Item>
               <Descriptions.Item label="Tiêu đề">{selectedItem.title}</Descriptions.Item>
               <Descriptions.Item label="Nội dung">
-                <div className="whitespace-pre-line text-slate-800">{selectedItem.message}</div>
+                <div className="whitespace-pre-line text-slate-800 dark:text-slate-200">{selectedItem.message}</div>
               </Descriptions.Item>
               <Descriptions.Item label="Đối tượng">
                 {targetGroupLabel(selectedItem.targetGroup)}

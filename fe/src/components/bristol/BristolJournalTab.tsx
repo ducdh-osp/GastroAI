@@ -172,7 +172,7 @@ export function BristolJournalTab({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Segmented
           value={view}
           options={[
@@ -185,25 +185,25 @@ export function BristolJournalTab({
       </div>
 
       {view === 'trash' ? (
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <BristolTrashTable onRestored={onMutated} />
         </Card>
       ) : (
         <>
           {date && (
             <Alert
-              className="mb-4"
+              className="mb-6"
               type="info"
               showIcon
               message={`Đang hiển thị các ghi nhận ngày ${formatFilterDate(date)}`}
               action={<Button size="small" onClick={onClearFilter}>Bỏ lọc</Button>}
             />
           )}
-          {error && <Alert type="error" message={error} showIcon className="mb-4" />}
+          {error && <Alert type="error" message={error} showIcon className="mb-6" />}
 
           <Spin spinning={loading}>
             {!loading && groups.length === 0 ? (
-              <Card className="rounded-2xl border-black/5 shadow-sm">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={date ? 'Không có ghi nhận Bristol trong ngày này' : 'Chưa có ghi nhận Bristol nào'}
@@ -214,7 +214,7 @@ export function BristolJournalTab({
                 {groups.map((group) => (
                   <Card
                     key={group.date}
-                    className="overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_12px_32px_rgba(15,23,42,0.09)] dark:border-white/10 [&_.ant-card-head]:bg-slate-50/80 dark:[&_.ant-card-head]:bg-white/[0.025]"
+                    className="overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_12px_32px_rgba(15,23,42,0.09)] dark:border-white/10! [&_.ant-card-head]:bg-slate-50/80 dark:[&_.ant-card-head]:bg-white/[0.025]"
                     styles={{ body: { padding: 0 } }}
                     title={(
                       <span className="flex items-center gap-2.5">

@@ -395,7 +395,7 @@ export default function CmsArticlesPage() {
         {error && <Alert type="error" message={error} showIcon className="mb-4!" />}
 
         <div className="flex flex-col gap-4">
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <div className="flex flex-wrap items-center gap-3">
             <Input.Search
               placeholder="Tìm theo tiêu đề bài viết"
@@ -454,7 +454,7 @@ export default function CmsArticlesPage() {
           </div>
         </Card>
 
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <Table<CmsArticleSummary>
             columns={columns}
             dataSource={articles}

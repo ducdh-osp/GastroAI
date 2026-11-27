@@ -56,7 +56,7 @@ export default function ChangePasswordPage() {
   return (
     <AppShell>
       <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center py-4">
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
           <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
           {error && <Alert type="error" message={error} showIcon className="my-4!" />}

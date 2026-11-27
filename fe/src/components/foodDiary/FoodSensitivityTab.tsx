@@ -11,9 +11,9 @@ const { Text, Title } = Typography
 const MIN_MEALS_FOR_ANALYSIS = 15
 const NOTABLE_GAP_POINTS = 20
 const METRIC_CARD_CLASS =
-  'h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.1)] dark:border-white/10 dark:bg-slate-900/80'
+  'h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.1)] dark:border-white/10! dark:bg-slate-900/80!'
 const CONTENT_CARD_CLASS =
-  'overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.07)] [&_.ant-card-head]:border-slate-100 [&_.ant-card-head]:bg-slate-50/80 [&_.ant-card-head-title]:py-4 dark:border-white/10 dark:bg-slate-900/80 dark:[&_.ant-card-head]:border-white/10 dark:[&_.ant-card-head]:bg-white/[0.03]'
+  'overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.07)] [&_.ant-card-head]:border-slate-100 [&_.ant-card-head]:bg-slate-50/80 [&_.ant-card-head-title]:py-4 dark:border-white/10! dark:bg-slate-900/80! dark:[&_.ant-card-head]:border-white/10! dark:[&_.ant-card-head]:bg-white/[0.03]!'
 
 function colorFor(item: FoodCorrelationItem, baseline: number): string {
   const gap = item.correlationPercent - baseline
@@ -82,10 +82,7 @@ export function FoodSensitivityTab({ days, onDaysChange, onViewEvidence }: FoodS
   return (
     <div className="grid gap-6 pb-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Title level={4} className="mb-1!">Nhạy cảm thực phẩm</Title>
-          <Text type="secondary">Đối chiếu bữa ăn, triệu chứng tự ghi và nhật ký Bristol.</Text>
-        </div>
+        <Text strong>Khoảng thời gian phân tích</Text>
         <Segmented
           value={days}
           options={[
@@ -135,8 +132,7 @@ export function FoodSensitivityTab({ days, onDaysChange, onViewEvidence }: FoodS
                   <Card className={METRIC_CARD_CLASS}>
                     <Statistic
                       title="Tỷ lệ bữa có kèm triệu chứng"
-                      value={profile.baselineSymptomRatePercent}
-                      precision={0}
+                      value={Math.round(profile.baselineSymptomRatePercent)}
                       suffix="%"
                     />
                   </Card>
@@ -152,6 +148,12 @@ export function FoodSensitivityTab({ days, onDaysChange, onViewEvidence }: FoodS
               ) : (
                 <div className="grid gap-6">
                   <Card className={CONTENT_CARD_CLASS} title="Thực phẩm thường đi kèm triệu chứng">
+                    <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                      <span className="inline-block w-8 border-t-2 border-dashed border-slate-500" aria-hidden="true" />
+                      <span>
+                        Mức nền: <strong>{profile.baselineSymptomRatePercent.toFixed(0)}%</strong> bữa ăn có kèm triệu chứng
+                      </span>
+                    </div>
                     <ResponsiveContainer width="100%" height={Math.max(220, profile.topCorrelations.length * 44)}>
                       <BarChart
                         data={profile.topCorrelations}
@@ -172,8 +174,8 @@ export function FoodSensitivityTab({ days, onDaysChange, onViewEvidence }: FoodS
                         <ReferenceLine
                           x={profile.baselineSymptomRatePercent}
                           stroke="#595959"
+                          strokeWidth={2}
                           strokeDasharray="4 4"
-                          label={{ value: 'Mức nền', position: 'insideTopRight', fontSize: 11, fill: '#595959' }}
                         />
                         <Bar dataKey="correlationPercent" radius={[0, 4, 4, 0]}>
                           {profile.topCorrelations.map((item) => (

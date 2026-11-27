@@ -176,7 +176,7 @@ export default function MedicalProfilePage() {
           <HealthReportButton />
         </div>
 
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           {loading ? (
             <div className="flex justify-center py-12">
               <Spin indicator={<LoadingOutlined className="text-teal-600 text-xl" spin />} />

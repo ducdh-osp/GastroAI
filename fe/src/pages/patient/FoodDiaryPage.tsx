@@ -1,18 +1,17 @@
-import { BarChartOutlined, BulbOutlined, CoffeeOutlined, PlusOutlined } from '@ant-design/icons'
-import { Alert, Button, Tabs, Typography } from 'antd'
+import { BarChartOutlined, CoffeeOutlined } from '@ant-design/icons'
+import { Alert, Tabs, Typography } from 'antd'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { createFoodDiaryEntry, updateFoodDiaryEntry } from '../../api/foodDiary'
 import type { FoodDiaryEntry, FoodDiaryEntryRequest } from '../../api/foodDiary'
 import { FoodDiaryEntryModal } from '../../components/foodDiary/FoodDiaryEntryModal'
 import { FoodDiaryJournalTab } from '../../components/foodDiary/FoodDiaryJournalTab'
 import { FoodDiaryTrendTab } from '../../components/foodDiary/FoodDiaryTrendTab'
-import { FoodSensitivityTab } from '../../components/foodDiary/FoodSensitivityTab'
-import { HealthReportButton } from '../../components/healthReport/HealthReportButton'
+import { JournalActions } from '../../components/healthReport/JournalActions'
 import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
-type MainTab = 'journal' | 'trend' | 'sensitivity'
+type MainTab = 'journal' | 'trend'
 
 function parseOption<T extends number>(value: string | null, options: readonly T[], fallback: T): T {
   const parsed = Number(value)
@@ -22,13 +21,12 @@ function parseOption<T extends number>(value: string | null, options: readonly T
 export default function FoodDiaryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab')
-  const activeTab: MainTab = requestedTab === 'trend' || requestedTab === 'sensitivity' ? requestedTab : 'journal'
+  const activeTab: MainTab = requestedTab === 'trend' ? 'trend' : 'journal'
   const journalView = searchParams.get('view') === 'trash' ? 'trash' : 'list'
   const date = searchParams.get('date') || undefined
   const keyword = searchParams.get('keyword') || undefined
   const keywordDays = parseOption(searchParams.get('keywordDays'), [30, 90, 180] as const, 90)
   const trendDays = parseOption(searchParams.get('trendDays'), [7, 30, 90] as const, 30)
-  const sensitivityDays = parseOption(searchParams.get('sensitivityDays'), [30, 90, 180] as const, 90)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FoodDiaryEntry | null>(null)
@@ -96,33 +94,23 @@ export default function FoodDiaryPage() {
     })
   }
 
-  function showSensitivityEvidence(selectedKeyword: string, days: number) {
-    updateSearch({
-      tab: null,
-      view: null,
-      date: null,
-      keyword: selectedKeyword,
-      keywordDays: days,
-    })
+  if (requestedTab === 'sensitivity') {
+    const days = parseOption(searchParams.get('sensitivityDays'), [30, 90, 180] as const, 90)
+    return <Navigate to={`/food-sensitivity?sensitivityDays=${days}`} replace />
   }
 
   return (
     <AppShell>
       <div className="w-full">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhật ký ăn uống</Title>
             <Text type="secondary">
-              Ghi lại bữa ăn, theo dõi xu hướng và đối chiếu thực phẩm với triệu chứng tại một nơi.
+              Ghi lại bữa ăn và theo dõi xu hướng ăn uống theo thời gian.
             </Text>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <HealthReportButton />
-            <Button type="primary" size="large" icon={<PlusOutlined />} onClick={openCreate}>
-              Ghi bữa ăn
-            </Button>
-          </div>
+          <JournalActions createLabel="Thêm bữa ăn" onCreate={openCreate} />
         </div>
 
         {actionError && (
@@ -154,6 +142,12 @@ export default function FoodDiaryPage() {
                   reloadVersion={reloadVersion}
                   onViewChange={(view) => updateSearch({ view: view === 'list' ? null : view })}
                   onClearFilters={() => updateSearch({ date: null, keyword: null, keywordDays: null })}
+                  onKeywordChange={(nextKeyword) => updateSearch({
+                    date: null,
+                    keyword: nextKeyword || null,
+                    keywordDays: nextKeyword ? keywordDays : null,
+                  })}
+                  onKeywordDaysChange={(days) => updateSearch({ keywordDays: days })}
                   onEdit={openEdit}
                   onMutated={() => setReloadVersion((version) => version + 1)}
                 />
@@ -167,17 +161,6 @@ export default function FoodDiaryPage() {
                   days={trendDays}
                   onDaysChange={(days) => updateSearch({ trendDays: days })}
                   onDaySelect={showJournalDate}
-                />
-              ),
-            },
-            {
-              key: 'sensitivity',
-              label: <span><BulbOutlined /> Nhạy cảm thực phẩm</span>,
-              children: (
-                <FoodSensitivityTab
-                  days={sensitivityDays}
-                  onDaysChange={(days) => updateSearch({ sensitivityDays: days })}
-                  onViewEvidence={showSensitivityEvidence}
                 />
               ),
             },

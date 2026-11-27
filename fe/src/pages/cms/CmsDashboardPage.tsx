@@ -283,7 +283,7 @@ export default function CmsDashboardPage() {
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} lg={6}>
                 <Card
-                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800"
+                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800!"
                   styles={{ body: { height: '100%' } }}
                 >
                   <div className="flex h-full items-start justify-between gap-3">
@@ -312,7 +312,7 @@ export default function CmsDashboardPage() {
 
               <Col xs={24} sm={12} lg={6}>
                 <Card
-                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800"
+                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800!"
                   styles={{ body: { height: '100%' } }}
                 >
                   <div className="flex h-full items-start justify-between gap-3">
@@ -341,7 +341,7 @@ export default function CmsDashboardPage() {
 
               <Col xs={24} sm={12} lg={6}>
                 <Card
-                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800"
+                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800!"
                   styles={{ body: { height: '100%' } }}
                 >
                   <div className="flex h-full items-start justify-between gap-3">
@@ -385,7 +385,7 @@ export default function CmsDashboardPage() {
 
               <Col xs={24} sm={12} lg={6}>
                 <Card
-                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800"
+                  className="h-full rounded-2xl border-slate-100 shadow-sm transition hover:shadow-md dark:border-neutral-800!"
                   styles={{ body: { height: '100%' } }}
                 >
                   <div className="flex h-full items-start justify-between gap-3">
@@ -606,7 +606,7 @@ export default function CmsDashboardPage() {
             </Card>
 
             {/* Detailed Data Tables (Tabs) */}
-            <Card className="rounded-2xl border-slate-100 shadow-sm dark:border-neutral-800">
+            <Card className="rounded-2xl border-slate-100 shadow-sm dark:border-neutral-800!">
               <Tabs
                 defaultActiveKey="symptoms"
                 items={[

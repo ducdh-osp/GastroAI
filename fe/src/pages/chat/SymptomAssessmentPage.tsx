@@ -307,7 +307,7 @@ export default function SymptomAssessmentPage() {
 
         {result && careAdvice ? (
           <div className="flex shrink-0 flex-col gap-5 pb-6">
-            <Card className="rounded-2xl border-black/5 shadow-sm">
+            <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <Result
                 status={result.careRecommendation === 'EMERGENCY_CARE' ? 'error' : result.careRecommendation === 'SEE_DOCTOR' ? 'warning' : 'success'}
                 icon={result.emergency ? <ExclamationCircleOutlined /> : <CheckCircleOutlined />}
@@ -333,7 +333,7 @@ export default function SymptomAssessmentPage() {
               />
             </Card>
 
-            <Card title="Tóm tắt câu trả lời" className="rounded-2xl border-black/5 shadow-sm">
+            <Card title="Tóm tắt câu trả lời" className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <dl className="grid gap-4 sm:grid-cols-2">
                 <div><dt className="text-xs text-slate-500 dark:text-white">Triệu chứng chính</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-white">{symptomLabel(answers.primarySymptom)}{answers.primarySymptomDetail ? `: ${answers.primarySymptomDetail}` : ''}</dd></div>
                 <div><dt className="text-xs text-slate-500 dark:text-white">Thời gian</dt><dd className="mb-0 mt-1 font-medium text-slate-800 dark:text-white">{durationLabel(answers.duration)}</dd></div>
@@ -381,7 +381,7 @@ export default function SymptomAssessmentPage() {
             </div>
           </div>
         ) : (
-          <Card className="mb-6 shrink-0 rounded-2xl border-black/5 shadow-sm">
+          <Card className="mb-6 shrink-0 rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
             {step === 0 && (
               <div className="flex flex-col gap-6">
                 <div>

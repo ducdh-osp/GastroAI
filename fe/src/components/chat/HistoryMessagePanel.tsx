@@ -190,8 +190,8 @@ export function HistoryMessagePanel({
                 <div className={`flex max-w-[80%] flex-col ${isPatient ? 'items-end' : 'items-start'}`}>
                   {/* Cảnh báo khẩn cấp */}
                   {!isPatient && msg.emergency && (
-                    <div className="mb-2 flex items-start gap-2 rounded-xl border-2 border-red-400 bg-red-50 px-3 py-2.5 text-sm text-red-900">
-                      <WarningFilled className="shrink-0 text-red-600 mt-0.5" />
+                    <div className="mb-2 flex items-start gap-2 rounded-xl border-2 border-red-400 bg-red-50 px-3 py-2.5 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100">
+                      <WarningFilled className="shrink-0 text-red-600 mt-0.5 dark:text-red-400" />
                       <span>
                         <strong className="block">Phát hiện dấu hiệu cần cấp cứu!</strong>
                         Vui lòng gọi <PhoneOutlined /> <a href="tel:115" className="font-bold text-red-900 underline">115</a>.
