@@ -39,7 +39,7 @@ import {
 import { listCmsAccounts } from '../../api/cmsRbac'
 import { AuditAnomalyRulesTab } from '../../components/cms/AuditAnomalyRulesTab'
 import { CmsAppShell } from '../../components/cms/CmsAppShell'
-import { DbIpAttribution, IpLocationText } from '../../components/cms/IpLocation'
+import { IpLocationText } from '../../components/cms/IpLocation'
 import { formatDateTime } from '../../lib/format'
 
 const { Title, Text } = Typography
@@ -423,9 +423,6 @@ export default function CmsAuditLogsPage() {
           },
         ]}
       />
-      <div className="mt-4">
-        <DbIpAttribution />
-      </div>
     </Card>
 
     <Drawer

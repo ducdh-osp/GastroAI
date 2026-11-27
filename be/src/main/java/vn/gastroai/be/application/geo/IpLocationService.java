@@ -15,9 +15,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.GZIPInputStream;
 
 /**
- * Tra VỊ TRÍ ƯỚC TÍNH (quốc gia + tỉnh/bang) theo địa chỉ IP, hoàn toàn offline — dữ liệu DB-IP City
- * Lite (CC BY 4.0, xem resources/geoip/NOTICE.md) nằm sẵn trong classpath, nạp 1 lần lúc khởi động vào
- * mảng nguyên thuỷ, không gọi dịch vụ ngoài nào, không thư viện ngoài.
+ * Tra VỊ TRÍ ƯỚC TÍNH (quốc gia + tỉnh/bang) theo địa chỉ IP, hoàn toàn offline — dữ liệu nằm sẵn trong
+ * classpath, nạp 1 lần lúc khởi động vào mảng nguyên thuỷ, không gọi dịch vụ ngoài nào, không thư viện ngoài.
+ *
+ * <p>Nguồn dữ liệu: DB-IP City Lite (https://db-ip.com), bản 6/2026, lấy qua gói npm
+ * {@code @ip-location-db/dbip-city-mmdb}; giấy phép CC BY 4.0
+ * (https://creativecommons.org/licenses/by/4.0/). Đã thay đổi so với bản gốc: chỉ giữ quốc gia và
+ * tỉnh/bang, gộp các dải liền nhau cùng nước + tỉnh, chỉ lưu IP bắt đầu của mỗi dải (IPv6 giữ 64 bit cao),
+ * chuyển sang định dạng nhị phân dưới đây và nén gzip.
  *
  * <p>Định dạng 2 file {@code geoip/geoip-v4.bin.gz} và {@code geoip/geoip-v6.bin.gz} (big-endian, toàn
  * bộ file nén gzip):

@@ -13,12 +13,3 @@ export function IpLocationText({ location }: { location: string | null | undefin
     </Tooltip>
   )
 }
-
-/** Ghi nguồn dữ liệu vị trí IP theo giấy phép CC BY 4.0 của DB-IP (xem be/src/main/resources/geoip/NOTICE.md). */
-export function DbIpAttribution() {
-  return (
-    <Text type="secondary" className="block text-xs">
-      <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a>
-    </Text>
-  )
-}
