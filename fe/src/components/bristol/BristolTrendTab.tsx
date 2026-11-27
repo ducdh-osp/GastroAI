@@ -11,9 +11,19 @@ interface BristolTrendTabProps {
   days: 7 | 30 | 90
   onDaysChange: (days: 7 | 30 | 90) => void
   onPointSelect: (loggedAt: string) => void
+  title?: string
+  titleLevel?: 2 | 3 | 4 | 5
+  description?: string
 }
 
-export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTrendTabProps) {
+export function BristolTrendTab({
+  days,
+  onDaysChange,
+  onPointSelect,
+  title = 'Xu hướng Bristol',
+  titleLevel = 4,
+  description = 'Chọn một điểm trên biểu đồ để xem các ghi nhận của ngày đó.',
+}: BristolTrendTabProps) {
   const [points, setPoints] = useState<BristolLogPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,8 +55,8 @@ export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTr
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Title level={4} className="mb-1!">Xu hướng Bristol</Title>
-          <Text type="secondary">Chọn một điểm trên biểu đồ để xem các ghi nhận của ngày đó.</Text>
+          <Title level={titleLevel} className="mb-1! mt-1!">{title}</Title>
+          <Text type="secondary">{description}</Text>
         </div>
         <Segmented
           value={days}

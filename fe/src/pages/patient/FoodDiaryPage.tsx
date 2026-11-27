@@ -1,18 +1,14 @@
-import { BarChartOutlined, CoffeeOutlined } from '@ant-design/icons'
-import { Alert, Tabs, Typography } from 'antd'
+import { Alert, Typography } from 'antd'
 import { useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { createFoodDiaryEntry, updateFoodDiaryEntry } from '../../api/foodDiary'
 import type { FoodDiaryEntry, FoodDiaryEntryRequest } from '../../api/foodDiary'
 import { FoodDiaryEntryModal } from '../../components/foodDiary/FoodDiaryEntryModal'
 import { FoodDiaryJournalTab } from '../../components/foodDiary/FoodDiaryJournalTab'
-import { FoodDiaryTrendTab } from '../../components/foodDiary/FoodDiaryTrendTab'
 import { JournalActions } from '../../components/healthReport/JournalActions'
 import { AppShell } from '../../components/layout/AppShell'
 
 const { Title, Text } = Typography
-type MainTab = 'journal' | 'trend'
-
 function parseOption<T extends number>(value: string | null, options: readonly T[], fallback: T): T {
   const parsed = Number(value)
   return options.includes(parsed as T) ? parsed as T : fallback
@@ -21,12 +17,10 @@ function parseOption<T extends number>(value: string | null, options: readonly T
 export default function FoodDiaryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab')
-  const activeTab: MainTab = requestedTab === 'trend' ? 'trend' : 'journal'
   const journalView = searchParams.get('view') === 'trash' ? 'trash' : 'list'
   const date = searchParams.get('date') || undefined
   const keyword = searchParams.get('keyword') || undefined
   const keywordDays = parseOption(searchParams.get('keywordDays'), [30, 90, 180] as const, 90)
-  const trendDays = parseOption(searchParams.get('trendDays'), [7, 30, 90] as const, 30)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FoodDiaryEntry | null>(null)
@@ -43,10 +37,6 @@ export default function FoodDiaryPage() {
       })
       return next
     }, { replace })
-  }
-
-  function selectTab(tab: MainTab) {
-    updateSearch({ tab: tab === 'journal' ? null : tab })
   }
 
   function openCreate() {
@@ -84,14 +74,9 @@ export default function FoodDiaryPage() {
     }
   }
 
-  function showJournalDate(selectedDate: string) {
-    updateSearch({
-      tab: null,
-      view: null,
-      date: selectedDate,
-      keyword: null,
-      keywordDays: null,
-    })
+  if (requestedTab === 'trend') {
+    const days = parseOption(searchParams.get('trendDays'), [7, 30, 90] as const, 30)
+    return <Navigate to={`/food-diary-history?trendDays=${days}`} replace />
   }
 
   if (requestedTab === 'sensitivity') {
@@ -107,7 +92,7 @@ export default function FoodDiaryPage() {
             <Text type="secondary">Theo dõi sức khỏe</Text>
             <Title level={2} className="mb-1! mt-1!">Nhật ký ăn uống</Title>
             <Text type="secondary">
-              Ghi lại bữa ăn và theo dõi xu hướng ăn uống theo thời gian.
+              Ghi lại bữa ăn và các triệu chứng đi kèm để theo dõi sức khỏe hằng ngày.
             </Text>
           </div>
           <JournalActions createLabel="Thêm bữa ăn" onCreate={openCreate} />
@@ -124,47 +109,22 @@ export default function FoodDiaryPage() {
           />
         )}
 
-        <Tabs
-          activeKey={activeTab}
-          destroyOnHidden
-          size="large"
-          onChange={(key) => selectTab(key as MainTab)}
-          items={[
-            {
-              key: 'journal',
-              label: <span><CoffeeOutlined /> Nhật ký</span>,
-              children: (
-                <FoodDiaryJournalTab
-                  view={journalView}
-                  date={date}
-                  keyword={keyword}
-                  keywordDays={keywordDays}
-                  reloadVersion={reloadVersion}
-                  onViewChange={(view) => updateSearch({ view: view === 'list' ? null : view })}
-                  onClearFilters={() => updateSearch({ date: null, keyword: null, keywordDays: null })}
-                  onKeywordChange={(nextKeyword) => updateSearch({
-                    date: null,
-                    keyword: nextKeyword || null,
-                    keywordDays: nextKeyword ? keywordDays : null,
-                  })}
-                  onKeywordDaysChange={(days) => updateSearch({ keywordDays: days })}
-                  onEdit={openEdit}
-                  onMutated={() => setReloadVersion((version) => version + 1)}
-                />
-              ),
-            },
-            {
-              key: 'trend',
-              label: <span><BarChartOutlined /> Xu hướng</span>,
-              children: (
-                <FoodDiaryTrendTab
-                  days={trendDays}
-                  onDaysChange={(days) => updateSearch({ trendDays: days })}
-                  onDaySelect={showJournalDate}
-                />
-              ),
-            },
-          ]}
+        <FoodDiaryJournalTab
+          view={journalView}
+          date={date}
+          keyword={keyword}
+          keywordDays={keywordDays}
+          reloadVersion={reloadVersion}
+          onViewChange={(view) => updateSearch({ view: view === 'list' ? null : view })}
+          onClearFilters={() => updateSearch({ date: null, keyword: null, keywordDays: null })}
+          onKeywordChange={(nextKeyword) => updateSearch({
+            date: null,
+            keyword: nextKeyword || null,
+            keywordDays: nextKeyword ? keywordDays : null,
+          })}
+          onKeywordDaysChange={(days) => updateSearch({ keywordDays: days })}
+          onEdit={openEdit}
+          onMutated={() => setReloadVersion((version) => version + 1)}
         />
       </div>
 

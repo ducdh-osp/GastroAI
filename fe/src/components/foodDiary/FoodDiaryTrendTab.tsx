@@ -15,9 +15,19 @@ interface FoodDiaryTrendTabProps {
   days: 7 | 30 | 90
   onDaysChange: (days: 7 | 30 | 90) => void
   onDaySelect: (date: string) => void
+  title?: string
+  titleLevel?: 2 | 3 | 4 | 5
+  description?: string
 }
 
-export function FoodDiaryTrendTab({ days, onDaysChange, onDaySelect }: FoodDiaryTrendTabProps) {
+export function FoodDiaryTrendTab({
+  days,
+  onDaysChange,
+  onDaySelect,
+  title = 'Xu hướng ghi nhận bữa ăn',
+  titleLevel = 4,
+  description = 'Chọn một cột trên biểu đồ để xem các bữa của ngày đó.',
+}: FoodDiaryTrendTabProps) {
   const [points, setPoints] = useState<DailyCountPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -49,8 +59,8 @@ export function FoodDiaryTrendTab({ days, onDaysChange, onDaySelect }: FoodDiary
     <div className="grid gap-6 pb-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Title level={4} className="mb-1!">Xu hướng ghi nhận bữa ăn</Title>
-          <Text type="secondary">Chọn một cột trên biểu đồ để xem các bữa của ngày đó.</Text>
+          <Title level={titleLevel} className="mb-1! mt-1!">{title}</Title>
+          <Text type="secondary">{description}</Text>
         </div>
         <Segmented
           value={days}
