@@ -180,7 +180,7 @@ export default function CmsRbacPage() {
       </Link>
     </div>
     {error && <Alert type="error" message={error} showIcon className="mb-4" closable onClose={() => setError(null)} />}
-    <Card className="rounded-2xl border-black/5 shadow-sm">
+    <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
       <Space className="mb-4" wrap><Input.Search placeholder="Tìm theo tên hoặc email" allowClear value={query} onChange={(e) => setQuery(e.target.value)} onSearch={() => void reload(1)} style={{ width: 300 }} /></Space>
       <Table<CmsAccount> rowKey={(a) => `${a.accountType}-${a.id}`} loading={loading} columns={columns} dataSource={data} pagination={{ current: page, pageSize: PAGE_SIZE, total, showSizeChanger: false, onChange: (next) => void reload(next) }} />
     </Card>

@@ -157,7 +157,7 @@ export default function FaqPage() {
         </div>
 
         {/* Main Content: Grouped Accordions */}
-        <Card className="rounded-xl shadow-xs border-slate-200 dark:border-slate-800 dark:bg-slate-900/40" styles={{ body: { padding: 16 } }}>
+        <Card className="rounded-xl shadow-xs border-slate-200 dark:border-slate-800! dark:bg-slate-900/40!" styles={{ body: { padding: 16 } }}>
           {loading ? (
             <div className="p-4 space-y-4">
               <Skeleton active paragraph={{ rows: 2 }} />
@@ -223,7 +223,7 @@ export default function FaqPage() {
 
         {/* Call to action: Chat bot & Articles */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <Card className="h-full rounded-xl border-teal-100 bg-teal-50/50 hover:bg-teal-50 transition-colors dark:border-teal-800 dark:bg-teal-900/30 dark:hover:bg-teal-900/50">
+          <Card className="h-full rounded-xl border-teal-100 bg-teal-50/50 hover:bg-teal-50 transition-colors dark:border-teal-800! dark:bg-teal-900/30! dark:hover:bg-teal-900/50">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-teal-600 p-2.5 text-white">
                 <CommentOutlined className="text-lg" />
@@ -250,7 +250,7 @@ export default function FaqPage() {
             </div>
           </Card>
 
-          <Card className="h-full rounded-xl border-slate-200 bg-white hover:bg-slate-50/50 transition-colors dark:border-white/10 dark:bg-neutral-900 dark:hover:bg-neutral-800/50">
+          <Card className="h-full rounded-xl border-slate-200 bg-white hover:bg-slate-50/50 transition-colors dark:border-white/10! dark:bg-neutral-900! dark:hover:bg-neutral-800/50">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-slate-800 p-2.5 text-white">
                 <BookOutlined className="text-lg" />

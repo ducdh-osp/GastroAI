@@ -912,7 +912,7 @@ export default function CmsCatalogsPage() {
 
         {/* Metric / Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="shadow-xs border-slate-200 dark:border-slate-800" styles={{ body: { padding: '16px' } }}>
+          <Card className="shadow-xs border-slate-200 dark:border-slate-800!" styles={{ body: { padding: '16px' } }}>
             <div className="flex items-center justify-between">
               <div>
                 <Text type="secondary" className="text-xs uppercase font-medium">
@@ -930,7 +930,7 @@ export default function CmsCatalogsPage() {
             </div>
           </Card>
 
-          <Card className="shadow-xs border-slate-200 dark:border-slate-800" styles={{ body: { padding: '16px' } }}>
+          <Card className="shadow-xs border-slate-200 dark:border-slate-800!" styles={{ body: { padding: '16px' } }}>
             <div className="flex items-center justify-between">
               <div>
                 <Text type="secondary" className="text-xs uppercase font-medium">
@@ -945,7 +945,7 @@ export default function CmsCatalogsPage() {
             </div>
           </Card>
 
-          <Card className="shadow-xs border-slate-200 dark:border-slate-800" styles={{ body: { padding: '16px' } }}>
+          <Card className="shadow-xs border-slate-200 dark:border-slate-800!" styles={{ body: { padding: '16px' } }}>
             <div className="flex items-center justify-between">
               <div>
                 <Text type="secondary" className="text-xs uppercase font-medium">
@@ -960,7 +960,7 @@ export default function CmsCatalogsPage() {
             </div>
           </Card>
 
-          <Card className="shadow-xs border-slate-200 dark:border-slate-800" styles={{ body: { padding: '16px' } }}>
+          <Card className="shadow-xs border-slate-200 dark:border-slate-800!" styles={{ body: { padding: '16px' } }}>
             <div className="flex items-center justify-between">
               <div>
                 <Text type="secondary" className="text-xs uppercase font-medium">
@@ -977,7 +977,7 @@ export default function CmsCatalogsPage() {
         </div>
 
         {/* Filter and Tab Section */}
-        <Card className="shadow-xs border-slate-200 dark:border-slate-800" styles={{ body: { padding: '16px 20px' } }}>
+        <Card className="shadow-xs border-slate-200 dark:border-slate-800!" styles={{ body: { padding: '16px 20px' } }}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <Tabs
               activeKey={selectedTypeTab}
@@ -1044,7 +1044,7 @@ export default function CmsCatalogsPage() {
         </Card>
 
         {/* Data Table */}
-        <Card className="shadow-xs border-slate-200 dark:border-slate-800" styles={{ body: { padding: 0 } }}>
+        <Card className="shadow-xs border-slate-200 dark:border-slate-800!" styles={{ body: { padding: 0 } }}>
           <Table
             columns={columns}
             dataSource={filteredItems}

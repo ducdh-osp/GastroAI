@@ -52,16 +52,16 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
       <div className={`flex max-w-[85%] flex-col sm:max-w-[72%] ${isPatient ? 'items-end' : 'items-start'}`}>
         {!isPatient && message.emergency && (
           <div
-            className="mb-2 flex items-start gap-2.5 rounded-xl border-2 border-red-400 bg-red-50 px-3.5 py-3 text-sm leading-5 text-red-900 shadow-sm"
+            className="mb-2 flex items-start gap-2.5 rounded-xl border-2 border-red-400 bg-red-50 px-3.5 py-3 text-sm leading-5 text-red-900 shadow-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100"
             role="alert"
           >
-            <WarningFilled className="mt-0.5 shrink-0 text-lg text-red-600" />
+            <WarningFilled className="mt-0.5 shrink-0 text-lg text-red-600 dark:text-red-400" />
             <span>
               <strong className="block">Phát hiện dấu hiệu cần cấp cứu!</strong>
               Vui lòng gọi <PhoneOutlined /> <a href="tel:115" className="font-bold text-red-900 underline dark:text-red-100">115</a> hoặc đến ngay cơ sở y tế gần nhất.
               <span className="mt-1 block font-medium">Đừng chờ phản hồi trong ứng dụng trước khi tìm trợ giúp.</span>
               {matchedGroupsText && (
-                <span className="mt-1 block text-red-800">Dấu hiệu phát hiện: {matchedGroupsText}</span>
+                <span className="mt-1 block text-red-800 dark:text-red-200">Dấu hiệu phát hiện: {matchedGroupsText}</span>
               )}
             </span>
           </div>
@@ -69,14 +69,14 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
 
         {!isPatient && !message.emergency && matchedGroupsText && (
           <div
-            className="mb-2 flex items-start gap-2.5 rounded-xl border-2 border-amber-300 bg-amber-50 px-3.5 py-3 text-sm leading-5 text-amber-900 shadow-sm"
+            className="mb-2 flex items-start gap-2.5 rounded-xl border-2 border-amber-300 bg-amber-50 px-3.5 py-3 text-sm leading-5 text-amber-900 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-100"
             role="status"
           >
-            <WarningFilled className="mt-0.5 shrink-0 text-lg text-amber-500" />
+            <WarningFilled className="mt-0.5 shrink-0 text-lg text-amber-500 dark:text-amber-400" />
             <span>
               <strong className="block">Có dấu hiệu nên lưu ý</strong>
               Chưa phải tình huống cấp cứu, nhưng bạn nên đi khám bác sĩ để kiểm tra sớm.
-              <span className="mt-1 block text-amber-800">Dấu hiệu phát hiện: {matchedGroupsText}</span>
+              <span className="mt-1 block text-amber-800 dark:text-amber-200">Dấu hiệu phát hiện: {matchedGroupsText}</span>
             </span>
           </div>
         )}
@@ -85,7 +85,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
           className={`rounded-2xl px-4 py-3 text-[15px] leading-6 shadow-sm ${
             isPatient
               ? isFailed
-                ? 'rounded-br-md border border-red-200 bg-red-50 text-red-900'
+                ? 'rounded-br-md border border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100'
                 : 'rounded-br-md bg-teal-700 text-white'
               : 'rounded-bl-md bg-slate-100 text-slate-800 dark:text-white dark:bg-neutral-700 dark:text-white'
           }`}
@@ -150,7 +150,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
                   onClick={() => onRate(message, 'HELPFUL')}
                   className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
                     message.rating === 'HELPFUL'
-                      ? 'bg-teal-100 text-teal-700'
+                      ? 'bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300'
                       : 'text-slate-400 dark:text-white hover:bg-slate-100 hover:text-teal-600'
                   }`}
                 >
@@ -164,7 +164,7 @@ export function MessageBubble({ message, onRetry, onSuggestionClick, suggestions
                   onClick={() => onRate(message, 'UNHELPFUL')}
                   className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
                     message.rating === 'UNHELPFUL'
-                      ? 'bg-red-100 text-red-600'
+                      ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300'
                       : 'text-slate-400 dark:text-white hover:bg-slate-100 hover:text-red-500'
                   }`}
                 >

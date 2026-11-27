@@ -333,7 +333,7 @@ export default function CmsAuditLogsPage() {
 
     {error && <Alert type="error" title={error} showIcon className="mb-4" closable onClose={() => setError(null)} />}
 
-    <Card className="rounded-2xl border-black/5 shadow-sm">
+    <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
       <Tabs
         items={[
           {

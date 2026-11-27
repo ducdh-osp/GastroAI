@@ -82,7 +82,7 @@ export function HealthTrackingProgress() {
         {data && (
           <div className="grid gap-6">
             {!data.loggedToday && (
-              <Card className="overflow-hidden rounded-2xl border border-teal-200/80 bg-gradient-to-r from-teal-50 to-emerald-50 shadow-[0_8px_24px_rgba(13,148,136,0.08)] dark:border-teal-500/20 dark:from-teal-950/30 dark:to-emerald-950/20">
+              <Card className="overflow-hidden rounded-2xl border border-teal-200/80 bg-gradient-to-r from-teal-50 to-emerald-50 shadow-[0_8px_24px_rgba(13,148,136,0.08)] dark:border-teal-500/20! dark:from-teal-950/30 dark:to-emerald-950/20">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <Text strong className="block text-base">Hôm nay bạn chưa ghi nhật ký</Text>

@@ -775,7 +775,7 @@ export default function CmsFaqPage() {
               </div>
             </div>
 
-            <div className="text-xs text-slate-400 dark:text-white pt-2 border-t border-slate-100 flex justify-between">
+            <div className="text-xs text-slate-400 dark:text-white pt-2 border-t border-slate-100 dark:border-white/10 flex justify-between">
               <span>Mã câu hỏi: #{detailItem.id}</span>
               <span>Cập nhật: {dayjs(detailItem.updatedAt).format('DD/MM/YYYY HH:mm')}</span>
             </div>

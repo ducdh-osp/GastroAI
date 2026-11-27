@@ -11,9 +11,9 @@ const { Text, Title } = Typography
 const MIN_MEALS_FOR_ANALYSIS = 15
 const NOTABLE_GAP_POINTS = 20
 const METRIC_CARD_CLASS =
-  'h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.1)] dark:border-white/10 dark:bg-slate-900/80'
+  'h-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.1)] dark:border-white/10! dark:bg-slate-900/80!'
 const CONTENT_CARD_CLASS =
-  'overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.07)] [&_.ant-card-head]:border-slate-100 [&_.ant-card-head]:bg-slate-50/80 [&_.ant-card-head-title]:py-4 dark:border-white/10 dark:bg-slate-900/80 dark:[&_.ant-card-head]:border-white/10 dark:[&_.ant-card-head]:bg-white/[0.03]'
+  'overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.07)] [&_.ant-card-head]:border-slate-100 [&_.ant-card-head]:bg-slate-50/80 [&_.ant-card-head-title]:py-4 dark:border-white/10! dark:bg-slate-900/80! dark:[&_.ant-card-head]:border-white/10! dark:[&_.ant-card-head]:bg-white/[0.03]!'
 
 function colorFor(item: FoodCorrelationItem, baseline: number): string {
   const gap = item.correlationPercent - baseline
@@ -132,8 +132,7 @@ export function FoodSensitivityTab({ days, onDaysChange, onViewEvidence }: FoodS
                   <Card className={METRIC_CARD_CLASS}>
                     <Statistic
                       title="Tỷ lệ bữa có kèm triệu chứng"
-                      value={profile.baselineSymptomRatePercent}
-                      precision={0}
+                      value={Math.round(profile.baselineSymptomRatePercent)}
                       suffix="%"
                     />
                   </Card>

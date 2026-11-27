@@ -163,7 +163,7 @@ export default function CmsTriageKeywordsPage() {
 
         <Card
           size="small"
-          className="rounded-2xl border-black/5 shadow-sm"
+          className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!"
           title={
             <span className="flex items-center gap-2 text-sm font-semibold">
               <InfoCircleOutlined className="text-teal-600" />
@@ -199,7 +199,7 @@ export default function CmsTriageKeywordsPage() {
 
         {error && <Alert type="error" message={error} showIcon closable onClose={() => setError(null)} />}
 
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
           <Spin spinning={loading}>
             <Table<TriageKeyword>
               columns={columns}

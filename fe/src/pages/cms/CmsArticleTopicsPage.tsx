@@ -269,7 +269,7 @@ export default function CmsArticleTopicsPage() {
 
         {error && <Alert type="error" message={error} showIcon className="mb-4!" />}
 
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
           <Table<ArticleTopic>
             columns={columns}
             dataSource={topics}

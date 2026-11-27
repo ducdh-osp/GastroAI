@@ -573,7 +573,7 @@ export default function CmsDocumentsPage() {
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20 dark:border-green-900 dark:bg-green-900/20">
+              <Card className="rounded-xl shadow-xs border-green-100 bg-green-50/20 dark:border-green-900! dark:bg-green-900/20!">
                 <Statistic
                   title="Sẵn sàng cho RAG"
                   value={stats.ready}
@@ -582,7 +582,7 @@ export default function CmsDocumentsPage() {
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20 dark:border-blue-900 dark:bg-blue-900/20">
+              <Card className="rounded-xl shadow-xs border-blue-100 bg-blue-50/20 dark:border-blue-900! dark:bg-blue-900/20!">
                 <Statistic
                   title="Đang trong tiến trình"
                   value={stats.processing}
@@ -591,7 +591,7 @@ export default function CmsDocumentsPage() {
               </Card>
             </Col>
             <Col xs={12} sm={6}>
-              <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20 dark:border-red-900 dark:bg-red-900/20">
+              <Card className="rounded-xl shadow-xs border-red-100 bg-red-50/20 dark:border-red-900! dark:bg-red-900/20!">
                 <Statistic
                   title="Lỗi cần xử lý lại"
                   value={stats.error}

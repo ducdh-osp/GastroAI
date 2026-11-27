@@ -59,7 +59,7 @@ export default function CmsChangePasswordPage() {
   return (
     <CmsAppShell>
       <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center py-4">
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
           <Title level={3} className="mb-1!">Đổi mật khẩu</Title>
           <Text type="secondary">Nhập mật khẩu hiện tại và mật khẩu mới để bảo vệ tài khoản.</Text>
           {error && <Alert type="error" title={error} showIcon className="my-4!" />}

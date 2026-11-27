@@ -185,7 +185,7 @@ export function BristolJournalTab({
       </div>
 
       {view === 'trash' ? (
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
           <BristolTrashTable onRestored={onMutated} />
         </Card>
       ) : (
@@ -203,7 +203,7 @@ export function BristolJournalTab({
 
           <Spin spinning={loading}>
             {!loading && groups.length === 0 ? (
-              <Card className="rounded-2xl border-black/5 shadow-sm">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={date ? 'Không có ghi nhận Bristol trong ngày này' : 'Chưa có ghi nhận Bristol nào'}
@@ -214,7 +214,7 @@ export function BristolJournalTab({
                 {groups.map((group) => (
                   <Card
                     key={group.date}
-                    className="overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_12px_32px_rgba(15,23,42,0.09)] dark:border-white/10 [&_.ant-card-head]:bg-slate-50/80 dark:[&_.ant-card-head]:bg-white/[0.025]"
+                    className="overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_12px_32px_rgba(15,23,42,0.09)] dark:border-white/10! [&_.ant-card-head]:bg-slate-50/80 dark:[&_.ant-card-head]:bg-white/[0.025]"
                     styles={{ body: { padding: 0 } }}
                     title={(
                       <span className="flex items-center gap-2.5">

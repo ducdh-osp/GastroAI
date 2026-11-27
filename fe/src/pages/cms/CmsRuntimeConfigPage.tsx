@@ -79,7 +79,7 @@ export default function CmsRuntimeConfigPage() {
         {success && <Alert type="success" message={success} showIcon className="mb-4" closable onClose={() => setSuccess(null)} />}
 
         <Spin spinning={loading}>
-          <Card className="rounded-2xl border-black/5 shadow-sm">
+          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
             <Form form={form} layout="vertical" onFinish={handleSubmit}>
               <Form.Item
                 name="ragTopK"

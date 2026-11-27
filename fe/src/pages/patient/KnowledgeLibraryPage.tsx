@@ -84,10 +84,10 @@ function KnowledgeArticleCard({ article }: { article: KnowledgeArticleSummary })
     <Link to={`/articles/${article.slug}`} className="group block h-full no-underline">
       <Card
         hoverable
-        className="h-full overflow-hidden rounded-2xl border-black/5 shadow-sm transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md"
+        className="h-full overflow-hidden rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900! transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md"
         cover={
           illustration ? (
-            <div className="aspect-[9/5] w-full overflow-hidden border-b border-slate-100 bg-[#f8fafc] dark:border-slate-700">
+            <div className="aspect-[9/5] w-full overflow-hidden border-b border-slate-100 bg-[#f8fafc] dark:border-slate-700!">
               <img
                 src={illustration.src}
                 alt={illustration.alt}
@@ -143,7 +143,7 @@ function ArticleDetail({ slug }: { slug: string }) {
       {loading && <div className="py-20 text-center"><Spin size="large" /></div>}
       {error && <Alert type="error" showIcon message={error} />}
       {article && (
-        <Card className="rounded-2xl border-black/5 shadow-sm">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
           <Title level={2} className="mb-2! mt-1!">{cleanTitle(article.title)}</Title>
           <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
             <span>Chủ đề: <Tag color="cyan" className="m-0 ml-1">{article.category}</Tag></span>
@@ -167,7 +167,7 @@ function ArticleDetail({ slug }: { slug: string }) {
               </figcaption>
             </figure>
           )}
-          <div className="border-t border-slate-100 pt-5 text-slate-700 dark:text-white">
+          <div className="border-t border-slate-100 pt-5 text-slate-700 dark:border-white/10 dark:text-white">
             <MarkdownContent content={article.content} />
           </div>
           <div className="mt-8 rounded-xl bg-slate-50 p-4 text-sm dark:border dark:border-white/10 dark:bg-neutral-800/80">
