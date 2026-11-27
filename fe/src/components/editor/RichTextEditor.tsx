@@ -14,7 +14,8 @@ import { htmlToMarkdown, markdownToHtml } from '../../lib/markdownRichText'
 export interface RichTextEditorProps {
   id?: string
   value?: string
-  onChange?: (markdown: string) => void
+  onChange?: (value: string) => void
+  format?: 'markdown' | 'html'
   placeholder?: string
   minHeight?: number
   enableHeadings?: boolean
@@ -27,12 +28,13 @@ type BlockTag = 'p' | 'h1' | 'h2' | 'h3' | 'blockquote'
 /**
  * Trinh soan thao van ban truc quan (WYSIWYG Rich Text Editor).
  * Nguoi dung dinh dang bang nut truc quan (Tieu de, In dam, In nghieng, Danh sach, Chen anh),
- * du lieu phat ra duoc chuan hoa ve Markdown sach de tuong thich hoan toan voi DB va giao dien benh nhan.
+ * Du lieu co the phat ra Markdown sach hoac HTML de phuc vu cac noi dung da luu theo tung dinh dang.
  */
 export function RichTextEditor({
   id,
   value = '',
   onChange,
+  format = 'markdown',
   placeholder = 'Nhập nội dung tại đây...',
   minHeight = 200,
   enableHeadings = false,
@@ -60,12 +62,12 @@ export function RichTextEditor({
   const syncFromDom = useCallback(() => {
     const el = editorRef.current
     if (!el) return
-    const md = htmlToMarkdown(el.innerHTML)
-    const empty = !md.trim() && !el.querySelector('img')
+    const nextValue = format === 'html' ? el.innerHTML : htmlToMarkdown(el.innerHTML)
+    const empty = !el.textContent?.trim() && !el.querySelector('img')
     setIsEmpty(empty)
-    lastEmittedRef.current = md
-    onChange?.(md)
-  }, [onChange])
+    lastEmittedRef.current = nextValue
+    onChange?.(nextValue)
+  }, [format, onChange])
 
   // Chi cap nhat innerHTML khi gia tri thay doi tu ben ngoai (tai ban ghi, reset form, tai anh)
   useEffect(() => {
@@ -75,10 +77,10 @@ export function RichTextEditor({
     if (lastEmittedRef.current === incoming) {
       return
     }
-    el.innerHTML = markdownToHtml(incoming)
+    el.innerHTML = format === 'html' ? incoming : markdownToHtml(incoming)
     lastEmittedRef.current = incoming
     setIsEmpty(!incoming.trim())
-  }, [value])
+  }, [format, value])
 
   const updateToolbarState = useCallback(() => {
     const el = editorRef.current
@@ -160,16 +162,23 @@ export function RichTextEditor({
       setLinkPopoverOpen(false)
       return
     }
-    const normalizedUrl = /^https?:\/\//i.test(rawUrl) || rawUrl.startsWith('/') ? rawUrl : `https://${rawUrl}`
+    const normalizedUrl = /^https?:\/\//i.test(rawUrl)
+      || rawUrl.startsWith('/')
+      || rawUrl.startsWith('mailto:')
+      || /^\{\{[A-Za-z][A-Za-z0-9_]*\}\}$/.test(rawUrl)
+      ? rawUrl
+      : `https://${rawUrl}`
     restoreFocusAndSelection()
     const selection = window.getSelection()
     const selectedText = selection?.toString().trim() ?? ''
     const display = linkText.trim() || selectedText || normalizedUrl
 
     const anchor = document.createElement('a')
-    anchor.href = normalizedUrl
-    anchor.target = '_blank'
-    anchor.rel = 'noopener noreferrer'
+    anchor.setAttribute('href', normalizedUrl)
+    if (format === 'markdown') {
+      anchor.target = '_blank'
+      anchor.rel = 'noopener noreferrer'
+    }
     anchor.textContent = display
 
     if (selection && selection.rangeCount > 0 && editorRef.current?.contains(selection.anchorNode)) {

@@ -82,10 +82,7 @@ export function FoodSensitivityTab({ days, onDaysChange, onViewEvidence }: FoodS
   return (
     <div className="grid gap-6 pb-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Title level={4} className="mb-1!">Nhạy cảm thực phẩm</Title>
-          <Text type="secondary">Đối chiếu bữa ăn, triệu chứng tự ghi và nhật ký Bristol.</Text>
-        </div>
+        <Text strong>Khoảng thời gian phân tích</Text>
         <Segmented
           value={days}
           options={[
@@ -152,6 +149,12 @@ export function FoodSensitivityTab({ days, onDaysChange, onViewEvidence }: FoodS
               ) : (
                 <div className="grid gap-6">
                   <Card className={CONTENT_CARD_CLASS} title="Thực phẩm thường đi kèm triệu chứng">
+                    <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                      <span className="inline-block w-8 border-t-2 border-dashed border-slate-500" aria-hidden="true" />
+                      <span>
+                        Mức nền: <strong>{profile.baselineSymptomRatePercent.toFixed(0)}%</strong> bữa ăn có kèm triệu chứng
+                      </span>
+                    </div>
                     <ResponsiveContainer width="100%" height={Math.max(220, profile.topCorrelations.length * 44)}>
                       <BarChart
                         data={profile.topCorrelations}
@@ -172,8 +175,8 @@ export function FoodSensitivityTab({ days, onDaysChange, onViewEvidence }: FoodS
                         <ReferenceLine
                           x={profile.baselineSymptomRatePercent}
                           stroke="#595959"
+                          strokeWidth={2}
                           strokeDasharray="4 4"
-                          label={{ value: 'Mức nền', position: 'insideTopRight', fontSize: 11, fill: '#595959' }}
                         />
                         <Bar dataKey="correlationPercent" radius={[0, 4, 4, 0]}>
                           {profile.topCorrelations.map((item) => (

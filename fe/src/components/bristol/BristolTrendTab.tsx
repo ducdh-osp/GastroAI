@@ -42,7 +42,7 @@ export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTr
   const latest = points.at(-1)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Title level={4} className="mb-1!">Xu hướng Bristol</Title>
@@ -62,7 +62,7 @@ export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTr
       {error && <Alert type="error" message={error} showIcon />}
 
       <Spin spinning={loading}>
-        <Row gutter={[16, 16]}>
+        <Row gutter={[24, 24]}>
           <Col xs={24} sm={8}>
             <Card className="h-full rounded-2xl border-black/5 shadow-sm">
               <Statistic title={`Tổng lần trong ${days} ngày`} value={points.length} suffix="lần" />
@@ -82,7 +82,7 @@ export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTr
           </Col>
         </Row>
 
-        <Card className="mt-4 rounded-2xl border-black/5 shadow-sm" title={`Diễn biến trong ${days} ngày gần nhất`}>
+        <Card className="mt-6 rounded-2xl border-black/5 shadow-sm" title={`Diễn biến trong ${days} ngày gần nhất`}>
           {!loading && points.length === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có dữ liệu trong khoảng thời gian này" />
           ) : (

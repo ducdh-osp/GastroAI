@@ -1,11 +1,9 @@
 package vn.gastroai.be.api.cms.email;
 
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import vn.gastroai.be.application.audit.AuditLogService;
-import vn.gastroai.be.application.notification.EmailOutboxService;
 import vn.gastroai.be.application.notification.EmailTemplateContent;
 import vn.gastroai.be.application.notification.EmailTemplateService;
 import vn.gastroai.be.application.notification.EmailTemplateView;
@@ -15,9 +13,8 @@ import vn.gastroai.be.domain.notification.EmailTemplateCode;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-/** UC0074 - chi Admin duoc xem/sua/preview/gui thu mau email he thong. */
+/** UC0074 - chi Admin duoc xem/sua/preview mau email he thong. */
 @RestController
 @RequestMapping("/api/v1/cms/email-templates")
 public class EmailTemplateAdminController {
@@ -25,14 +22,11 @@ public class EmailTemplateAdminController {
     private static final String TARGET = "EMAIL_TEMPLATE";
 
     private final EmailTemplateService templateService;
-    private final EmailOutboxService outboxService;
     private final AuditLogService auditLogService;
 
     public EmailTemplateAdminController(EmailTemplateService templateService,
-                                        EmailOutboxService outboxService,
                                         AuditLogService auditLogService) {
         this.templateService = templateService;
-        this.outboxService = outboxService;
         this.auditLogService = auditLogService;
     }
 
@@ -61,16 +55,6 @@ public class EmailTemplateAdminController {
     public RenderedEmail preview(@Valid @RequestBody PreviewEmailTemplateRequest request) {
         return templateService.preview(request.code(), new EmailTemplateContent(
                 request.subjectTemplate(), request.htmlBodyTemplate(), request.textBodyTemplate()));
-    }
-
-    @PostMapping("/{code}/test")
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    public Map<String, String> sendTest(@PathVariable EmailTemplateCode code,
-                                        @Valid @RequestBody TestEmailTemplateRequest request) {
-        outboxService.enqueueTest(code, request.recipientEmail());
-        auditLogService.record(AuditAction.EMAIL_TEMPLATE_TEST_SEND, TARGET, code.name(),
-                "Gửi thử tới: " + request.recipientEmail());
-        return Map.of("message", "Email thử đã được đưa vào hàng đợi gửi");
     }
 
     static String describeUpdate(EmailTemplateView before, EmailTemplateView after) {
