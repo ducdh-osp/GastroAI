@@ -33,7 +33,7 @@ public record SymptomAssessmentInput(
         IMPROVING, STABLE, WORSENING
     }
 
-    /** The initial rule set is intended for adults; other groups need clinician-reviewed pathways. */
+    /** Target patient group used to apply group-specific triage caution thresholds. */
     public enum PatientGroup {
         ADULT, UNDER_18, PREGNANT_OR_RECENTLY_POSTPARTUM, UNSURE
     }

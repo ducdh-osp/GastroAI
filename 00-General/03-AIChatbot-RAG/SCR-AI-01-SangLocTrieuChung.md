@@ -52,6 +52,7 @@ Chat tự do ([SCR-PT-08-ChatAI.md](../02-NguoiDung-BenhNhan/SCR-PT-08-ChatAI.md
 | Cho quay lại sửa câu trả lời trước | Nút "Quay lại" luôn có | Bệnh nhân có thể nhớ ra thêm chi tiết hoặc muốn sửa câu trả lời trước đó khi đọc câu hỏi sau — không nên là luồng 1 chiều cứng nhắc |
 | Câu hỏi đầu tiên luôn kiểm tra dấu hiệu nguy hiểm rõ ràng nhất | Đặt câu hỏi sàng lọc red-flag (chảy máu, đau dữ dội đột ngột...) ngay từ đầu, không để cuối | Nếu có dấu hiệu nguy hiểm rõ ràng, nên cảnh báo **ngay lập tức** thay vì bắt hoàn thành hết 5 bước mới biết — vài phút chờ đợi không cần thiết có thể là vấn đề với tình huống thật sự khẩn cấp |
 | Kết quả luôn giải thích "dựa trên gì" | Không chỉ đưa ra mức độ, phải nêu rõ yếu tố nào dẫn tới kết luận đó | Giúp bệnh nhân hiểu được logic, tăng độ tin cậy, và tự nhận ra nếu mình trả lời thiếu chính xác ở bước nào |
+| Áp dụng chung bộ câu hỏi nhưng phân ngưỡng theo nhóm đối tượng | Dùng chung luồng 5 bước, song nhóm `Dưới 18 tuổi` và `Đang mang thai / mới sinh` (hoặc `Không chắc`) áp ngưỡng nâng cảnh báo sớm và khuyến nghị gặp nhân viên y tế thận trọng hơn người trưởng thành | Tránh bỏ sót nguy cơ ở trẻ em/thai kỳ mà không bỏ phí câu trả lời chi tiết của người dùng (theo [00-TongQuan.md](00-TongQuan.md) §3.1, §3.3) |
 | Luôn có lối dẫn sang chat tự do ở cuối | "Trò chuyện thêm với AI về kết quả này" | Bộ câu hỏi cố định không thể bao quát hết mọi tình huống — sau khi có kết quả sơ bộ, bệnh nhân nên có thể hỏi thêm chi tiết theo cách tự nhiên |
 
 ## 4. Tham chiếu

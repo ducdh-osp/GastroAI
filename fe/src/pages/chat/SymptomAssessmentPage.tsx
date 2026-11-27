@@ -113,9 +113,31 @@ const reasonExplanations: Record<string, string> = {
   NON_EMERGENCY_WARNING_SIGNS_PRESENT: 'Có dấu hiệu cần được nhân viên y tế xem xét.',
   SELF_REPORTED_SEVERITY: 'Kết quả dựa trên mức độ bạn tự đánh giá.',
   IMPACT_OR_WORSENING_ESCALATION: 'Mức đánh giá được nâng lên vì sinh hoạt bị ảnh hưởng hoặc triệu chứng đang nặng hơn.',
+  SENSITIVE_GROUP_ESCALATION: 'Mức đánh giá được nâng lên do thuộc nhóm đối tượng cần thận trọng cao hơn (dưới 18 tuổi hoặc đang mang thai/mới sinh) và có dấu hiệu tăng nặng.',
+  PEDIATRIC_PRECAUTION: 'Triệu chứng ở người dưới 18 tuổi từ mức trung bình trở lên hoặc có ảnh hưởng sinh hoạt nên được nhân viên y tế kiểm tra sớm.',
+  PREGNANT_OR_POSTPARTUM_PRECAUTION: 'Triệu chứng tiêu hóa ở người đang mang thai hoặc mới sinh luôn được khuyến nghị trao đổi với nhân viên y tế để đảm bảo an toàn.',
+  PATIENT_GROUP_UNCERTAIN: 'Nhóm đối tượng chưa được xác định rõ nên hệ thống vẫn đánh giá dựa trên triệu chứng đã nhập và khuyến nghị hỏi ý kiến nhân viên y tế.',
   SEVERE_SELF_REPORTED_SYMPTOMS: 'Bạn tự đánh giá triệu chứng ở mức nặng.',
   NEEDS_MORE_INFORMATION: 'Thông tin hiện có chưa đủ để xác định mức độ.',
   DURATION_UNCLEAR: 'Thời gian kéo dài chưa rõ; nên trao đổi thêm với nhân viên y tế.',
+}
+
+const patientGroupNotice: Partial<Record<PatientGroup, { title: string; description: string }>> = {
+  UNDER_18: {
+    title: 'Áp dụng ngưỡng thận trọng cho người dưới 18 tuổi',
+    description:
+      'Hệ thống vẫn chấm mức độ dựa trên toàn bộ câu trả lời chi tiết phía sau và sẽ khuyến nghị đi khám sớm hơn nếu triệu chứng từ mức trung bình trở lên hoặc ảnh hưởng sinh hoạt.',
+  },
+  PREGNANT_OR_RECENTLY_POSTPARTUM: {
+    title: 'Lưu ý dành cho người đang mang thai hoặc mới sinh',
+    description:
+      'Hệ thống vẫn đánh giá mức độ nhẹ/trung bình/nặng theo các câu trả lời tiếp theo, đồng thời luôn khuyến nghị bạn trao đổi với nhân viên y tế để bảo đảm an toàn.',
+  },
+  UNSURE: {
+    title: 'Nhóm đối tượng chưa được xác định rõ',
+    description:
+      'Hệ thống vẫn đánh giá mức độ dựa trên triệu chứng, sinh hoạt và diễn tiến bạn cung cấp, đồng thời khuyến nghị tham khảo thêm nhân viên y tế.',
+  },
 }
 
 function getCareAdvice(careRecommendation?: CareRecommendation) {
@@ -357,7 +379,7 @@ export default function SymptomAssessmentPage() {
                 </div>
               )}
               <p className="mb-0 mt-4 border-t border-slate-100 dark:border-white/10 pt-3 text-xs leading-5 text-slate-500 dark:text-white">
-                Mức đánh giá lấy mức độ bạn tự khai làm cơ sở; dấu hiệu cảnh báo, mức ảnh hưởng sinh hoạt và diễn tiến có thể làm thay đổi kết quả. Thời gian và triệu chứng chính được ghi nhận để cung cấp ngữ cảnh.
+                Mức đánh giá lấy mức độ bạn tự khai làm cơ sở; dấu hiệu cảnh báo, nhóm đối tượng, mức ảnh hưởng sinh hoạt và diễn tiến có thể làm thay đổi kết quả. Thời gian và triệu chứng chính được ghi nhận để cung cấp ngữ cảnh.
               </p>
             </Card>
 
@@ -543,13 +565,13 @@ export default function SymptomAssessmentPage() {
                   <p className="mb-0 mt-3 text-sm leading-5 text-slate-500 dark:text-white">
                     “Không chắc” dùng khi bạn chưa xác định được người có triệu chứng thuộc nhóm nào trong ba nhóm còn lại.
                   </p>
-                  {answers.patientGroup === 'UNSURE' && (
+                  {answers.patientGroup && patientGroupNotice[answers.patientGroup] && (
                     <Alert
                       className="mt-4! rounded-xl"
                       type="info"
                       showIcon
-                      title="Chưa thể đánh giá theo nhóm đối tượng"
-                      description="Công cụ hiện chưa áp dụng cách phân loại cho trường hợp này và sẽ khuyến nghị bạn trao đổi với nhân viên y tế."
+                      title={patientGroupNotice[answers.patientGroup]!.title}
+                      description={patientGroupNotice[answers.patientGroup]!.description}
                     />
                   )}
                 </section>

@@ -106,17 +106,78 @@ class TriageServiceTest {
     }
 
     @Test
-    void nonAdultAndUnsureGroupsRemainUndeterminedForNonEmergencyInput() {
-        for (PatientGroup group : Set.of(PatientGroup.UNDER_18,
-                PatientGroup.PREGNANT_OR_RECENTLY_POSTPARTUM, PatientGroup.UNSURE)) {
-            StructuredTriageResult result = triageService.assess(input(SeverityLevel.SEVERE,
-                    ActivityImpact.PREVENTS_NORMAL_ACTIVITY, Progression.WORSENING,
-                    Duration.ONE_TO_THREE_DAYS, group, Set.of()));
+    void under18ModerateWithImpactAndWorseningEscalatesToSevereAndRecommendsDoctor() {
+        // Issue #116 exact scenario: <18, moderate, prevents normal activity, worsening, unsure duration
+        StructuredTriageResult result = triageService.assess(input(SeverityLevel.MODERATE,
+                ActivityImpact.PREVENTS_NORMAL_ACTIVITY, Progression.WORSENING,
+                Duration.UNSURE, PatientGroup.UNDER_18, Set.of()));
 
-            assertEquals(SeverityLevel.UNDETERMINED, result.severityLevel());
-            assertTrue(result.requiresClinicianReview());
-            assertTrue(result.reasonCodes().contains("UNSUPPORTED_PATIENT_GROUP"));
-        }
+        assertFalse(result.emergency());
+        assertEquals(SeverityLevel.SEVERE, result.severityLevel());
+        assertTrue(result.requiresClinicianReview());
+        assertEquals(CareRecommendation.SEE_DOCTOR, result.careRecommendation());
+        assertTrue(result.reasonCodes().contains("SENSITIVE_GROUP_ESCALATION"));
+        assertTrue(result.reasonCodes().contains("PEDIATRIC_PRECAUTION"));
+        assertTrue(result.reasonCodes().contains("DURATION_UNCLEAR"));
+    }
+
+    @Test
+    void under18MildStableWithoutImpactAllowsSelfCareAtHome() {
+        StructuredTriageResult result = triageService.assess(input(SeverityLevel.MILD,
+                ActivityImpact.NONE, Progression.STABLE,
+                Duration.ONE_TO_THREE_DAYS, PatientGroup.UNDER_18, Set.of()));
+
+        assertFalse(result.emergency());
+        assertEquals(SeverityLevel.MILD, result.severityLevel());
+        assertFalse(result.requiresClinicianReview());
+        assertEquals(CareRecommendation.SELF_CARE_AT_HOME, result.careRecommendation());
+    }
+
+    @Test
+    void under18MildWithActivityImpactEscalatesToModerateAndRecommendsDoctor() {
+        StructuredTriageResult result = triageService.assess(input(SeverityLevel.MILD,
+                ActivityImpact.SOME_LIMITATION, Progression.STABLE,
+                Duration.ONE_TO_THREE_DAYS, PatientGroup.UNDER_18, Set.of()));
+
+        assertEquals(SeverityLevel.MODERATE, result.severityLevel());
+        assertTrue(result.requiresClinicianReview());
+        assertEquals(CareRecommendation.SEE_DOCTOR, result.careRecommendation());
+        assertTrue(result.reasonCodes().contains("IMPACT_OR_WORSENING_ESCALATION"));
+        assertTrue(result.reasonCodes().contains("PEDIATRIC_PRECAUTION"));
+    }
+
+    @Test
+    void pregnantOrPostpartumPreservesSeverityScoringAndAlwaysRecommendsDoctor() {
+        StructuredTriageResult mild = triageService.assess(input(SeverityLevel.MILD,
+                ActivityImpact.NONE, Progression.STABLE,
+                Duration.ONE_TO_THREE_DAYS, PatientGroup.PREGNANT_OR_RECENTLY_POSTPARTUM, Set.of()));
+        StructuredTriageResult escalated = triageService.assess(input(SeverityLevel.MODERATE,
+                ActivityImpact.NONE, Progression.WORSENING,
+                Duration.ONE_TO_THREE_DAYS, PatientGroup.PREGNANT_OR_RECENTLY_POSTPARTUM, Set.of()));
+
+        assertEquals(SeverityLevel.MILD, mild.severityLevel());
+        assertTrue(mild.requiresClinicianReview());
+        assertEquals(CareRecommendation.SEE_DOCTOR, mild.careRecommendation());
+        assertTrue(mild.reasonCodes().contains("PREGNANT_OR_POSTPARTUM_PRECAUTION"));
+
+        assertEquals(SeverityLevel.SEVERE, escalated.severityLevel());
+        assertTrue(escalated.requiresClinicianReview());
+        assertEquals(CareRecommendation.SEE_DOCTOR, escalated.careRecommendation());
+        assertTrue(escalated.reasonCodes().contains("SENSITIVE_GROUP_ESCALATION"));
+        assertTrue(escalated.reasonCodes().contains("PREGNANT_OR_POSTPARTUM_PRECAUTION"));
+    }
+
+    @Test
+    void unsureGroupUsesReportedAnswersInsteadOfReturningUndetermined() {
+        StructuredTriageResult result = triageService.assess(input(SeverityLevel.MODERATE,
+                ActivityImpact.NONE, Progression.STABLE,
+                Duration.ONE_TO_THREE_DAYS, PatientGroup.UNSURE, Set.of()));
+
+        assertEquals(SeverityLevel.MODERATE, result.severityLevel());
+        assertTrue(result.requiresClinicianReview());
+        assertEquals(CareRecommendation.SEE_DOCTOR, result.careRecommendation());
+        assertTrue(result.reasonCodes().contains("SELF_REPORTED_SEVERITY"));
+        assertTrue(result.reasonCodes().contains("PATIENT_GROUP_UNCERTAIN"));
     }
 
     @Test

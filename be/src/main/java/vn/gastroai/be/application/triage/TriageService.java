@@ -107,9 +107,10 @@ public class TriageService {
     }
 
     /**
-     * First version of UC0040: combines patient-reported severity and functional impact with
-     * the existing high-sensitivity warning-sign policy. Clinical thresholds must be reviewed
-     * before this result is used as a clinical decision or recommendation.
+     * UC0040: combines patient-reported severity, functional impact, progression, duration,
+     * warning signs, and patient-group sensitivity thresholds. High-risk or uncertain patient
+     * groups still receive a concrete severity classification from their detailed answers, with
+     * earlier escalation and clinician review recommendations per §3.1/§3.3.
      */
     public StructuredTriageResult assess(SymptomAssessmentInput input) {
         Set<WarningSign> warningSigns = new LinkedHashSet<>();
@@ -130,13 +131,6 @@ public class TriageService {
         if (emergency) {
             severity = SeverityLevel.SEVERE;
             reasons.add("WARNING_SIGNS_PRESENT");
-        } else if (input.patientGroup() != PatientGroup.ADULT) {
-            severity = SeverityLevel.UNDETERMINED;
-            needsClinicianReview = true;
-            reasons.add("UNSUPPORTED_PATIENT_GROUP");
-            if (!warningSigns.isEmpty()) {
-                reasons.add("NON_EMERGENCY_WARNING_SIGNS_PRESENT");
-            }
         } else {
             severity = input.reportedSeverity();
             reasons.add("SELF_REPORTED_SEVERITY");
@@ -156,9 +150,34 @@ public class TriageService {
                 reasons.add("IMPACT_OR_WORSENING_ESCALATION");
             }
 
+            boolean sensitiveGroup = input.patientGroup() == PatientGroup.UNDER_18
+                    || input.patientGroup() == PatientGroup.PREGNANT_OR_RECENTLY_POSTPARTUM;
+            if (sensitiveGroup
+                    && severity == SeverityLevel.MODERATE
+                    && (input.activityImpact() == ActivityImpact.PREVENTS_NORMAL_ACTIVITY
+                    || input.progression() == Progression.WORSENING
+                    || !warningSigns.isEmpty())) {
+                severity = SeverityLevel.SEVERE;
+                needsClinicianReview = true;
+                reasons.add("SENSITIVE_GROUP_ESCALATION");
+            }
+
+            if (input.patientGroup() == PatientGroup.UNDER_18 && severity != SeverityLevel.MILD) {
+                needsClinicianReview = true;
+                reasons.add("PEDIATRIC_PRECAUTION");
+            } else if (input.patientGroup() == PatientGroup.PREGNANT_OR_RECENTLY_POSTPARTUM) {
+                needsClinicianReview = true;
+                reasons.add("PREGNANT_OR_POSTPARTUM_PRECAUTION");
+            } else if (input.patientGroup() == PatientGroup.UNSURE) {
+                needsClinicianReview = true;
+                reasons.add("PATIENT_GROUP_UNCERTAIN");
+            }
+
             if (severity == SeverityLevel.SEVERE) {
                 needsClinicianReview = true;
-                reasons.add("SEVERE_SELF_REPORTED_SYMPTOMS");
+                if (input.reportedSeverity() == SeverityLevel.SEVERE) {
+                    reasons.add("SEVERE_SELF_REPORTED_SYMPTOMS");
+                }
             }
 
             if (severity == SeverityLevel.UNDETERMINED) {
