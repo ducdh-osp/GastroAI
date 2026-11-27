@@ -1,4 +1,4 @@
-import { Alert, Card, Col, Empty, Row, Segmented, Spin, Statistic, Typography } from 'antd'
+import { Alert, Card, Empty, Segmented, Spin, Statistic, Typography } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { getBristolTrend } from '../../api/bristol'
 import type { BristolLogPoint } from '../../api/bristol'
@@ -11,9 +11,19 @@ interface BristolTrendTabProps {
   days: 7 | 30 | 90
   onDaysChange: (days: 7 | 30 | 90) => void
   onPointSelect: (loggedAt: string) => void
+  title?: string
+  titleLevel?: 2 | 3 | 4 | 5
+  description?: string
 }
 
-export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTrendTabProps) {
+export function BristolTrendTab({
+  days,
+  onDaysChange,
+  onPointSelect,
+  title = 'Xu hướng Bristol',
+  titleLevel = 4,
+  description = 'Chọn một điểm trên biểu đồ để xem các ghi nhận của ngày đó.',
+}: BristolTrendTabProps) {
   const [points, setPoints] = useState<BristolLogPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,8 +55,8 @@ export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTr
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Title level={4} className="mb-1!">Xu hướng Bristol</Title>
-          <Text type="secondary">Chọn một điểm trên biểu đồ để xem các ghi nhận của ngày đó.</Text>
+          <Title level={titleLevel} className="mb-1! mt-1!">{title}</Title>
+          <Text type="secondary">{description}</Text>
         </div>
         <Segmented
           value={days}
@@ -62,33 +72,29 @@ export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTr
       {error && <Alert type="error" message={error} showIcon />}
 
       <Spin spinning={loading}>
-        <Row gutter={[24, 24]}>
-          <Col xs={24} sm={8}>
+        <div className="grid gap-6">
+          <div className="grid gap-6 md:grid-cols-3">
             <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <Statistic title={`Tổng lần trong ${days} ngày`} value={points.length} suffix="lần" />
             </Card>
-          </Col>
-          <Col xs={24} sm={8}>
             <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <Statistic title="Trong khoảng loại 3–5" value={normalRate} precision={0} suffix="%" />
               <Text type="secondary">{normalCount}/{points.length} lần ghi nhận</Text>
             </Card>
-          </Col>
-          <Col xs={24} sm={8}>
             <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <Statistic title="Ghi nhận gần nhất" value={latest ? `Loại ${latest.bristolType}` : '—'} />
               {latest && <Text type="secondary">{BRISTOL_TYPE_LABELS[latest.bristolType]}</Text>}
             </Card>
-          </Col>
-        </Row>
+          </div>
 
-        <Card className="mt-6 rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title={`Diễn biến trong ${days} ngày gần nhất`}>
-          {!loading && points.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có dữ liệu trong khoảng thời gian này" />
-          ) : (
-            <BristolTrendChart points={points} onPointSelect={onPointSelect} />
-          )}
-        </Card>
+          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title={`Diễn biến trong ${days} ngày gần nhất`}>
+            {!loading && points.length === 0 ? (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có dữ liệu trong khoảng thời gian này" />
+            ) : (
+              <BristolTrendChart points={points} onPointSelect={onPointSelect} />
+            )}
+          </Card>
+        </div>
       </Spin>
     </div>
   )

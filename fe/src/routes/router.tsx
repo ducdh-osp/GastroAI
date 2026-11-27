@@ -11,8 +11,10 @@ import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 import HomePage from '../pages/patient/HomePage'
 import MedicalProfilePage from '../pages/patient/MedicalProfilePage'
 import FoodDiaryPage from '../pages/patient/FoodDiaryPage'
+import FoodDiaryHistoryPage from '../pages/patient/FoodDiaryHistoryPage'
 import FoodSensitivityPage from '../pages/patient/FoodSensitivityPage'
 import BristolPage from '../pages/patient/BristolPage'
+import BristolHistoryPage from '../pages/patient/BristolHistoryPage'
 import MedicationRemindersPage from '../pages/patient/MedicationRemindersPage'
 import ChatPage from '../pages/chat/ChatPage'
 import SymptomAssessmentPage from '../pages/chat/SymptomAssessmentPage'
@@ -105,7 +107,7 @@ export const router = createBrowserRouter([
         path: '/food-diary-history',
         element: (
           <ProtectedRoute>
-            <Navigate to="/food-diary?tab=trend" replace />
+            <FoodDiaryHistoryPage />
           </ProtectedRoute>
         ),
       },
@@ -137,7 +139,7 @@ export const router = createBrowserRouter([
         path: '/bristol-history',
         element: (
           <ProtectedRoute>
-            <Navigate to="/bristol?tab=trend" replace />
+            <BristolHistoryPage />
           </ProtectedRoute>
         ),
       },
