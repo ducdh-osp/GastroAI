@@ -185,7 +185,7 @@ export function BristolJournalTab({
       </div>
 
       {view === 'trash' ? (
-        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <BristolTrashTable onRestored={onMutated} />
         </Card>
       ) : (
@@ -203,7 +203,7 @@ export function BristolJournalTab({
 
           <Spin spinning={loading}>
             {!loading && groups.length === 0 ? (
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={date ? 'Không có ghi nhận Bristol trong ngày này' : 'Chưa có ghi nhận Bristol nào'}

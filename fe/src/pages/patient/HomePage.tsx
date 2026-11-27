@@ -111,7 +111,7 @@ export default function HomePage() {
         <HealthTrackingProgress />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title="Xu hướng Bristol (14 ngày gần nhất)">
+          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Xu hướng Bristol (14 ngày gần nhất)">
             {bristolTrend === null ? (
               <Skeleton active paragraph={{ rows: 3 }} />
             ) : (
@@ -137,7 +137,7 @@ export default function HomePage() {
             )}
           </Card>
 
-          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title="Nhật ký ăn uống (14 ngày gần nhất)">
+          <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Nhật ký ăn uống (14 ngày gần nhất)">
             {foodTrend === null ? (
               <Skeleton active paragraph={{ rows: 3 }} />
             ) : (
@@ -155,7 +155,7 @@ export default function HomePage() {
         </div>
 
         <Card
-          className="mt-12! rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!"
+          className="mt-12! rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!"
           title="Nhạy cảm thực phẩm trong 90 ngày"
           extra={
             <Link to="/food-sensitivity">

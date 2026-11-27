@@ -64,25 +64,25 @@ export function BristolTrendTab({ days, onDaysChange, onPointSelect }: BristolTr
       <Spin spinning={loading}>
         <Row gutter={[24, 24]}>
           <Col xs={24} sm={8}>
-            <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+            <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <Statistic title={`Tổng lần trong ${days} ngày`} value={points.length} suffix="lần" />
             </Card>
           </Col>
           <Col xs={24} sm={8}>
-            <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+            <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <Statistic title="Trong khoảng loại 3–5" value={normalRate} precision={0} suffix="%" />
               <Text type="secondary">{normalCount}/{points.length} lần ghi nhận</Text>
             </Card>
           </Col>
           <Col xs={24} sm={8}>
-            <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+            <Card className="h-full rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <Statistic title="Ghi nhận gần nhất" value={latest ? `Loại ${latest.bristolType}` : '—'} />
               {latest && <Text type="secondary">{BRISTOL_TYPE_LABELS[latest.bristolType]}</Text>}
             </Card>
           </Col>
         </Row>
 
-        <Card className="mt-6 rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title={`Diễn biến trong ${days} ngày gần nhất`}>
+        <Card className="mt-6 rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title={`Diễn biến trong ${days} ngày gần nhất`}>
           {!loading && points.length === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có dữ liệu trong khoảng thời gian này" />
           ) : (

@@ -294,7 +294,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
         </div>
       </div>
 
-      <Card className="mb-4! rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" size="small">
+      <Card className="mb-4! rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" size="small">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Segmented
             value={unreadOnly ? 'unread' : 'all'}
@@ -320,7 +320,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
           {data.items.map((item) => (
             <Card
               key={item.id}
-              className={`rounded-2xl shadow-sm ${item.readAt ? 'border-black/5 dark:border-white/10! dark:bg-neutral-900!' : 'border-teal-200 bg-teal-50/40 dark:border-teal-800! dark:bg-teal-900/30!'}`}
+              className={`rounded-2xl shadow-sm ${item.readAt ? 'border-black/5 dark:border-neutral-700! dark:bg-neutral-800!' : 'border-teal-200 bg-teal-50/40 dark:border-teal-800! dark:bg-teal-900/30!'}`}
             >
               <div className="flex items-start gap-3">
                 <span className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClass(item.type)}`}>
@@ -399,7 +399,7 @@ export function NotificationCenterPage({ audience }: { audience: NotificationAud
           )}
         </div>
       ) : (
-        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={unreadOnly || type ? 'Không có thông báo phù hợp với bộ lọc' : 'Chưa có thông báo nào'}

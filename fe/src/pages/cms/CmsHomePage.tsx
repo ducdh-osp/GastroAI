@@ -119,7 +119,7 @@ export default function CmsHomePage() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 text-lg dark:bg-blue-500/10">
                     <TeamOutlined />
@@ -130,7 +130,7 @@ export default function CmsHomePage() {
                   </div>
                 </div>
               </Card>
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600 text-lg dark:bg-teal-500/10">
                     <MessageOutlined />
@@ -141,7 +141,7 @@ export default function CmsHomePage() {
                   </div>
                 </div>
               </Card>
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 text-lg dark:bg-rose-500/10">
                     <AlertOutlined />
@@ -157,7 +157,7 @@ export default function CmsHomePage() {
                   </div>
                 </div>
               </Card>
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 text-lg dark:bg-purple-500/10">
                     <SmileOutlined />
@@ -171,7 +171,7 @@ export default function CmsHomePage() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title={`Lượt chat theo ngày (${PREVIEW_DAYS} ngày gần nhất)`}>
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title={`Lượt chat theo ngày (${PREVIEW_DAYS} ngày gần nhất)`}>
                 <ResponsiveContainer width="100%" height={220}>
                   <AreaChart data={chartData} margin={{ left: 0, right: 8, top: 8 }}>
                     <defs>
@@ -189,7 +189,7 @@ export default function CmsHomePage() {
                 </ResponsiveContainer>
               </Card>
 
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title="Phân bố cảnh báo Triage">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Phân bố cảnh báo Triage">
                 {data.triageGroups.length === 0 ? (
                   <div className="flex h-[220px] items-center justify-center">
                     <Empty description="Chưa có cảnh báo Triage nào." image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -210,7 +210,7 @@ export default function CmsHomePage() {
             </div>
 
             <Card
-              className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!"
+              className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!"
               title="Top triệu chứng tiêu hoá được báo cáo"
               extra={
                 <Link to="/cms/dashboard">
@@ -254,7 +254,7 @@ function CmsShortcuts({ userType }: { userType: CmsRole | undefined }) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {group.items.map((item) => (
               <Link key={item.to} to={item.to} className="block h-full">
-                <Card hoverable className="h-full rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+                <Card hoverable className="h-full rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                   <div className="flex items-start gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-lg text-teal-600 dark:bg-teal-500/10">
                       <item.icon />

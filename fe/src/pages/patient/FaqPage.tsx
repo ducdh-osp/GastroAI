@@ -250,7 +250,7 @@ export default function FaqPage() {
             </div>
           </Card>
 
-          <Card className="h-full rounded-xl border-slate-200 bg-white hover:bg-slate-50/50 transition-colors dark:border-white/10! dark:bg-neutral-900! dark:hover:bg-neutral-800/50">
+          <Card className="h-full rounded-xl border-slate-200 bg-white hover:bg-slate-50/50 transition-colors dark:border-neutral-700! dark:bg-neutral-800! dark:hover:bg-neutral-800/50">
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-slate-800 p-2.5 text-white">
                 <BookOutlined className="text-lg" />

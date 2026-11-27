@@ -204,7 +204,7 @@ export default function CmsArticleEditorPage() {
               {/* Cột trái: Thông tin chính & nội dung */}
               <Col xs={24} lg={16}>
                 <div className="flex flex-col gap-6">
-                  <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title="Thông tin cơ bản">
+                  <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Thông tin cơ bản">
                   <Form.Item
                     name="title"
                     label="Tiêu đề bài viết"
@@ -267,7 +267,7 @@ export default function CmsArticleEditorPage() {
                 </Card>
 
                 <Card
-                  className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!"
+                  className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!"
                   title="Nội dung chi tiết bài viết"
                   extra={
                     <Radio.Group
@@ -316,7 +316,7 @@ export default function CmsArticleEditorPage() {
               {/* Cột phải: Quy trình duyệt & nguồn */}
               <Col xs={24} lg={8}>
                 <div className="flex flex-col gap-6">
-                  <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title="Quy trình duyệt & hiển thị">
+                  <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Quy trình duyệt & hiển thị">
                     <div className="mb-5">
                       <Alert
                         type="info"
@@ -332,7 +332,7 @@ export default function CmsArticleEditorPage() {
                     </Form.Item>
                   </Card>
 
-                  <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title="Nguồn tài liệu y khoa">
+                  <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Nguồn tài liệu y khoa">
                   <Form.Item
                     name="sourceName"
                     label="Tên tổ chức / nguồn tài liệu"

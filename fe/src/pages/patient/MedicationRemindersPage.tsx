@@ -353,7 +353,7 @@ export default function MedicationRemindersPage() {
           </div>
         )}
 
-        <Card className="mb-6 rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!" title="Lịch nhắc thuốc">
+        <Card className="mb-6 rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" title="Lịch nhắc thuốc">
           <Spin spinning={loadingReminders}>
             <Table<MedicationReminder>
               columns={reminderColumns}
@@ -369,7 +369,7 @@ export default function MedicationRemindersPage() {
         </Card>
 
         <Card
-          className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!"
+          className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!"
           title="Lịch sử xác nhận đã uống"
           extra={<Tag color="blue">{confirmationsList.totalElements} lần</Tag>}
         >

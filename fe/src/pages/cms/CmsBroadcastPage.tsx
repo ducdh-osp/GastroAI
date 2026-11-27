@@ -303,22 +303,22 @@ export function CmsBroadcastPage() {
 
         {/* Stats banner */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-white/10! dark:bg-neutral-900!">
+          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-neutral-700! dark:bg-neutral-800!">
             <div className="text-xs text-slate-500 font-medium dark:text-slate-400">Tổng đợt broadcast</div>
             <div className="text-2xl font-bold text-slate-800 mt-1 dark:text-slate-100">{totalElements}</div>
           </Card>
-          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-white/10! dark:bg-neutral-900!">
+          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-neutral-700! dark:bg-neutral-800!">
             <div className="text-xs text-slate-500 font-medium dark:text-slate-400">Đối tượng hỗ trợ</div>
             <div className="text-base font-semibold text-teal-700 mt-1 dark:text-teal-300">Toàn bộ bệnh nhân</div>
           </Card>
-          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-white/10! dark:bg-neutral-900!">
+          <Card className="rounded-xl border-slate-200/80 shadow-xs dark:border-neutral-700! dark:bg-neutral-800!">
             <div className="text-xs text-slate-500 font-medium dark:text-slate-400">Kênh phát sóng</div>
             <div className="text-base font-semibold text-blue-600 mt-1 dark:text-blue-300">WebSocket + In-App Notification</div>
           </Card>
         </div>
 
         {/* Announcements Table */}
-        <Card className="rounded-xl border-slate-200/80 shadow-sm dark:border-white/10! dark:bg-neutral-900!" bodyStyle={{ padding: 0 }}>
+        <Card className="rounded-xl border-slate-200/80 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!" bodyStyle={{ padding: 0 }}>
           <Table
             columns={columns}
             dataSource={data}

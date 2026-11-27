@@ -256,7 +256,7 @@ export function FoodDiaryJournalTab({
       </div>
 
       {view === 'trash' ? (
-        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <FoodDiaryTrashTable onRestored={onMutated} />
         </Card>
       ) : (
@@ -274,7 +274,7 @@ export function FoodDiaryJournalTab({
 
           <Spin spinning={loading}>
             {!loading && groups.length === 0 ? (
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={hasFilters ? 'Không tìm thấy bữa ăn phù hợp' : 'Chưa có bữa ăn nào được ghi nhận'}

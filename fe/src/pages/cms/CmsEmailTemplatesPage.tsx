@@ -119,7 +119,7 @@ export default function CmsEmailTemplatesPage() {
 
         {loading ? <div className="py-16 text-center"><Spin size="large" /></div> : (
           <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <Card className="h-fit rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+            <Card className="h-fit rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
               <Text strong>Loại email</Text>
               <Select<EmailTemplateCode>
                 className="mt-3 w-full"
@@ -149,7 +149,7 @@ export default function CmsEmailTemplatesPage() {
             </Card>
 
             <div className="space-y-5">
-              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+              <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
                 <Form<EmailTemplateContent> form={form} layout="vertical" onFinish={handleSave} disabled={!selected || saving}>
                   <Form.Item
                     label="Tiêu đề email"

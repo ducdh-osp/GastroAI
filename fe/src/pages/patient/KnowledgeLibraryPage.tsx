@@ -84,7 +84,7 @@ function KnowledgeArticleCard({ article }: { article: KnowledgeArticleSummary })
     <Link to={`/articles/${article.slug}`} className="group block h-full no-underline">
       <Card
         hoverable
-        className="h-full overflow-hidden rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900! transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md"
+        className="h-full overflow-hidden rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800! transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-md"
         cover={
           illustration ? (
             <div className="aspect-[9/5] w-full overflow-hidden border-b border-slate-100 bg-[#f8fafc] dark:border-slate-700!">
@@ -143,7 +143,7 @@ function ArticleDetail({ slug }: { slug: string }) {
       {loading && <div className="py-20 text-center"><Spin size="large" /></div>}
       {error && <Alert type="error" showIcon message={error} />}
       {article && (
-        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!">
+        <Card className="rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!">
           <Title level={2} className="mb-2! mt-1!">{cleanTitle(article.title)}</Title>
           <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
             <span>Chủ đề: <Tag color="cyan" className="m-0 ml-1">{article.category}</Tag></span>

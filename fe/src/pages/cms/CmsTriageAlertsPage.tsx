@@ -270,7 +270,7 @@ export default function CmsTriageAlertsPage() {
         )}
 
         <Card
-          className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm dark:border-white/10! dark:bg-neutral-900!"
+          className="min-h-0 flex-1 overflow-hidden rounded-2xl border-black/5 shadow-sm dark:border-neutral-700! dark:bg-neutral-800!"
           styles={{ body: { display: 'flex', height: '100%', minHeight: 0, flexDirection: 'column', overflow: 'auto' } }}
         >
           <Table<TriageAlert>
