@@ -11,7 +11,6 @@ import {
 } from '@ant-design/icons'
 import {
   Alert,
-  AutoComplete,
   Button,
   Card,
   Checkbox,
@@ -36,7 +35,6 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   createCmsFaq,
   deleteCmsFaq,
-  listCmsFaqCategories,
   listCmsFaqs,
   setCmsFaqPublished,
   updateCmsFaq,
@@ -92,7 +90,7 @@ export default function CmsFaqPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined)
   const [selectedPublished, setSelectedPublished] = useState<boolean | undefined>(undefined)
 
-  // Danh sách chủ đề có sẵn (dùng chung từ article_topics và các category đang có trong FAQ)
+  // Danh sách chủ đề dùng chung từ bảng article_topics (SCR-AD-10, SCR-AD-12)
   const [categoryOptions, setCategoryOptions] = useState<string[]>([])
 
   // Modal Thêm/Sửa
@@ -113,17 +111,11 @@ export default function CmsFaqPage() {
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [reviewForm] = Form.useForm<ReviewFormValues>()
 
-  // Tải danh mục gợi ý
+  // Tải danh mục chủ đề dùng chung từ article_topics
   const loadCategories = useCallback(async () => {
     try {
-      const [faqCats, topics] = await Promise.all([
-        listCmsFaqCategories().catch(() => [] as string[]),
-        listArticleTopics().catch(() => []),
-      ])
-      const combined = Array.from(
-        new Set([...faqCats, ...topics.map((t) => t.name)]),
-      ).filter(Boolean)
-      setCategoryOptions(combined)
+      const topics = await listArticleTopics()
+      setCategoryOptions(Array.from(new Set(topics.map((t) => t.name))).filter(Boolean))
     } catch {
       // ignore
     }
@@ -164,7 +156,7 @@ export default function CmsFaqPage() {
       // Bắt buộc chuyển trạng thái chờ duyệt, không tự động công khai ngay lúc lưu (SCR-AD-10)
       published: false,
       sortOrder: undefined,
-      category: categoryOptions[0] || 'Trào ngược dạ dày thực quản',
+      category: categoryOptions[0],
     })
     setModalOpen(true)
   }
@@ -599,16 +591,13 @@ export default function CmsFaqPage() {
               label="Chủ đề / Danh mục"
               name="category"
               className="sm:col-span-3"
-              rules={[{ required: true, whitespace: true, message: 'Vui lòng chọn hoặc nhập chủ đề' }]}
+              rules={[{ required: true, message: 'Vui lòng chọn chủ đề' }]}
             >
-              <AutoComplete
-                placeholder="Chọn hoặc nhập chủ đề mới"
+              <Select
+                showSearch
+                optionFilterProp="label"
+                placeholder="Chọn chủ đề"
                 options={categoryOptions.map((c) => ({ label: c, value: c }))}
-                filterOption={(inputValue, option) =>
-                  String(option?.value ?? '')
-                    .toLowerCase()
-                    .includes(inputValue.trim().toLowerCase())
-                }
               />
             </Form.Item>
 

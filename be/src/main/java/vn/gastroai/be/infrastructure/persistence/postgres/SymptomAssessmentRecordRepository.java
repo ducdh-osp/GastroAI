@@ -31,7 +31,7 @@ public interface SymptomAssessmentRecordRepository extends JpaRepository<Symptom
                    count(*) AS totalCount,
                    count(*) FILTER (WHERE emergency = true) AS emergencyCount
             FROM symptom_assessments
-            WHERE assessed_at >= :startDate AND assessed_at <= :endDate
+            WHERE assessed_at >= :startDate AND assessed_at < :endDate
             GROUP BY primary_symptom
             ORDER BY totalCount DESC
             """, nativeQuery = true)

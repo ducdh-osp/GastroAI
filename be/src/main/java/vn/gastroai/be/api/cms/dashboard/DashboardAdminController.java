@@ -9,9 +9,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.gastroai.be.application.cms.dashboard.DashboardAdminService;
 import vn.gastroai.be.application.cms.dashboard.DashboardExportService;
+import vn.gastroai.be.application.support.VietnamDateRange;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/v1/cms/dashboard")
@@ -38,23 +40,28 @@ public class DashboardAdminController {
     public ResponseEntity<byte[]> exportReport(
             @RequestParam(defaultValue = "EXCEL") String format,
             @RequestParam(defaultValue = "30") int days) {
-        DashboardStatsResponse stats = dashboardAdminService.getStats(days);
-        String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String normalizedFormat = format == null ? "" : format.trim().toUpperCase(Locale.ROOT);
+        if (!"PDF".equals(normalizedFormat) && !"EXCEL".equals(normalizedFormat)) {
+            throw new IllegalArgumentException("Định dạng báo cáo phải là EXCEL hoặc PDF");
+        }
 
-        if ("PDF".equalsIgnoreCase(format)) {
+        DashboardStatsResponse stats = dashboardAdminService.getStats(days);
+        String dateStr = LocalDate.now(VietnamDateRange.ZONE).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+        if ("PDF".equals(normalizedFormat)) {
             byte[] pdfBytes = dashboardExportService.exportPdf(stats);
             String filename = "GastroAI-Dashboard-Report-" + dateStr + ".pdf";
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(pdfBytes);
-        } else {
-            byte[] excelBytes = dashboardExportService.exportExcel(stats);
-            String filename = "GastroAI-Dashboard-Report-" + dateStr + ".xlsx";
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                    .body(excelBytes);
         }
+
+        byte[] excelBytes = dashboardExportService.exportExcel(stats);
+        String filename = "GastroAI-Dashboard-Report-" + dateStr + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excelBytes);
     }
 }

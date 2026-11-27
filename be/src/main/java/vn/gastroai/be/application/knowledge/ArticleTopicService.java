@@ -74,17 +74,22 @@ public class ArticleTopicService {
             throw new IllegalStateException("Chu de \"" + newName + "\" da ton tai");
         }
         String oldName = topic.getName();
-        if (!oldName.equals(newName)) {
-            // Bai viet va FAQ luu category dang chuoi ten, phai doi theo de khong bi mo coi.
-            articleRepository.renameCategory(oldName, newName);
-            faqRepository.renameCategory(oldName, newName);
+        boolean renamed = !oldName.equals(newName);
+        if (renamed) {
             topic.setName(newName);
         }
         if (request.sortOrder() != null) {
             topic.setSortOrder(request.sortOrder());
         }
         topic.setUpdatedAt(Instant.now());
+        // Flush chu de truoc de FK ON UPDATE CASCADE tu dong cap nhat knowledge_articles/faqs ma khong vo FK.
         ArticleTopic saved = topicRepository.save(topic);
+        topicRepository.flush();
+        if (renamed) {
+            // Giu goi renameCategory cho DB khong ho tro cascade hoac moi truong test khong bat FK.
+            articleRepository.renameCategory(oldName, newName);
+            faqRepository.renameCategory(oldName, newName);
+        }
         return toResponse(
                 saved,
                 articleRepository.countByCategory(saved.getName()),

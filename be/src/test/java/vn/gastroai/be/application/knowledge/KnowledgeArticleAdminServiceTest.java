@@ -209,6 +209,87 @@ class KnowledgeArticleAdminServiceTest {
     }
 
     @Test
+    void updateSourceUrlOfPublishedArticleWithoutNewReviewAutoUnpublishes() {
+        KnowledgeArticle existing = sampleArticle(1L, "slug-cu", "Tiêu đề cũ", "Dạ dày", true);
+        when(articleRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        CmsArticleRequest req = new CmsArticleRequest(
+                existing.getTitle(),
+                existing.getSlug(),
+                existing.getSummary(),
+                existing.getCategory(),
+                existing.getContent(),
+                "Random Unverified Blog",
+                "https://unverified.example.org/fake",
+                null,
+                true,
+                null,
+                null,
+                0L
+        );
+
+        CmsArticleDetailResponse res = service.update(1L, req);
+
+        assertFalse(res.published());
+        assertEquals(ArticleStatus.PENDING_REVIEW, res.status());
+        assertNull(res.medicalReviewedAt());
+    }
+
+    @Test
+    void updateSourceNameOfPublishedArticleWithNewReviewStaysPublished() {
+        KnowledgeArticle existing = sampleArticle(1L, "slug-cu", "Tiêu đề cũ", "Dạ dày", true);
+        when(articleRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        CmsArticleRequest req = new CmsArticleRequest(
+                existing.getTitle(),
+                existing.getSlug(),
+                existing.getSummary(),
+                existing.getCategory(),
+                existing.getContent(),
+                "WHO Guidelines",
+                existing.getSourceUrl(),
+                null,
+                true,
+                "BS. Lê C",
+                null,
+                0L
+        );
+
+        CmsArticleDetailResponse res = service.update(1L, req);
+
+        assertTrue(res.published());
+        assertEquals(ArticleStatus.PUBLISHED, res.status());
+        assertEquals("BS. Lê C", res.medicalReviewer());
+        assertNotNull(res.medicalReviewedAt());
+    }
+
+    @Test
+    void updateHiddenArticleSourceChangeWithoutNewReviewRejectsPublish() {
+        KnowledgeArticle existing = sampleArticle(1L, "slug-cu", "Tiêu đề cũ", "Dạ dày", true);
+        existing.setPublished(false);
+        existing.setStatus(ArticleStatus.HIDDEN);
+        when(articleRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        CmsArticleRequest req = new CmsArticleRequest(
+                existing.getTitle(),
+                existing.getSlug(),
+                existing.getSummary(),
+                existing.getCategory(),
+                existing.getContent(),
+                "Nguồn mới chưa kiểm chứng",
+                "https://unverified.example.org/new",
+                null,
+                true,
+                null,
+                null,
+                0L
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> service.update(1L, req));
+        verify(articleRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void updateChecksOptimisticLockVersion() {
         KnowledgeArticle existing = sampleArticle(1L, "slug-cu", "Tiêu đề cũ", "Dạ dày", true);
         existing.setVersion(5L);

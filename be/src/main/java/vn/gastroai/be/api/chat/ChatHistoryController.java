@@ -22,6 +22,7 @@ import vn.gastroai.be.application.support.VietnamDateRange;
 import org.springframework.http.CacheControl;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.Principal;
 import java.util.Collections;
@@ -116,7 +117,7 @@ public class ChatHistoryController {
         ChatAttachment attachment = chatHistoryService.getOwnedAttachment(patientId, sessionId, attachmentId);
         byte[] content = Files.readAllBytes(attachmentStorage.resolve(attachment.getStoredName()));
         ContentDisposition disposition = ContentDisposition.inline()
-                .filename(attachment.getOriginalFilename())
+                .filename(attachment.getOriginalFilename(), StandardCharsets.UTF_8)
                 .build();
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(attachment.getContentType()))

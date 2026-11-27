@@ -15,6 +15,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -86,8 +87,11 @@ class ArticleTopicServiceTest {
 
         ArticleTopicResponse result = service.update(1L, new ArticleTopicRequest("Dạ dày - thực quản", null));
 
-        verify(articles).renameCategory("Dạ dày", "Dạ dày - thực quản");
-        verify(faqs).renameCategory("Dạ dày", "Dạ dày - thực quản");
+        var order = inOrder(topics, articles, faqs);
+        order.verify(topics).save(existing);
+        order.verify(topics).flush();
+        order.verify(articles).renameCategory("Dạ dày", "Dạ dày - thực quản");
+        order.verify(faqs).renameCategory("Dạ dày", "Dạ dày - thực quản");
         assertEquals("Dạ dày - thực quản", result.name());
         assertEquals(10, result.sortOrder());
         assertEquals(4L, result.articleCount());

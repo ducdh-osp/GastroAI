@@ -1522,7 +1522,7 @@ export default function CmsCatalogsPage() {
               <Form.Item
                 name="scope"
                 label="Phục vụ màn hình nào (Phạm vi sử dụng)"
-                rules={[{ required: true, message: 'Vui lòng nhập phạm vi sử dụng' }]}
+                rules={[{ required: true, message: 'Vui lòng chọn phạm vi sử dụng' }]}
                 extra="Màn hình người dùng hoặc hệ thống áp dụng mã này"
               >
                 <Select
@@ -1534,7 +1534,7 @@ export default function CmsCatalogsPage() {
                     { value: 'Triage tầng 1 & Cảnh báo khẩn cấp 115', label: 'Triage tầng 1 & Cảnh báo khẩn cấp 115' },
                     { value: 'Nhật ký ăn uống & Theo dõi phân Bristol', label: 'Nhật ký ăn uống & Theo dõi phân Bristol' },
                   ]}
-                  placeholder="Chọn hoặc nhập màn hình phục vụ"
+                  placeholder="Chọn phạm vi màn hình phục vụ"
                 />
               </Form.Item>
 

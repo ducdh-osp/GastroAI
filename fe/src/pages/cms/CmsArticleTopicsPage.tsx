@@ -77,28 +77,42 @@ export default function CmsArticleTopicsPage() {
     setMovingId(currentTopic.id)
 
     try {
-      let currentOrder = targetTopic.sortOrder
-      let targetOrder = currentTopic.sortOrder
-      if (currentOrder === targetOrder) {
-        if (direction === 'up') {
-          currentOrder = Math.max(0, targetOrder - 5)
-        } else {
-          currentOrder = targetOrder + 5
-        }
+      const updates: Array<Promise<ArticleTopic>> = []
+      const hasDuplicateOrder = new Set(topics.map((t) => t.sortOrder)).size < topics.length
+
+      if (!hasDuplicateOrder && currentTopic.sortOrder !== targetTopic.sortOrder) {
+        updates.push(
+          updateArticleTopic(currentTopic.id, {
+            name: currentTopic.name,
+            sortOrder: targetTopic.sortOrder,
+            version: currentTopic.version,
+          }),
+          updateArticleTopic(targetTopic.id, {
+            name: targetTopic.name,
+            sortOrder: currentTopic.sortOrder,
+            version: targetTopic.version,
+          }),
+        )
+      } else {
+        // Khi có các mục trùng sortOrder (vd đều bằng 0), đánh số lại theo vị trí mới để bấm lên/xuống luôn có tác dụng.
+        const reordered = [...topics]
+        reordered[index] = targetTopic
+        reordered[targetIndex] = currentTopic
+        reordered.forEach((topic, idx) => {
+          const desiredOrder = (idx + 1) * 10
+          if (topic.sortOrder !== desiredOrder) {
+            updates.push(
+              updateArticleTopic(topic.id, {
+                name: topic.name,
+                sortOrder: desiredOrder,
+                version: topic.version,
+              }),
+            )
+          }
+        })
       }
 
-      await Promise.all([
-        updateArticleTopic(currentTopic.id, {
-          name: currentTopic.name,
-          sortOrder: currentOrder,
-          version: currentTopic.version,
-        }),
-        updateArticleTopic(targetTopic.id, {
-          name: targetTopic.name,
-          sortOrder: targetOrder,
-          version: targetTopic.version,
-        }),
-      ])
+      await Promise.all(updates)
 
       message.success(`Đã đổi thứ tự "${currentTopic.name}"`)
       load()

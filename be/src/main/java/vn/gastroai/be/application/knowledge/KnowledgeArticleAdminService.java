@@ -24,6 +24,7 @@ import java.net.URISyntaxException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 /** UC0065 - Quan ly bai viet kien thuc tieu hoa (CRUD, danh muc, duyet y khoa) cho Admin/Bac si. */
 @Service
@@ -143,6 +144,9 @@ public class KnowledgeArticleAdminService {
         boolean contentChanged = !content.equals(article.getContent())
                 || !title.equals(article.getTitle())
                 || !summary.equals(article.getSummary());
+        boolean sourceChanged = !Objects.equals(sourceName, article.getSourceName())
+                || !Objects.equals(sourceUrl, article.getSourceUrl());
+        boolean reviewInvalidated = contentChanged || sourceChanged;
 
         boolean targetPublished = request.published() != null ? request.published() : article.isPublished();
 
@@ -163,10 +167,11 @@ public class KnowledgeArticleAdminService {
             article.setSortOrder(request.sortOrder());
         }
 
+        boolean hasNewReviewer = request.medicalReviewer() != null && !request.medicalReviewer().isBlank();
         if (targetPublished) {
-            if (article.isPublished() && contentChanged) {
-                // Nội dung y khoa thay đổi trên bài đang xuất bản - bắt buộc phải kiểm duyệt lại
-                if (request.medicalReviewer() != null && !request.medicalReviewer().isBlank()) {
+            if (article.isPublished() && reviewInvalidated) {
+                // Nội dung hoặc nguồn trích dẫn thay đổi trên bài đang xuất bản - bắt buộc phải kiểm duyệt lại
+                if (hasNewReviewer) {
                     article.setPublished(true);
                     article.setStatus(ArticleStatus.PUBLISHED);
                     article.setMedicalReviewer(request.medicalReviewer().trim());
@@ -178,16 +183,17 @@ public class KnowledgeArticleAdminService {
                     article.setMedicalReviewedAt(null);
                 }
             } else {
-                String reviewer = (request.medicalReviewer() != null && !request.medicalReviewer().isBlank())
+                String reviewer = hasNewReviewer
                         ? request.medicalReviewer().trim()
                         : article.getMedicalReviewer();
-                if (reviewer == null || reviewer.isBlank()) {
+                boolean previousReviewValid = !reviewInvalidated && article.getMedicalReviewedAt() != null;
+                if (reviewer == null || reviewer.isBlank() || (!hasNewReviewer && !previousReviewValid)) {
                     throw new IllegalArgumentException("Bài viết muốn xuất bản bắt buộc phải có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa");
                 }
                 article.setPublished(true);
                 article.setStatus(ArticleStatus.PUBLISHED);
                 article.setMedicalReviewer(reviewer);
-                if (article.getMedicalReviewedAt() == null || (request.medicalReviewer() != null && !request.medicalReviewer().isBlank())) {
+                if (article.getMedicalReviewedAt() == null || hasNewReviewer) {
                     article.setMedicalReviewedAt(Instant.now());
                 }
             }
@@ -195,21 +201,21 @@ public class KnowledgeArticleAdminService {
             article.setPublished(false);
             if (request.status() == ArticleStatus.PENDING_REVIEW) {
                 article.setStatus(ArticleStatus.PENDING_REVIEW);
-                if (contentChanged) {
+                if (reviewInvalidated) {
                     article.setMedicalReviewedAt(null);
                 }
             } else if (request.status() == ArticleStatus.DRAFT) {
                 article.setStatus(ArticleStatus.DRAFT);
-                if (contentChanged) {
+                if (reviewInvalidated) {
                     article.setMedicalReviewedAt(null);
                 }
-            } else if (contentChanged) {
+            } else if (reviewInvalidated) {
                 article.setStatus(ArticleStatus.PENDING_REVIEW);
                 article.setMedicalReviewedAt(null);
             } else {
                 article.setStatus(article.getMedicalReviewedAt() != null ? ArticleStatus.HIDDEN : ArticleStatus.DRAFT);
             }
-            if (request.medicalReviewer() != null && !request.medicalReviewer().isBlank()) {
+            if (hasNewReviewer) {
                 article.setMedicalReviewer(request.medicalReviewer().trim());
                 article.setMedicalReviewedAt(Instant.now());
             }

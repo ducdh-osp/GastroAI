@@ -153,6 +153,16 @@ class CmsEvaluationControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "1", roles = "ADMIN")
+    void runRagEvaluation_rejectsOutOfRangeTopKWithBadRequest() throws Exception {
+        when(ragEvaluationService.evaluate(eq(999)))
+                .thenThrow(new IllegalArgumentException("topK phải nằm trong khoảng 1..50"));
+
+        mockMvc.perform(post("/api/v1/cms/evaluation/rag/run").with(csrf()).param("topK", "999"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @WithMockUser(username = "3", roles = "PATIENT")
     void runRagEvaluation_rejectsPatientRole() throws Exception {
         mockMvc.perform(post("/api/v1/cms/evaluation/rag/run").with(csrf()).param("topK", "5"))

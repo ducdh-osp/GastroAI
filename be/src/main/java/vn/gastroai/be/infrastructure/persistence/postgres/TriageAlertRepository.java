@@ -32,10 +32,12 @@ public interface TriageAlertRepository extends JpaRepository<TriageAlert, Long> 
             TriageAlertStatus status, Instant startDate, Instant endDate);
     List<TriageAlert> findByOccurredAtBetween(Instant startDate, Instant endDate);
 
+    List<TriageAlert> findByOccurredAtGreaterThanEqualAndOccurredAtLessThan(Instant startDate, Instant endDate);
+
     @Query(value = """
             SELECT status AS status, count(*) AS count
             FROM triage_alerts
-            WHERE occurred_at >= :startDate AND occurred_at <= :endDate
+            WHERE occurred_at >= :startDate AND occurred_at < :endDate
             GROUP BY status
             """, nativeQuery = true)
     List<TriageStatusStatProjection> findStatusStats(

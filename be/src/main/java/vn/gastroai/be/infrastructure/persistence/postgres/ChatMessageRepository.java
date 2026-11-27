@@ -26,7 +26,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
                    count(*) FILTER (WHERE sender = 'patient') AS patientMessages,
                    count(*) FILTER (WHERE sender = 'assistant') AS botMessages
             FROM chat_messages
-            WHERE created_at >= :startDate AND created_at <= :endDate
+            WHERE created_at >= :startDate AND created_at < :endDate
             GROUP BY day
             ORDER BY day ASC
             """, nativeQuery = true)

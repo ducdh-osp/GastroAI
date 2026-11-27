@@ -1,5 +1,6 @@
 package vn.gastroai.be.application.knowledge;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import vn.gastroai.be.api.cms.knowledge.CmsFaqPageResponse;
@@ -7,7 +8,9 @@ import vn.gastroai.be.api.cms.knowledge.CmsFaqPublishRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsFaqRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsFaqResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
+import vn.gastroai.be.domain.knowledge.ArticleTopic;
 import vn.gastroai.be.domain.knowledge.Faq;
+import vn.gastroai.be.infrastructure.persistence.postgres.ArticleTopicRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.FaqRepository;
 
 import java.time.Instant;
@@ -21,7 +24,16 @@ import static org.mockito.Mockito.*;
 class FaqAdminServiceTest {
 
     private final FaqRepository faqRepository = mock(FaqRepository.class);
-    private final FaqAdminService service = new FaqAdminService(faqRepository);
+    private final ArticleTopicRepository topicRepository = mock(ArticleTopicRepository.class);
+    private final FaqAdminService service = new FaqAdminService(faqRepository, topicRepository);
+
+    @BeforeEach
+    void setupTopicMock() {
+        when(topicRepository.findByNameIgnoreCase(any())).thenAnswer(inv -> {
+            String name = inv.getArgument(0);
+            return Optional.of(new ArticleTopic(name, 10));
+        });
+    }
 
     private Faq faq(Long id, String q, String a, String category, int sortOrder, boolean published) {
         Faq f = new Faq(q, a, category, sortOrder, published);
@@ -215,8 +227,29 @@ class FaqAdminServiceTest {
     }
 
     @Test
-    void getCategoriesReturnsAllDistinctCategories() {
-        when(faqRepository.findDistinctAllCategories()).thenReturn(List.of("Dạ dày", "Đại tràng"));
+    void createRejectsNonExistentCategory() {
+        when(topicRepository.findByNameIgnoreCase("Chủ đề rác")).thenReturn(Optional.empty());
+        CmsFaqRequest req = new CmsFaqRequest("Q", "A", "Chủ đề rác", 10, false);
+
+        assertThrows(IllegalArgumentException.class, () -> service.create(req));
+        verify(faqRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void updateRejectsNonExistentCategory() {
+        Faq existing = faq(5L, "Q", "A", "Dạ dày", 10, false);
+        when(faqRepository.findById(5L)).thenReturn(Optional.of(existing));
+        when(topicRepository.findByNameIgnoreCase("Chủ đề rác")).thenReturn(Optional.empty());
+
+        CmsFaqRequest req = new CmsFaqRequest("Q", "A", "Chủ đề rác", 10, false);
+        assertThrows(IllegalArgumentException.class, () -> service.update(5L, req));
+        verify(faqRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void getCategoriesReturnsSharedArticleTopics() {
+        when(topicRepository.findAllByOrderBySortOrderAscNameAsc())
+                .thenReturn(List.of(new ArticleTopic("Dạ dày", 10), new ArticleTopic("Đại tràng", 20)));
         List<String> categories = service.getCategories();
         assertEquals(2, categories.size());
         assertEquals("Dạ dày", categories.get(0));

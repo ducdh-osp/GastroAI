@@ -4,6 +4,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import vn.gastroai.be.api.cms.dashboard.*;
+import vn.gastroai.be.application.support.VietnamDateRange;
 import vn.gastroai.be.infrastructure.pdf.PdfDocumentBuilder;
 
 import java.io.ByteArrayOutputStream;
@@ -21,7 +22,8 @@ public class DashboardExportService {
 
         builder.title("BÁO CÁO THỐNG KÊ HOẠT ĐỘNG GASTROAI")
                 .subtitle("Giai đoạn: " + stats.fromDate() + " đến " + stats.toDate()
-                        + "   |   Ngày xuất: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                        + "   |   Ngày xuất: "
+                        + LocalDate.now(VietnamDateRange.ZONE).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
 
         // 1. Tổng quan
         builder.section("1. CÁC CHỈ SỐ HOẠT ĐỘNG TỔNG QUAN");

@@ -125,6 +125,14 @@ class RagEvaluationServiceTest {
     }
 
     @Test
+    @DisplayName("Reject out-of-range topK values")
+    void testOutOfRangeTopKThrows() {
+        assertThrows(IllegalArgumentException.class, () -> evaluationService.evaluate(0));
+        assertThrows(IllegalArgumentException.class, () -> evaluationService.evaluate(-3));
+        assertThrows(IllegalArgumentException.class, () -> evaluationService.evaluate(51));
+    }
+
+    @Test
     @DisplayName("Verify Spring container can instantiate RagEvaluationService unambiguously with @Autowired")
     void verifySpringInstantiation() {
         GenericApplicationContext context = new GenericApplicationContext();

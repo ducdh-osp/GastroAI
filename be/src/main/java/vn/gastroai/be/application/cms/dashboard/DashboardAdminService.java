@@ -23,6 +23,8 @@ import java.util.*;
 @Transactional(readOnly = true)
 public class DashboardAdminService {
 
+    private static final int MIN_DAYS = 1;
+    private static final int MAX_DAYS = 365;
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -52,8 +54,9 @@ public class DashboardAdminService {
     }
 
     public DashboardStatsResponse getStats(int days) {
-        if (days <= 0) {
-            days = 30;
+        if (days < MIN_DAYS || days > MAX_DAYS) {
+            throw new IllegalArgumentException(
+                    "Số ngày thống kê phải nằm trong khoảng " + MIN_DAYS + ".." + MAX_DAYS);
         }
 
         LocalDate today = LocalDate.now(VIETNAM_ZONE);
@@ -149,8 +152,9 @@ public class DashboardAdminService {
             ));
         }
 
-        // 4. Triage groups (parsed from alerts in date range)
-        List<TriageAlert> alertsInRange = triageAlertRepository.findByOccurredAtBetween(startDate, endDate);
+        // 4. Triage groups (parsed from alerts in date range [startDate, endDate))
+        List<TriageAlert> alertsInRange = triageAlertRepository
+                .findByOccurredAtGreaterThanEqualAndOccurredAtLessThan(startDate, endDate);
         Map<String, Long> groupCounts = new HashMap<>();
         for (TriageAlert alert : alertsInRange) {
             List<String> groups = parseJsonList(alert.getMatchedGroups());
@@ -224,7 +228,9 @@ public class DashboardAdminService {
             case "DIARRHEA" -> "Tiêu chảy";
             case "ABDOMINAL_PAIN" -> "Đau bụng";
             case "NAUSEA" -> "Buồn nôn / Nôn";
+            case "VOMITING" -> "Nôn";
             case "INDIGESTION" -> "Khó tiêu chức năng";
+            case "OTHER" -> "Khác";
             default -> code;
         };
     }
@@ -234,12 +240,17 @@ public class DashboardAdminService {
         return switch (code.toUpperCase()) {
             case "XUAT_HUYET_TIEU_HOA" -> "Xuất huyết tiêu hóa";
             case "DAU_BUNG_CAP_TINH" -> "Đau bụng cấp tính";
-            case "SOT_CAO_KEM_DAU_BUNG" -> "Sốt cao kèm đau bụng";
-            case "KHO_THO_DAU_NGUC" -> "Khó thở kèm đau ngực";
+            case "TAC_RUOT" -> "Tắc ruột";
+            case "KHONG_THE_DI_TIEU" -> "Không thể đi tiểu";
+            case "SOC_MAT_MAU" -> "Sốc mất máu / Mất nước nặng";
+            case "NHIEM_TRUNG_NANG", "SOT_CAO_KEM_DAU_BUNG" -> "Nhiễm trùng nặng / Sốt cao kèm đau bụng";
+            case "DAU_LAN_CO_QUAN_KHAC" -> "Đau lan ra cơ quan khác";
+            case "KEM_HO_HAP_TIM_MACH", "KHO_THO_DAU_NGUC" -> "Kèm triệu chứng hô hấp/tim mạch";
+            case "TIEU_DUONG_KEM_NON" -> "Tiểu đường kèm nôn nhiều";
+            case "VANG_DA_KEM_DAU_BUNG" -> "Vàng da kèm đau bụng";
+            case "MAT_NUOC_NANG" -> "Mất nước nặng do tiêu chảy kéo dài";
             case "SUT_CAN_KHONG_RO_NGUYEN_NHAN", "SUT_CAN_NHANH" -> "Sụt cân không rõ nguyên nhân";
             case "KHO_NUOT_DAU_KHI_NUOT" -> "Khó nuốt / Đau khi nuốt";
-            case "VANG_DA_KEM_DAU_BUNG" -> "Vàng da kèm đau bụng";
-            case "KEM_HO_HAP_TIM_MACH" -> "Kèm triệu chứng hô hấp/tim mạch";
             default -> code;
         };
     }

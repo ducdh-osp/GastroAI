@@ -13,7 +13,9 @@ import vn.gastroai.be.api.cms.knowledge.CmsFaqRequest;
 import vn.gastroai.be.api.cms.knowledge.CmsFaqResponse;
 import vn.gastroai.be.application.support.ResourceNotFoundException;
 import vn.gastroai.be.application.support.VietnameseText;
+import vn.gastroai.be.domain.knowledge.ArticleTopic;
 import vn.gastroai.be.domain.knowledge.Faq;
+import vn.gastroai.be.infrastructure.persistence.postgres.ArticleTopicRepository;
 import vn.gastroai.be.infrastructure.persistence.postgres.FaqRepository;
 
 import java.time.Instant;
@@ -29,9 +31,11 @@ public class FaqAdminService {
             "FAQ muốn xuất bản bắt buộc phải có xác nhận đối chiếu nguồn từ Biên tập chuyên môn y khoa cho nội dung hiện tại";
 
     private final FaqRepository faqRepository;
+    private final ArticleTopicRepository topicRepository;
 
-    public FaqAdminService(FaqRepository faqRepository) {
+    public FaqAdminService(FaqRepository faqRepository, ArticleTopicRepository topicRepository) {
         this.faqRepository = faqRepository;
+        this.topicRepository = topicRepository;
     }
 
     @Transactional(value = TX, readOnly = true)
@@ -84,7 +88,7 @@ public class FaqAdminService {
         }
         String question = clean(req.question(), "Câu hỏi không được để trống");
         String answer = clean(req.answer(), "Câu trả lời không được để trống");
-        String category = clean(req.category(), "Chủ đề không được để trống");
+        String category = validateCategory(req.category());
         int sortOrder = req.sortOrder() != null ? req.sortOrder() : nextSortOrder();
 
         Faq faq = new Faq(question, answer, category, sortOrder, false);
@@ -98,7 +102,7 @@ public class FaqAdminService {
 
         String question = clean(req.question(), "Câu hỏi không được để trống");
         String answer = clean(req.answer(), "Câu trả lời không được để trống");
-        String category = clean(req.category(), "Chủ đề không được để trống");
+        String category = validateCategory(req.category());
         String newReviewer = trimToNull(req.medicalReviewer());
 
         boolean contentChanged = !question.equals(faq.getQuestion()) || !answer.equals(faq.getAnswer());
@@ -177,7 +181,17 @@ public class FaqAdminService {
 
     @Transactional(value = TX, readOnly = true)
     public List<String> getCategories() {
-        return faqRepository.findDistinctAllCategories();
+        return topicRepository.findAllByOrderBySortOrderAscNameAsc().stream()
+                .map(ArticleTopic::getName)
+                .toList();
+    }
+
+    private String validateCategory(String rawCategory) {
+        String cleaned = clean(rawCategory, "Chủ đề không được để trống");
+        ArticleTopic topic = topicRepository.findByNameIgnoreCase(cleaned)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Chủ đề \"" + cleaned + "\" không tồn tại trong hệ thống"));
+        return topic.getName();
     }
 
     private int nextSortOrder() {

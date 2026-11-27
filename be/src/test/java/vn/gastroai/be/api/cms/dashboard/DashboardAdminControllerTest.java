@@ -20,6 +20,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -119,5 +120,24 @@ class DashboardAdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString(".pdf")))
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "ADMIN")
+    void exportReport_rejectsUnsupportedFormatWithBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/cms/dashboard/export?format=CSV&days=30"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(dashboardAdminService, dashboardExportService);
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "ADMIN")
+    void getStats_rejectsOutOfRangeDaysWithBadRequest() throws Exception {
+        when(dashboardAdminService.getStats(9999))
+                .thenThrow(new IllegalArgumentException("Số ngày thống kê phải nằm trong khoảng 1..365"));
+
+        mockMvc.perform(get("/api/v1/cms/dashboard/stats?days=9999"))
+                .andExpect(status().isBadRequest());
     }
 }

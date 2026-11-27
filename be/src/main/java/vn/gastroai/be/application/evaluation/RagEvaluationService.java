@@ -196,12 +196,18 @@ public class RagEvaluationService {
                     "UNG THƯ TIÊU HÓA", "ung-thu-dai-truc-trang", List.of("ung thu dai truc trang", "polyp", "noi soi", "tam soat"))
     );
 
+    private static final int MIN_TOP_K = 1;
+    private static final int MAX_TOP_K = 50;
+
     /**
      * Chạy đánh giá toàn diện RAG Retrieval Accuracy trên tập benchmark queries.
-     * @param topK số lượng tài liệu lấy trong top-k (mặc định 5).
+     * @param topK số lượng tài liệu lấy trong top-k (trong khoảng 1..50, mặc định 5).
      */
     public synchronized RagEvaluationReport evaluate(int topK) {
-        if (topK <= 0) topK = 5;
+        if (topK < MIN_TOP_K || topK > MAX_TOP_K) {
+            throw new IllegalArgumentException(
+                    "topK phải nằm trong khoảng " + MIN_TOP_K + ".." + MAX_TOP_K);
+        }
 
         List<RagQueryEvalResult> queryResults = new ArrayList<>(BENCHMARK_QUERIES.size());
         int hit1 = 0;
