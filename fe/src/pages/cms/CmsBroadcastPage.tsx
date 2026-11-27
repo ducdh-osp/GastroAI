@@ -422,7 +422,7 @@ export function CmsBroadcastPage() {
                 <Alert
                   type="info"
                   showIcon
-                  className="text-xs"
+                  className="mb-6! text-xs"
                   message={
                     estimateLoading
                       ? 'Đang ước tính số bệnh nhân nhận thông báo...'
@@ -496,7 +496,7 @@ export function CmsBroadcastPage() {
                 <Alert
                   type="info"
                   showIcon
-                  className="mt-4 text-xs"
+                  className="mt-4! text-xs"
                   message="Lưu ý về quyền riêng tư"
                   description="Bệnh nhân đã tắt mục 'Thông báo hệ thống' trong phần Cài đặt cá nhân sẽ tự động được bỏ qua theo quy định UC0073."
                 />

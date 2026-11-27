@@ -319,10 +319,12 @@ export default function CmsTriageAlertsPage() {
 function StatusCell({ alert, now }: { alert: TriageAlert; now: number }) {
   if (alert.status === 'RESOLVED') {
     return (
-      <div>
-        <Tag color={TRIAGE_STATUS_COLORS.RESOLVED}>{TRIAGE_STATUS_LABELS.RESOLVED}</Tag>
+      <div className="flex flex-wrap items-center gap-1">
+        <Tag color={TRIAGE_STATUS_COLORS.RESOLVED} className="m-0!">{TRIAGE_STATUS_LABELS.RESOLVED}</Tag>
         {alert.outcome && (
-          <Tag color={alert.outcome === 'FALSE_ALARM' ? 'default' : 'green'}>{TRIAGE_OUTCOME_LABELS[alert.outcome]}</Tag>
+          <Tag color={alert.outcome === 'FALSE_ALARM' ? 'default' : 'green'} className="m-0!">
+            {TRIAGE_OUTCOME_LABELS[alert.outcome]}
+          </Tag>
         )}
       </div>
     )
@@ -331,9 +333,9 @@ function StatusCell({ alert, now }: { alert: TriageAlert; now: number }) {
   if (alert.status === 'AUTO_HANDLING') {
     const remaining = msUntil(alert.occurredAt, INTERVENTION_AFTER_MS, now)
     return (
-      <div>
-        <Tag color={TRIAGE_STATUS_COLORS.AUTO_HANDLING}>{TRIAGE_STATUS_LABELS.AUTO_HANDLING}</Tag>
-        <Text type="secondary" className="block text-xs tabular-nums">
+      <div className="flex flex-col items-start gap-1">
+        <Tag color={TRIAGE_STATUS_COLORS.AUTO_HANDLING} className="m-0!">{TRIAGE_STATUS_LABELS.AUTO_HANDLING}</Tag>
+        <Text type="secondary" className="text-xs tabular-nums">
           Đang chờ bệnh nhân trả lời · chuyển Admin sau {formatCountdown(remaining ?? 0)}
         </Text>
       </div>
@@ -345,11 +347,13 @@ function StatusCell({ alert, now }: { alert: TriageAlert; now: number }) {
     ? msUntil(alert.needsInterventionAt, FAILSAFE_AFTER_MS, now)
     : null
   return (
-    <div>
-      <Tag color={TRIAGE_STATUS_COLORS.NEEDS_INTERVENTION}>{TRIAGE_STATUS_LABELS.NEEDS_INTERVENTION}</Tag>
-      {overdue && <Tag color="red" className="font-semibold">QUÁ HẠN</Tag>}
-      {alert.patientResponse === 'NEED_HELP' && <Tag color="volcano">Bệnh nhân bấm Cần hỗ trợ</Tag>}
-      <Text type="secondary" className="block text-xs tabular-nums">
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex flex-wrap items-center gap-1">
+        <Tag color={TRIAGE_STATUS_COLORS.NEEDS_INTERVENTION} className="m-0!">{TRIAGE_STATUS_LABELS.NEEDS_INTERVENTION}</Tag>
+        {overdue && <Tag color="red" className="m-0! font-semibold">QUÁ HẠN</Tag>}
+        {alert.patientResponse === 'NEED_HELP' && <Tag color="volcano" className="m-0!">Bệnh nhân bấm Cần hỗ trợ</Tag>}
+      </div>
+      <Text type="secondary" className="text-xs tabular-nums">
         {alert.claimedById !== null
           ? `${CLAIMER_TYPE_LABELS[alert.claimedByType ?? ''] ?? alert.claimedByType} #${alert.claimedById} đang liên hệ`
           : alert.acknowledgedAt
